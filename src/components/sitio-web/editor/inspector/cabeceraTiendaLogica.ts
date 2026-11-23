@@ -9,7 +9,9 @@
  */
 import {
   ESTILOS_ICONOS_NUEVOS,
+  LARGO_BOTON_CUENTA,
   LARGO_TEXTO_REGLA_BOTON,
+  LARGO_TITULO_CUENTA,
   LARGO_TEXTOS_FAVORITOS,
   MAX_TEXTOS_BOTON_CARRITO,
   REGLAS_BOTON_CARRITO,
@@ -19,7 +21,11 @@ import {
   type BotonCarrito,
   type ClaveTextoRegla,
   type EstiloIconos,
+  type FormaIcono,
+  type IconoCabecera,
   type IconoConTexto,
+  type IconosEnCelular,
+  type TrazoUnificado,
   type ModoBotonCarrito,
   type TextoFavoritos,
 } from '@/lib/website/v2/cabeceraTienda';
@@ -67,6 +73,31 @@ export function cambioIconos(a: Ajustes, parte: Record<string, unknown>): Ajuste
 export function cambioEstiloIconos(a: Ajustes, estilo: EstiloIconos): Ajustes {
   if ((ESTILOS_ICONOS_NUEVOS as readonly string[]).includes(estilo)) return cambioIconos(a, { estilo });
   return { ...cambioIconos(a, { estilo: null }), ...cambioForma(a, estilo === 'circulo' ? 'circle' : 'none') };
+}
+
+/**
+ * Trazo único (Figma decisiones 2830:85479). Fino y Normal guardan el grosor en
+ * `header_iconos.trazo` y dejan `header_icons_weight` en contorno; Relleno escribe
+ * `header_icons_weight` = relleno y limpia el grosor. Elegir uno limpia el otro.
+ */
+export function cambioTrazoUnificado(a: Ajustes, trazo: TrazoUnificado): Ajustes {
+  if (trazo === 'relleno') {
+    const conGrosor = objeto(a.header_iconos)?.trazo !== undefined;
+    return { ...(conGrosor ? cambioIconos(a, { trazo: null }) : {}), header_icons_weight: 'relleno' };
+  }
+  return { ...cambioIconos(a, { trazo }), header_icons_weight: 'contorno' };
+}
+
+/** Forma en el celular. «Automático» (lo de hoy) no se guarda. */
+export function cambioIconosEnCelular(a: Ajustes, movil: IconosEnCelular): Ajustes {
+  return cambioIconos(a, { movil: movil === 'auto' ? null : movil });
+}
+
+/** Forma propia de un ícono; `null` = «Volver a como los demás». */
+export function cambioFormaIcono(a: Ajustes, icono: IconoCabecera, forma: FormaIcono | null): Ajustes {
+  const actual = { ...(objeto(objeto(a.header_iconos)?.por_icono) ?? {}) };
+  actual[icono] = forma ? { estilo: forma } : null;
+  return cambioIconos(a, { por_icono: actual });
 }
 
 /** Texto propio de un ícono. Vacío = el texto por defecto. */
@@ -228,4 +259,22 @@ export function cambioSugerenciasFavoritos(a: Ajustes, parte: { mostrar?: boolea
 /** Interruptor de favoritos cuyo valor por defecto es «sí»: encendido no se guarda. */
 export function cambioInterruptorFavoritos(a: Ajustes, campo: 'contador' | 'avisoSesion' | 'compartir' | 'corazonTarjetas' | 'corazonFicha', valor: boolean): Ajustes {
   return cambioFavoritos(a, { [campo]: valor ? null : false });
+}
+
+// ─── Cuenta ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Opciones de «Al tocar el ícono de cuenta» (`header_cuenta`, Figma 2839:69662). Los valores por
+ * defecto no se guardan: «Página», el título y el botón de siempre, beneficios encendidos, el
+ * panel desde la ventana y quedarse en la página.
+ */
+export function cambioCuenta(a: Ajustes, parte: { modo?: string; titulo?: string | null; boton?: string | null; beneficios?: boolean; ventanaDestino?: string; despues?: string }): Ajustes {
+  const limpio: Record<string, unknown> = {};
+  if (parte.modo !== undefined) limpio.modo = parte.modo === 'pagina' ? null : parte.modo;
+  if (parte.titulo !== undefined) limpio.titulo = parte.titulo && parte.titulo.trim() ? parte.titulo.slice(0, LARGO_TITULO_CUENTA) : null;
+  if (parte.boton !== undefined) limpio.boton = parte.boton && parte.boton.trim() ? parte.boton.slice(0, LARGO_BOTON_CUENTA) : null;
+  if (parte.beneficios !== undefined) limpio.beneficios = parte.beneficios ? null : false;
+  if (parte.ventanaDestino !== undefined) limpio.ventanaDestino = parte.ventanaDestino === 'panel' ? null : parte.ventanaDestino;
+  if (parte.despues !== undefined) limpio.despues = parte.despues === 'quedarse' ? null : parte.despues;
+  return mezclar(a, 'header_cuenta', limpio);
 }

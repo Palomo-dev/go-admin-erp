@@ -35733,7 +35733,8 @@
           "trazo": "Stroke",
           "trazoOpcion": {
             "fino": "Thin",
-            "normal": "Regular"
+            "normal": "Regular",
+            "relleno": "Filled"
           },
           "mostrarTexto": "Show label",
           "mostrarTextoAyuda": "With «With label» it goes below the icon; with «Pill» and «Filled», beside it.",
@@ -35761,7 +35762,67 @@
           "monedaEstilo": "Style and currencies",
           "monedaVer": "See «Currency selector»",
           "favoritosAyudaPanel": "Opens the favorites panel or the /favoritos page (Header › Favorites).",
-          "favoritosVer": "See “Favorites”"
+          "favoritosVer": "See “Favorites”",
+          "migasUnico": "Global · Content › Icons, currency and cart · the only place for icons",
+          "estiloGeneral": "General style",
+          "estiloGeneralAyuda": "All icons use it by default. To make one different (for example the cart as a button), change it in its card with «Shape».",
+          "soloComputador": "Desktop only",
+          "celular": "On mobile",
+          "celularOpcion": {
+            "auto": "Automatic",
+            "icono": "Icon only",
+            "circulo": "Circle",
+            "texto": "With text below"
+          },
+          "celularAyuda": "On mobile (390 px) the pill and the filled button do not fit. «Automatic» —as today— shows them as icon only or circle, depending on the site’s current box. It also applies to icons with their own shape. Drawing, size and stroke do apply on mobile.",
+          "tamanoAyuda": "One size for all. Without choosing S, M or L, today’s size is shown.",
+          "tamanoAyudaCaja": "One size for all. Today they show at {n} px (the saved box size); choosing S, M or L replaces it.",
+          "trazoAyuda": "One stroke. Thin and Normal are the line weight; Filled is the former filled icon. Choosing one clears the other.",
+          "fondo": {
+            "titulo": "Icon background",
+            "ayuda": "Box shape, color, gradient, shadow and hover (formerly in Style › Icons). Tap to open.",
+            "mas": "More options",
+            "colorMarca": "brand color",
+            "colorPropio": "custom color",
+            "caja": "Icon box",
+            "cajaAyuda": "Shape, background and shadow of cart, account, currency, favorites and search. Without choosing, today’s icon is shown.",
+            "tamanoGuardado": "No «Size» here: there is one size, above (S / M / L). The store has {n} px saved and keeps it until you choose S, M or L.",
+            "sinTamano": "No «Size» here: there is one size, above (S / M / L)."
+          },
+          "cualesTitulo": "Which ones show and with which drawing",
+          "cualesTituloAyuda": "In header order. For each: show or hide, the drawing, the shape (if you want it to differ) and its text.",
+          "buscar": "Search",
+          "buscarEnDiseno": "Shown in Design",
+          "buscarMostrar": "Show or hide, icon or bar",
+          "buscarIr": "Design › Search",
+          "buscarCelular": "Looks the same on mobile. No switch here: search is turned on and off in one place (Design › Search).",
+          "dibujo": "Drawing",
+          "dibujoFavoritos": "Favorites icon",
+          "corazon": "Heart",
+          "soloCorazon": "For now the store only draws the heart.",
+          "dibujoCarritoAyuda": "Replaces the old «Icon: Cart / Bag» of this card.",
+          "forma": "Shape",
+          "formaOpcion": {
+            "demas": "Like the others",
+            "icono": "Icon only",
+            "circulo": "Circle",
+            "texto": "With text",
+            "pildora": "Pill",
+            "relleno": "Filled"
+          },
+          "formaDemasAyuda": "Follows the general style: {estilo}.",
+          "formaPropiaAyuda": "Own shape: does not follow the general style.",
+          "volverDemas": "Back to like the others",
+          "notaFormaCelular": "On mobile «{forma}» does not fit: it uses «On mobile» (Automatic → circle or icon only).",
+          "favoritosAbre": "Opens the panel or the /favoritos page",
+          "favoritosVerPanel": "See favorites panel",
+          "favoritosCelular": "On mobile it goes in the side menu (not in the top bar).",
+          "monedaTexto": "With text, the currency shows its code (COP).",
+          "monedaEstiloFila": "Flag, code, segment…",
+          "monedaCambiar": "Change how the selector looks",
+          "monedaCelular": "On mobile: the menu row and the «In the bar» mode use the same desktop style.",
+          "filaEstilo": "Icons are set up in Content › Icons",
+          "filaEstiloAyuda": "Style, shape, size, stroke, background and drawings. Tap to open the view."
         },
         "moneda": {
           "titulo": "Header › Currency selector",
@@ -35962,7 +36023,37 @@
           "tarjetasAyuda": "The style and position of the heart on the card stay in Site style › Product card."
         },
         "accesos": {
-          "titulo": "Icons, currency and cart"
+          "titulo": "Icons, currency and cart",
+          "accionesAyuda": "Search: Design › Search. Cart, account, currency and favorites (show, drawing and shape): in «Icons, currency and cart», above."
+        },
+        "cuenta": {
+          "alTocar": "When the account icon is tapped",
+          "modo": {
+            "pagina": "Page",
+            "panel": "Side panel",
+            "ventana": "Window from the icon",
+            "dialogo": "Dialog"
+          },
+          "ayudaPagina": "As today: the icon goes to /auth (and to /mi-cuenta when signed in). Every store starts here.",
+          "ayudaOtros": "On mobile, panel, window and dialog show as a bottom sheet. When signed in, the same format shows the account menu.",
+          "notaPagina": "With «Page» the texts are edited on the /auth page. Choose another mode to see title, button, benefits and «After signing in».",
+          "titulo": "Title",
+          "boton": "Button text",
+          "vacio": "Empty = «{texto}».",
+          "beneficios": "Show benefits",
+          "beneficiosAyuda": "See orders · Saved favorites · Addresses.",
+          "destino": "«Create account» and «Forgot…?» open",
+          "destinoOpcion": {
+            "panel": "Side panel",
+            "pagina": "Page"
+          },
+          "destinoAyuda": "The window is compact: sign-up and recovery go in the panel or on the page.",
+          "despues": "After signing in",
+          "despuesOpcion": {
+            "quedarse": "Stay on the page",
+            "cuenta": "Go to My account"
+          },
+          "despuesAyuda": "«Stay» closes the sign-in and leaves the customer where they were (cart or checkout included)."
         }
       },
       "accionesFicha": {

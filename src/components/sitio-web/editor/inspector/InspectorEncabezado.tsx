@@ -11,8 +11,6 @@
  */
 import { useId, useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import type { AccionEncabezado } from '@/lib/website/v2/iconosEncabezado';
-import { ACCIONES_ICONO, ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, iconoAccionEncabezado } from './iconosAccionesLogica';
 import { cn } from '@/utils/Utils';
 import { CampoNumero, ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { Input } from '@/components/ui/input';
@@ -20,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from './encabezadoLogica';
-import { cambioQuitarTodos, circuloAcentoActivo, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
+import { cambioQuitarTodos, entradasAnterioresEncabezado, type EntradaAnterior } from './anterioresLogica';
 import {
   buscadorCelular,
   buscadorComputador,
@@ -35,24 +33,15 @@ import { useTextosEditor } from '../textos';
 import {
   BOTONES_EXTRA,
   BUSCADORES,
-  FORMAS_CAJA,
   MENUS_EXTRA,
-  SOMBRAS_CAJA,
-  TAMANOS_ICONO,
   botonesConValor,
-  cajaIconos,
-  cambioCaja,
-  cambioForma,
-  cambioTamano,
   enlacesMenu,
-  formaCaja,
   menusConValor,
-  tamanoIcono,
   ESTILOS_BOTONES_EXTRA,
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
-import { AccesosCabeceraTienda, CabeceraVistaTienda, FilaAbrirVistaTienda, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
+import { AccesosCabeceraTienda, AyudaAccionesCabecera, CabeceraVistaTienda, FilaIconosEnEstilo, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
 import { CabeceraBoton, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonEncabezado } from './PildoraYBoton';
 import type { BotonEncabezado } from './pildoraLogica';
 import {
@@ -66,7 +55,6 @@ import {
   TarjetaPlantilla,
   TituloBloque,
 } from './PartesZonaGlobal';
-import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
 import { estiloDeHeaderLayout } from '@/lib/website/v2/mapeoAjustes';
 import {
   DESTINO_PROPIO,
@@ -133,7 +121,18 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
       <aside aria-label={t('inspector.etiqueta', { nombre: titulo })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
         <CabeceraVistaTienda vista={vistaTienda} onVolver={() => setVistaTienda(null)} />
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista={`tienda-${vistaTienda}`}>
-          {vistaTienda === 'iconos' && <VistaIconos ajustes={a} cambiar={cambiar} onAbrir={setVistaTienda} />}
+          {vistaTienda === 'iconos' && (
+            <VistaIconos
+              ajustes={a}
+              cambiar={cambiar}
+              onAbrir={setVistaTienda}
+              coloresTema={p.coloresTema}
+              onIrBuscador={() => {
+                setVistaTienda(null);
+                setPestana('diseno');
+              }}
+            />
+          )}
           {vistaTienda === 'moneda' && <VistaMoneda ajustes={a} cambiar={cambiar} organizationId={p.organizationId} />}
           {vistaTienda === 'carrito' && <VistaCarrito ajustes={a} cambiar={cambiar} enBorrador={p.enBorrador} />}
           {vistaTienda === 'favoritos' && <VistaFavoritos ajustes={a} cambiar={cambiar} />}
@@ -410,23 +409,9 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
 
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.acciones.titulo')}</TituloBloque>
-        {/* DUP-28oct: el buscador (mostrar u ocultar) se elige una sola vez, en Diseño › Buscador (`search_style`). */}
-        <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
-        {opcionBooleana(a, 'show_header_cart') && <SelectorIconoAccion accion="cart" ajustes={a} cambiar={cambiar} />}
-        <FilaInterruptor
-          titulo={t('zonaGlobal.acciones.cuenta')}
-          ayuda={t('zonaGlobal.acciones.cuentaAyuda')}
-          valor={opcionBooleana(a, 'show_header_auth')}
-          onCambiar={(v) => cambiar({ show_header_auth: v })}
-        />
-        {opcionBooleana(a, 'show_header_auth') && <SelectorIconoAccion accion="account" ajustes={a} cambiar={cambiar} />}
-        <FilaInterruptor
-          titulo={t('zonaGlobal.acciones.moneda')}
-          ayuda={t('zonaGlobal.acciones.monedaAyuda')}
-          valor={opcionBooleana(a, 'header_show_currency')}
-          onCambiar={(v) => cambiar({ header_show_currency: v })}
-        />
-        {opcionBooleana(a, 'header_show_currency') && <SelectorIconoAccion accion="currency" ajustes={a} cambiar={cambiar} />}
+        {/* Íconos en un solo lugar (Figma 2830:76237): el buscador se prende en Diseño › Buscador;
+            carrito, cuenta, moneda y favoritos (mostrar, dibujo y forma), en la vista «Íconos». */}
+        <AyudaAccionesCabecera />
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}
@@ -704,35 +689,8 @@ function Estilo(p: Interno) {
       {p.onAbrirBoton && <FilaAbrirBoton onAbrir={p.onAbrirBoton} />}
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.estilo.iconos')}</TituloBloque>
-        {p.onAbrirVista && <FilaAbrirVistaTienda vista="iconos" onAbrir={p.onAbrirVista} />}
-        {p.onAbrirVista && <FilaAbrirVistaTienda vista="moneda" onAbrir={p.onAbrirVista} />}
-        {p.onAbrirVista && <FilaAbrirVistaTienda vista="carrito" onAbrir={p.onAbrirVista} />}
-        {p.onAbrirVista && <FilaAbrirVistaTienda vista="favoritos" onAbrir={p.onAbrirVista} />}
-        <CajaIconos ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
-        <IconosAcciones ajustes={a} cambiar={cambiar} />
-        {circuloAcentoActivo(a) && !cajaIconos(a) && (() => {
-          // Paquete 5-nov B1/B4: fondo del círculo (vacío = marca) y color del ícono (vacío = automático).
-          const fondoCirculo = color('header_icons_circle_bg') ?? p.coloresTema.acento;
-          return (
-            <>
-              <ColorTema
-                etiqueta={t('zonaGlobal.acciones.circuloFondo')}
-                etiquetaNulo={t('zonaGlobal.acciones.circuloFondoAcento')}
-                valor={color('header_icons_circle_bg')}
-                colorTema={p.coloresTema.acento}
-                onCambiar={(v) => cambiar({ header_icons_circle_bg: v })}
-              />
-              <ColorTema
-                etiqueta={t('zonaGlobal.acciones.circuloIcono')}
-                etiquetaNulo={t('zonaGlobal.acciones.circuloIconoAuto')}
-                valor={color('header_icons_circle_fg')}
-                colorTema={textoSobreAcento(fondoCirculo)}
-                fondo={fondoCirculo}
-                onCambiar={(v) => cambiar({ header_icons_circle_fg: v })}
-              />
-            </>
-          );
-        })()}
+        {/* Una sola fila-enlace (Figma 2830:76378): los íconos se configuran en la vista «Íconos». */}
+        {p.onAbrirVista && <FilaIconosEnEstilo onAbrir={() => p.onAbrirVista?.('iconos')} />}
       </section>
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.estilo.transparencia')}</TituloBloque>
@@ -808,145 +766,11 @@ export { cambioAlBajar, cambioSobrePortada, modoAlBajar, MODOS_AL_BAJAR } from '
  * sitio sigue usando el radio guardado: la vista lo muestra como «personalizada (radio N)».
  */
 
-/**
- * Íconos de buscar, carrito, cuenta y moneda (pedido de Juan, 28-oct): el set ya lo pinta la tienda
- * (`resolverIconoEncabezado`: `header_icons` › `search_icon`/`cart_icon`/`auth_icon`/`currency_icon` ›
- * `header_cart_glyph`) y el trazo `header_icons_weight`. Aquí se eligen; antes solo salían en
- * «Ajustes de versiones anteriores». Muestra lo que hoy se ve; sin elegir, nada cambia.
+/*
+ * Los íconos (dibujo de cada acción, trazo, forma y la caja: forma, color, degradado, sombra y
+ * hover) se editan en la vista «Íconos» (VistaIconosCabecera.tsx, Figma 2830:73206). Antes salían
+ * aquí en Estilo › Íconos y debajo de cada interruptor de Contenido › Acciones, y se pisaban.
  */
-function IconosAcciones({ ajustes: a, cambiar }: Pick<Interno, 'ajustes' | 'cambiar'>) {
-  const t = useTextosEditor();
-  const idTrazo = useId();
-  const trazo = valorOpcion<string>(a, 'header_icons_weight') === 'relleno' ? 'relleno' : 'contorno';
-  return (
-    <>
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idTrazo}>{t('zonaGlobal.acciones.iconosTrazo')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idTrazo}
-          opciones={[{ valor: 'contorno', etiqueta: t('zonaGlobal.acciones.contorno') }, { valor: 'relleno', etiqueta: t('zonaGlobal.acciones.relleno') }]}
-          valor={trazo}
-          onValorChange={(v) => cambiar({ header_icons_weight: v })}
-        />
-      </div>
-      {ACCIONES_ICONO.map((accion) => (
-        <SelectorIconoAccion key={accion} accion={accion} ajustes={a} cambiar={cambiar} />
-      ))}
-    </>
-  );
-}
-
-/**
- * Ícono de una acción (buscar, carrito, cuenta o moneda). Se usa en Estilo › Íconos y debajo de cada
- * interruptor de Contenido › Acciones: los dos escriben la misma columna (`cambioIconoAccion`), así
- * que lo elegido en uno se ve marcado en el otro. Muestra lo que hoy pinta la tienda.
- */
-function SelectorIconoAccion({ accion, ajustes: a, cambiar }: { accion: AccionEncabezado } & Pick<Interno, 'ajustes' | 'cambiar'>) {
-  const t = useTextosEditor();
-  const id = useId();
-  const actual = iconoAccionEncabezado(a, accion);
-  const nombres: string[] = [...OPCIONES_ICONO_ACCION[accion]];
-  if (!nombres.includes(actual)) nombres.push(actual);
-  return (
-    <div className="flex flex-col gap-2">
-      <EtiquetaGrupo id={id}>{t(`zonaGlobal.acciones.iconoAccion.${accion}`)}</EtiquetaGrupo>
-      <ChipsOpcion
-        aria-labelledby={id}
-        opciones={nombres.map((n) => {
-          // Un nombre guardado puede no estar en el mapa: sin ícono se muestra el nombre tal cual.
-          const Icono = ICONOS_LUCIDE_ENCABEZADO[n];
-          const conIcono = Object.prototype.hasOwnProperty.call(ICONOS_LUCIDE_ENCABEZADO, n);
-          return {
-            valor: n,
-            etiqueta: conIcono ? t(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
-            adorno: conIcono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
-          };
-        })}
-        valor={actual}
-        onValorChange={(v) => cambiar(cambioIconoAccion(a, accion, v))}
-      />
-    </div>
-  );
-}
-
-// ─── Lo que antes solo hacía el Constructor (ahora en Encabezado) ───────────────────────────────
-
-/** Caja de los íconos: forma, tamaño, degradado, sombra y hover (antes `icon_container`). */
-function CajaIconos({ ajustes: a, cambiar, coloresTema }: Pick<Interno, 'ajustes' | 'cambiar' | 'coloresTema'>) {
-  const t = useTextosEditor();
-  const idForma = useId();
-  const idTam = useId();
-  const idSombra = useId();
-  const caja = cajaIconos(a);
-  const forma = formaCaja(a);
-  const formas: string[] = [...FORMAS_CAJA];
-  if (!formas.includes(forma)) formas.push(forma);
-  const tam = tamanoIcono(a);
-  const tamanos: (number | null)[] = [null, ...TAMANOS_ICONO];
-  if (tam !== null && !tamanos.includes(tam)) tamanos.push(tam);
-  const hex = (v: unknown) => (typeof v === 'string' && /^#/.test(v) ? v : null);
-  const conCaja = !!caja && forma !== 'none';
-  const degradado = !!caja && !!caja.gradient_1 && !!caja.gradient_2;
-  return (
-    <>
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idForma}>{t('zonaGlobal.acciones.forma')}</EtiquetaGrupo>
-        <ChipsOpcion aria-labelledby={idForma} opciones={formas.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.acciones.formaNombre.${v}`) }))} valor={forma} onValorChange={(v) => cambiar(cambioForma(a, v))} />
-        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.acciones.iconosCirculoAyuda')}</p>
-      </div>
-      <div className="flex flex-col gap-2">
-        <EtiquetaGrupo id={idTam}>{t('zonaGlobal.acciones.tamano')}</EtiquetaGrupo>
-        <ChipsOpcion
-          aria-labelledby={idTam}
-          opciones={tamanos.map((n) => ({ valor: n === null ? 'normal' : String(n), etiqueta: n === null ? t('zonaGlobal.acciones.tamanoNormal') : t('zonaGlobal.acciones.tamanoPx', { n }) }))}
-          valor={tam === null ? 'normal' : String(tam)}
-          onValorChange={(v) => cambiar(cambioTamano(a, v === 'normal' ? null : Number(v)))}
-        />
-      </div>
-      {conCaja && (
-        <>
-          <ColorTema
-            etiqueta={t('zonaGlobal.acciones.cajaFondo')}
-            etiquetaNulo={t('zonaGlobal.acciones.cajaFondoAcento')}
-            valor={hex(caja.background)}
-            colorTema={coloresTema.acento}
-            onCambiar={(v) => cambiar(cambioCaja(a, { background: v ?? 'accent' }))}
-          />
-          <FilaInterruptor
-            titulo={t('zonaGlobal.acciones.degradado')}
-            valor={degradado}
-            onCambiar={(v) => cambiar(cambioCaja(a, v ? { gradient_1: hex(caja.background) ?? coloresTema.acento, gradient_2: coloresTema.texto } : { gradient_1: null, gradient_2: null }))}
-          />
-          {degradado && (
-            <>
-              <ColorTema etiqueta={t('zonaGlobal.acciones.degradado1')} valor={hex(caja.gradient_1)} colorTema={coloresTema.acento} onCambiar={(v) => cambiar(cambioCaja(a, { gradient_1: v ?? coloresTema.acento }))} />
-              <ColorTema etiqueta={t('zonaGlobal.acciones.degradado2')} valor={hex(caja.gradient_2)} colorTema={coloresTema.texto} onCambiar={(v) => cambiar(cambioCaja(a, { gradient_2: v ?? coloresTema.texto }))} />
-            </>
-          )}
-          <div className="flex flex-col gap-2">
-            <EtiquetaGrupo id={idSombra}>{t('zonaGlobal.acciones.sombra')}</EtiquetaGrupo>
-            <ChipsOpcion
-              aria-labelledby={idSombra}
-              opciones={SOMBRAS_CAJA.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.acciones.sombraNombre.${v}`) }))}
-              valor={typeof caja.shadow === 'string' ? caja.shadow : 'none'}
-              onValorChange={(v) => cambiar(cambioCaja(a, { shadow: v === 'none' ? null : v }))}
-            />
-          </div>
-          <ColorTema
-            etiqueta={t('zonaGlobal.acciones.hoverFondo')}
-            etiquetaNulo={t('zonaGlobal.acciones.hoverFondoIgual')}
-            valor={hex(caja.hover_background)}
-            colorTema={coloresTema.acento}
-            onCambiar={(v) => cambiar(cambioCaja(a, { hover_background: v }))}
-          />
-        </>
-      )}
-      {(conCaja || !!caja) && (
-        <FilaInterruptor titulo={t('zonaGlobal.acciones.hoverAgrandar')} valor={typeof caja?.hover_scale === 'number' && caja.hover_scale > 100} onCambiar={(v) => cambiar(cambioCaja(a, { hover_scale: v ? 110 : null }))} />
-      )}
-    </>
-  );
-}
 
 /** Botones 3 a 6 (antes solo en el Constructor): mismo campo que el principal y el segundo. */
 function MasBotones({ ajustes: a, cambiar, paginas }: Pick<Interno, 'ajustes' | 'cambiar' | 'paginas'>) {

@@ -35733,7 +35733,8 @@
           "trazo": "Trait",
           "trazoOpcion": {
             "fino": "Fin",
-            "normal": "Normal"
+            "normal": "Normal",
+            "relleno": "Plein"
           },
           "mostrarTexto": "Afficher le libellé",
           "mostrarTextoAyuda": "Avec «Avec libellé» il va sous l’icône ; avec «Pilule» et «Plein», à côté.",
@@ -35761,7 +35762,67 @@
           "monedaEstilo": "Style et devises",
           "monedaVer": "Voir «Sélecteur de devise»",
           "favoritosAyudaPanel": "Ouvre le panneau des favoris ou la page /favoritos (En-tête › Favoris).",
-          "favoritosVer": "Voir « Favoris »"
+          "favoritosVer": "Voir « Favoris »",
+          "migasUnico": "Global · Contenu › Icônes, devise et panier · le seul endroit des icônes",
+          "estiloGeneral": "Style général",
+          "estiloGeneralAyuda": "Toutes les icônes l’utilisent par défaut. Pour en distinguer une (par exemple le panier en bouton), changez-la dans sa carte avec «Forme».",
+          "soloComputador": "Ordinateur seulement",
+          "celular": "Sur mobile",
+          "celularOpcion": {
+            "auto": "Automatique",
+            "icono": "Icône seule",
+            "circulo": "Cercle",
+            "texto": "Avec texte dessous"
+          },
+          "celularAyuda": "Sur mobile (390 px), la pilule et le bouton plein ne tiennent pas. «Automatique» —comme aujourd’hui— les affiche en icône seule ou en cercle, selon la boîte actuelle du site. Valable aussi pour les icônes à forme propre. Le dessin, la taille et le trait s’appliquent sur mobile.",
+          "tamanoAyuda": "Une seule taille pour toutes. Sans choisir S, M ou L, la taille actuelle s’affiche.",
+          "tamanoAyudaCaja": "Une seule taille pour toutes. Aujourd’hui elles font {n} px (taille de boîte enregistrée) ; choisir S, M ou L la remplace.",
+          "trazoAyuda": "Un seul trait. Fin et Normal sont l’épaisseur de ligne ; Plein est l’icône pleine d’avant. En choisir un efface l’autre.",
+          "fondo": {
+            "titulo": "Fond des icônes",
+            "ayuda": "Forme, couleur, dégradé, ombre et survol de la boîte (auparavant dans Style › Icônes). Touchez pour ouvrir.",
+            "mas": "Plus d’options",
+            "colorMarca": "couleur de la marque",
+            "colorPropio": "couleur propre",
+            "caja": "Boîte des icônes",
+            "cajaAyuda": "Forme, fond et ombre du panier, du compte, de la devise, des favoris et de la recherche. Sans choix, l’icône actuelle s’affiche.",
+            "tamanoGuardado": "Pas de «Taille» ici : une seule taille, plus haut (S / M / L). La boutique a {n} px enregistrés et les garde tant que vous ne choisissez pas S, M ou L.",
+            "sinTamano": "Pas de «Taille» ici : une seule taille, plus haut (S / M / L)."
+          },
+          "cualesTitulo": "Lesquelles s’affichent et avec quel dessin",
+          "cualesTituloAyuda": "Dans l’ordre de l’en-tête. Pour chacune : afficher ou masquer, le dessin, la forme (si elle doit différer) et son texte.",
+          "buscar": "Rechercher",
+          "buscarEnDiseno": "Affiché dans Design",
+          "buscarMostrar": "Afficher ou masquer, icône ou barre",
+          "buscarIr": "Design › Recherche",
+          "buscarCelular": "Identique sur mobile. Pas d’interrupteur ici : la recherche s’active et se désactive à un seul endroit (Design › Recherche).",
+          "dibujo": "Dessin",
+          "dibujoFavoritos": "Icône des favoris",
+          "corazon": "Cœur",
+          "soloCorazon": "Pour l’instant, la boutique n’affiche que le cœur.",
+          "dibujoCarritoAyuda": "Remplace l’ancien «Icône : Panier / Sac» de cette carte.",
+          "forma": "Forme",
+          "formaOpcion": {
+            "demas": "Comme les autres",
+            "icono": "Icône seule",
+            "circulo": "Cercle",
+            "texto": "Avec texte",
+            "pildora": "Pilule",
+            "relleno": "Plein"
+          },
+          "formaDemasAyuda": "Suit le style général : {estilo}.",
+          "formaPropiaAyuda": "Forme propre : ne suit pas le style général.",
+          "volverDemas": "Revenir comme les autres",
+          "notaFormaCelular": "Sur mobile, «{forma}» ne tient pas : elle utilise «Sur mobile» (Automatique → cercle ou icône seule).",
+          "favoritosAbre": "Ouvre le panneau ou la page /favoritos",
+          "favoritosVerPanel": "Voir le panneau des favoris",
+          "favoritosCelular": "Sur mobile, il va dans le menu latéral (pas dans la barre du haut).",
+          "monedaTexto": "Avec texte, la devise affiche son code (COP).",
+          "monedaEstiloFila": "Drapeau, code, segment…",
+          "monedaCambiar": "Changer l’aspect du sélecteur",
+          "monedaCelular": "Sur mobile : la ligne du menu et le mode «Dans la barre» utilisent le même style que l’ordinateur.",
+          "filaEstilo": "Les icônes se configurent dans Contenu › Icônes",
+          "filaEstiloAyuda": "Style, forme, taille, trait, fond et dessins. Touchez pour ouvrir la vue."
         },
         "moneda": {
           "titulo": "En-tête › Sélecteur de devise",
@@ -35962,7 +36023,37 @@
           "tarjetasAyuda": "Le style et la position du cœur sur la carte restent dans Style du site › Carte produit."
         },
         "accesos": {
-          "titulo": "Icônes, devise et panier"
+          "titulo": "Icônes, devise et panier",
+          "accionesAyuda": "Recherche : Design › Recherche. Panier, compte, devise et favoris (afficher, dessin et forme) : dans «Icônes, devise et panier», plus haut."
+        },
+        "cuenta": {
+          "alTocar": "Au toucher de l’icône du compte",
+          "modo": {
+            "pagina": "Page",
+            "panel": "Panneau latéral",
+            "ventana": "Fenêtre depuis l’icône",
+            "dialogo": "Dialogue"
+          },
+          "ayudaPagina": "Comme aujourd’hui : l’icône mène à /auth (et à /mi-cuenta une fois connecté). Toute boutique commence ici.",
+          "ayudaOtros": "Sur mobile, panneau, fenêtre et dialogue s’affichent en feuille du bas. Une fois connecté, le même format affiche le menu du compte.",
+          "notaPagina": "Avec «Page», les textes se modifient sur la page /auth. Choisissez un autre mode pour voir titre, bouton, avantages et «Après la connexion».",
+          "titulo": "Titre",
+          "boton": "Texte du bouton",
+          "vacio": "Vide = «{texto}».",
+          "beneficios": "Afficher les avantages",
+          "beneficiosAyuda": "Voir les commandes · Favoris enregistrés · Adresses.",
+          "destino": "«Créer un compte» et «Oublié… ?» ouvrent",
+          "destinoOpcion": {
+            "panel": "Panneau latéral",
+            "pagina": "Page"
+          },
+          "destinoAyuda": "La fenêtre est compacte : l’inscription et la récupération vont dans le panneau ou sur la page.",
+          "despues": "Après la connexion",
+          "despuesOpcion": {
+            "quedarse": "Rester sur la page",
+            "cuenta": "Aller à Mon compte"
+          },
+          "despuesAyuda": "«Rester» ferme la connexion et laisse le client où il était (panier ou paiement compris)."
         }
       },
       "accionesFicha": {

@@ -11,21 +11,35 @@
  *    mismo listado de /app/pos/ventas.
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
+import { toPlainDate } from '@/lib/utils/dateCore';
 import { listarVentas, type FilaVenta } from '@/lib/pos/ventas/listadoServidor';
 import type { RangoPeriodo } from './periodo';
-import type { CrudoVentasWidget } from './ventasWidgetInicio';
+import type { CrudoVentasWidget, DiasVentas } from './ventasWidgetInicio';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 
 export interface LecturaVentasInicio {
   crudo: CrudoVentasWidget;
   ultimas: FilaVenta[];
+  /** Días calendario del periodo y de hoy: los filtros de los enlaces a «Todas las ventas». */
+  dias: DiasVentas;
+}
+
+/**
+ * Días calendario (zona de la organización, la misma de «Todas las ventas») de
+ * un rango de instantes `[inicio, fin)`: el filtro `desde`/`hasta` de la página.
+ */
+export function diasDelRango(rango: Pick<RangoPeriodo, 'inicio' | 'fin'>, zona: string): { desde: string; hasta: string } {
+  const desde = toPlainDate(new Date(rango.inicio), zona);
+  const fin = Date.parse(rango.fin);
+  const hasta = toPlainDate(new Date(Math.max(Date.parse(rango.inicio), fin - 1)), zona);
+  return { desde, hasta: hasta < desde ? desde : hasta };
 }
 
 /** Lanza si la RPC de cifras falla (el llamador decide: la fila sigue sin panel). */
 export async function leerVentasInicio(
   ctx: Ctx,
-  p: { rango: RangoPeriodo; rangoHoy: RangoPeriodo; dia: string; sucursal: number | null },
+  p: { rango: RangoPeriodo; rangoHoy: RangoPeriodo; dia: string; sucursal: number | null; zona: string },
 ): Promise<LecturaVentasInicio> {
   const [cifras, ultimas] = await Promise.all([
     ctx.supabase.rpc('fn_inicio_ventas_widget', {
@@ -47,5 +61,9 @@ export async function leerVentasInicio(
       }),
   ]);
   if (cifras.error) throw new Error(`fn_inicio_ventas_widget: ${cifras.error.message ?? cifras.error.code ?? 'error'}`);
-  return { crudo: (cifras.data ?? {}) as CrudoVentasWidget, ultimas };
+  return {
+    crudo: (cifras.data ?? {}) as CrudoVentasWidget,
+    ultimas,
+    dias: { periodo: diasDelRango(p.rango, p.zona), hoy: p.dia },
+  };
 }

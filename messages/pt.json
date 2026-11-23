@@ -770,7 +770,7 @@
       "verTodas": "Ver as {n} · {resto}"
     },
     "ventasPeriodo": {
-      "titulo": "Vendas do período",
+      "titulo": "Recebido no período",
       "variasMonedas": "Recebimentos em várias moedas",
       "sinBase": "Sem período anterior para comparar",
       "resumen": "{ventas} {n, plural, one {venda recebida} other {vendas recebidas}} · tíquete médio {ticket}",
@@ -782,8 +782,8 @@
       "otros": "Outros",
       "otroCanal": "Outro canal",
       "sucursalSinNombre": "Filial {id}",
-      "abrirDetalle": "Ver o detalhe das vendas do período",
-      "grafica": "Vendas do período atual em comparação com o anterior",
+      "abrirDetalle": "Ver o detalhe do recebido no período",
+      "grafica": "Recebido no período atual em comparação com o anterior",
       "sinGrafica": "Sem recebimentos neste período nem no anterior",
       "sinGraficaMonedas": "Com recebimentos em várias moedas a tendência não é desenhada",
       "frenteConValor": "{frente} ({valor})",
@@ -815,7 +815,14 @@
         "web": "Loja virtual",
         "factura": "Faturas",
         "mesa": "Mesas"
-      }
+      },
+      "incluyeImpuestos": "Inclui {impuestos} de IVA e INC",
+      "incluyePropinas": "Inclui {propinas} de gorjetas (são dos funcionários)",
+      "incluyeImpuestosYPropinas": "Inclui {impuestos} de IVA e INC e {propinas} de gorjetas (são dos funcionários)",
+      "porCobrar": "A receber do período: {valor}",
+      "porCobrarCorto": "A receber do período",
+      "impuestosIncluidos": "IVA e INC incluídos",
+      "propinasIncluidas": "Gorjetas incluídas"
     },
     "tiendaWeb": {
       "titulo": "Loja virtual",
@@ -946,7 +953,7 @@
       "siempreVisible": "Sempre visível · não pode ser ocultado",
       "bloque": {
         "indicadores": "Indicadores",
-        "ventas": "Vendas do período",
+        "ventas": "Recebido no período",
         "actividad": "Atividade recente",
         "tiendaWeb": "Loja virtual"
       },
@@ -66043,7 +66050,10 @@
         "unSoloCanal": "Todas as vendas do período por este canal",
         "sinVentas": "Sem vendas no período",
         "ticketTodos": "do período, todos os canais",
-        "ticketCanal": "do período · {canal}"
+        "ticketCanal": "do período · {canal}",
+        "vsDiaHora": "{pct} % vs. {dia} da semana passada neste horário",
+        "vsPeriodo": "{pct} % vs. {rango}",
+        "vsPeriodoHora": "{pct} % vs. {rango} neste horário"
       }
     }
   },
@@ -66112,7 +66122,12 @@
         "titulo": "Ainda não há vendas",
         "descripcion": "Faça a primeira venda no PDV ou registre um pedido que chegou por telefone ou WhatsApp."
       },
-      "notaReportes": "O detalhe por produto, vendedor ou imposto está em Relatórios."
+      "notaReportes": "O detalhe por produto, vendedor ou imposto está em Relatórios.",
+      "comparado": {
+        "diaPasadoHora": "vs. {dia, select, 0 {o domingo passado} 1 {a segunda-feira passada} 2 {a terça-feira passada} 3 {a quarta-feira passada} 4 {a quinta-feira passada} 5 {a sexta-feira passada} 6 {o sábado passado} other {o mesmo dia da semana passada}} neste horário",
+        "semanaPasadaHora": "vs. o mesmo dia da semana passada neste horário",
+        "periodoAnterior": "vs. o período anterior"
+      }
     },
     "logistica": {
       "kpis": {

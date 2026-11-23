@@ -1,8 +1,10 @@
 'use client';
 
 /**
- * «Ventas del periodo» (Figma 445:137185, `447:73036`; móvil 448:205216):
- * total cobrado del periodo (criterio de caja), variación, «POS + tienda web ·
+ * «Recaudado del periodo» (antes «Ventas del periodo»; Figma 445:137185,
+ * `447:73036`; móvil 448:205216): total COBRADO del periodo (criterio de caja,
+ * con IVA/INC y propinas, que se aclaran debajo; sin anticipos), «Por cobrar
+ * del periodo», variación, «POS + tienda web ·
  * frente a los 30 días anteriores · COP» y la gráfica periodo actual frente al
  * anterior DENTRO de la tarjeta, con su leyenda y el rango. Al pulsarla abre
  * el detalle (448:196680 escritorio, 448:205745 hoja en móvil).
@@ -30,6 +32,18 @@ import { claveComparacion, clavesLeyenda } from './textosPeriodo';
 import { CANALES_CONOCIDOS, vistaVentas, type DatosVentas } from './vistaVentas';
 
 export type { DatosVentas };
+
+type TraductorVentas = (clave: string, params?: Record<string, string | number>) => string;
+
+/** «Incluye $ X de IVA e INC y $ Y de propinas»: lo que lleva lo cobrado (null si nada). */
+export function textoAclaracion(t: TraductorVentas, v: { impuestos: number; propinas: number; importe: (n: number) => string }): string | null {
+  const impuestos = v.impuestos >= 0.5;
+  const propinas = v.propinas >= 0.5;
+  if (impuestos && propinas) return t('incluyeImpuestosYPropinas', { impuestos: v.importe(v.impuestos), propinas: v.importe(v.propinas) });
+  if (impuestos) return t('incluyeImpuestos', { impuestos: v.importe(v.impuestos) });
+  if (propinas) return t('incluyePropinas', { propinas: v.importe(v.propinas) });
+  return null;
+}
 
 export interface TarjetaVentasProps {
   organizationId: number;
@@ -85,6 +99,8 @@ export function TarjetaVentas({
         .sort((a, b) => Number(b[1]) - Number(a[1]))
         .map(([c]) => (CANALES_CONOCIDOS.includes(c) ? t(`canales.${c}`) : t('otroCanal')))
     : [];
+  // Lo cobrado lleva IVA/INC y propinas (pasivo de los trabajadores): se dice, no se resta.
+  const aclaracion = vista?.moneda ? textoAclaracion(t, vista) : null;
   const subtitulo = vista
     ? [canales.length > 0 ? Array.from(new Set(canales)).join(' + ') : null, t(`frente.${comparacion.clave}`, comparacion.params), vista.moneda]
         .filter(Boolean)
@@ -142,6 +158,20 @@ export function TarjetaVentas({
             <p className="text-[13px] leading-[18px] text-fg-secondary" data-subtitulo="ventas">
               {vista.moneda && vista.neto === 0 && vista.netoAnterior === 0 ? t('sinVentas') : subtitulo}
             </p>
+            {vista.moneda && (aclaracion || vista.porCobrar !== null) && (
+              <div className="flex flex-col gap-0.5 text-[13px] leading-[18px]">
+                {aclaracion && (
+                  <p className="text-fg-secondary" data-aclaracion="recaudado">
+                    {aclaracion}
+                  </p>
+                )}
+                {vista.porCobrar !== null && (
+                  <p className="text-fg" data-cifra="porCobrar">
+                    {t('porCobrar', { valor: vista.importe(vista.porCobrar) })}
+                  </p>
+                )}
+              </div>
+            )}
             {vista.hayGrafica ? (
               <GraficoVentas
                 puntos={vista.puntos}

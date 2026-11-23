@@ -77,6 +77,8 @@ export interface TramoDesglose {
   cifra: CifraModulo;
   /** Porcentaje entero 0–100 sobre el total del desglose. */
   porcentaje: number;
+  /** El nombre del tramo abre la lista ya filtrada (p. ej. «Todas las ventas» del canal). */
+  href?: string | null;
 }
 
 export interface DesgloseWidget {

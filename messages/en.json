@@ -770,7 +770,7 @@
       "verTodas": "See all {n} · {resto}"
     },
     "ventasPeriodo": {
-      "titulo": "Sales for the period",
+      "titulo": "Collected in the period",
       "variasMonedas": "Payments in several currencies",
       "sinBase": "No previous period to compare",
       "resumen": "{ventas} {n, plural, one {paid sale} other {paid sales}} · average ticket {ticket}",
@@ -782,8 +782,8 @@
       "otros": "Other",
       "otroCanal": "Other channel",
       "sucursalSinNombre": "Branch {id}",
-      "abrirDetalle": "View the sales detail for the period",
-      "grafica": "Sales in the current period compared with the previous one",
+      "abrirDetalle": "View the detail of what was collected in the period",
+      "grafica": "Collected in the current period compared with the previous one",
       "sinGrafica": "No payments in this period or the previous one",
       "sinGraficaMonedas": "With payments in several currencies the trend is not drawn",
       "frenteConValor": "{frente} ({valor})",
@@ -815,7 +815,14 @@
         "web": "Online store",
         "factura": "Invoices",
         "mesa": "Tables"
-      }
+      },
+      "incluyeImpuestos": "Includes {impuestos} of VAT and consumption tax",
+      "incluyePropinas": "Includes {propinas} in tips (they belong to the staff)",
+      "incluyeImpuestosYPropinas": "Includes {impuestos} of VAT and consumption tax and {propinas} in tips (they belong to the staff)",
+      "porCobrar": "Receivable from the period: {valor}",
+      "porCobrarCorto": "Receivable from the period",
+      "impuestosIncluidos": "VAT and consumption tax included",
+      "propinasIncluidas": "Tips included"
     },
     "tiendaWeb": {
       "titulo": "Online store",
@@ -946,7 +953,7 @@
       "siempreVisible": "Always visible · cannot be hidden",
       "bloque": {
         "indicadores": "Indicators",
-        "ventas": "Sales for the period",
+        "ventas": "Collected in the period",
         "actividad": "Recent activity",
         "tiendaWeb": "Online store"
       },
@@ -66033,7 +66040,10 @@
         "unSoloCanal": "All sales in the period came through this channel",
         "sinVentas": "No sales in the period",
         "ticketTodos": "in the period, all channels",
-        "ticketCanal": "in the period · {canal}"
+        "ticketCanal": "in the period · {canal}",
+        "vsDiaHora": "{pct} % vs. last {dia} at this time",
+        "vsPeriodo": "{pct} % vs. {rango}",
+        "vsPeriodoHora": "{pct} % vs. {rango} at this time"
       }
     }
   },
@@ -66102,7 +66112,12 @@
         "titulo": "No sales yet",
         "descripcion": "Make your first sale in the POS or record an order that came in by phone or WhatsApp."
       },
-      "notaReportes": "Details by product, seller or tax are in Reports."
+      "notaReportes": "Details by product, seller or tax are in Reports.",
+      "comparado": {
+        "diaPasadoHora": "vs. last {dia, select, 0 {Sunday} 1 {Monday} 2 {Tuesday} 3 {Wednesday} 4 {Thursday} 5 {Friday} 6 {Saturday} other {week}} at this time",
+        "semanaPasadaHora": "vs. the same day last week at this time",
+        "periodoAnterior": "vs. the previous period"
+      }
     },
     "logistica": {
       "kpis": {

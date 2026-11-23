@@ -8,8 +8,17 @@
  * accesos «Abrir POS» y «Nuevo pedido manual».
  *
  * Regla pura. Las cifras ya llegan calculadas: `fn_inicio_ventas_widget` (sobre
- * la regla única de «Todas las ventas», `pos_ventas_filtradas`) y el listado de
- * `pos_ventas_listado_v2`. Aquí solo se arma lo que pinta el panel.
+ * la regla única de «ventas netas», `fn_ventas_netas_cifras`: sin IVA ni INC,
+ * sin propinas y restando devoluciones y notas crédito del periodo; la misma de
+ * las cifras de «Todas las ventas») y el listado de `pos_ventas_listado_v2`.
+ * Aquí solo se arma lo que pinta el panel.
+ *
+ * - «Ventas de hoy» compara con el mismo día de la semana pasada hasta esta
+ *   misma hora y lo dice («vs. el lunes pasado a esta hora»; el día sale de la
+ *   base, en la zona de la organización, y se traduce en el cliente).
+ * - Mini-gráficas (Figma 2916:44653): hoy por hora y el periodo por hora o día,
+ *   acumuladas (el último punto es la cifra); el ticket, por tramo.
+ * - Cada cifra abre «Todas las ventas» ya filtrada (periodo, canal, sede).
  */
 import type { CanalVenta } from '@/lib/pos/ventas/canalVenta';
 import { esCanalVenta } from '@/lib/pos/ventas/canalVenta';
@@ -27,15 +36,37 @@ import {
   type FilaWidget,
   type KpiWidget,
   type SegmentoFila,
+  hrefConFiltro,
 } from './widgetsInicio';
 
-/** Lo que devuelve `fn_inicio_ventas_widget`. */
+/** Un tramo de la serie de `fn_ventas_netas_cifras`: hora o día local, neto, ventas y ticket. */
+export interface PuntoSerieVentas {
+  b?: unknown;
+  v?: unknown;
+  n?: unknown;
+  t?: unknown;
+}
+
+/** Lo que devuelve `fn_inicio_ventas_widget` (ventas netas). */
 export interface CrudoVentasWidget {
   moneda?: string;
-  periodo?: { ventas?: unknown; efectivas?: unknown; ticket_promedio?: unknown };
+  periodo?: {
+    ventas?: unknown;
+    efectivas?: unknown;
+    ticket_promedio?: unknown;
+    bruto?: unknown;
+    impuestos?: unknown;
+    propinas?: unknown;
+    devoluciones?: unknown;
+  };
   anterior?: { ventas?: unknown; efectivas?: unknown } | null;
   hoy?: { ventas?: unknown; efectivas?: unknown } | null;
   semana?: { ventas?: unknown; efectivas?: unknown } | null;
+  /** Día de la semana del comparativo de «hoy» (0 = domingo), en la zona de la organización. */
+  semana_dia?: unknown;
+  granularidad?: unknown;
+  serie_periodo?: PuntoSerieVentas[];
+  serie_hoy?: PuntoSerieVentas[];
   por_canal?: Array<{ canal?: unknown; ventas?: unknown; efectivas?: unknown }>;
   por_sede?: Array<{ id?: unknown; nombre?: unknown; ventas?: unknown; efectivas?: unknown }>;
   sucursales?: unknown;
@@ -84,8 +115,26 @@ export interface VentasInicio {
   hrefVentas: string | null;
 }
 
+/** Días calendario de los enlaces a «Todas las ventas» (`?desde=&hasta=`). */
+export interface DiasVentas {
+  periodo: { desde: string; hasta: string };
+  hoy: string;
+}
+
+/** Serie acumulada (el último punto es el total del tramo). */
+export function acumulada(valores: readonly number[]): number[] {
+  let s = 0;
+  return valores.map((v) => (s += v));
+}
+
+function valoresSerie(serie: readonly PuntoSerieVentas[] | undefined, campo: 'v' | 't'): number[] {
+  return Array.isArray(serie) ? serie.map((p) => numero(p?.[campo])) : [];
+}
+
 export interface EntradaVentas {
   crudo: CrudoVentasWidget;
+  /** Sin días (lectura vieja), los enlaces abren «Todas las ventas» sin filtro. */
+  dias?: DiasVentas | null;
   ultimas: readonly FilaVenta[];
   monedaBase: string;
   /** ¿El periodo elegido es «hoy»? Entonces no se repite la cifra en la fila. */
@@ -118,6 +167,11 @@ export function armarVentas(e: EntradaVentas): VentasInicio {
   const porExpirar = entero(c.pedidos?.por_expirar);
   const hrefPedidos = e.href(PAGINAS_VENTAS.pedidosOnline);
   const hrefVentas = e.href(PAGINAS_VENTAS.ventas);
+  // «Todas las ventas» ya filtrada: el periodo del inicio (o hoy), y el canal o la sede.
+  const conPeriodo = (extra: Record<string, string> = {}) =>
+    hrefConFiltro(hrefVentas, e.dias ? { desde: e.dias.periodo.desde, hasta: e.dias.periodo.hasta, ...extra } : extra);
+  const hrefHoy = hrefConFiltro(hrefVentas, e.dias ? { desde: e.dias.hoy, hasta: e.dias.hoy } : {});
+  const diaSemana = Number.isInteger(Number(c.semana_dia)) && c.semana_dia !== null && c.semana_dia !== undefined ? Number(c.semana_dia) : null;
 
   const canales = (c.por_canal ?? [])
     .filter((x) => esCanalVenta(x.canal) && numero(x.ventas) > 0)
@@ -130,7 +184,13 @@ export function armarVentas(e: EntradaVentas): VentasInicio {
           id: 'porCanal',
           titulo: { clave: 'ventas.porCanal' },
           total: moneda(periodo, m),
-          tramos: canales.map((x, i) => ({ id: x.canal, etiqueta: { clave: `canales.${x.canal}` }, cifra: moneda(x.ventas, m), porcentaje: pctCanal[i] })),
+          tramos: canales.map((x, i) => ({
+            id: x.canal,
+            etiqueta: { clave: `canales.${x.canal}` },
+            cifra: moneda(x.ventas, m),
+            porcentaje: pctCanal[i],
+            href: conPeriodo({ canal: x.canal }),
+          })),
         }
       : null;
 
@@ -145,7 +205,13 @@ export function armarVentas(e: EntradaVentas): VentasInicio {
           id: 'porSede',
           titulo: { clave: 'ventas.porSede' },
           total: moneda(periodo, m),
-          tramos: sedes.map((x, i) => ({ id: `sede-${x.id}`, etiqueta: { nombre: x.nombre }, cifra: moneda(x.ventas, m), porcentaje: pctSede[i] })),
+          tramos: sedes.map((x, i) => ({
+            id: `sede-${x.id}`,
+            etiqueta: { nombre: x.nombre },
+            cifra: moneda(x.ventas, m),
+            porcentaje: pctSede[i],
+            href: /^\d+$/.test(x.id) ? conPeriodo({ sucursal: x.id }) : null,
+          })),
         }
       : null;
 
@@ -154,14 +220,15 @@ export function armarVentas(e: EntradaVentas): VentasInicio {
       id: 'hoy',
       etiqueta: { clave: 'ventas.kpis.hoy' },
       cifra: moneda(hoyVentas, m),
-      detalle:
-        hoyN === 0
-          ? { clave: 'ventas.detalles.hoySinVentas' }
-          : semana !== null && semana > 0
-            ? { clave: 'ventas.detalles.hoyVsSemana', params: { n: hoyN } }
-            : { clave: 'ventas.detalles.ventas', params: { n: hoyN } },
+      detalle: hoyN === 0 ? { clave: 'ventas.detalles.hoySinVentas' } : { clave: 'ventas.detalles.ventas', params: { n: hoyN } },
       delta: semana !== null ? variacionPct(hoyVentas, semana) : null,
-      href: hrefVentas,
+      // Contra qué compara: el mismo día de la semana pasada hasta esta misma hora.
+      comparadoCon:
+        diaSemana !== null && diaSemana >= 0 && diaSemana <= 6
+          ? { clave: 'ventas.comparado.diaPasadoHora', params: { dia: diaSemana } }
+          : { clave: 'ventas.comparado.semanaPasadaHora' },
+      serie: acumulada(valoresSerie(c.serie_hoy, 'v')),
+      href: hrefHoy,
     },
     {
       id: 'periodo',
@@ -169,13 +236,17 @@ export function armarVentas(e: EntradaVentas): VentasInicio {
       cifra: moneda(periodo, m),
       detalle: { clave: 'ventas.detalles.periodo', params: { n: periodoN } },
       delta: anterior !== null ? variacionPct(periodo, anterior) : null,
-      href: hrefVentas,
+      comparadoCon: { clave: 'ventas.comparado.periodoAnterior' },
+      serie: acumulada(valoresSerie(c.serie_periodo, 'v')),
+      href: conPeriodo(),
     },
     {
       id: 'ticket',
       etiqueta: { clave: 'ventas.kpis.ticket' },
       cifra: moneda(ticket, m),
       detalle: { clave: 'ventas.detalles.ticket', params: { n: periodoN } },
+      serie: valoresSerie(c.serie_periodo, 't'),
+      href: conPeriodo(),
     },
     {
       id: 'porAtender',

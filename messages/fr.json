@@ -770,7 +770,7 @@
       "verTodas": "Voir les {n} · {resto}"
     },
     "ventasPeriodo": {
-      "titulo": "Ventes de la période",
+      "titulo": "Encaissé sur la période",
       "variasMonedas": "Encaissements en plusieurs devises",
       "sinBase": "Aucune période précédente à comparer",
       "resumen": "{ventas} {n, plural, one {vente encaissée} other {ventes encaissées}} · panier moyen {ticket}",
@@ -782,8 +782,8 @@
       "otros": "Autres",
       "otroCanal": "Autre canal",
       "sucursalSinNombre": "Succursale {id}",
-      "abrirDetalle": "Voir le détail des ventes de la période",
-      "grafica": "Ventes de la période actuelle comparées à la précédente",
+      "abrirDetalle": "Voir le détail de l’encaissé sur la période",
+      "grafica": "Encaissé sur la période actuelle comparé à la précédente",
       "sinGrafica": "Aucun encaissement sur cette période ni sur la précédente",
       "sinGraficaMonedas": "Avec des encaissements en plusieurs devises, la tendance n'est pas tracée",
       "frenteConValor": "{frente} ({valor})",
@@ -815,7 +815,14 @@
         "web": "Boutique en ligne",
         "factura": "Factures",
         "mesa": "Tables"
-      }
+      },
+      "incluyeImpuestos": "Comprend {impuestos} de TVA et d’INC",
+      "incluyePropinas": "Comprend {propinas} de pourboires (ils reviennent au personnel)",
+      "incluyeImpuestosYPropinas": "Comprend {impuestos} de TVA et d’INC et {propinas} de pourboires (ils reviennent au personnel)",
+      "porCobrar": "À encaisser sur la période : {valor}",
+      "porCobrarCorto": "À encaisser sur la période",
+      "impuestosIncluidos": "TVA et INC inclus",
+      "propinasIncluidas": "Pourboires inclus"
     },
     "tiendaWeb": {
       "titulo": "Boutique en ligne",
@@ -946,7 +953,7 @@
       "siempreVisible": "Toujours visible · ne peut pas être masqué",
       "bloque": {
         "indicadores": "Indicateurs",
-        "ventas": "Ventes de la période",
+        "ventas": "Encaissé sur la période",
         "actividad": "Activité récente",
         "tiendaWeb": "Boutique en ligne"
       },
@@ -66033,7 +66040,10 @@
         "unSoloCanal": "Toutes les ventes de la période par ce canal",
         "sinVentas": "Aucune vente sur la période",
         "ticketTodos": "de la période, tous les canaux",
-        "ticketCanal": "de la période · {canal}"
+        "ticketCanal": "de la période · {canal}",
+        "vsDiaHora": "{pct} % vs. {dia} dernier à cette heure",
+        "vsPeriodo": "{pct} % vs. {rango}",
+        "vsPeriodoHora": "{pct} % vs. {rango} à cette heure"
       }
     }
   },
@@ -66102,7 +66112,12 @@
         "titulo": "Pas encore de ventes",
         "descripcion": "Faites votre première vente à la caisse ou enregistrez une commande reçue par téléphone ou WhatsApp."
       },
-      "notaReportes": "Le détail par produit, vendeur ou taxe se trouve dans Rapports."
+      "notaReportes": "Le détail par produit, vendeur ou taxe se trouve dans Rapports.",
+      "comparado": {
+        "diaPasadoHora": "vs. {dia, select, 0 {dimanche} 1 {lundi} 2 {mardi} 3 {mercredi} 4 {jeudi} 5 {vendredi} 6 {samedi} other {le même jour}} dernier à cette heure",
+        "semanaPasadaHora": "vs. le même jour la semaine dernière à cette heure",
+        "periodoAnterior": "vs. la période précédente"
+      }
     },
     "logistica": {
       "kpis": {

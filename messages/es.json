@@ -770,7 +770,7 @@
       "verTodas": "Ver las {n} · {resto}"
     },
     "ventasPeriodo": {
-      "titulo": "Ventas del periodo",
+      "titulo": "Recaudado del periodo",
       "variasMonedas": "Cobros en varias monedas",
       "sinBase": "Sin periodo anterior para comparar",
       "resumen": "{ventas} {n, plural, one {venta cobrada} other {ventas cobradas}} · ticket promedio {ticket}",
@@ -782,8 +782,8 @@
       "otros": "Otros",
       "otroCanal": "Otro canal",
       "sucursalSinNombre": "Sucursal {id}",
-      "abrirDetalle": "Ver el detalle de las ventas del periodo",
-      "grafica": "Ventas del periodo actual frente al anterior",
+      "abrirDetalle": "Ver el detalle de lo recaudado en el periodo",
+      "grafica": "Recaudado del periodo actual frente al anterior",
       "sinGrafica": "Sin cobros en este periodo ni en el anterior",
       "sinGraficaMonedas": "Con cobros en varias monedas no se dibuja la tendencia",
       "frenteConValor": "{frente} ({valor})",
@@ -815,7 +815,14 @@
         "web": "Tienda web",
         "factura": "Facturas",
         "mesa": "Mesas"
-      }
+      },
+      "incluyeImpuestos": "Incluye {impuestos} de IVA e INC",
+      "incluyePropinas": "Incluye {propinas} de propinas (son de los trabajadores)",
+      "incluyeImpuestosYPropinas": "Incluye {impuestos} de IVA e INC y {propinas} de propinas (son de los trabajadores)",
+      "porCobrar": "Por cobrar del periodo: {valor}",
+      "porCobrarCorto": "Por cobrar del periodo",
+      "impuestosIncluidos": "IVA e INC incluidos",
+      "propinasIncluidas": "Propinas incluidas"
     },
     "tiendaWeb": {
       "titulo": "Tienda web",
@@ -946,7 +953,7 @@
       "siempreVisible": "Siempre visible · no se puede ocultar",
       "bloque": {
         "indicadores": "Indicadores",
-        "ventas": "Ventas del periodo",
+        "ventas": "Recaudado del periodo",
         "actividad": "Actividad reciente",
         "tiendaWeb": "Tienda web"
       },
@@ -66031,7 +66038,10 @@
         "unSoloCanal": "Todas las ventas del periodo por este canal",
         "sinVentas": "Sin ventas en el periodo",
         "ticketTodos": "del periodo, todos los canales",
-        "ticketCanal": "del periodo · {canal}"
+        "ticketCanal": "del periodo · {canal}",
+        "vsDiaHora": "{pct} % vs. el {dia} pasado a esta hora",
+        "vsPeriodo": "{pct} % vs. {rango}",
+        "vsPeriodoHora": "{pct} % vs. {rango} a esta hora"
       }
     }
   },
@@ -66100,7 +66110,12 @@
         "titulo": "Aún no hay ventas",
         "descripcion": "Haz la primera venta en el POS o registra un pedido que llegó por teléfono o WhatsApp."
       },
-      "notaReportes": "El detalle por producto, vendedor o impuesto está en Reportes."
+      "notaReportes": "El detalle por producto, vendedor o impuesto está en Reportes.",
+      "comparado": {
+        "diaPasadoHora": "vs. el {dia, select, 0 {domingo} 1 {lunes} 2 {martes} 3 {miércoles} 4 {jueves} 5 {viernes} 6 {sábado} other {mismo día}} pasado a esta hora",
+        "semanaPasadaHora": "vs. el mismo día de la semana pasada a esta hora",
+        "periodoAnterior": "vs. el periodo anterior"
+      }
     },
     "logistica": {
       "kpis": {

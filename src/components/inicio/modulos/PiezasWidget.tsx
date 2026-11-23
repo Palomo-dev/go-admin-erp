@@ -231,7 +231,13 @@ export function BarraDesglose({ desglose }: { desglose: DesgloseWidget }) {
         {desglose.tramos.map((tr, i) => (
           <li key={tr.id} className="flex items-center gap-2 text-sm leading-5">
             <span aria-hidden="true" className={cn('size-2 shrink-0 rounded-full', TRAMOS[i % TRAMOS.length])} />
-            <span className="min-w-0 flex-1 truncate text-fg">{nombre(tr.etiqueta)}</span>
+            {tr.href ? (
+              <Link href={tr.href} className="min-w-0 flex-1 truncate rounded-sm text-fg hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                {nombre(tr.etiqueta)}
+              </Link>
+            ) : (
+              <span className="min-w-0 flex-1 truncate text-fg">{nombre(tr.etiqueta)}</span>
+            )}
             <span className="shrink-0 text-fg-secondary tabular-nums">
               {cifra(tr.cifra)} · {tr.porcentaje} %
             </span>

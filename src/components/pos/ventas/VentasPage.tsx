@@ -9,8 +9,13 @@
  * - Todos los canales: columna, filtro y chips «Canal» (InsigniaCanal) con su
  *   conteo; «Abrir POS» y «Nuevo pedido manual» en la cabecera, «Exportar» en
  *   el menú «⋯». Sin gráficas: van a Reportes (enlace junto a los chips).
- * - StatCards: ventas de hoy (frente al mismo día de la semana pasada), del
- *   periodo, por canal y ticket promedio.
+ * - StatCards: ventas de hoy (frente al mismo día de la semana pasada a esta
+ *   misma hora), del periodo (frente al periodo anterior de días completos o,
+ *   si incluye hoy, a esta misma hora; cada etiqueta dice contra qué compara),
+ *   por canal y ticket promedio. Son VENTAS NETAS: la regla única de la base
+ *   (`fn_ventas_netas_cifras`), la misma del widget de Ventas del Inicio.
+ * - Enlaces del Inicio: `?desde=&hasta=&canal=` son filtros de siempre y
+ *   `?sucursal=` elige la sede del header una vez (y se quita de la URL).
  *
  * - Solo filas de `sales` (D1): los pedidos web sin venta viven en Pedidos online.
  * - Paginado, filtrado y ordenado en el servidor (`GET /api/pos/ventas`) con el
@@ -25,7 +30,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Ban, CircleDollarSign, Copy, Download, Eye, FileText, Globe, Landmark, Plus, Printer, Receipt, RefreshCw, ShoppingBag, ShoppingCart, Undo2 } from 'lucide-react';
 import {
@@ -74,7 +79,7 @@ import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { listarClientes } from '@/lib/services/clientesListadoService';
 import { BADGE_ESTADO_VENTA, ESTADOS_VENTA } from '@/lib/pos/ventas/estadoVenta';
 import { CANALES_VENTA, canalSiempreVisible, esCanalVenta, type CanalVenta } from '@/lib/pos/ventas/canalVenta';
-import { mismoDiaSemanaAnterior } from '@/lib/pos/ventas/filtrosVentas';
+import { mismoDiaSemanaAnterior, sucursalDeEnlace } from '@/lib/pos/ventas/filtrosVentas';
 import { CAMPOS_ORDEN_VENTAS, ESTADOS_PAGO_VENTA } from '@/lib/pos/ventas/filtrosVentas';
 import { formatearDocumento, lineaCliente, lineaNumero, mesaEsNumero, variacion } from '@/lib/pos/ventas/presentacionVentas';
 import { accionesDeVenta, destinoCobro, SIN_PERMISOS_VENTAS, type DisponibilidadAccion, type PermisosVentas } from '@/lib/pos/ventas/accionesVenta';
@@ -115,7 +120,9 @@ export function VentasPage() {
   const router = useRouter();
   const entero = useFormatoEntero();
   const moneda = useMonedaOrganizacion();
-  const { branchFilter, branches, canSelectAll, setSelectedBranch } = useBranch();
+  const { branchFilter, branches, canSelectAll, setSelectedBranch, isLoading: cargandoSucursales } = useBranch();
+  const parametrosUrl = useSearchParams();
+  const sucursalEnlace = parametrosUrl?.get('sucursal') ?? null;
   const { getToday, timezone } = useFormatDate();
   const locale = useLocaleIntl();
   const fechaHora = useFechaHoraCaja();
@@ -216,6 +223,17 @@ export function VentasPage() {
       vigente = false;
     };
   }, [consultaFiltros, recarga]);
+
+  // Enlace con sede (Inicio › «Ventas por sede»): elige esa sede en el header
+  // una sola vez y se quita `sucursal` de la URL; los demás filtros se quedan.
+  useEffect(() => {
+    if (!sucursalEnlace || cargandoSucursales) return;
+    const id = sucursalDeEnlace(sucursalEnlace, branches.map((b) => b.id).filter((x): x is number => typeof x === 'number'));
+    if (id !== null && id !== branchFilter) setSelectedBranch(id);
+    const q = new URLSearchParams(parametrosUrl?.toString() ?? '');
+    q.delete('sucursal');
+    router.replace(q.toString() ? `${RUTA}?${q.toString()}` : RUTA, { scroll: false });
+  }, [sucursalEnlace, cargandoSucursales, branches, branchFilter, setSelectedBranch, parametrosUrl, router]);
 
   const claveCriterios = JSON.stringify({ b: l.busqueda, f: l.filtros, s: branchFilter });
   useEffect(() => setSeleccion(new Set()), [claveCriterios]);
@@ -516,19 +534,32 @@ export function VentasPage() {
   const actual = cifras?.actual;
   const cifrasHoy = cifras?.hoy ?? null;
   const cambioHoy = cifrasHoy ? variacion(cifrasHoy.ventas, cifrasHoy.anterior) : null;
+  const comparacion = cifras?.comparacion ?? null;
+  const cambioPeriodo = actual && cifras?.anterior ? variacion(actual.ventas, cifras.anterior.ventas) : null;
   // «+8 % vs. domingo pasado»: el día de la semana del comparativo, en el idioma de la persona.
   const [anioDia, mesDia, numDia] = mismoDiaSemanaAnterior(hoy).split('-').map(Number);
   const diaComparado = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(anioDia, mesDia - 1, numDia)));
   const detalleHoy = cifrasHoy
     ? [
         tv('kpis.hoyVentas', { n: entero(cifrasHoy.transacciones), count: cifrasHoy.transacciones }),
-        cambioHoy === null ? null : tv('kpis.vsDia', { pct: `${cambioHoy > 0 ? '+' : ''}${cambioHoy}`, dia: diaComparado }),
+        // Contra qué compara: el mismo día de la semana pasada hasta esta misma hora.
+        cambioHoy === null
+          ? null
+          : tv(cifrasHoy.aEstaHora ? 'kpis.vsDiaHora' : 'kpis.vsDia', { pct: `${cambioHoy > 0 ? '+' : ''}${cambioHoy}`, dia: diaComparado }),
       ]
         .filter(Boolean)
         .join(' · ')
     : undefined;
+  // Contra qué compara el periodo: los días anteriores de igual duración (a esta hora si incluye hoy).
+  const textoComparacionPeriodo =
+    cambioPeriodo !== null && comparacion
+      ? tv(comparacion.aEstaHora ? 'kpis.vsPeriodoHora' : 'kpis.vsPeriodo', {
+          pct: `${cambioPeriodo > 0 ? '+' : ''}${cambioPeriodo}`,
+          rango: etiquetaRango({ desde: comparacion.desde, hasta: comparacion.hasta }, locale),
+        })
+      : null;
   const detallePeriodo = actual
-    ? [tv('kpis.periodoVentas', { n: entero(actual.efectivas), count: actual.efectivas }), etiquetaRango({ desde, hasta }, locale)].join(' · ')
+    ? [tv('kpis.periodoVentas', { n: entero(actual.efectivas), count: actual.efectivas }), textoComparacionPeriodo ?? etiquetaRango({ desde, hasta }, locale)].join(' · ')
     : undefined;
 
   // Por canal: con todos los filtros menos el de canal (chips y StatCard).
@@ -630,7 +661,14 @@ export function VentasPage() {
             tendencia={cambioHoy === null ? undefined : cambioHoy >= 0 ? 'sube' : 'baja'}
             detalle={detalleHoy}
           />
-          <StatCard etiqueta={tv('kpis.periodo')} icono={CircleDollarSign} cargando={cargandoCifras} valor={actual ? formatear(actual.ventas) : '—'} detalle={detallePeriodo} />
+          <StatCard
+            etiqueta={tv('kpis.periodo')}
+            icono={CircleDollarSign}
+            cargando={cargandoCifras}
+            valor={actual ? formatear(actual.ventas) : '—'}
+            tendencia={cambioPeriodo === null ? undefined : cambioPeriodo >= 0 ? 'sube' : 'baja'}
+            detalle={detallePeriodo}
+          />
           <StatCard etiqueta={tv('kpis.porCanal')} icono={ShoppingCart} cargando={cargandoCifras} valor={valorPorCanal} detalle={detallePorCanal} />
           <StatCard
             etiqueta={t('kpis.ticket')}

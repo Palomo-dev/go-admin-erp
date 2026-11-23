@@ -197,3 +197,40 @@ export function periodoAnterior(desde: string, hasta: string): { desde: string; 
 export function mismoDiaSemanaAnterior(fecha: string): string {
   return sumarDias(fecha, -7);
 }
+
+/**
+ * Sede pedida por un enlace (`?sucursal=` desde «Ventas por sede» del Inicio):
+ * solo si es una de las sedes que la persona puede ver. La base vuelve a
+ * comprobar el acceso.
+ */
+export function sucursalDeEnlace(valor: string | null | undefined, sedesVisibles: readonly number[]): number | null {
+  if (!valor || !/^\d{1,9}$/.test(valor)) return null;
+  const id = Number(valor);
+  return sedesVisibles.includes(id) ? id : null;
+}
+
+/** ¿El periodo `desde`–`hasta` (días calendario, `hasta` incluido) incluye hoy? */
+export function incluyeHoy(desde: string, hasta: string, hoy: string): boolean {
+  return desde <= hoy && hoy <= hasta;
+}
+
+const MS_DIA = 86_400_000;
+
+/**
+ * Fin del periodo de comparación «a esta misma hora» (decisión del dueño,
+ * 2026-11-23): si el periodo incluye hoy, el anterior se corta en el mismo
+ * instante desplazado `dias` días (hoy a las 15:00 → hace N días a las 15:00),
+ * nunca antes de su inicio ni después de su fin. Si no incluye hoy, el anterior
+ * es de días completos y esta función no se usa.
+ */
+export function finComparacionAEstaHora(inicioAnterior: string, finAnterior: string, dias: number, ahora: Date): string {
+  const corte = ahora.getTime() - dias * MS_DIA;
+  const inicio = Date.parse(inicioAnterior);
+  const fin = Date.parse(finAnterior);
+  return new Date(Math.max(inicio, Math.min(fin, corte))).toISOString();
+}
+
+/** Días del periodo (`hasta` incluido): cuántos días se desplaza la comparación. */
+export function diasDelPeriodo(desde: string, hasta: string): number {
+  return Math.max(1, diasIncluidos(desde, hasta));
+}

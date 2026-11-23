@@ -101,6 +101,13 @@ export interface CifrasVentasPeriodo {
   num_cobros: number;
   ventas_cobradas: number;
   ticket_promedio?: number;
+  /**
+   * «Recaudado del periodo» suma lo cobrado tal cual: con IVA/INC y con la
+   * propina (pasivo 28150501). Estas son sus partes, para decirlo en la tarjeta
+   * (`fn_inicio_ventas_rango`, migración 20261123233000). Anticipos no entran.
+   */
+  impuestos?: number;
+  propinas?: number;
   por_canal?: Record<string, number>;
   por_sucursal?: Record<string, number>;
   /**
@@ -118,6 +125,12 @@ export interface VentasPeriodo {
   monedas: string[];
   actual: CifrasVentasPeriodo;
   anterior: CifrasVentasPeriodo;
+  /**
+   * «Por cobrar del periodo»: saldo hoy de las ventas del periodo (lo vendido a
+   * crédito menos lo ya cobrado de ellas; regla única de ventas). null = no se
+   * pudo calcular.
+   */
+  por_cobrar?: number | null;
   /** Nombres de las sucursales del desglose «Todas» (id → nombre). */
   sucursales: Record<string, string>;
   /** «Ver ventas» del detalle, solo si la persona ve esa página del menú. */
@@ -394,7 +407,7 @@ export async function modulosDelInicio(
       : Promise.resolve(null),
     seMuestra('pos')
       ? getOrganizationTimezone(ctx.organizationId, ctx.supabase)
-          .then((zona) => leerVentasInicio(ctx, { rango, rangoHoy, dia: todayInTz(zona), sucursal }))
+          .then((zona) => leerVentasInicio(ctx, { rango, rangoHoy, dia: todayInTz(zona), sucursal, zona }))
           .catch((err: unknown): LecturaVentasInicio | null => {
             // Sin permiso o con error, la fila de Ventas conserva su resumen de siempre.
             console.error('[inicio/ventas]', { organizationId: ctx.organizationId, message: err instanceof Error ? err.message : String(err) });
@@ -441,6 +454,7 @@ export async function modulosDelInicio(
       const ventas = armarVentas({
         crudo: lecturaVentas.crudo,
         ultimas: lecturaVentas.ultimas,
+        dias: lecturaVentas.dias,
         monedaBase: crudo.moneda,
         periodoEsHoy,
         sucursal,

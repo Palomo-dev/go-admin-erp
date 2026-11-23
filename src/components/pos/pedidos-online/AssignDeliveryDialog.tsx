@@ -119,7 +119,7 @@ export function AssignDeliveryDialog({
 
     setLoading(true);
     try {
-      let currentShipmentId = shipmentId;
+      const currentShipmentId = shipmentId;
 
       // Si no existe shipment, necesitamos el web order completo para crearlo
       if (!currentShipmentId) {
@@ -168,7 +168,7 @@ export function AssignDeliveryDialog({
     return t.has(`assignDeliveryDialog.vehiculos.${type}`) ? t(`assignDeliveryDialog.vehiculos.${type}`) : type;
   };
 
-  const getVehicleIcon = (type: string) => {
+  const getVehicleIcon = () => {
     return <Truck className="h-4 w-4" />;
   };
 
@@ -212,7 +212,7 @@ export function AssignDeliveryDialog({
                   {vehicles.map((vehicle) => (
                     <SelectItem key={vehicle.id} value={vehicle.id}>
                       <div className="flex items-center gap-2">
-                        {getVehicleIcon(vehicle.vehicle_type)}
+                        {getVehicleIcon()}
                         <span className="font-medium dark:text-gray-100">{vehicle.plate}</span>
                         <Badge variant="outline" className="text-xs dark:text-gray-100 dark:border-gray-600">
                           {getVehicleTypeLabel(vehicle.vehicle_type)}
@@ -249,10 +249,10 @@ export function AssignDeliveryDialog({
                         <span className="dark:text-gray-100">
                           {driver.employee
                             ? `${driver.employee.first_name} ${driver.employee.last_name}`
-                            : t('assignDeliveryDialog.conductor2', { license_number: driver.license_number })}
+                            : t('assignDeliveryDialog.conductor2', { license_number: driver.license_number ?? '' })}
                         </span>
                         <span className="text-xs text-muted-foreground dark:text-gray-400">
-                          {t('assignDeliveryDialog.lic', { license_category: driver.license_category })}
+                          {t('assignDeliveryDialog.lic', { license_category: driver.license_category ?? '—' })}
                         </span>
                       </div>
                     </SelectItem>

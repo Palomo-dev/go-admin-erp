@@ -3,6 +3,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebOrder, WebOrderItem } from './webOrdersService';
 import { toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
 import { getOrganizationTimezone } from './organizationTimezoneService';
+import { contraentregaDePedidoWeb, type MedioCobroContraentrega } from '@/lib/logistica/contraentrega';
+import type { EstadoEnvio, ModoDespacho, MotivoNovedad } from '@/lib/logistica/estadosEnvio';
+
+/**
+ * Envíos del domicilio propio (logística Fase 1, docs/logistica/FASE1-CIMIENTOS.md).
+ *
+ * Crear el envío de un pedido web sigue siendo un insert desde aquí (una sola ruta, idempotente
+ * por índice único). Todo lo demás — asignar, cambiar estado, entregar con prueba/código/recaudo,
+ * novedad y el envío de una venta POS — es UNA RPC transaccional `logistica_*` con guarda de
+ * organización y sede en la base (migraciones 20261123150003 y 20261123150641). El actor sale de
+ * la sesión (auth.uid()); los parámetros `driverId` que quedan en firmas viejas no deciden nada.
+ */
 
 /**
  * Opciones de `createShipmentFromWebOrder`.
@@ -47,13 +59,28 @@ export interface DeliveryShipment {
   picked_at?: string;
   dispatched_at?: string;
   delivered_at?: string;
-  status: 'draft' | 'pending' | 'assigned' | 'ready' | 'picked' | 'dispatched' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'failed' | 'returned' | 'cancelled';
+  status: EstadoEnvio;
   notes?: string;
   internal_notes?: string;
   created_by?: string;
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  // Fase 1 logística (migración 20261123145040)
+  driver_id?: string | null;
+  vehicle_id?: string | null;
+  assigned_at?: string | null;
+  fulfillment_mode?: ModoDespacho;
+  exception_reason?: MotivoNovedad | null;
+  exception_detail?: string | null;
+  failed_attempts?: number;
+  cod_status?: 'pending' | 'collected' | 'remitted' | null;
+  cod_collected_amount?: number | null;
+  cod_collected_method?: MedioCobroContraentrega | null;
+  cod_collected_at?: string | null;
+  cod_remitted_at?: string | null;
+  delivery_code_required?: boolean;
+  shipping_zone_id?: string | null;
   // Relaciones
   vehicle?: DeliveryVehicle;
   driver?: DeliveryDriver;
@@ -84,20 +111,30 @@ export interface DeliveryVehicle {
   current_driver?: DeliveryDriver;
 }
 
+/**
+ * Domiciliario (driver_credentials). Desde la Fase 1 puede ser EXTERNO: sin empleo en Recursos
+ * humanos (`employment_id` NULL), con nombre y teléfono propios y sin licencia (bicicleta, a pie).
+ */
 export interface DeliveryDriver {
   id: string;
-  employment_id: string;
-  license_number: string;
-  license_category: string;
-  license_expiry: string;
+  organization_id?: number;
+  employment_id: string | null;
+  user_id?: string | null;
+  full_name?: string | null;
+  phone?: string | null;
+  is_external?: boolean;
+  vehicle_type?: string | null;
+  license_number: string | null;
+  license_category: string | null;
+  license_expiry: string | null;
   is_active: boolean;
   employee?: {
-    id: string;
+    id: string | number;
     first_name: string;
     last_name: string;
     phone?: string;
     photo_url?: string;
-  };
+  } | null;
 }
 
 export interface TransportEvent {
@@ -113,6 +150,8 @@ export interface TransportEvent {
   actor_id?: string;
   description?: string;
   payload?: Record<string, unknown>;
+  canonical_status?: string | null;
+  reason_code?: string | null;
   created_at: string;
 }
 
@@ -130,10 +169,54 @@ export interface ProofOfDelivery {
   longitude?: number;
   delivery_location_type?: string;
   driver_id?: string;
+  courier_id?: string | null;
+  delivery_code_verified?: boolean;
+  cod_collected_amount?: number | null;
+  cod_collected_method?: string | null;
   notes?: string;
   customer_feedback?: string;
   customer_rating?: number;
   created_at: string;
+}
+
+/** Prueba de entrega que recibe `markAsDelivered` (se traduce al jsonb de la RPC). */
+export interface ProofInput {
+  recipientName: string;
+  recipientDocType?: string;
+  recipientDocNumber?: string;
+  recipientRelationship?: string;
+  signatureUrl?: string;
+  photoUrls?: string[];
+  notes?: string;
+  latitude?: number;
+  longitude?: number;
+  locationType?: string;
+}
+
+/** Resultado de `markAsDelivered`. Un código errado NO lanza: devuelve ok=false con los intentos. */
+export type ResultadoEntrega =
+  | { ok: true; shipmentId: string; proofId: string; codStatus: string | null; aviso: 'entregado' }
+  | { ok: false; error: 'CODIGO_INVALIDO'; intentosRestantes: number };
+
+/** Error de una RPC logistica_*: `codigo` es el RAISE de la base (TRANSICION_INVALIDA, COBRO_REQUERIDO…). */
+export class EnvioError extends Error {
+  constructor(public readonly codigo: string, mensaje?: string) {
+    super(mensaje ?? codigo);
+    this.name = 'EnvioError';
+  }
+}
+
+const CODIGOS_RPC = [
+  'ENVIO_NO_ENCONTRADO', 'SIN_ACCESO_SEDE', 'ESTADO_NO_ASIGNABLE', 'DOMICILIARIO_INVALIDO', 'VEHICULO_INVALIDO',
+  'ESTADO_NO_PERMITIDO', 'TRANSICION_INVALIDA', 'YA_ENTREGADO', 'ESTADO_NO_ENTREGABLE', 'RECEPTOR_REQUERIDO',
+  'CODIGO_NO_EMITIDO', 'CODIGO_BLOQUEADO', 'COBRO_REQUERIDO', 'MOTIVO_INVALIDO', 'ESTADO_SIN_NOVEDAD',
+  'VENTA_NO_ENCONTRADA', 'VENTA_ANULADA', 'DIRECCION_REQUERIDA', 'SIN_PERMISO',
+] as const;
+
+function errorDeRpc(error: { message?: string; code?: string }): EnvioError {
+  const m = error.message ?? '';
+  const codigo = CODIGOS_RPC.find((c) => m.includes(c)) ?? (error.code === '42501' ? 'SIN_ACCESO' : 'ERROR');
+  return new EnvioError(codigo, m || codigo);
 }
 
 class DeliveryIntegrationService {
@@ -146,9 +229,9 @@ class DeliveryIntegrationService {
    * `(source_type, source_id)` hace fallar al segundo insert con 23505 y aquí se devuelve
    * el envío que ganó la carrera, en vez de propagar el error.
    *
-   * Superconjunto de lo que hacían las dos rutas anteriores: fecha estimada y evento de
-   * creación (ruta manual) + país, código de departamento y metadata de entrega (ruta
-   * automática). Y crea `shipment_items`, que ninguna de las dos creaba.
+   * Fase 1 logística: llena el modo de despacho, el flete del pedido y la contraentrega
+   * (`contraentregaDePedidoWeb`: sin pagar y no de pasarela → cod_amount = total, cod_status
+   * pending). Con contraentrega propia, el disparador de la base emite el código de 4 dígitos.
    */
   async createShipmentFromWebOrder(
     webOrder: WebOrder,
@@ -187,6 +270,9 @@ class DeliveryIntegrationService {
       expectedDeliveryDate = toPlainDate(new Date(webOrder.estimated_delivery_at), tz);
     }
 
+    const { cod_amount, cod_status } = contraentregaDePedidoWeb(webOrder);
+    const fulfillmentMode: ModoDespacho = webOrder.delivery_type === 'delivery_third_party' ? 'national_carrier' : 'own';
+
     const shipmentData = {
       organization_id: webOrder.organization_id,
       branch_id: webOrder.branch_id,
@@ -206,6 +292,12 @@ class DeliveryIntegrationService {
       delivery_instructions: deliveryInstructions,
       expected_delivery_date: expectedDeliveryDate,
       status: 'pending' as const,
+      fulfillment_mode: fulfillmentMode,
+      shipping_fee: Number(webOrder.delivery_fee) || 0,
+      declared_value: Number(webOrder.total) || 0,
+      cod_amount,
+      cod_status,
+      payment_status: cod_amount > 0 ? 'cod' : webOrder.payment_status === 'paid' ? 'paid' : 'pending',
       notes: `Pedido web: ${webOrder.order_number}`,
       metadata: {
         web_order_number: webOrder.order_number,
@@ -216,6 +308,7 @@ class DeliveryIntegrationService {
         delivery_country: country || null,
         delivery_state: (addr.state || addr.department || '') as string,
         delivery_state_code: stateCode || null,
+        delivery_neighborhood: (addr.neighborhood || null) as string | null,
       },
     };
 
@@ -246,6 +339,7 @@ class DeliveryIntegrationService {
         reference_type: 'shipment',
         reference_id: shipment.id,
         event_type: 'created',
+        canonical_status: 'created',
         actor_type: 'system',
         description: `Envío creado desde pedido web ${webOrder.order_number}`,
       },
@@ -324,9 +418,10 @@ class DeliveryIntegrationService {
       throw error;
     }
 
-    // Obtener vehículo asignado si existe
-    if (data.metadata?.vehicle_id) {
-      const vehicle = await this.getVehicleById(data.metadata.vehicle_id as string);
+    // Vehículo: columna propia (Fase 1); metadata.vehicle_id es el espejo de lo anterior.
+    const vehicleId = (data.vehicle_id ?? data.metadata?.vehicle_id) as string | undefined;
+    if (vehicleId) {
+      const vehicle = await this.getVehicleById(vehicleId);
       if (vehicle) {
         data.vehicle = vehicle;
       }
@@ -335,288 +430,241 @@ class DeliveryIntegrationService {
     return data as DeliveryShipment;
   }
 
-  /**
-   * Asigna un vehículo y conductor a un shipment
-   */
-  async assignVehicleAndDriver(
-    shipmentId: string,
-    vehicleId: string,
-    driverId: string,
-    estimatedDeliveryTime?: string
-  ): Promise<DeliveryShipment> {
-    // Actualizar el shipment
-    const { data: shipment, error: shipmentError } = await supabase
-      .from('shipments')
-      .update({
-        status: 'assigned',
-        metadata: {
-          vehicle_id: vehicleId,
-          driver_id: driverId,
-          assigned_at: new Date().toISOString(),
-        },
-        expected_delivery_date: estimatedDeliveryTime || null,
-      })
-      .eq('id', shipmentId)
-      .select()
-      .single();
-
-    if (shipmentError) throw shipmentError;
-
-    // Actualizar estado del vehículo
-    await supabase
-      .from('vehicles')
-      .update({
-        status: 'in_use',
-        current_driver_id: driverId,
-      })
-      .eq('id', vehicleId);
-
-    // Registrar evento
-    await this.createTransportEvent({
-      organization_id: shipment.organization_id,
-      reference_type: 'shipment',
-      reference_id: shipmentId,
-      event_type: 'assigned',
-      actor_type: 'driver',
-      actor_id: driverId,
-      description: 'Conductor y vehículo asignados',
-      payload: { vehicle_id: vehicleId, driver_id: driverId },
-    });
-
-    return shipment as DeliveryShipment;
+  /** Llama una RPC logistica_* y traduce su error. */
+  private async rpc<T = Record<string, unknown>>(nombre: string, args: Record<string, unknown>): Promise<T> {
+    const { data, error } = await supabase.rpc(nombre, args);
+    if (error) throw errorDeRpc(error);
+    return (data ?? {}) as T;
   }
 
-  /**
-   * Marca el shipment como recogido (inicio de delivery)
-   */
-  async markAsPickedUp(
-    shipmentId: string,
-    driverId: string,
-    location?: { latitude: number; longitude: number }
-  ): Promise<DeliveryShipment> {
-    const now = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('shipments')
-      .update({
-        status: 'out_for_delivery',
-        picked_at: now,
-        dispatched_at: now,
-      })
-      .eq('id', shipmentId)
-      .select()
-      .single();
-
+  /** Releer el envío después de una RPC (las RPC devuelven un resumen, la UI quiere la fila). */
+  private async releer(shipmentId: string): Promise<DeliveryShipment> {
+    const { data, error } = await supabase.from('shipments').select('*').eq('id', shipmentId).single();
     if (error) throw error;
-
-    // Actualizar web_order si existe
-    if (data.source_type === 'web_order' && data.source_id) {
-      await supabase
-        .from('web_orders')
-        .update({ status: 'in_delivery' })
-        .eq('id', data.source_id);
-    }
-
-    // Registrar evento
-    await this.createTransportEvent({
-      organization_id: data.organization_id,
-      reference_type: 'shipment',
-      reference_id: shipmentId,
-      event_type: 'picked',
-      actor_type: 'driver',
-      actor_id: driverId,
-      latitude: location?.latitude,
-      longitude: location?.longitude,
-      description: 'Pedido recogido, en camino a entrega',
-    });
-
     return data as DeliveryShipment;
   }
 
   /**
-   * Registra la entrega exitosa
+   * Asigna el domiciliario (y, si se quiere, el vehículo) a un envío: `logistica_asignar_domiciliario`.
+   *
+   * El vehículo ya NO es obligatorio. El conductor queda en `shipments.driver_id` y el espejo en
+   * metadata se FUSIONA (antes se reemplazaba todo `metadata`). `estimatedDeliveryTime` puede
+   * venir como día ('YYYY-MM-DD') o instante ISO: se guarda el día en la zona de la organización.
+   */
+  async assignVehicleAndDriver(
+    shipmentId: string,
+    vehicleId: string | null | undefined,
+    driverId: string,
+    estimatedDeliveryTime?: string
+  ): Promise<DeliveryShipment> {
+    let fecha: string | null = null;
+    if (estimatedDeliveryTime) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(estimatedDeliveryTime)) {
+        fecha = estimatedDeliveryTime;
+      } else {
+        const { data } = await supabase.from('shipments').select('organization_id').eq('id', shipmentId).single();
+        const tz = await getOrganizationTimezone((data as { organization_id: number } | null)?.organization_id ?? 0);
+        fecha = toPlainDate(new Date(estimatedDeliveryTime), tz);
+      }
+    }
+    await this.rpc('logistica_asignar_domiciliario', {
+      p_shipment_id: shipmentId,
+      p_driver_id: driverId,
+      p_vehicle_id: vehicleId || null,
+      p_fecha_estimada: fecha,
+    });
+    return this.releer(shipmentId);
+  }
+
+  /**
+   * Cambia el estado con `logistica_cambiar_estado` (ready_for_pickup, picked, in_transit,
+   * out_for_delivery, returned, cancelled). La base valida la transición.
+   */
+  async changeStatus(
+    shipmentId: string,
+    estado: 'ready_for_pickup' | 'picked' | 'in_transit' | 'out_for_delivery' | 'returned' | 'cancelled',
+    opts: { nota?: string; latitude?: number; longitude?: number } = {}
+  ): Promise<{ status: string; aviso: string | null }> {
+    const r = await this.rpc<{ status: string; aviso: string | null }>('logistica_cambiar_estado', {
+      p_shipment_id: shipmentId,
+      p_estado: estado,
+      p_nota: opts.nota ?? null,
+      p_lat: opts.latitude ?? null,
+      p_lng: opts.longitude ?? null,
+    });
+    return { status: r.status, aviso: r.aviso ?? null };
+  }
+
+  /**
+   * El domiciliario sale con el pedido: queda «en camino» (out_for_delivery), con picked_at y
+   * dispatched_at, y el pedido web pasa a in_delivery. Devuelve el aviso a enviar ('en_camino').
+   */
+  async markAsPickedUp(
+    shipmentId: string,
+    location?: { latitude: number; longitude: number }
+  ): Promise<DeliveryShipment> {
+    await this.changeStatus(shipmentId, 'out_for_delivery', {
+      latitude: location?.latitude,
+      longitude: location?.longitude,
+    });
+    return this.releer(shipmentId);
+  }
+
+  /**
+   * Entrega con prueba: `logistica_marcar_entregado`. En contraentrega exige el código de 4
+   * dígitos que tiene el cliente y el cobro (monto y medio); con código errado devuelve
+   * `{ ok: false, error: 'CODIGO_INVALIDO', intentosRestantes }` sin lanzar (el intento queda contado).
    */
   async markAsDelivered(
     shipmentId: string,
-    driverId: string,
-    proofData: {
-      recipientName: string;
-      recipientDocType?: string;
-      recipientDocNumber?: string;
-      recipientRelationship?: string;
-      signatureUrl?: string;
-      photoUrls?: string[];
-      notes?: string;
-      latitude?: number;
-      longitude?: number;
-    }
-  ): Promise<{ shipment: DeliveryShipment; proof: ProofOfDelivery }> {
-    const now = new Date().toISOString();
-
-    // Actualizar shipment
-    const { data: shipment, error: shipmentError } = await supabase
-      .from('shipments')
-      .update({
-        status: 'delivered',
-        delivered_at: now,
-      })
-      .eq('id', shipmentId)
-      .select()
-      .single();
-
-    if (shipmentError) throw shipmentError;
-
-    // Crear prueba de entrega
-    const { data: proof, error: proofError } = await supabase
-      .from('proof_of_delivery')
-      .insert({
-        shipment_id: shipmentId,
-        delivered_at: now,
-        recipient_name: proofData.recipientName,
-        recipient_doc_type: proofData.recipientDocType,
-        recipient_doc_number: proofData.recipientDocNumber,
-        recipient_relationship: proofData.recipientRelationship,
-        signature_url: proofData.signatureUrl,
-        photo_urls: proofData.photoUrls,
-        latitude: proofData.latitude,
-        longitude: proofData.longitude,
-        driver_id: driverId,
-        notes: proofData.notes,
-      })
-      .select()
-      .single();
-
-    if (proofError) throw proofError;
-
-    // Actualizar web_order si existe
-    if (shipment.source_type === 'web_order' && shipment.source_id) {
-      await supabase
-        .from('web_orders')
-        .update({
-          status: 'delivered',
-          delivered_at: now,
-        })
-        .eq('id', shipment.source_id);
-    }
-
-    // Liberar vehículo
-    if (shipment.metadata?.vehicle_id) {
-      await supabase
-        .from('vehicles')
-        .update({
-          status: 'available',
-          current_driver_id: null,
-        })
-        .eq('id', shipment.metadata.vehicle_id);
-    }
-
-    // Registrar evento
-    await this.createTransportEvent({
-      organization_id: shipment.organization_id,
-      reference_type: 'shipment',
-      reference_id: shipmentId,
-      event_type: 'delivered',
-      actor_type: 'driver',
-      actor_id: driverId,
-      latitude: proofData.latitude,
-      longitude: proofData.longitude,
-      description: `Entregado a ${proofData.recipientName}`,
-      payload: { proof_id: proof.id },
+    proofData: ProofInput,
+    opts: { codigo?: string | null; cobro?: { metodo: MedioCobroContraentrega; monto: number } | null } = {}
+  ): Promise<ResultadoEntrega> {
+    const r = await this.rpc<Record<string, unknown>>('logistica_marcar_entregado', {
+      p_shipment_id: shipmentId,
+      p_prueba: {
+        nombre: proofData.recipientName,
+        tipo_documento: proofData.recipientDocType ?? null,
+        documento: proofData.recipientDocNumber ?? null,
+        relacion: proofData.recipientRelationship ?? null,
+        firma_url: proofData.signatureUrl ?? null,
+        fotos: proofData.photoUrls ?? [],
+        notas: proofData.notes ?? null,
+        lat: proofData.latitude ?? null,
+        lng: proofData.longitude ?? null,
+        tipo_lugar: proofData.locationType ?? null,
+      },
+      p_codigo: opts.codigo ?? null,
+      p_cobro: opts.cobro ?? null,
     });
-
+    if (r.ok === false) {
+      return { ok: false, error: 'CODIGO_INVALIDO', intentosRestantes: Number(r.intentos_restantes) || 0 };
+    }
     return {
-      shipment: shipment as DeliveryShipment,
-      proof: proof as ProofOfDelivery,
+      ok: true,
+      shipmentId: String(r.shipment_id),
+      proofId: String(r.proof_id),
+      codStatus: (r.cod_status as string | null) ?? null,
+      aviso: 'entregado',
     };
   }
 
   /**
-   * Registra un intento de entrega fallido
+   * Novedad / intento fallido: `logistica_registrar_novedad`. El envío queda en failed_attempt
+   * con el motivo; se puede reintentar (out_for_delivery), reasignar o devolver.
    */
   async registerFailedAttempt(
     shipmentId: string,
-    driverId: string,
     failureData: {
-      reasonCode: string;
-      reasonText: string;
+      reasonCode: MotivoNovedad;
+      reasonText?: string;
       rescheduleDate?: string;
-      notes?: string;
       photoUrls?: string[];
       latitude?: number;
       longitude?: number;
     }
-  ): Promise<void> {
-    // Obtener organization_id del shipment
-    const { data: shipment } = await supabase
-      .from('shipments')
-      .select('organization_id')
-      .eq('id', shipmentId)
-      .single();
-
-    // Contar intentos previos
-    const { count } = await supabase
-      .from('delivery_attempts')
-      .select('*', { count: 'exact', head: true })
-      .eq('shipment_id', shipmentId);
-
-    const attemptNumber = (count || 0) + 1;
-
-    // Registrar intento
-    await supabase.from('delivery_attempts').insert({
-      shipment_id: shipmentId,
-      attempt_number: attemptNumber,
-      status: 'failed',
-      failure_reason_code: failureData.reasonCode,
-      failure_reason_text: failureData.reasonText,
-      reschedule_date: failureData.rescheduleDate,
-      reschedule_notes: failureData.notes,
-      photo_urls: failureData.photoUrls,
-      latitude: failureData.latitude,
-      longitude: failureData.longitude,
-      driver_id: driverId,
+  ): Promise<{ intento: number; aviso: 'novedad' }> {
+    const r = await this.rpc<{ intento: number }>('logistica_registrar_novedad', {
+      p_shipment_id: shipmentId,
+      p_motivo: failureData.reasonCode,
+      p_detalle: failureData.reasonText ?? null,
+      p_reprogramar: failureData.rescheduleDate ?? null,
+      p_fotos: failureData.photoUrls ?? null,
+      p_lat: failureData.latitude ?? null,
+      p_lng: failureData.longitude ?? null,
     });
+    return { intento: Number(r.intento) || 0, aviso: 'novedad' };
+  }
 
-    // Registrar evento
-    await this.createTransportEvent({
-      organization_id: shipment?.organization_id || 0,
-      reference_type: 'shipment',
-      reference_id: shipmentId,
-      event_type: 'delivery_failed',
-      actor_type: 'driver',
-      actor_id: driverId,
-      latitude: failureData.latitude,
-      longitude: failureData.longitude,
-      description: `Intento ${attemptNumber} fallido: ${failureData.reasonText}`,
-      payload: { attempt_number: attemptNumber, reason_code: failureData.reasonCode },
+  /**
+   * Envío de una venta POS con domicilio: `logistica_crear_envio_venta_pos`.
+   *
+   * La base lee la venta (organización, sede, cliente, total, saldo y líneas): la contraentrega
+   * es el SALDO de la venta, no un monto del navegador. El flete sale de la cotización por zonas
+   * cuando la entrega trae municipio DANE, barrio, código postal o coordenadas; si no, se guarda
+   * el que mandó el POS (`metadata.shipping_fee_source = 'pos_cliente'`). Idempotente: una venta,
+   * un envío. Los demás campos del objeto (total, ítems, estado de pago) se aceptan por
+   * compatibilidad con CheckoutDialog y se ignoran.
+   */
+  async createShipmentFromPOSSale(params: {
+    saleId: string;
+    organizationId: number;
+    branchId: number;
+    customerId?: string;
+    customerName?: string;
+    customerPhone?: string;
+    total: number;
+    shippingFee?: number;
+    shippingRateId?: string;
+    itemsCount: number;
+    driverId?: string;
+    paymentStatus?: 'pending' | 'paid';
+    deliveryInfo: {
+      address: string;
+      city?: string;
+      contact_name?: string;
+      contact_phone?: string;
+      instructions?: string;
+      municipio_dane?: string;
+      barrio?: string;
+      codigo_postal?: string;
+      lat?: number;
+      lng?: number;
+    };
+    saleItems?: Array<{
+      description: string;
+      qty: number;
+      unit_value: number;
+      total_value: number;
+      product_id?: number;
+      sku?: string;
+      sale_item_id?: string;
+      notes?: string;
+    }>;
+  }): Promise<DeliveryShipment> {
+    const d = params.deliveryInfo;
+    const r = await this.rpc<{ shipment_id: string }>('logistica_crear_envio_venta_pos', {
+      p_sale_id: params.saleId,
+      p_entrega: {
+        direccion: d.address,
+        ciudad: d.city ?? null,
+        contacto_nombre: d.contact_name || params.customerName || null,
+        contacto_telefono: d.contact_phone || params.customerPhone || null,
+        instrucciones: d.instructions ?? null,
+        municipio_dane: d.municipio_dane ?? null,
+        barrio: d.barrio ?? null,
+        codigo_postal: d.codigo_postal ?? null,
+        lat: d.lat ?? null,
+        lng: d.lng ?? null,
+        costo_envio: params.shippingFee ?? 0,
+        tarifa_id: params.shippingRateId ?? null,
+      },
+      p_driver_id: params.driverId || null,
     });
+    return this.releer(r.shipment_id);
   }
 
   /**
    * Obtiene vehículos disponibles para delivery
    */
   async getAvailableVehicles(organizationId: number): Promise<DeliveryVehicle[]> {
+    // vehicles.current_driver_id apunta a auth.users (no a driver_credentials): el embed
+    // `driver_credentials!vehicles_current_driver_id_fkey` que había aquí no existe.
     const { data, error } = await supabase
       .from('vehicles')
-      .select(`
-        *,
-        current_driver:driver_credentials!vehicles_current_driver_id_fkey(
-          id,
-          employment_id,
-          license_number,
-          is_active
-        )
-      `)
+      .select('*')
       .eq('organization_id', organizationId)
       .eq('status', 'available')
       .eq('is_active', true)
-      .in('vehicle_type', ['motorcycle', 'car', 'van', 'bicycle']);
+      .in('vehicle_type', ['motorcycle', 'car', 'van', 'other']);
 
     if (error) throw error;
     return (data || []) as DeliveryVehicle[];
   }
 
   /**
-   * Obtiene conductores disponibles
+   * Domiciliarios activos de la organización: los de Recursos humanos (con empleo) y los
+   * externos (sin empleo). Licencia vencida deja fuera; sin licencia (bicicleta, a pie), no.
    */
   async getAvailableDrivers(organizationId: number): Promise<DeliveryDriver[]> {
     // "Hoy" en la zona de la organización: comparar contra el día UTC dejaba fuera (o
@@ -640,57 +688,67 @@ class DeliveryIntegrationService {
           )
         )
       `)
+      .eq('organization_id', organizationId)
       .eq('is_active', true)
-      .gte('license_expiry', hoy);
+      .or(`license_expiry.is.null,license_expiry.gte.${hoy}`);
 
     if (error) throw error;
 
+    type DriverProfile = {
+      id?: number; first_name?: string; last_name?: string; phone?: string; avatar_url?: string;
+    };
     type DriverRow = Record<string, unknown> & {
+      id: string;
+      full_name?: string | null;
+      phone?: string | null;
       employment?: {
         organization_member?: {
           id?: number;
           profiles?: DriverProfile | DriverProfile[];
         };
-      };
-    };
-    type DriverProfile = {
-      id?: number; first_name?: string; last_name?: string; phone?: string; avatar_url?: string;
+      } | null;
     };
 
-    // Filtrar solo conductores de la organización
     // El tipo generado del select con embeds no es asignable a DriverRow directamente:
-    // se pasa por unknown a propósito (misma forma en runtime, verificada abajo).
-    return ((data || []) as unknown as DriverRow[])
-      .filter((driver) => {
-        const memberId = driver.employment?.organization_member?.id;
-        if (!memberId) return false;
-        // Necesitamos verificar que el member pertenece a la org
-        // Por ahora filtramos después con una query separada si es necesario
-        return true;
-      })
-      .map((driver) => {
-        const perfiles = driver.employment?.organization_member?.profiles;
-        const profile: DriverProfile | undefined = Array.isArray(perfiles) ? perfiles[0] : perfiles;
-        return {
-          ...driver,
-          employee: profile ? {
-            id: driver.employment?.organization_member?.id,
+    // se pasa por unknown a propósito (misma forma en runtime).
+    return ((data || []) as unknown as DriverRow[]).map((driver) => {
+      const perfiles = driver.employment?.organization_member?.profiles;
+      const profile: DriverProfile | undefined = Array.isArray(perfiles) ? perfiles[0] : perfiles;
+      const [nombre, ...apellidos] = (driver.full_name ?? '').trim().split(/\s+/);
+      const employee = profile
+        ? {
+            id: driver.employment?.organization_member?.id ?? driver.id,
             first_name: profile.first_name || '',
             last_name: profile.last_name || '',
-            phone: profile.phone || '',
+            phone: profile.phone || driver.phone || '',
             photo_url: profile.avatar_url || '',
-          } : null,
-        };
-      }) as unknown as DeliveryDriver[];
+          }
+        : driver.full_name
+          ? { id: driver.id, first_name: nombre ?? '', last_name: apellidos.join(' '), phone: driver.phone ?? '', photo_url: '' }
+          : null;
+      return { ...driver, employee };
+    }) as unknown as DeliveryDriver[];
   }
 
   /**
-   * Obtiene el driver_credentials del usuario logueado
-   * Chain: auth.users.id -> organization_members.user_id -> employments -> driver_credentials
+   * Domiciliario del usuario con sesión. Primero por `driver_credentials.user_id` (externos con
+   * cuenta y los de Recursos humanos completados por el disparador); si no, la cadena vieja
+   * auth.users → organization_members → employments → driver_credentials.
    */
-  async getDriverForUser(userId: string): Promise<DeliveryDriver | null> {
+  async getDriverForUser(userId: string, organizationId?: number): Promise<DeliveryDriver | null> {
+    let directo = supabase
+      .from('driver_credentials')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (organizationId != null) directo = directo.eq('organization_id', organizationId);
+    const { data: porUsuario, error: errUsuario } = await directo.maybeSingle();
+    if (errUsuario) throw errUsuario;
+
     // Buscar el organization_member por user_id con datos del perfil
-    const { data: member, error: memberError } = await supabase
+    let miembro = supabase
       .from('organization_members')
       .select(`
         id,
@@ -699,55 +757,54 @@ class DeliveryIntegrationService {
       `)
       .eq('user_id', userId)
       .eq('is_active', true)
-      .single();
+      .limit(1);
+    if (organizationId != null) miembro = miembro.eq('organization_id', organizationId);
+    const { data: member, error: memberError } = await miembro.maybeSingle();
+    if (memberError) throw memberError;
 
-    if (memberError) {
-      if (memberError.code === 'PGRST116') return null;
-      throw memberError;
+    const perfiles = (member as { profiles?: unknown } | null)?.profiles;
+    const profile = (Array.isArray(perfiles) ? perfiles[0] : perfiles) as
+      | { first_name?: string; last_name?: string; phone?: string; avatar_url?: string }
+      | undefined;
+
+    let driverCred = porUsuario as Record<string, unknown> | null;
+    if (!driverCred && member) {
+      const { data: employment, error: jobError } = await supabase
+        .from('employments')
+        .select('id')
+        .eq('organization_member_id', (member as { id: number }).id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      if (jobError) throw jobError;
+      if (employment) {
+        const { data, error } = await supabase
+          .from('driver_credentials')
+          .select('*')
+          .eq('employment_id', employment.id)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (error) throw error;
+        driverCred = data as Record<string, unknown> | null;
+      }
     }
+    if (!driverCred) return null;
 
-    // Buscar el employment del organization_member
-    const { data: employment, error: jobError } = await supabase
-      .from('employments')
-      .select('id')
-      .eq('organization_member_id', member.id)
-      .eq('status', 'active')
-      .single();
-
-    if (jobError) {
-      if (jobError.code === 'PGRST116') return null;
-      throw jobError;
-    }
-
-    // Buscar driver_credentials por employment_id
-    const { data: driverCred, error: driverError } = await supabase
-      .from('driver_credentials')
-      .select('*')
-      .eq('employment_id', employment.id)
-      .eq('is_active', true)
-      .single();
-
-    if (driverError) {
-      if (driverError.code === 'PGRST116') return null;
-      throw driverError;
-    }
-
-    const profile = member.profiles?.[0] || member.profiles;
-
+    const nombreLibre = ((driverCred.full_name as string | null) ?? '').trim().split(/\s+/);
     return {
       ...driverCred,
       employee: {
-        id: member.id,
-        first_name: profile?.first_name || '',
-        last_name: profile?.last_name || '',
-        phone: profile?.phone || '',
+        id: (member as { id?: number } | null)?.id ?? (driverCred.id as string),
+        first_name: profile?.first_name || nombreLibre[0] || '',
+        last_name: profile?.last_name || nombreLibre.slice(1).join(' '),
+        phone: profile?.phone || (driverCred.phone as string | null) || '',
         photo_url: profile?.avatar_url || '',
       },
-    } as DeliveryDriver;
+    } as unknown as DeliveryDriver;
   }
 
   /**
-   * Obtiene TODOS los envíos asignados a un conductor (no solo pendientes)
+   * Obtiene TODOS los envíos asignados a un domiciliario (columna driver_id, Fase 1).
    */
   async getAllShipmentsForDriver(driverId: string, organizationId: number): Promise<DeliveryShipment[]> {
     const { data, error } = await supabase
@@ -758,7 +815,7 @@ class DeliveryIntegrationService {
         shipment_items(id, description, qty)
       `)
       .eq('organization_id', organizationId)
-      .contains('metadata', { driver_id: driverId })
+      .eq('driver_id', driverId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -766,215 +823,37 @@ class DeliveryIntegrationService {
   }
 
   /**
-   * Actualiza el estado de un shipment por el conductor, registrando evento
+   * Cambio de estado desde «Mis envíos». Los pasos simples van por `logistica_cambiar_estado`;
+   * «entregado» va por `logistica_marcar_entregado` con el contacto como receptor y SOLO si el
+   * envío no es contraentrega (la contraentrega exige código y cobro: usar `markAsDelivered`).
+   * `driverId` se conserva en la firma por compatibilidad: el actor sale de la sesión.
    */
   async updateShipmentStatusByDriver(
     shipmentId: string,
     newStatus: DeliveryShipment['status'],
     driverId: string
   ): Promise<DeliveryShipment> {
-    const updates: Record<string, unknown> = {
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (newStatus === 'picked') updates.picked_at = new Date().toISOString();
-    if (newStatus === 'in_transit' || newStatus === 'out_for_delivery') updates.dispatched_at = new Date().toISOString();
-    if (newStatus === 'delivered') updates.delivered_at = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('shipments')
-      .update(updates)
-      .eq('id', shipmentId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Actualizar web_order si existe
-    if (data.source_type === 'web_order' && data.source_id) {
-      const webOrderStatus = newStatus === 'delivered' ? 'delivered' : newStatus === 'out_for_delivery' ? 'in_delivery' : undefined;
-      if (webOrderStatus) {
-        await supabase
-          .from('web_orders')
-          .update({ status: webOrderStatus, ...(newStatus === 'delivered' && { delivered_at: new Date().toISOString() }) })
-          .eq('id', data.source_id);
+    void driverId;
+    if (newStatus === 'delivered') {
+      const actual = await this.releer(shipmentId);
+      if (actual.delivery_code_required || (Number(actual.cod_amount) || 0) > 0) {
+        throw new EnvioError('COBRO_REQUERIDO', 'Contraentrega: registra la entrega con el código y el cobro');
       }
-    }
-
-    // Registrar evento de transporte
-    const eventDescriptions: Record<string, string> = {
-      picked: 'Pedido recogido por conductor',
-      dispatched: 'Despachado / Llegó a destino',
-      in_transit: 'En tránsito al destino',
-      out_for_delivery: 'En entrega final',
-      delivered: 'Entregado exitosamente',
-      returned: 'Devuelto',
-      cancelled: 'Cancelado',
-      ready: 'Listo para despacho',
-      assigned: 'Conductor asignado',
-    };
-
-    await this.createTransportEvent({
-      organization_id: data.organization_id,
-      reference_type: 'shipment',
-      reference_id: shipmentId,
-      event_type: newStatus,
-      actor_type: 'driver',
-      actor_id: driverId,
-      description: eventDescriptions[newStatus] || `Estado: ${newStatus}`,
-    });
-
-    // Liberar vehículo si fue entregado/devuelto/cancelado
-    if (['delivered', 'returned', 'cancelled'].includes(newStatus) && data.metadata?.vehicle_id) {
-      await supabase
-        .from('vehicles')
-        .update({ status: 'available', current_driver_id: null })
-        .eq('id', data.metadata.vehicle_id as string);
-    }
-
-    return data as DeliveryShipment;
-  }
-
-  /**
-   * Crea un shipment desde una venta POS con delivery propio
-   */
-  async createShipmentFromPOSSale(params: {
-    saleId: string;
-    organizationId: number;
-    branchId: number;
-    customerId?: string;
-    customerName?: string;
-    customerPhone?: string;
-    total: number;
-    shippingFee?: number;
-    shippingRateId?: string;
-    itemsCount: number;
-    driverId?: string;
-    paymentStatus?: 'pending' | 'paid';
-    deliveryInfo: {
-      address: string;
-      city?: string;
-      contact_name?: string;
-      contact_phone?: string;
-      instructions?: string;
-    };
-    saleItems?: Array<{
-      description: string;
-      qty: number;
-      unit_value: number;
-      total_value: number;
-      product_id?: number;
-      sku?: string;
-      sale_item_id?: string;
-      notes?: string;
-    }>;
-  }): Promise<DeliveryShipment> {
-    const trackingNumber = await this.generateTrackingNumber();
-    const shipmentNumber = `POS-${params.saleId.slice(-8).toUpperCase()}`;
-
-    // Obtener nombre de la organización (remitente)
-    const { data: orgData } = await supabase
-      .from('organizations')
-      .select('name, phone, address')
-      .eq('id', params.organizationId)
-      .single();
-
-    const senderName = orgData?.name || 'Empresa';
-    const senderPhone = orgData?.phone || '';
-    const contactName = params.deliveryInfo.contact_name || params.customerName || '';
-    const contactPhone = params.deliveryInfo.contact_phone || params.customerPhone || '';
-
-    const shipmentData = {
-      organization_id: params.organizationId,
-      branch_id: params.branchId,
-      source_type: 'sale',
-      source_id: params.saleId,
-      shipment_number: shipmentNumber,
-      tracking_number: trackingNumber,
-      customer_id: params.customerId || null,
-      delivery_address: params.deliveryInfo.address,
-      delivery_city: params.deliveryInfo.city || '',
-      delivery_contact_name: contactName,
-      delivery_contact_phone: contactPhone,
-      delivery_instructions: params.deliveryInfo.instructions || '',
-      package_count: params.itemsCount,
-      declared_value: params.total,
-      total_cost: params.total + (params.shippingFee || 0),
-      shipping_fee: params.shippingFee || 0,
-      // La venta POS no trae moneda: null y el trigger
-      // trg_00_moneda_base_por_defecto pone la base de la organización.
-      currency: null,
-      status: params.driverId ? 'assigned' as const : 'pending' as const,
-      payment_status: params.paymentStatus || 'pending',
-      notes: `Venta POS: ${params.saleId.slice(-8)}`,
-      metadata: {
-        pos_sale_id: params.saleId,
-        pos_total: params.total,
-        shipping_fee: params.shippingFee || 0,
-        shipping_rate_id: params.shippingRateId || null,
-        items_count: params.itemsCount,
-        sender_name: senderName,
-        sender_phone: senderPhone,
-        ...(params.driverId && { driver_id: params.driverId, assigned_at: new Date().toISOString() }),
-      },
-    };
-
-    const { data, error } = await supabase
-      .from('shipments')
-      .insert(shipmentData)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Crear shipment_items con los productos de la venta
-    if (params.saleItems && params.saleItems.length > 0) {
-      const itemsToInsert = params.saleItems.map((item) => ({
-        shipment_id: data.id,
-        description: item.description,
-        qty: item.qty,
-        unit_value: item.unit_value,
-        total_value: item.total_value,
-        product_id: item.product_id || null,
-        sku: item.sku || null,
-        sale_item_id: item.sale_item_id || null,
-        notes: item.notes || null,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('shipment_items')
-        .insert(itemsToInsert);
-
-      if (itemsError) {
-        console.warn('Error creando shipment_items:', itemsError);
-      }
-    }
-
-    // El conductor se guarda en metadata del shipment (no hay tabla intermedia)
-
-    await this.createTransportEvent({
-      organization_id: params.organizationId,
-      reference_type: 'shipment',
-      reference_id: data.id,
-      event_type: 'created',
-      actor_type: 'system',
-      description: `Envío creado desde venta POS ${shipmentNumber}`,
-    });
-
-    if (params.driverId) {
-      await this.createTransportEvent({
-        organization_id: params.organizationId,
-        reference_type: 'shipment',
-        reference_id: data.id,
-        event_type: 'assigned',
-        actor_type: 'system',
-        actor_id: params.driverId,
-        description: `Conductor asignado desde venta POS ${shipmentNumber}`,
+      const r = await this.markAsDelivered(shipmentId, {
+        recipientName: actual.delivery_contact_name || 'Cliente',
+        notes: 'Entrega marcada desde Mis envíos sin prueba adicional',
       });
+      if (!r.ok) throw new EnvioError(r.error);
+      return this.releer(shipmentId);
     }
-
-    return data as DeliveryShipment;
+    if (
+      newStatus === 'ready_for_pickup' || newStatus === 'picked' || newStatus === 'in_transit' ||
+      newStatus === 'out_for_delivery' || newStatus === 'returned' || newStatus === 'cancelled'
+    ) {
+      await this.changeStatus(shipmentId, newStatus);
+      return this.releer(shipmentId);
+    }
+    throw new EnvioError('ESTADO_NO_PERMITIDO', `Estado no permitido desde Mis envíos: ${newStatus}`);
   }
 
   /**
@@ -1027,7 +906,7 @@ class DeliveryIntegrationService {
   }
 
   /**
-   * Obtiene entregas pendientes para un conductor
+   * Obtiene entregas pendientes para un domiciliario (columna driver_id, Fase 1).
    */
   async getPendingDeliveriesForDriver(driverId: string): Promise<DeliveryShipment[]> {
     const { data, error } = await supabase
@@ -1036,8 +915,8 @@ class DeliveryIntegrationService {
         *,
         customer:customers(id, full_name, phone, email)
       `)
-      .contains('metadata', { driver_id: driverId })
-      .in('status', ['assigned', 'out_for_delivery'])
+      .eq('driver_id', driverId)
+      .in('status', ['assigned', 'ready_for_pickup', 'picked', 'in_transit', 'out_for_delivery', 'failed_attempt'])
       .order('expected_delivery_date', { ascending: true });
 
     if (error) throw error;
@@ -1093,7 +972,7 @@ class DeliveryIntegrationService {
       assigned: shipments.filter(s => s.status === 'assigned').length,
       inTransit: shipments.filter(s => s.status === 'out_for_delivery').length,
       delivered: delivered.length,
-      failed: shipments.filter(s => s.status === 'returned').length,
+      failed: shipments.filter(s => s.status === 'returned' || s.status === 'failed_attempt').length,
       avgDeliveryTime: deliveredWithTime > 0 ? Math.round(totalDeliveryTime / deliveredWithTime) : 0,
     };
   }
@@ -1112,6 +991,7 @@ class DeliveryIntegrationService {
     reference_type: string;
     reference_id: string;
     event_type: string;
+    canonical_status?: string;
     actor_type: string;
     actor_id?: string;
     latitude?: number;

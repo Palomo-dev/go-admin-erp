@@ -35837,7 +35837,9 @@
           "monedaCambiar": "Cambiar cómo se ve el selector",
           "monedaCelular": "En el celular: la fila del menú y el modo «En la barra» usan el mismo estilo del computador.",
           "filaEstilo": "Los íconos se configuran en Contenido › Íconos",
-          "filaEstiloAyuda": "Estilo, forma, tamaño, trazo, fondo y dibujos. Toca para abrir la vista."
+          "filaEstiloAyuda": "Estilo, forma, tamaño, trazo, fondo y dibujos. Toca para abrir la vista.",
+          "buscarEsBarra": "Tu buscador es una barra: su botón no usa este dibujo. El dibujo y la forma de la lupa aparecen aquí cuando eliges el buscador «Ícono» en Diseño › Buscador.",
+          "monedaSinDibujo": "Con el estilo «{estilo}» la moneda no usa dibujo: se ve como lo eliges en «Cambiar cómo se ve el selector». El dibujo solo se usa con «Solo ícono»."
         },
         "moneda": {
           "titulo": "Encabezado › Selector de moneda",

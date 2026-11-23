@@ -16,6 +16,8 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { pedirCotizacion, type RespuestaCotizar } from '@/components/logistica/cotizar/useCotizacionDomicilio';
 import type { CanalCotizacion } from '@/lib/logistica/cotizacion';
 import { estadoCotizacion, nombreZona, textoTiempoCotizacion } from '@/lib/logistica/presentacionEnvio';
+import { llegaHoy } from '@/lib/logistica/cotizacion';
+import { useFormatoPromesa } from '@/components/logistica/cotizar/useFormatoPromesa';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import type { ZonaConUbicaciones } from '@/lib/services/logistica/zonasEnvioService';
 
@@ -33,6 +35,7 @@ const CANALES: readonly CanalCotizacion[] = ['web', 'pos', 'manual'];
 export function SimuladorEnvio({ abierto, onAbiertoChange, zonaInicial, sedeInicial, onVerRegla }: Props) {
   const t = useTranslations('logistica.cotizar.simulador');
   const tc = useTranslations('logistica.cotizar');
+  const formatoPromesa = useFormatoPromesa();
   const { formatear } = useMonedaOrganizacion();
   const { branches } = useBranch();
   const [sede, setSede] = useState<string>('');
@@ -85,7 +88,19 @@ export function SimuladorEnvio({ abierto, onAbiertoChange, zonaInicial, sedeInic
 
   const c = resultado?.cotizacion ?? null;
   const estado = estadoCotizacion(c);
-  const llega = c ? [c.despacho ? (c.despacho.hoy ? t('hoy') : formatPlainDate(c.despacho.fecha, { weekday: 'short', day: 'numeric', month: 'short' })) : null, textoTiempoCotizacion(c)].filter(Boolean).join(', ') : '';
+  // «Hoy, 45–60 min» solo si la entrega cabe en el día; un envío de días dice «Sale hoy, 3–15 días».
+  const llega = c
+    ? [
+        c.despacho
+          ? llegaHoy(c)
+            ? t('hoy')
+            : c.despacho.hoy
+              ? t('saleHoy')
+              : t('saleEl', { fecha: formatPlainDate(c.despacho.fecha, { weekday: 'short', day: 'numeric', month: 'short' }) })
+          : null,
+        textoTiempoCotizacion(c, formatoPromesa),
+      ].filter(Boolean).join(', ')
+    : '';
 
   return (
     <Dialogo

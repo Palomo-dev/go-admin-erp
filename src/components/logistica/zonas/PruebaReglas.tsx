@@ -16,6 +16,7 @@ import { pedirCotizacion, type RespuestaCotizar } from '@/components/logistica/c
 import type { CanalCotizacion } from '@/lib/logistica/cotizacion';
 import type { ReglaDespacho } from '@/lib/logistica/zonas';
 import { nombreZona, textoTiempoCotizacion } from '@/lib/logistica/presentacionEnvio';
+import { useFormatoPromesa } from '@/components/logistica/cotizar/useFormatoPromesa';
 import { cn } from '@/utils/Utils';
 import { recorridoReglas, type PasoRecorrido } from './reglasPresentacion';
 import type { MetodoPagoOpcion } from './ReglasDespacho';
@@ -41,6 +42,7 @@ export function PruebaReglas({ abierto, onAbiertoChange, reglas, metodos }: Prop
   const t = useTranslations('logistica.reglas.prueba');
   const tr = useTranslations('logistica.reglas');
   const tc = useTranslations('logistica.cotizar');
+  const formatoPromesa = useFormatoPromesa();
   const { formatear } = useMonedaOrganizacion();
   const { branches, branchFilter } = useBranch();
   const [sede, setSede] = useState('');
@@ -200,7 +202,7 @@ export function PruebaReglas({ abierto, onAbiertoChange, reglas, metodos }: Prop
                 </div>
                 <div>
                   <p className="text-xs text-fg-secondary">{t('tiempo')}</p>
-                  <p className="text-sm font-semibold text-fg">{textoTiempoCotizacion(c) ?? '—'}</p>
+                  <p className="text-sm font-semibold text-fg">{textoTiempoCotizacion(c, formatoPromesa) ?? '—'}</p>
                 </div>
               </div>
             </div>

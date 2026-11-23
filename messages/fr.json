@@ -64342,7 +64342,7 @@
         "tiempoMin": "Délai à partir de",
         "tiempoMax": "Délai jusqu’à",
         "textoPromesa": "Délai promis en toutes lettres (facultatif)",
-        "textoPromesaAyuda": "Remplace les minutes, par exemple « Le jour même » ou « Le lendemain ».",
+        "textoPromesaAyuda": "Remplace les chiffres, par exemple « Le jour même » ou « 2 à 5 jours ouvrés ».",
         "textoPromesaPlaceholder": "Le jour même",
         "gratisDesde": "Livraison gratuite dès",
         "gratisDesdeAyuda": "Vide : pas de livraison gratuite dans cette zone.",
@@ -64381,6 +64381,18 @@
           "codigo_postal_invalido": "Le code postal n’est pas valide.",
           "poligono_invalido": "Le polygone n’est pas valide.",
           "repetida": "Cet élément est déjà dans la zone."
+        },
+        "unidadPromesa": "Délai de livraison en",
+        "unidadPromesaAyuda": "Livraisons proches en minutes ou heures ; envois nationaux en jours.",
+        "unidades": {
+          "minutos": "Minutes",
+          "horas": "Heures",
+          "dias": "Jours"
+        },
+        "unidadesCortas": {
+          "minutos": "min",
+          "horas": "h",
+          "dias": "jours"
         }
       },
       "peso": {
@@ -64706,7 +64718,7 @@
           "sin_cobertura": "Sans couverture"
         },
         "envio": "Livraison",
-        "llega": "Arrive",
+        "llega": "Livraison",
         "corte": "Heure limite",
         "hoy": "Aujourd’hui",
         "faltaGratis": "Reste pour la livraison gratuite",
@@ -64714,7 +64726,9 @@
         "regla": "Règle d’expédition",
         "reglaAplica": "Une règle s’applique",
         "reglaNinguna": "Aucune : livreur interne",
-        "dane": "Commune DANE"
+        "dane": "Commune DANE",
+        "saleHoy": "Part aujourd’hui",
+        "saleEl": "Part le {fecha}"
       }
     },
     "menu": {
@@ -65424,6 +65438,17 @@
       "vacio": {
         "titulo": "Rien à résoudre",
         "descripcion": "Aucun incident ni envoi immobile. Ce qui nécessite quelqu’un apparaît ici."
+      }
+    },
+    "promesa": {
+      "minutos": "{n} min",
+      "horas": "{n, plural, one {# heure} other {# heures}}",
+      "dias": "{n, plural, one {# jour} other {# jours}}",
+      "hasta": "jusqu’à {tiempo}",
+      "rango": {
+        "minutos": "{desde}–{hasta} min",
+        "horas": "{desde}–{hasta} heures",
+        "dias": "{desde}–{hasta} jours"
       }
     }
   }

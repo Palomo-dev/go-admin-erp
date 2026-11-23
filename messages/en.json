@@ -64342,7 +64342,7 @@
         "tiempoMin": "Time from",
         "tiempoMax": "Time up to",
         "textoPromesa": "Promise in words (optional)",
-        "textoPromesaAyuda": "Replaces the minutes, for example “Same day” or “Next day”.",
+        "textoPromesaAyuda": "Replaces the numbers, for example “Same day” or “2 to 5 business days”.",
         "textoPromesaPlaceholder": "Same day",
         "gratisDesde": "Free delivery from",
         "gratisDesdeAyuda": "Empty: no free delivery in this zone.",
@@ -64381,6 +64381,18 @@
           "codigo_postal_invalido": "The postal code isn't valid.",
           "poligono_invalido": "The polygon isn't valid.",
           "repetida": "That's already in the zone."
+        },
+        "unidadPromesa": "Delivery time in",
+        "unidadPromesaAyuda": "Nearby deliveries in minutes or hours; nationwide shipping in days.",
+        "unidades": {
+          "minutos": "Minutes",
+          "horas": "Hours",
+          "dias": "Days"
+        },
+        "unidadesCortas": {
+          "minutos": "min",
+          "horas": "h",
+          "dias": "days"
         }
       },
       "peso": {
@@ -64706,7 +64718,7 @@
           "sin_cobertura": "No coverage"
         },
         "envio": "Delivery",
-        "llega": "Arrives",
+        "llega": "Delivery",
         "corte": "Cutoff",
         "hoy": "Today",
         "faltaGratis": "Left for free delivery",
@@ -64714,7 +64726,9 @@
         "regla": "Dispatch rule",
         "reglaAplica": "A rule applies",
         "reglaNinguna": "None: own courier",
-        "dane": "DANE municipality"
+        "dane": "DANE municipality",
+        "saleHoy": "Ships today",
+        "saleEl": "Ships {fecha}"
       }
     },
     "menu": {
@@ -65424,6 +65438,17 @@
       "vacio": {
         "titulo": "Nothing to resolve",
         "descripcion": "There are no issues or idle shipments. Anything that needs someone shows up here."
+      }
+    },
+    "promesa": {
+      "minutos": "{n} min",
+      "horas": "{n, plural, one {# hour} other {# hours}}",
+      "dias": "{n, plural, one {# day} other {# days}}",
+      "hasta": "up to {tiempo}",
+      "rango": {
+        "minutos": "{desde}–{hasta} min",
+        "horas": "{desde}–{hasta} hours",
+        "dias": "{desde}–{hasta} days"
       }
     }
   }

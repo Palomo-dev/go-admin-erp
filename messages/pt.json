@@ -64352,7 +64352,7 @@
         "tiempoMin": "Tempo de",
         "tiempoMax": "Tempo até",
         "textoPromesa": "Prazo por extenso (opcional)",
-        "textoPromesaAyuda": "Substitui os minutos, por exemplo “Mesmo dia” ou “Dia seguinte”.",
+        "textoPromesaAyuda": "Substitui os números, por exemplo «No mesmo dia» ou «2 a 5 dias úteis».",
         "textoPromesaPlaceholder": "Mesmo dia",
         "gratisDesde": "Frete grátis a partir de",
         "gratisDesdeAyuda": "Vazio: sem frete grátis nesta zona.",
@@ -64391,6 +64391,18 @@
           "codigo_postal_invalido": "O código postal não é válido.",
           "poligono_invalido": "O polígono não é válido.",
           "repetida": "Isso já está na zona."
+        },
+        "unidadPromesa": "Prazo de entrega em",
+        "unidadPromesaAyuda": "Entregas próximas em minutos ou horas; envios nacionais em dias.",
+        "unidades": {
+          "minutos": "Minutos",
+          "horas": "Horas",
+          "dias": "Dias"
+        },
+        "unidadesCortas": {
+          "minutos": "min",
+          "horas": "h",
+          "dias": "dias"
         }
       },
       "peso": {
@@ -64716,7 +64728,7 @@
           "sin_cobertura": "Sem cobertura"
         },
         "envio": "Frete",
-        "llega": "Chega",
+        "llega": "Entrega",
         "corte": "Corte",
         "hoy": "Hoje",
         "faltaGratis": "Falta para o frete grátis",
@@ -64724,7 +64736,9 @@
         "regla": "Regra de despacho",
         "reglaAplica": "Uma regra se aplica",
         "reglaNinguna": "Nenhuma: entregador próprio",
-        "dane": "Município DANE"
+        "dane": "Município DANE",
+        "saleHoy": "Sai hoje",
+        "saleEl": "Sai em {fecha}"
       }
     },
     "menu": {
@@ -65434,6 +65448,17 @@
       "vacio": {
         "titulo": "Nada a resolver",
         "descripcion": "Não há ocorrências nem envios parados. O que precisar de alguém aparece aqui."
+      }
+    },
+    "promesa": {
+      "minutos": "{n} min",
+      "horas": "{n, plural, one {# hora} other {# horas}}",
+      "dias": "{n, plural, one {# dia} other {# dias}}",
+      "hasta": "até {tiempo}",
+      "rango": {
+        "minutos": "{desde}–{hasta} min",
+        "horas": "{desde}–{hasta} horas",
+        "dias": "{desde}–{hasta} dias"
       }
     }
   }

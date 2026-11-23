@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { AvisoTonal, type AccionAviso } from '@/components/kit';
 import type { CotizacionEnvio } from '@/lib/logistica/cotizacion';
 import { estadoCotizacion, nombreZona, tarifaGeneralDe, textoTiempoCotizacion } from '@/lib/logistica/presentacionEnvio';
+import { useFormatoPromesa } from './useFormatoPromesa';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import type { EstadoPeticion } from './useCotizacionDomicilio';
 
@@ -29,6 +30,7 @@ export interface AvisoCotizacionDomicilioProps {
 
 export function AvisoCotizacionDomicilio({ estado, cotizacion, formatear, onCobrarTarifaGeneral, onUsarTransportadora, className }: AvisoCotizacionDomicilioProps) {
   const t = useTranslations('logistica.cotizar');
+  const formatoPromesa = useFormatoPromesa();
   if (estado === 'inactivo') return null;
   if (estado === 'cargando' && !cotizacion) {
     return (
@@ -44,7 +46,7 @@ export function AvisoCotizacionDomicilio({ estado, cotizacion, formatear, onCobr
   if (!cotizacion || !e || e === 'sin_zonas') return null;
 
   const zona = nombreZona(cotizacion) ?? '';
-  const tiempo = textoTiempoCotizacion(cotizacion);
+  const tiempo = textoTiempoCotizacion(cotizacion, formatoPromesa);
   const despacho = cotizacion.despacho && !cotizacion.despacho.hoy
     ? t('saleEl', { fecha: formatPlainDate(cotizacion.despacho.fecha, { weekday: 'short', day: 'numeric', month: 'short' }) })
     : null;

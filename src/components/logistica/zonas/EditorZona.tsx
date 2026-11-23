@@ -51,6 +51,7 @@ import {
 } from '@/lib/logistica/zonas';
 import { etiquetaUbicacion, normalizarTexto } from '@/lib/logistica/presentacionEnvio';
 import { normalizarAjustesLogistica } from '@/lib/logistica/ajustesLogistica';
+import { minutosDeValor, unidadDePromesa, valorEnUnidad, type UnidadPromesa } from '@/lib/logistica/cotizacion';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 
 interface Props {
@@ -100,6 +101,10 @@ export function EditorZona({ organizationId, zona, sedeInicial, onCerrar }: Prop
   const [ubicaciones, setUbicaciones] = useState<UbicacionLocal[]>(() =>
     (zona?.ubicaciones ?? []).map((u) => ({ ...u, id: u.id, clave: `db:${u.id}` })),
   );
+  // La promesa se guarda en minutos; se escribe en minutos, horas o días (un envío nacional es de días).
+  const [unidadPromesa, setUnidadPromesa] = useState<UnidadPromesa>(() =>
+    unidadDePromesa(zona?.promise_min_minutes, zona?.promise_max_minutes),
+  );
   const [tipo, setTipo] = useState<TipoEditable>('neighborhood');
   const [nuevo, setNuevo] = useState({ valor: '', municipio: '', etiqueta: '' });
   const [errorUbicacion, setErrorUbicacion] = useState<string | null>(null);
@@ -125,6 +130,17 @@ export function EditorZona({ organizationId, zona, sedeInicial, onCerrar }: Prop
   }, [zona]);
 
   const cambiar = <K extends keyof ZonaEnvioEntrada>(campo: K, valor: ZonaEnvioEntrada[K]) => setForm((f) => ({ ...f, [campo]: valor }));
+
+  const opcionesUnidad = (['minutos', 'horas', 'dias'] as const).map((v) => ({ valor: v, etiqueta: t(`unidades.${v}`) }));
+  // Cambiar la unidad conserva los números escritos: «3» en minutos pasa a «3» días.
+  const cambiarUnidad = (nueva: UnidadPromesa) => {
+    setForm((f) => ({
+      ...f,
+      promise_min_minutes: minutosDeValor(valorEnUnidad(f.promise_min_minutes, unidadPromesa), nueva),
+      promise_max_minutes: minutosDeValor(valorEnUnidad(f.promise_max_minutes, unidadPromesa), nueva),
+    }));
+    setUnidadPromesa(nueva);
+  };
 
   const opcionesTipo = TIPOS_EDITABLES.map((v) => ({ valor: v, etiqueta: t(`tipos.${v}`) }));
   const opcionesDias: OpcionChip<(typeof DIAS)[number]>[] = DIAS.map((d) => ({ valor: d, etiqueta: t(`dias.${d}`) }));
@@ -349,11 +365,28 @@ export function EditorZona({ organizationId, zona, sedeInicial, onCerrar }: Prop
               <FormField etiqueta={t('minimo')} error={errorDe('minimo_invalido')}>
                 <CampoNumero valor={form.min_order_amount ?? 0} onValorChange={(v) => cambiar('min_order_amount', v ?? 0)} minimo={0} decimales={0} />
               </FormField>
+              <div className="col-span-2">
+                <FormField etiqueta={t('unidadPromesa')} ayuda={t('unidadPromesaAyuda')}>
+                  <SegmentedControl opciones={opcionesUnidad} valor={unidadPromesa} onValorChange={cambiarUnidad} etiqueta={t('unidadPromesa')} anchoCompleto />
+                </FormField>
+              </div>
               <FormField etiqueta={t('tiempoMin')} error={errorDe('promesa_invalida')}>
-                <CampoNumero valor={form.promise_min_minutes} onValorChange={(v) => cambiar('promise_min_minutes', v)} minimo={0} decimales={0} sufijo="min" />
+                <CampoNumero
+                  valor={valorEnUnidad(form.promise_min_minutes, unidadPromesa)}
+                  onValorChange={(v) => cambiar('promise_min_minutes', minutosDeValor(v, unidadPromesa))}
+                  minimo={0}
+                  decimales={0}
+                  sufijo={t(`unidadesCortas.${unidadPromesa}`)}
+                />
               </FormField>
               <FormField etiqueta={t('tiempoMax')}>
-                <CampoNumero valor={form.promise_max_minutes} onValorChange={(v) => cambiar('promise_max_minutes', v)} minimo={0} decimales={0} sufijo="min" />
+                <CampoNumero
+                  valor={valorEnUnidad(form.promise_max_minutes, unidadPromesa)}
+                  onValorChange={(v) => cambiar('promise_max_minutes', minutosDeValor(v, unidadPromesa))}
+                  minimo={0}
+                  decimales={0}
+                  sufijo={t(`unidadesCortas.${unidadPromesa}`)}
+                />
               </FormField>
               <div className="col-span-2">
                 <FormField etiqueta={t('textoPromesa')} ayuda={t('textoPromesaAyuda')}>

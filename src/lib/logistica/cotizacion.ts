@@ -126,3 +126,84 @@ export function leerCotizacion(crudo: unknown): CotizacionEnvio {
 export function cotizacionPermiteDomicilio(c: CotizacionEnvio): boolean {
   return c.precio !== null && c.cumple_minimo && c.modo === 'own';
 }
+
+// ── Promesa de entrega: minutos, horas o días ───────────────────────────────────────────────────
+//
+// La zona guarda la promesa en minutos (`promise_min_minutes` / `promise_max_minutes`). Un domicilio
+// de restaurante promete «45–60 min»; un envío nacional, «3–15 días». La unidad se deduce del valor
+// más largo: desde 1 día se muestra en días y desde 2 horas en horas. Solo se dice «Llega hoy»
+// cuando la promesa es de menos de un día; con días u horas largas se dice «Sale hoy».
+
+export const MINUTOS_POR_HORA = 60;
+export const MINUTOS_POR_DIA = 1440;
+
+export type UnidadPromesa = 'minutos' | 'horas' | 'dias';
+
+export const MINUTOS_POR_UNIDAD: Record<UnidadPromesa, number> = {
+  minutos: 1,
+  horas: MINUTOS_POR_HORA,
+  dias: MINUTOS_POR_DIA,
+};
+
+export interface PromesaEntrega {
+  unidad: UnidadPromesa;
+  /** null = «hasta {hasta}». */
+  desde: number | null;
+  hasta: number | null;
+  /** Texto libre de la zona («Mismo día», «2 a 5 días hábiles»); manda sobre los números. */
+  texto: string | null;
+  /** ¿La entrega cabe en el mismo día del despacho? (promesa en minutos u horas, menos de 24 h). */
+  mismoDia: boolean;
+}
+
+const minutosValidos = (v: number | null | undefined): number | null =>
+  typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null;
+
+/** Unidad para mostrar o editar una promesa guardada en minutos. */
+export function unidadDePromesa(minMinutos: number | null | undefined, maxMinutos: number | null | undefined): UnidadPromesa {
+  const ref = minutosValidos(maxMinutos) ?? minutosValidos(minMinutos);
+  if (ref === null) return 'minutos';
+  if (ref >= MINUTOS_POR_DIA) return 'dias';
+  if (ref >= 2 * MINUTOS_POR_HORA) return 'horas';
+  return 'minutos';
+}
+
+/** Minutos guardados → valor en la unidad (redondeado; 0 cuenta como «sin desde»). */
+export function valorEnUnidad(minutos: number | null | undefined, unidad: UnidadPromesa): number | null {
+  const m = minutosValidos(minutos);
+  if (m === null) return null;
+  return Math.round(m / MINUTOS_POR_UNIDAD[unidad]);
+}
+
+/** Valor escrito en una unidad → minutos para guardar. */
+export function minutosDeValor(valor: number | null | undefined, unidad: UnidadPromesa): number | null {
+  const v = minutosValidos(valor);
+  return v === null ? null : Math.round(v * MINUTOS_POR_UNIDAD[unidad]);
+}
+
+/** Promesa lista para mostrar, o null si la zona no promete nada. */
+export function promesaEntrega(
+  t: { min_minutos: number | null; max_minutos: number | null; texto: string | null } | null | undefined,
+): PromesaEntrega | null {
+  if (!t) return null;
+  const texto = (t.texto ?? '').trim() || null;
+  const min = minutosValidos(t.min_minutos);
+  const max = minutosValidos(t.max_minutos);
+  if (min === null && max === null && !texto) return null;
+  const unidad = unidadDePromesa(min, max);
+  let desde = valorEnUnidad(min, unidad);
+  let hasta = valorEnUnidad(max, unidad);
+  if (hasta === null) {
+    hasta = desde;
+    desde = null;
+  }
+  if (desde !== null && desde <= 0) desde = null;
+  const ref = max ?? min;
+  return { unidad, desde, hasta, texto, mismoDia: ref !== null && ref < MINUTOS_POR_DIA };
+}
+
+/** ¿Se puede decir «Llega hoy»? Despacha hoy y la promesa es de menos de un día. */
+export function llegaHoy(c: Pick<CotizacionEnvio, 'tiempo' | 'despacho'> | null | undefined): boolean {
+  if (!c?.despacho?.hoy) return false;
+  return promesaEntrega(c.tiempo)?.mismoDia === true;
+}

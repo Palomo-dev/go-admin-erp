@@ -6,34 +6,48 @@
  * salen siempre de `logistica_cotizar_envio` (cotizacion.ts / cotizacionEnvioService). Aquí solo se
  * decide qué se muestra con lo que devolvió el servidor y cómo se busca el peso de un ítem.
  */
-import type { CotizacionEnvio } from './cotizacion';
+import { promesaEntrega, type CotizacionEnvio, type PromesaEntrega } from './cotizacion';
 import type { UbicacionZona, ZonaEnvio, TipoUbicacion } from './zonas';
 
 // ── Promesa y cobertura de una zona ─────────────────────────────────────────────────────────────
 
-/** «30–45 min», «60 min», el texto libre de la zona o null. */
+/** Cómo se escribe una promesa ya resuelta (sin texto libre). La pantalla pasa uno traducido. */
+export type FormatoPromesa = (p: PromesaEntrega & { hasta: number }) => string;
+
+/** Formato en español: «45–60 min», «2–4 horas», «3–15 días», «hasta 15 días». */
+export const formatoPromesaEs: FormatoPromesa = (p) => {
+  const palabra = (n: number) =>
+    p.unidad === 'minutos' ? 'min' : p.unidad === 'horas' ? (n === 1 ? 'hora' : 'horas') : n === 1 ? 'día' : 'días';
+  if (p.desde === null) return `${p.unidad === 'minutos' ? '' : 'hasta '}${p.hasta} ${palabra(p.hasta)}`;
+  if (p.desde === p.hasta) return `${p.hasta} ${palabra(p.hasta)}`;
+  return `${p.desde}–${p.hasta} ${palabra(p.hasta)}`;
+};
+
+/**
+ * «30–45 min», «2–4 horas», «3–15 días», el texto libre de la zona o null. La unidad la decide
+ * `promesaEntrega` (contrato compartido con la tienda): un envío nacional no se muestra en minutos.
+ */
 export function textoPromesa(
   z: Pick<ZonaEnvio, 'promise_min_minutes' | 'promise_max_minutes' | 'promise_text'> | null | undefined,
+  formato: FormatoPromesa = formatoPromesaEs,
 ): string | null {
   if (!z) return null;
-  const texto = (z.promise_text ?? '').trim();
-  if (texto) return texto;
-  const min = z.promise_min_minutes;
-  const max = z.promise_max_minutes;
-  if (min != null && max != null) return min === max ? `${min} min` : `${min}–${max} min`;
-  if (max != null) return `${max} min`;
-  if (min != null) return `${min} min`;
-  return null;
+  const p = promesaEntrega({ min_minutos: z.promise_min_minutes, max_minutos: z.promise_max_minutes, texto: z.promise_text });
+  if (!p) return null;
+  if (p.texto) return p.texto;
+  return p.hasta === null ? null : formato({ ...p, hasta: p.hasta });
 }
 
 /** Igual que `textoPromesa`, con el `tiempo` de una cotización. */
-export function textoTiempoCotizacion(c: Pick<CotizacionEnvio, 'tiempo'> | null | undefined): string | null {
+export function textoTiempoCotizacion(
+  c: Pick<CotizacionEnvio, 'tiempo'> | null | undefined,
+  formato: FormatoPromesa = formatoPromesaEs,
+): string | null {
   if (!c?.tiempo) return null;
-  return textoPromesa({
-    promise_min_minutes: c.tiempo.min_minutos,
-    promise_max_minutes: c.tiempo.max_minutos,
-    promise_text: c.tiempo.texto,
-  });
+  return textoPromesa(
+    { promise_min_minutes: c.tiempo.min_minutos, promise_max_minutes: c.tiempo.max_minutos, promise_text: c.tiempo.texto },
+    formato,
+  );
 }
 
 export interface GrupoCobertura {

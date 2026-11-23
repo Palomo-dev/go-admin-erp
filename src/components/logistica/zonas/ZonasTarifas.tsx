@@ -36,6 +36,7 @@ import {
   type ZonaConUbicaciones,
 } from '@/lib/services/logistica/zonasEnvioService';
 import { resumenCobertura, textoPromesa, zonaCoincideBusqueda } from '@/lib/logistica/presentacionEnvio';
+import { useFormatoPromesa } from '@/components/logistica/cotizar/useFormatoPromesa';
 import type { ZonaEnvioEntrada } from '@/lib/logistica/zonas';
 import { CabeceraZonas } from './CabeceraZonas';
 import { AvisoPesoProductos } from '@/components/logistica/peso/AvisoPesoProductos';
@@ -59,6 +60,7 @@ function horaCorte(hora: string | null, locale: string): string | null {
 
 export function ZonasTarifas({ organizationId }: Props) {
   const t = useTranslations('logistica.zonas');
+  const formatoPromesa = useFormatoPromesa();
   const { toast } = useToast();
   const { formatear, locale } = useMonedaOrganizacion();
   const { branchFilter, branches } = useBranch();
@@ -222,7 +224,7 @@ export function ZonasTarifas({ organizationId }: Props) {
       },
     },
     { id: 'tarifa', encabezado: t('columnas.tarifa'), variante: 'importe', celda: (z) => formatear(z.fee) },
-    { id: 'tiempo', encabezado: t('columnas.tiempo'), ocultarDebajo: 'lg', celda: (z) => textoPromesa(z) ?? '—' },
+    { id: 'tiempo', encabezado: t('columnas.tiempo'), ocultarDebajo: 'lg', celda: (z) => textoPromesa(z, formatoPromesa) ?? '—' },
     { id: 'minimo', encabezado: t('columnas.minimo'), variante: 'importe', ocultarDebajo: 'lg', celda: (z) => (Number(z.min_order_amount) > 0 ? formatear(z.min_order_amount) : '—') },
     { id: 'gratis', encabezado: t('columnas.gratis'), ocultarDebajo: 'xl', celda: gratisTexto },
     { id: 'corte', encabezado: t('columnas.corte'), ocultarDebajo: 'xl', celda: (z) => horaCorte(z.cutoff_time, locale) ?? '—' },
@@ -327,7 +329,7 @@ export function ZonasTarifas({ organizationId }: Props) {
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="font-medium text-fg">{z.name}</span>
-              <span className="text-xs text-fg-secondary">{[textoCobertura(z).titulo, textoPromesa(z)].filter(Boolean).join(' · ')}</span>
+              <span className="text-xs text-fg-secondary">{[textoCobertura(z).titulo, textoPromesa(z, formatoPromesa)].filter(Boolean).join(' · ')}</span>
               {z.free_shipping_from != null && <span className="text-xs text-fg-muted">{t('kpi.gratisValor', { valor: formatear(z.free_shipping_from) })}</span>}
             </div>
             <span className="text-sm font-semibold tabular-nums text-fg">{formatear(z.fee)}</span>

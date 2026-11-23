@@ -92,6 +92,7 @@ import { PropinaFormDialog, type ModoFormularioPropina } from './PropinaFormDial
 import { PropinasService } from './propinasService';
 import { useEtiquetasPropinas, useFormatoPropinas } from './formatoPropinas';
 import type { Mesero } from './types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA = '/app/pos/propinas';
 const PESTANAS = ['por_liquidar', 'liquidaciones', 'anuladas', 'todas'] as const;
@@ -113,6 +114,7 @@ function nuevaSolicitud(): string {
  */
 export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
   const t = useTranslations('posPropinas');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const f = useFormatoPropinas();
   const etiqueta = useEtiquetasPropinas();
@@ -613,7 +615,7 @@ export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
         subtitulo={subtitulo}
         icono={HandCoins}
         cargando={cargando}
-        migas={embedded ? undefined : [{ etiqueta: t('pagina.migaPos'), href: '/app/pos' }, { etiqueta: t('pagina.titulo') }]}
+        migas={embedded ? undefined : [migaVentas, { etiqueta: t('pagina.titulo') }]}
         acciones={
           <>
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('pagina.actualizar')} title={t('pagina.actualizar')}>

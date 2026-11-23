@@ -14,6 +14,7 @@ import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz, toPlainDate } from '@/lib/utils/dateCore';
 import { mesaCortaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface OrderHeaderProps {
   order: WebOrder;
@@ -51,6 +52,7 @@ export function OrderHeader({
 }: OrderHeaderProps) {
   const router = useRouter();
   const t = useTranslations('pedidoWeb');
+  const migaVentas = useMigaVentas();
   const locale = useLocaleIntl();
   const { timezone } = useFormatDate(order.branch_id);
   const { formatear } = useMonedaOrganizacion();
@@ -97,7 +99,7 @@ export function OrderHeader({
         badge={<StatusBadge status={order.status} size="lg" />}
         icono={ShoppingBag}
         migas={[
-          { etiqueta: 'POS', href: '/app/pos' },
+          migaVentas,
           { etiqueta: t('ficha.pedidosOnline'), href: '/app/pos/pedidos-online' },
           { etiqueta: order.order_number },
         ]}

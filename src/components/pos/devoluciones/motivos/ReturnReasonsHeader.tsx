@@ -11,6 +11,7 @@ import { ClipboardList, Download, Plus, RefreshCw, Upload } from 'lucide-react';
 import { ListToolbar, PageHeader, RowActionsMenu, SearchInput, SegmentedControl } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { ReturnReasonFilters } from '../types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface ReturnReasonsHeaderProps {
   filters: ReturnReasonFilters;
@@ -39,6 +40,7 @@ export function ReturnReasonsHeader({
 }: ReturnReasonsHeaderProps) {
   const t = useTranslations('posDevoluciones.motivos.encabezado');
   const tPagina = useTranslations('posDevoluciones.pagina');
+  const migaVentas = useMigaVentas();
 
   const handleSearchChange = (value: string) => {
     onFiltersChange({ ...filters, search: value });
@@ -58,7 +60,7 @@ export function ReturnReasonsHeader({
         subtitulo={t('subtituloConteo', { total: totalReasons, activos: activeReasons })}
         icono={ClipboardList}
         migas={[
-          { etiqueta: tPagina('migas.pos'), href: '/app/pos' },
+          migaVentas,
           { etiqueta: tPagina('migas.devoluciones'), href: '/app/pos/devoluciones' },
           { etiqueta: t('titulo') },
         ]}

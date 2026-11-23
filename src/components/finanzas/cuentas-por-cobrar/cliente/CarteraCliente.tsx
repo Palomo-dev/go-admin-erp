@@ -36,6 +36,7 @@ import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPag
 import { BandaAntiguedad } from '@/components/kit';
 import { EstadoCuentaDialog } from '@/components/finanzas/cartera/EstadoCuentaDialog';
 import { rutasCartera } from '../listado/ListadoCartera';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface Cabecera {
   cliente: { id: string; nombre: string | null; documento: string | null; email: string | null; telefono: string | null };
@@ -44,6 +45,7 @@ interface Cabecera {
 
 export function CarteraCliente({ customerId, origen }: { customerId: string; origen: 'finanzas' | 'pos' }) {
   const t = useTranslations('cartera');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const entero = useFormatoEntero();
   const permisos = usePermisosFinanzas();
@@ -175,7 +177,7 @@ export function CarteraCliente({ customerId, origen }: { customerId: string; ori
         cargando={cargando}
         migas={
           enPos
-            ? [{ etiqueta: t('migas.pos'), href: '/app/pos' }, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: t('cliente.titulo') }]
+            ? [migaVentas, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: t('cliente.titulo') }]
             : [{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: t('cliente.titulo') }]
         }
         movil={{ accionesEnFila: true }}

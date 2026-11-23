@@ -61,6 +61,7 @@ import { BadgeEstadoDevolucion } from './BadgeEstadoDevolucion';
 import { EnlaceFichaProducto } from '@/components/inventario/productos/EnlaceFichaProducto';
 import { enlaceLineaProducto } from '@/lib/inventario/enlaceProducto';
 import { AnularDevolucionDialog } from './AnularDevolucionDialog';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA = '/app/pos/devoluciones';
 
@@ -69,6 +70,7 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
   const tl = useTranslations('posDevoluciones.listado');
   const tVentas = useTranslations('posVentas.estados');
   const ta = useTranslations('posDevolucionesAnular');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const params = useSearchParams();
   const [anular, setAnular] = useState(false);
@@ -114,7 +116,7 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
   const hora = (v: string | null) => (v ? formatDateTimeInTz(v, timezone, { locale, hour: '2-digit', minute: '2-digit' }) : '');
   const cantidad = (v: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(v);
   const migas = [
-    { etiqueta: tl('migas.pos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: tl('migas.devoluciones'), href: RUTA },
     { etiqueta: dev?.numero ?? '…' },
   ];

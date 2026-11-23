@@ -397,7 +397,7 @@
     "modules": {
       "finance": "Finances",
       "inventory": "Inventaire",
-      "pos": "PDV",
+      "pos": "Ventes",
       "crm": "CRM",
       "pmsHotel": "PMS Hôtel",
       "parking": "Parking",
@@ -16196,7 +16196,7 @@
       "pendiente_pago": "Paiement en attente"
     },
     "listado": {
-      "titulo": "Historique des ventes",
+      "titulo": "Toutes les ventes",
       "subtitulo": "{count, plural, one {{n} vente} other {{n} ventes}}",
       "migas": {
         "pos": "Point de vente",
@@ -27369,7 +27369,7 @@
         "operations": "Opérations",
         "organizations": "Organisations",
         "pms": "Hôtel (PMS)",
-        "pos": "Point de vente",
+        "pos": "Ventes",
         "reports": "Rapports",
         "roles": "Rôles",
         "sales": "Ventes",
@@ -38317,7 +38317,7 @@
       "operations": "Opérations",
       "organizations": "Organisations",
       "pms": "Hôtel (PMS)",
-      "pos": "Point de vente",
+      "pos": "Ventes",
       "reports": "Rapports",
       "roles": "Rôles et autorisations",
       "sales": "Ventes",
@@ -38449,7 +38449,7 @@
       "porCobrar": "À encaisser en caisse",
       "reservaActiva": "Réservation de stock active",
       "volver": "Retour",
-      "verVenta": "Voir la vente POS",
+      "verVenta": "Voir la vente",
       "canales": {
         "website": "Web",
         "mobile_app": "App",
@@ -38479,7 +38479,7 @@
     },
     "documentos": {
       "titulo": "Documents et traçabilité",
-      "venta": "Vente POS",
+      "venta": "Vente",
       "factura": "Facture de vente",
       "comanda": "Ticket cuisine",
       "origen": "Origine",
@@ -40555,7 +40555,7 @@
       "crm": "CRM",
       "hrm": "Ressources humaines",
       "pms": "PMS Hôtel",
-      "pos": "Caisse",
+      "pos": "Ventes",
       "chat": "Chat",
       "integraciones": "Intégrations",
       "parking": "Parking",
@@ -53708,7 +53708,7 @@
       "roles": "Équipe et rôles",
       "plan": "Forfait et facturation",
       "asistente": "GO Assistant",
-      "pos": "Point de vente",
+      "pos": "Ventes",
       "facturacion": "Facturation électronique",
       "sitioweb": "Site web",
       "crm": "CRM",

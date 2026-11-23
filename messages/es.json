@@ -397,7 +397,7 @@
     "modules": {
       "finance": "Finanzas",
       "inventory": "Inventario",
-      "pos": "POS",
+      "pos": "Ventas",
       "crm": "CRM",
       "pmsHotel": "PMS Hotel",
       "parking": "Parking",
@@ -20845,7 +20845,7 @@
       "pendiente_pago": "Pendiente de pago"
     },
     "listado": {
-      "titulo": "Historial de ventas",
+      "titulo": "Todas las ventas",
       "subtitulo": "{count, plural, one {{n} venta} other {{n} ventas}}",
       "migas": {
         "pos": "Punto de venta",
@@ -32018,7 +32018,7 @@
         "operations": "Operaciones",
         "organizations": "Organizaciones",
         "pms": "Hotel (PMS)",
-        "pos": "Punto de venta",
+        "pos": "Ventas",
         "reports": "Reportes",
         "roles": "Roles",
         "sales": "Ventas",
@@ -38315,7 +38315,7 @@
       "operations": "Operaciones",
       "organizations": "Organizaciones",
       "pms": "Hotel (PMS)",
-      "pos": "Punto de venta",
+      "pos": "Ventas",
       "reports": "Reportes",
       "roles": "Roles y permisos",
       "sales": "Ventas",
@@ -38447,7 +38447,7 @@
       "porCobrar": "Por cobrar en caja",
       "reservaActiva": "Reserva de stock activa",
       "volver": "Volver",
-      "verVenta": "Ver venta POS",
+      "verVenta": "Ver venta",
       "canales": {
         "website": "Web",
         "mobile_app": "App",
@@ -38477,7 +38477,7 @@
     },
     "documentos": {
       "titulo": "Documentos y trazabilidad",
-      "venta": "Venta POS",
+      "venta": "Venta",
       "factura": "Factura de venta",
       "comanda": "Comanda de cocina",
       "origen": "Origen",
@@ -38496,7 +38496,7 @@
       "seCobraEnCaja": "Se cobra en la caja de la sede al entregar: {caja}.",
       "reenviarAviso": "Reenviar aviso al cliente",
       "cancelarPedido": "Cancelar pedido…",
-      "pedidosOnline": "Pedidos Online",
+      "pedidosOnline": "Pedidos online",
       "hoyFecha": "hoy, {fecha}",
       "programadoPara": "Para: {fecha}",
       "imprimirComanda": "Imprimir comanda",
@@ -39976,7 +39976,7 @@
     }
   },
   "pedidosOnlineListado": {
-    "titulo": "Pedidos Online",
+    "titulo": "Pedidos online",
     "subtitulo": "{total, plural, one {# pedido} other {# pedidos}} en el periodo · {pendientes} pendientes de confirmar",
     "subtituloMovil": "{total} pedidos · {pendientes} sin confirmar",
     "cargando": "Cargando pedidos…",
@@ -40553,7 +40553,7 @@
       "crm": "CRM",
       "hrm": "Recursos humanos",
       "pms": "PMS Hotel",
-      "pos": "POS",
+      "pos": "Ventas",
       "chat": "Chat",
       "integraciones": "Integraciones",
       "parking": "Parking",
@@ -53706,7 +53706,7 @@
       "roles": "Equipo y roles",
       "plan": "Plan y facturación",
       "asistente": "GO Asistente",
-      "pos": "Punto de venta",
+      "pos": "Ventas",
       "facturacion": "Facturación electrónica",
       "sitioweb": "Sitio web",
       "crm": "CRM",

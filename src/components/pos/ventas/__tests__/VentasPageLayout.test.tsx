@@ -142,10 +142,10 @@ describe('VentasPage · layout de Figma', () => {
 });
 
 describe('VentasPage · cierre del Figma (2026-11-20)', () => {
-  it('cabecera: «Historial de ventas», N ventas encontradas · periodo · sucursal y «Exportar» visible', async () => {
+  it('cabecera: «Todas las ventas», N ventas encontradas · periodo · sucursal y «Exportar» visible', async () => {
     params = new URLSearchParams();
     renderConIdioma(<VentasPage />);
-    expect(await screen.findByRole('heading', { name: 'Historial de ventas' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Todas las ventas' })).toBeTruthy();
     expect(await screen.findAllByText(/1 venta encontrada · 1 al 28 de septiembre de 2026 · Sucursal Principal/)).not.toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Exportar' })).toBeTruthy();
   });

@@ -397,7 +397,7 @@
     "modules": {
       "finance": "Finance",
       "inventory": "Inventory",
-      "pos": "POS",
+      "pos": "Sales",
       "crm": "CRM",
       "pmsHotel": "PMS Hotel",
       "parking": "Parking",
@@ -20844,7 +20844,7 @@
       "pendiente_pago": "Payment pending"
     },
     "listado": {
-      "titulo": "Sales history",
+      "titulo": "All sales",
       "subtitulo": "{count, plural, one {{n} sale} other {{n} sales}}",
       "migas": {
         "pos": "Point of sale",
@@ -32017,7 +32017,7 @@
         "operations": "Operations",
         "organizations": "Organizations",
         "pms": "Hotel (PMS)",
-        "pos": "Point of sale",
+        "pos": "Sales",
         "reports": "Reports",
         "roles": "Roles",
         "sales": "Sales",
@@ -38317,7 +38317,7 @@
       "operations": "Operations",
       "organizations": "Organizations",
       "pms": "Hotel (PMS)",
-      "pos": "Point of sale",
+      "pos": "Sales",
       "reports": "Reports",
       "roles": "Roles and permissions",
       "sales": "Sales",
@@ -38449,7 +38449,7 @@
       "porCobrar": "To be charged at the register",
       "reservaActiva": "Stock reservation active",
       "volver": "Back",
-      "verVenta": "View POS sale",
+      "verVenta": "View sale",
       "canales": {
         "website": "Web",
         "mobile_app": "App",
@@ -38479,7 +38479,7 @@
     },
     "documentos": {
       "titulo": "Documents and traceability",
-      "venta": "POS sale",
+      "venta": "Sale",
       "factura": "Sales invoice",
       "comanda": "Kitchen ticket",
       "origen": "Source",
@@ -40555,7 +40555,7 @@
       "crm": "CRM",
       "hrm": "Human resources",
       "pms": "Hotel PMS",
-      "pos": "POS",
+      "pos": "Sales",
       "chat": "Chat",
       "integraciones": "Integrations",
       "parking": "Parking",
@@ -53708,7 +53708,7 @@
       "roles": "Team and roles",
       "plan": "Plan and billing",
       "asistente": "GO Assistant",
-      "pos": "Point of sale",
+      "pos": "Sales",
       "facturacion": "Electronic invoicing",
       "sitioweb": "Website",
       "crm": "CRM",

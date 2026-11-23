@@ -15,6 +15,7 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { DialogoReconstruirPedido, type PrecargaReconstruir } from '@/components/pos/pedidos-online/manual/DialogoReconstruirPedido';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface Pago {
   cobro: { transaccionId: string; referencia: string | null; montoCentavos: number | null; fecha: string | null; metodo: string | null };
@@ -25,6 +26,7 @@ interface Pago {
 
 export default function PagosSinPedidoPage() {
   const t = useTranslations('pedidosManuales.sinPedido');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -61,7 +63,7 @@ export default function PagosSinPedidoPage() {
         subtitulo={t('subtitulo')}
         icono={CircleDollarSign}
         cargando={cargando}
-        migas={[{ etiqueta: 'POS', href: '/app/pos' }, { etiqueta: t('pedidosOnline'), href: '/app/pos/pedidos-online' }, { etiqueta: t('titulo') }]}
+        migas={[migaVentas, { etiqueta: t('pedidosOnline'), href: '/app/pos/pedidos-online' }, { etiqueta: t('titulo') }]}
         acciones={
           <button type="button" onClick={() => void cargar()} disabled={cargando} aria-label={t('actualizar')} title={t('actualizar')} className={clasesBoton({ variante: 'secundario', tamano: 'md', className: 'w-10 px-0' })}>
             <RefreshCw aria-hidden="true" className={cargando ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />

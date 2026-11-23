@@ -26,6 +26,8 @@ export function AvisosClientePage({
   incrustado = false,
 }: { inicial?: { ajustes: AjustesAvisos; puedeEditar: boolean; disponible: boolean }; incrustado?: boolean } = {}) {
   const t = useTranslations('posAvisosCliente');
+  // Configuración › Ventas (el módulo del POS se llama «Ventas», Figma 24).
+  const tNav = useTranslations('nav');
   const { toast } = useToast();
   const [ajustes, setAjustes] = React.useState<AjustesAvisos | null>(inicial?.ajustes ?? null);
   const [puedeEditar, setPuedeEditar] = React.useState(inicial?.puedeEditar ?? false);
@@ -89,7 +91,7 @@ export function AvisosClientePage({
           subtitulo={t('subtitulo')}
           icono={Settings}
           cargando={!ajustes && !error}
-          migas={[{ etiqueta: t('migaConfiguracion'), href: '/app/configuracion' }, { etiqueta: 'POS', href: '/app/configuracion?modulo=pos' }]}
+          migas={[{ etiqueta: t('migaConfiguracion'), href: '/app/configuracion' }, { etiqueta: tNav('ventas'), href: '/app/configuracion?modulo=pos' }]}
           acciones={botonGuardar}
         />
       )}

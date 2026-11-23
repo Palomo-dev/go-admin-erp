@@ -33,6 +33,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 function textoPlano(valor: string): string {
   return valor.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
@@ -46,6 +47,7 @@ export default function PromocionDetallePage() {
   const puedeGestionar = usePuedeGestionarPromociones(organization?.id);
   const { formatear } = useMonedaOrganizacion();
   const t = useTranslations('posPromociones');
+  const migaVentas = useMigaVentas();
   const locale = useLocale();
   const diasSemana = diasDelIdioma(locale);
   const { timezone } = useOrgTimezone();
@@ -192,7 +194,7 @@ export default function PromocionDetallePage() {
             subtitulo={t('detalle.editar')}
             volverA={`/app/pos/promociones/${promotionId}`}
             migas={[
-              { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+              migaVentas,
               { etiqueta: t('pantalla.titulo'), href: '/app/pos/promociones' },
               { etiqueta: promotion.name, href: `/app/pos/promociones/${promotionId}` },
               { etiqueta: t('detalle.editar') },
@@ -281,7 +283,7 @@ export default function PromocionDetallePage() {
           badge={<StatusBadge estado={estadoDePromocion(promotion, new Date(), timezone)} tamano="md" />}
           volverA="/app/pos/promociones"
           migas={[
-            { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+            migaVentas,
             { etiqueta: t('pantalla.titulo'), href: '/app/pos/promociones' },
             { etiqueta: promotion.name },
           ]}

@@ -3,7 +3,7 @@ import {
   Briefcase,
   Users,
   Bed,
-  ShoppingCart,
+  Receipt,
   MessageSquare,
   Link as LinkIcon,
   Car,
@@ -66,9 +66,10 @@ export const CONFIG_MODULES: ConfigModule[] = [
   {
     id: 'pos',
     moduleCode: 'pos',
-    title: 'POS',
-    description: 'Punto de venta, impresiones y consecutivos',
-    icon: ShoppingCart,
+    // Módulo «Ventas» desde el 2026-11-23 (Figma 24); dentro conserva la sección «POS».
+    title: 'Ventas',
+    description: 'POS, impresiones y consecutivos',
+    icon: Receipt,
     grupo: 'ventas',
   },
   {

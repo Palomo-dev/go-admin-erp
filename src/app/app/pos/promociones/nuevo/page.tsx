@@ -5,9 +5,11 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { PageHeader } from '@/components/kit/PageHeader';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 export default function NuevaPromocionPage() {
   const t = useTranslations('posPromociones');
+  const migaVentas = useMigaVentas();
   const { isLoading: orgLoading } = useOrganization();
 
   if (orgLoading) {
@@ -27,7 +29,7 @@ export default function NuevaPromocionPage() {
           titulo={t('pantalla.nueva')}
           volverA="/app/pos/promociones"
           migas={[
-            { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+            migaVentas,
             { etiqueta: t('pantalla.titulo'), href: '/app/pos/promociones' },
             { etiqueta: t('pantalla.nueva') },
           ]}

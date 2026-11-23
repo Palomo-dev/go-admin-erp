@@ -83,6 +83,7 @@ import { useFechaHoraCaja, useMetodosPagoActivos } from '@/components/pos/cajas/
 import { useEtiquetaMetodoPago } from '@/components/pos/cajas/paymentMethodLabels';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { AnularVentaDialog } from './AnularVentaDialog';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA = '/app/pos/ventas';
 const FILTROS = ['origen', 'estado', 'pago', 'metodo', 'cliente', 'cajero', 'desde', 'hasta', 'min', 'max', 'saldo', 'devolucion', 'sync'] as const;
@@ -93,6 +94,7 @@ const TODAS = 'all' as const;
 
 export function VentasPage() {
   const t = useTranslations('posVentas');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const entero = useFormatoEntero();
   const moneda = useMonedaOrganizacion();
@@ -528,7 +530,7 @@ export function VentasPage() {
         subtitulo={subtitulo}
         icono={Receipt}
         cargando={cargando}
-        migas={[{ etiqueta: t('listado.migas.pos'), href: '/app/pos' }, { etiqueta: t('listado.migas.ventas') }]}
+        migas={[migaVentas, { etiqueta: t('listado.migas.ventas') }]}
         acciones={
           <>
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('listado.actualizar')} title={t('listado.actualizar')}>

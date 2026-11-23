@@ -20,6 +20,7 @@ import { FilterChips, type ChipFiltro } from '@/components/kit/FilterChips';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { cn } from '@/utils/Utils';
 import { PromotionFilters, PROMOTION_TYPE_LABELS, type PromotionType } from './types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface PromotionsHeaderProps {
   filters: PromotionFilters;
@@ -49,6 +50,7 @@ export function PromotionsHeader({
   puedeGestionar = true,
 }: PromotionsHeaderProps) {
   const t = useTranslations('posPromociones');
+  const migaVentas = useMigaVentas();
 
   const handleSearchChange = (value: string) => {
     onFiltersChange({ ...filters, search: value });
@@ -102,7 +104,7 @@ export function PromotionsHeader({
         }
         icono={Tag}
         migas={[
-          { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
+          migaVentas,
           { etiqueta: t('pantalla.titulo') },
         ]}
         acciones={

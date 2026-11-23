@@ -4621,7 +4621,8 @@
       "logistica_direcciones-clientes": "Adresses des clients",
       "logistica_zonas": "Zones et tarifs",
       "logistica_reglas": "Règles d’expédition",
-      "transporte_flota": "Flotte"
+      "transporte_flota": "Flotte",
+      "finanzas_tesoreria_procesadores-pago": "Processeurs de paiement"
     },
     "grupos": {
       "venta": "Vente",

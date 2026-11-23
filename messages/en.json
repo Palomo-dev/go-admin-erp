@@ -4624,7 +4624,8 @@
       "logistica_direcciones-clientes": "Customer addresses",
       "logistica_zonas": "Zones and rates",
       "logistica_reglas": "Dispatch rules",
-      "transporte_flota": "Fleet"
+      "transporte_flota": "Fleet",
+      "finanzas_tesoreria_procesadores-pago": "Payment processors"
     },
     "grupos": {
       "venta": "Sales",

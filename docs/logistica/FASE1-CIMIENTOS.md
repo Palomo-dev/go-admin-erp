@@ -333,10 +333,17 @@ dispara el envío con `avisosClienteService` y el enlace de `urlRastreo`.
    el flete del navegador. Y usar `logistica_rastreo_publico` en `/pedido/<n>`.
 7. **POS**: `CheckoutDialog` aún calcula el flete con `shipping_rates` (0 filas): pasar a
    `cotizarEnvio` y mandar barrio/municipio en `deliveryInfo`.
-8. **Permisos**: no existen códigos de logística en `permissions`. Hoy: zonas y reglas =
-   `organization_settings`; cuadres = `pos.create`; ver código de entrega = administradores.
-   Si el dueño quiere roles finos (`logistica.despachar`, `logistica.cuadres`), se crean y se
-   cambian las guardas.
+8. **Permisos (hecho 2026-11-23, migraciones 20261123195500 y 20261123200500)**: Despachador y
+   Domiciliario son **cargos**, no roles; el rol de esas personas sigue siendo «Empleado» (decisión
+   del dueño). Permisos `logistica.view`, `logistica.manage` y `logistica.deliver`, asignados al
+   cargo (`job_position_permissions`; el cargo manda sobre el rol).
+   - `fn_logistica_gestiona` = `logistica.manage` (antes `pos.create`): domiciliarios, asignar y
+     ver todo. Administradores, super admin y `admin.full_access` siguen pudiendo.
+   - Cuadres: `pos.create` **o** `logistica.manage` (suma, no quita).
+   - Los cargos se crean en «Operaciones» al activar el módulo (`fn_logistica_crear_cargos`,
+     trigger en `organization_modules`). El Domiciliario solo ve Logística › Mis envíos.
+   - Zonas y reglas siguen en `organization_settings`; ver código de entrega =
+     `logistica.codigo_entrega.ver` o administradores.
 
 ### WhatsApp: por qué fallan los avisos (diagnóstico, sin arreglar canales)
 
@@ -370,8 +377,8 @@ Tres migraciones más, con su reversión en `supabase/rollbacks/`:
   servidor lee las rutas de la base con la sesión y firma solo las de `{organización}/{envío}/`
   (`src/lib/logistica/evidencias.ts`), enlaces de 5 minutos. El rastreo público no muestra fotos.
 - **«Ve todo»** = miembro activo que no es domiciliario en la organización, o que lo es pero tiene
-  `fn_logistica_gestiona`. Si se crean códigos `logistica.*` (TODO 8), se cambia solo esa función;
-  la ruta de domiciliarios ya la consulta (`permisosDomiciliarios.server.ts`).
+  `fn_logistica_gestiona` (= `logistica.manage`, TODO 8); la ruta de domiciliarios la consulta
+  (`permisosDomiciliarios.server.ts`).
 - **Seguimiento**: «sin movimiento» usa `horasSinMovimiento()` con los ajustes de la organización
   (por defecto 2 h propio, 24 h transportadora), ya no 24 h fijas.
 - **Aviso «novedad»**: `avisarCliente(envio, 'novedad')` manda `{ momento: 'novedad' }` a

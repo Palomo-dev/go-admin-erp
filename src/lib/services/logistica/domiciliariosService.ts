@@ -4,7 +4,7 @@
  * Recibe el cliente Supabase (navegador para leer; la sesión del servidor para escribir, desde
  * `/api/logistica/domiciliarios`). RLS (migración 20261123165617): leer, quien ve todo en la
  * organización (un domiciliario sin permiso solo ve su fila); escribir, solo con
- * `fn_logistica_gestiona` (= `fn_caja_puede` 'pos.create', el mismo permiso que revisa la ruta).
+ * `fn_logistica_gestiona` (= `fn_caja_puede` 'logistica.manage', el mismo permiso que revisa la ruta).
  * Filtra siempre por organización además de la política.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';

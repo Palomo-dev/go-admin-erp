@@ -4,7 +4,7 @@
  *
  * - La organización sale de la sesión (`withOrg`); un body con otra organización responde 403
  *   (`readOrgBody`) y se registra.
- * - Permiso resuelto aquí (`puedeGestionarDomiciliarios`: fn_caja_puede 'pos.create'), nunca en
+ * - Permiso resuelto aquí (`puedeGestionarDomiciliarios`: fn_caja_puede 'logistica.manage'), nunca en
  *   el navegador.
  * - Escribe con el cliente de la SESIÓN (RLS de miembro activo) y comprueba que la sede, el empleo
  *   o el usuario elegidos sean de la organización antes de escribir (`crearDomiciliario`).

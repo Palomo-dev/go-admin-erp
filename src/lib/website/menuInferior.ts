@@ -6,8 +6,14 @@
  * (nada cambia sin una edición). `menuInicial` lee lo guardado de cada plantilla como sus botones
  * iniciales: el editor los muestra y solo escribe la versión 2 cuando alguien toca algo.
  *
- * Puro, sin imports: el ERP guarda una copia idéntica (scripts/verify-copias-erp.mjs).
+ * Puro: solo importa `./v2/glifosTienda` (otra copia idéntica). El ERP guarda una copia idéntica
+ * (scripts/verify-copias-erp.mjs).
+ *
+ * 2026-11-23 (Figma 2852:70951, propuesta 8 «Íconos con más estilos»): `items[].icon` admite
+ * además `{ set: 'phosphor', name, weight? }` (se lee en `glyph`; `icon` queda con el de la acción
+ * como respaldo) y `style.iconStyle` es el «Estilo de los íconos». Sin ellos, lo de hoy.
  */
+import { leerEstiloGlifos, leerRefGlifo, refAGuardar, type EstiloGlifos, type RefGlifo } from './v2/glifosTienda'
 
 export const ACCIONES_MENU = [
   'home', 'categories_modal', 'categories_page', 'search', 'cart', 'favorites', 'account', 'menu',
@@ -91,6 +97,8 @@ export interface BotonMenu {
   target?: string
   /** WhatsApp: mensaje inicial. */
   message?: string
+  /** Dibujo del catálogo nuevo (Phosphor). Se guarda en `icon` como objeto; gana sobre `icon`. */
+  glyph?: RefGlifo
 }
 
 export interface EstiloMenu {
@@ -127,6 +135,8 @@ export interface EstiloMenu {
   activeEffect?: EfectoActivo
   pressEffect?: EfectoToque
   fxSpeed?: VelocidadEfecto
+  /** «Estilo de los íconos» (peso, tamaño, sombra, fondo, colores y alcance). Sin la clave, lo de hoy. */
+  iconStyle?: EstiloGlifos
 }
 
 export interface MenuInferior {
@@ -191,6 +201,7 @@ function leerBoton(v: unknown, i: number): BotonMenu | null {
   const base = DEFECTO_ACCION[action]
   const target = texto(o.target, 300)
   const message = texto(o.message, 300)
+  const glyph = leerRefGlifo(o.icon)
   return {
     id: texto(o.id, 40) ?? `${action}-${i}`,
     action,
@@ -199,6 +210,7 @@ function leerBoton(v: unknown, i: number): BotonMenu | null {
     visible: o.visible !== false,
     ...(target ? { target } : {}),
     ...(message ? { message } : {}),
+    ...(glyph ? { glyph } : {}),
   }
 }
 
@@ -247,6 +259,8 @@ function leerEstiloNuevo(o: Record<string, unknown>, ids: string[]): Partial<Est
   if (toque) r.pressEffect = toque
   const vel = enLista(VELOCIDADES_EFECTO, o.fxSpeed)
   if (vel) r.fxSpeed = vel
+  const glifos = leerEstiloGlifos(o.iconStyle)
+  if (glifos) r.iconStyle = glifos
   return r
 }
 
@@ -372,7 +386,7 @@ export function menuInicial(settings: unknown, opciones: { restaurante?: boolean
 export function aGuardar(m: MenuInferior): Record<string, unknown> {
   const max = MAX_BOTONES[m.variant]
   const items = m.items.slice(0, max).map((b) => {
-    const o: Record<string, unknown> = { id: b.id, action: b.action, label: b.label.slice(0, MAX_TEXTO), icon: b.icon, visible: b.visible }
+    const o: Record<string, unknown> = { id: b.id, action: b.action, label: b.label.slice(0, MAX_TEXTO), icon: b.glyph ? refAGuardar(b.glyph) : b.icon, visible: b.visible }
     if (b.target && b.target.trim()) o.target = b.target.trim().slice(0, 300)
     if (b.message && b.message.trim() && b.action === 'whatsapp') o.message = b.message.trim().slice(0, 300)
     return o

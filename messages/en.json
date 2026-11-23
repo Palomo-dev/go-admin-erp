@@ -36324,6 +36324,111 @@
         "variante": "Compact variant",
         "varianteAyuda": "One dropdown per attribute (Color, Size…), in sync with the product page.",
         "compartidoAyuda": "The button text and the add animation are the mobile ones."
+      },
+      "selectorIconos": {
+        "titulo": "Icon for “{nombre}”",
+        "buscar": "Search icons: home, cart, bag…",
+        "pesoRejilla": "Grid style",
+        "peso": {
+          "regular": "Line",
+          "fill": "Filled",
+          "duotone": "Duotone",
+          "bold": "Bold",
+          "thin": "Thin",
+          "light": "Light"
+        },
+        "sugeridos": "Suggested for this action",
+        "categorias": "Categories",
+        "categoria": {
+          "todos": "All",
+          "clasicos": "Classic",
+          "comercio": "Commerce",
+          "navegacion": "Navigation",
+          "personas": "People",
+          "comunicacion": "Communication",
+          "pagos": "Payments",
+          "envios": "Shipping",
+          "comida": "Food",
+          "hogar": "Home",
+          "moda": "Fashion",
+          "belleza": "Beauty",
+          "mascotas": "Pets"
+        },
+        "mas": "More…",
+        "menos": "Less",
+        "clasicosAyuda": "the icons your store already uses, they look the same as today",
+        "cargando": "Loading icons…",
+        "sinResultados": "No icons match “{q}”. Try another word (Spanish or English).",
+        "mostrando": "Showing {n} of {total} · keep scrolling to see more. Hover to see the name.",
+        "mostrandoTodos": "Showing all {n}. Hover to see the name.",
+        "usar": "Use icon",
+        "subir": "Upload my icon (SVG or PNG)",
+        "subirAyuda": "Soon you will be able to upload your own icon. A PNG cannot change color.",
+        "subirMio": "Upload mine",
+        "fase2": "Phase 2",
+        "pronto": "Soon",
+        "icono": "Icon",
+        "cambiar": "Change",
+        "propioResumen": "{estilo} · own",
+        "deSiempreResumen": "Classic · looks like today",
+        "comoTodos": "{estilo} · like the rest",
+        "estiloCard": {
+          "linea": "Line",
+          "relleno": "Filled",
+          "duotono": "Duotone",
+          "gruesa": "Bold line"
+        },
+        "sugeridosPara": "Suggested for {accion}",
+        "estilo": "Style",
+        "igualTodos": "Same as the rest",
+        "propio": "Own",
+        "verTodos": "See all {n} icons",
+        "verMas": "See more",
+        "estiloTitulo": "Icon style",
+        "estiloAyudaMenu": "The same settings exist in Header › Icons. “Same as the header” copies everything in one click.",
+        "estiloAyudaCabecera": "The same settings exist in the bottom menu. A style chosen here takes precedence over “Stroke”. Untouched, icons look like today.",
+        "aplicar": "Apply",
+        "alcance": {
+          "all": "Same for all",
+          "item": "Per button"
+        },
+        "grosor": "Weight",
+        "grosorOpcion": {
+          "fino": "Thin",
+          "normal": "Normal",
+          "grueso": "Thick"
+        },
+        "grosorSoloLinea": "Weight applies to the Line style.",
+        "tamano": "Size",
+        "tamanoHoy": "Current",
+        "tamanoVolver": "Back to the current size",
+        "efectos": "Effects",
+        "sombra": "Shadow",
+        "sombraOpcion": {
+          "none": "None",
+          "soft": "Soft",
+          "strong": "Strong"
+        },
+        "fondo": "Icon background",
+        "fondoOpcion": {
+          "none": "None",
+          "circle": "Circle",
+          "square": "Square"
+        },
+        "colorFondo": "Background color",
+        "colorFondoNulo": "Icon tint",
+        "colorFondoNuloMenu": "Icon tint (active: brand)",
+        "colorActivo": "Active color",
+        "colorInactivo": "Inactive color",
+        "comoElMenu": "Like the menu",
+        "volverHoy": "Back to how it looks today",
+        "igualCabecera": "Same as the header",
+        "igualMenu": "Same as the bottom menu",
+        "vistaPrevia": "Icons preview",
+        "muestra": {
+          "tienda": "Your store"
+        },
+        "estiloDibujo": "Drawing style"
       }
     },
     "paginas": {

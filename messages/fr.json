@@ -36324,6 +36324,111 @@
         "variante": "Variante compacte",
         "varianteAyuda": "Une liste par attribut (Couleur, Taille…), synchronisée avec celle de la fiche.",
         "compartidoAyuda": "Le texte du bouton et l’animation à l’ajout sont ceux du mobile."
+      },
+      "selectorIconos": {
+        "titulo": "Icône de « {nombre} »",
+        "buscar": "Rechercher une icône : maison, panier, sac…",
+        "pesoRejilla": "Style de la grille",
+        "peso": {
+          "regular": "Trait",
+          "fill": "Plein",
+          "duotone": "Bicolore",
+          "bold": "Épais",
+          "thin": "Fin",
+          "light": "Léger"
+        },
+        "sugeridos": "Suggérées pour cette action",
+        "categorias": "Catégories",
+        "categoria": {
+          "todos": "Toutes",
+          "clasicos": "Habituelles",
+          "comercio": "Commerce",
+          "navegacion": "Navigation",
+          "personas": "Personnes",
+          "comunicacion": "Communication",
+          "pagos": "Paiements",
+          "envios": "Livraisons",
+          "comida": "Alimentation",
+          "hogar": "Maison",
+          "moda": "Mode",
+          "belleza": "Beauté",
+          "mascotas": "Animaux"
+        },
+        "mas": "Plus…",
+        "menos": "Moins",
+        "clasicosAyuda": "les icônes déjà utilisées par la boutique, identiques à aujourd’hui",
+        "cargando": "Chargement des icônes…",
+        "sinResultados": "Aucune icône pour « {q} ». Essayez un autre mot (espagnol ou anglais).",
+        "mostrando": "{n} sur {total} · faites défiler pour en voir plus. Survolez pour voir le nom.",
+        "mostrandoTodos": "Les {n} sont affichées. Survolez pour voir le nom.",
+        "usar": "Utiliser l’icône",
+        "subir": "Importer mon icône (SVG ou PNG)",
+        "subirAyuda": "Bientôt, vous pourrez importer votre propre icône. Un PNG ne change pas de couleur.",
+        "subirMio": "Importer la mienne",
+        "fase2": "Phase 2",
+        "pronto": "Bientôt",
+        "icono": "Icône",
+        "cambiar": "Changer",
+        "propioResumen": "{estilo} · propre",
+        "deSiempreResumen": "Habituelle · comme aujourd’hui",
+        "comoTodos": "{estilo} · comme les autres",
+        "estiloCard": {
+          "linea": "Trait",
+          "relleno": "Plein",
+          "duotono": "Bicolore",
+          "gruesa": "Trait épais"
+        },
+        "sugeridosPara": "Suggérées pour {accion}",
+        "estilo": "Style",
+        "igualTodos": "Comme les autres",
+        "propio": "Propre",
+        "verTodos": "Voir les {n} icônes",
+        "verMas": "Voir plus",
+        "estiloTitulo": "Style des icônes",
+        "estiloAyudaMenu": "Les mêmes réglages existent dans En-tête › Icônes. « Comme l’en-tête » copie tout en un clic.",
+        "estiloAyudaCabecera": "Les mêmes réglages existent dans le menu du bas. Un style choisi ici l’emporte sur « Trait ». Sans y toucher, les icônes restent comme aujourd’hui.",
+        "aplicar": "Appliquer",
+        "alcance": {
+          "all": "Pareil pour tous",
+          "item": "Propre à chaque bouton"
+        },
+        "grosor": "Épaisseur",
+        "grosorOpcion": {
+          "fino": "Fin",
+          "normal": "Normal",
+          "grueso": "Épais"
+        },
+        "grosorSoloLinea": "L’épaisseur s’applique au style Trait.",
+        "tamano": "Taille",
+        "tamanoHoy": "Actuelle",
+        "tamanoVolver": "Revenir à la taille actuelle",
+        "efectos": "Effets",
+        "sombra": "Ombre",
+        "sombraOpcion": {
+          "none": "Aucune",
+          "soft": "Douce",
+          "strong": "Marquée"
+        },
+        "fondo": "Fond de l’icône",
+        "fondoOpcion": {
+          "none": "Aucun",
+          "circle": "Cercle",
+          "square": "Carré"
+        },
+        "colorFondo": "Couleur du fond",
+        "colorFondoNulo": "Teinte de l’icône",
+        "colorFondoNuloMenu": "Teinte de l’icône (active : la marque)",
+        "colorActivo": "Couleur active",
+        "colorInactivo": "Couleur inactive",
+        "comoElMenu": "Comme le menu",
+        "volverHoy": "Revenir à l’apparence actuelle",
+        "igualCabecera": "Comme l’en-tête",
+        "igualMenu": "Comme le menu du bas",
+        "vistaPrevia": "Aperçu des icônes",
+        "muestra": {
+          "tienda": "Votre boutique"
+        },
+        "estiloDibujo": "Style du dessin"
       }
     },
     "paginas": {

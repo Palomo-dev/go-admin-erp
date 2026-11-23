@@ -65,6 +65,14 @@ import { ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, ico
 import { FORMAS_CAJA, SOMBRAS_CAJA, TAMANOS_ICONO, cajaIconos, cambioCaja, cambioForma, cambioTamano, formaCaja, tamanoIcono } from './encabezadoCapacidades';
 import { circuloAcentoActivo } from './anterioresLogica';
 import { buscadorCelular, buscadorComputador, formaBuscadorCelular } from './buscadorCelularLogica';
+import { glifosCabecera, estiloGlifosCabecera, type IconoCabeceraGlifo, type RefGlifo } from '@/lib/website/v2/glifosTienda';
+import { menuInicial } from '@/lib/website/menuInferior';
+import { ICONO_MENU } from './MenuInferiorPanel';
+import { EstiloIconosSeccion } from './iconos/EstiloIconosSeccion';
+import { GlifoPhosphor } from './iconos/GlifoEditor';
+import { SelectorIconos, SubirMiIcono, useTSelector, type IconoClasico } from './iconos/SelectorIconos';
+import { estiloGlifosMenu, muestrasCabecera, muestrasMenu } from './iconos/muestrasGlifo';
+import { ICONO_DE_ACCION, SUGERIDOS_CABECERA, cambioEstiloGlifosCabecera, cambioGlifoCabecera, etiquetaIcono } from './iconos/selectorIconosLogica';
 import {
   cambioCuenta,
   cambioEstiloIconos,
@@ -321,24 +329,103 @@ export function DibujoIcono({ accion, ajustes: a, cambiar }: { accion: AccionEnc
   const actual = iconoAccionEncabezado(a, accion);
   const nombres: string[] = [...OPCIONES_ICONO_ACCION[accion]];
   if (!nombres.includes(actual)) nombres.push(actual);
+  const icono = ICONO_DE_ACCION[accion];
+  const glifo = glifosCabecera(a)[icono] ?? null;
+  const clasicos: IconoClasico[] = nombres
+    .filter((n) => Object.prototype.hasOwnProperty.call(ICONOS_LUCIDE_ENCABEZADO, n))
+    .map((n) => ({ nombre: n, etiqueta: te(`zonaGlobal.acciones.iconoNombre.${n}`), Icono: ICONOS_LUCIDE_ENCABEZADO[n] }));
   return (
-    <div className="flex flex-col gap-1.5">
+    <DibujoConSelector
+      ajustes={a}
+      cambiar={cambiar}
+      icono={icono}
+      glifo={glifo}
+      etiquetaChips={te(`zonaGlobal.acciones.iconoAccion.${accion}`)}
+      nombreAccion={t(`iconos.${icono}`)}
+      clasicos={clasicos}
+      actualClasico={actual}
+      opcionesClasicas={nombres.map((n) => {
+        // Un nombre guardado puede no estar en el mapa: sin ícono se muestra el nombre tal cual.
+        const conIcono = Object.prototype.hasOwnProperty.call(ICONOS_LUCIDE_ENCABEZADO, n);
+        const Icono = conIcono ? ICONOS_LUCIDE_ENCABEZADO[n] : null;
+        return {
+          valor: n,
+          etiqueta: conIcono ? te(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
+          adorno: Icono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
+        };
+      })}
+      // Uno de siempre: la columna de siempre y, si había un dibujo del catálogo nuevo, se quita.
+      onClasico={(v) => cambiar({ ...cambioIconoAccion(a, accion, v), ...(glifo ? cambioGlifoCabecera(a, icono, null) : {}) })}
+    />
+  );
+}
+
+/**
+ * «Dibujo» con el selector nuevo (Figma 2852:70951): los chips de siempre quedan como sugeridos
+ * arriba, el dibujo del catálogo nuevo (si lo hay) se ve marcado primero, «Ver más» abre el
+ * selector completo y «Subir mío» es la fase 2.
+ */
+function DibujoConSelector({
+  ajustes: a,
+  cambiar,
+  icono,
+  glifo,
+  etiquetaChips,
+  nombreAccion,
+  clasicos,
+  actualClasico,
+  opcionesClasicas,
+  onClasico,
+}: {
+  ajustes: Ajustes;
+  cambiar: Cambiar;
+  icono: IconoCabeceraGlifo;
+  glifo: RefGlifo | null;
+  etiquetaChips: string;
+  nombreAccion: string;
+  clasicos: readonly IconoClasico[];
+  actualClasico: string;
+  opcionesClasicas: { valor: string; etiqueta: string; adorno?: ReactNode }[];
+  onClasico: (nombre: string) => void;
+}) {
+  const t = useT();
+  const ts = useTSelector();
+  const [abierto, setAbierto] = useState(false);
+  const valorGlifo = glifo ? `ph:${glifo.name}` : null;
+  return (
+    <div className="flex flex-col gap-1.5" data-dibujo-icono={icono}>
       <EtiquetaGrupo>{t('iconos.dibujo')}</EtiquetaGrupo>
       <ChipsOpcion
-        etiqueta={te(`zonaGlobal.acciones.iconoAccion.${accion}`)}
-        opciones={nombres.map((n) => {
-          // Un nombre guardado puede no estar en el mapa: sin ícono se muestra el nombre tal cual.
-          const conIcono = Object.prototype.hasOwnProperty.call(ICONOS_LUCIDE_ENCABEZADO, n);
-          const Icono = conIcono ? ICONOS_LUCIDE_ENCABEZADO[n] : null;
-          return {
-            valor: n,
-            etiqueta: conIcono ? te(`zonaGlobal.acciones.iconoNombre.${n}`) : n,
-            adorno: Icono ? <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} /> : undefined,
-          };
-        })}
-        valor={actual}
-        onValorChange={(v) => cambiar(cambioIconoAccion(a, accion, v))}
+        etiqueta={etiquetaChips}
+        opciones={[
+          ...(glifo && valorGlifo
+            ? [{ valor: valorGlifo, etiqueta: etiquetaIcono(glifo.name), adorno: <GlifoPhosphor nombre={glifo.name} peso={glifo.weight ?? 'regular'} className="size-4" /> }]
+            : []),
+          ...opcionesClasicas,
+        ]}
+        valor={valorGlifo ?? actualClasico}
+        onValorChange={(v) => {
+          if (!v.startsWith('ph:')) onClasico(v);
+        }}
       />
+      <div className="flex items-center justify-between gap-2">
+        <button type="button" onClick={() => setAbierto(true)} className="inline-flex items-center gap-0.5 text-[12px] font-medium text-brand-deep hover:underline">
+          {ts('verMas')}
+          <ChevronRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+        </button>
+        <SubirMiIcono compacto />
+      </div>
+      {abierto && (
+        <SelectorIconos
+          abierto={abierto}
+          onAbiertoChange={setAbierto}
+          nombreAccion={nombreAccion}
+          accion={SUGERIDOS_CABECERA[icono]}
+          clasicos={clasicos}
+          actual={glifo ? { tipo: 'phosphor', ref: glifo } : { tipo: 'clasico', nombre: actualClasico }}
+          onElegir={(e) => (e.tipo === 'clasico' ? onClasico(e.nombre) : cambiar(cambioGlifoCabecera(a, icono, e.ref)))}
+        />
+      )}
     </div>
   );
 }
@@ -843,6 +930,17 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
 
       <FondoIconos ajustes={a} cambiar={cambiar} coloresTema={coloresTema ?? COLORES_RESPALDO} />
 
+      {/* «Estilo de los íconos» (Figma 2852:71245): la misma sección del menú inferior. */}
+      <EstiloIconosSeccion
+        ambito="cabecera"
+        estilo={estiloGlifosCabecera(a)}
+        onCambiar={(e) => cambiar(cambioEstiloGlifosCabecera(a, e))}
+        copiar={{ estilo: estiloGlifosMenu(a) }}
+        colores={coloresTema ?? COLORES_RESPALDO}
+        muestrasCabecera={muestrasCabecera(a)}
+        muestrasMenu={muestrasMenu(menuInicial(a).menu, ICONO_MENU)}
+      />
+
       <section className="flex flex-col gap-3 border-t border-line pt-3">
         <div className="flex flex-col gap-1">
           <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('iconos.cualesTitulo')}</h3>
@@ -872,16 +970,19 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
         >
           {op.favoritos && (
             <>
-              <div className="flex flex-col gap-1.5">
-                <EtiquetaGrupo>{t('iconos.dibujo')}</EtiquetaGrupo>
-                <ChipsOpcion
-                  etiqueta={t('iconos.dibujoFavoritos')}
-                  opciones={[{ valor: 'heart', etiqueta: t('iconos.corazon'), adorno: <Heart aria-hidden="true" className="size-4" strokeWidth={1.5} /> }]}
-                  valor="heart"
-                  onValorChange={() => undefined}
-                />
-                <Ayuda>{t('iconos.soloCorazon')}</Ayuda>
-              </div>
+              {/* El corazón de siempre queda como sugerido; «Ver más» abre el selector (Figma 2853:71499). */}
+              <DibujoConSelector
+                ajustes={a}
+                cambiar={cambiar}
+                icono="favoritos"
+                glifo={glifosCabecera(a).favoritos ?? null}
+                etiquetaChips={t('iconos.dibujoFavoritos')}
+                nombreAccion={t('iconos.favoritos')}
+                clasicos={[{ nombre: 'heart', etiqueta: t('iconos.corazon'), Icono: Heart }]}
+                actualClasico="heart"
+                opcionesClasicas={[{ valor: 'heart', etiqueta: t('iconos.corazon'), adorno: <Heart aria-hidden="true" className="size-4" strokeWidth={1.5} /> }]}
+                onClasico={() => cambiar(cambioGlifoCabecera(a, 'favoritos', null))}
+              />
               <FormaIconoCampo icono="favoritos" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} muestra={muestras.favoritos} />
               {campoTexto('favoritos')}
               <FilaEnlace texto={t('iconos.favoritosAbre')} enlace={t('iconos.favoritosVerPanel')} onClick={() => onAbrir('favoritos')} />

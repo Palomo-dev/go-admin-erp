@@ -94,6 +94,8 @@ export function botonConAccion(b: BotonMenu, action: AccionMenu): BotonMenu {
     icon: b.icon === antes.icon ? ahora.icon : b.icon,
     visible: b.visible,
     ...(action === 'page' ? { target: '/' } : {}),
+    // El dibujo elegido del catálogo nuevo se queda: lo eligió la persona, no la acción.
+    ...(b.glyph ? { glyph: b.glyph } : {}),
   };
 }
 

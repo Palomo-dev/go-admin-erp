@@ -32,6 +32,12 @@ import { useTextosEditor } from '../textos';
 import { ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion } from './PartesZonaGlobal';
 import { FilaDeslizador, FilaSegmento } from './PildoraYBoton';
 import { useDestinosTienda } from './useDestinosTienda';
+import { estiloGlifosCabecera, type EstiloGlifos, type PesoGlifo } from '@/lib/website/v2/glifosTienda';
+import { CampoIcono } from './iconos/CampoIcono';
+import { EstiloIconosSeccion } from './iconos/EstiloIconosSeccion';
+import { phosphorComoLucide } from './iconos/GlifoEditor';
+import { muestrasCabecera, muestrasMenu } from './iconos/muestrasGlifo';
+import { botonConIcono, conEstiloGlifos, conPesoPropio, pesoPropioBoton } from './iconos/selectorIconosLogica';
 import {
   accionesDisponibles, accionesSinDestino, avisoBoton, botonConAccion, botonNuevo, campoDestino, cambioMenuV2, conAlBajar, conContador, conEfectoActivo,
   conEfectoToque, conEstiloFlotante, conFicha, conIndicador, conNoRepetir, conTema, conVariante, conVelocidad, esFlotante, estiloFlotante, menuDelEditor,
@@ -236,7 +242,7 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
                 <MenuLinkRow
                   etiqueta={nombreBoton(b)}
                   tipo={TIPO_FILA[b.action] ?? 'pagina'}
-                  icono={ICONO_MENU[b.icon]}
+                  icono={b.glyph ? phosphorComoLucide(b.glyph.name, b.glyph.weight ?? menu.style.iconStyle?.weight ?? 'regular') : ICONO_MENU[b.icon]}
                   detalle={aviso ? <span className="text-danger">{tm(`aviso.${aviso}`)}</span> : detalleBoton(b, menu, tm)}
                   oculta={!b.visible}
                   seleccionada={abierto === b.id}
@@ -252,6 +258,8 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
                     disponibles={disponibles}
                     onCambiar={(nuevo) => ponerItems(menu.items.map((x) => (x.id === b.id ? nuevo : x)))}
                     contador={b.action === 'cart' || b.action === 'favorites' ? { valor: contadorMenu(menu, b.action), onCambiar: (v) => poner(conContador(menu, b.action as 'cart' | 'favorites', v)) } : null}
+                    estiloIconos={menu.style.iconStyle ?? null}
+                    pesoPropio={b.glyph ? { valor: pesoPropioBoton(menu, b), onCambiar: (p) => poner(conPesoPropio(menu, b.id, p)) } : null}
                   />
                 )}
               </li>
@@ -280,6 +288,17 @@ export function MenuInferiorPanel({ ajustes: a, cambiar, giro, coloresTema }: {
             />
           </div>
         )}
+
+        {/* «Estilo de los íconos» (Figma 2852:71245): la misma sección de Encabezado › Íconos. */}
+        <EstiloIconosSeccion
+          ambito="menu"
+          estilo={menu.style.iconStyle ?? null}
+          onCambiar={(e) => poner(conEstiloGlifos(menu, e))}
+          copiar={{ estilo: estiloGlifosCabecera(a) }}
+          colores={{ fondo: coloresTema?.fondo ?? '#FFFFFF', texto: coloresTema?.texto ?? '#111827', acento: typeof a.primary_color === 'string' ? a.primary_color : '#3B4BDB' }}
+          muestrasCabecera={muestrasCabecera(a)}
+          muestrasMenu={muestrasMenu(menu, ICONO_MENU)}
+        />
 
         <Efectos menu={menu} poner={poner} tm={tm} />
       </fieldset>
@@ -335,18 +354,21 @@ function detalleBoton(b: BotonMenu, m: MenuInferior, tm: Tm): string {
   return campo === 'telefono' || campo === 'whatsapp' || campo === 'direccion' ? `${accion} · ${tm('deLaTienda')}` : accion;
 }
 
-function EditorBoton({ boton: b, disponibles, onCambiar, contador }: {
+function EditorBoton({ boton: b, disponibles, onCambiar, contador, estiloIconos, pesoPropio }: {
   boton: BotonMenu;
   disponibles: readonly AccionMenu[];
   onCambiar: (b: BotonMenu) => void;
   /** Carrito y Favoritos: su contador (el mismo de «Contador en el ícono»). */
   contador: { valor: ContadorMenu; onCambiar: (v: ContadorMenu) => void } | null;
+  /** «Estilo de los íconos» del menú (para «Duotono · como todos»). */
+  estiloIconos: EstiloGlifos | null;
+  /** Peso propio del botón (solo con un ícono del catálogo nuevo). */
+  pesoPropio: { valor: PesoGlifo | null; onCambiar: (p: PesoGlifo | null) => void } | null;
 }) {
   const t = useTextosEditor();
   const tm = (k: string) => t(`zonaGlobal.movilEncabezado.mi.${k}`);
   const idAccion = useId();
   const idTexto = useId();
-  const idIcono = useId();
   const idDestino = useId();
   const idMensaje = useId();
   const campo = campoDestino(b.action);
@@ -382,27 +404,17 @@ function EditorBoton({ boton: b, disponibles, onCambiar, contador }: {
       )}
       <label htmlFor={idTexto} className="text-xs font-semibold text-fg-secondary">{tm('texto')}</label>
       <Input id={idTexto} value={b.label} maxLength={MAX_TEXTO} onChange={(e) => onCambiar({ ...b, label: e.target.value })} />
-      <EtiquetaGrupo id={idIcono}>{tm('icono')}</EtiquetaGrupo>
-      <div role="radiogroup" aria-labelledby={idIcono} className="grid grid-cols-7 gap-1">
-        {ICONOS_MENU.map((ic) => {
-          const Icono = ICONO_MENU[ic];
-          const sel = b.icon === ic;
-          return (
-            <button
-              key={ic}
-              type="button"
-              role="radio"
-              aria-checked={sel}
-              aria-label={tm(`iconoOpcion.${ic}`)}
-              title={tm(`iconoOpcion.${ic}`)}
-              onClick={() => onCambiar({ ...b, icon: ic })}
-              className={`flex h-8 items-center justify-center rounded-md border ${sel ? 'border-brand bg-brand/10 text-brand-deep' : 'border-border text-fg-secondary hover:bg-subtle'}`}
-            >
-              <Icono aria-hidden="true" className="size-4" />
-            </button>
-          );
-        })}
-      </div>
+      {/* Ícono (Figma 2853:71499): actual + «Cambiar», sugeridos y el selector completo. Los 25
+          dibujos de siempre siguen en el selector, en «De siempre». */}
+      <CampoIcono
+        nombreAccion={b.label || tm(`accion.${b.action}`)}
+        accion={b.action}
+        clasicos={ICONOS_MENU.map((ic) => ({ nombre: ic, etiqueta: tm(`iconoOpcion.${ic}`), Icono: ICONO_MENU[ic] }))}
+        actual={b.glyph ? { tipo: 'phosphor', ref: b.glyph } : { tipo: 'clasico', nombre: b.icon }}
+        pesoGeneral={estiloIconos?.weight}
+        onElegir={(e) => onCambiar(botonConIcono(b, e))}
+        pesoPropio={pesoPropio}
+      />
       {contador && (
         <FilaSegmento<ContadorMenu>
           etiqueta={tm('contadorBoton')}

@@ -36322,6 +36322,111 @@
         "variante": "Variante compacta",
         "varianteAyuda": "Un desplegable por atributo (Color, Talla…), sincronizado con el de la ficha.",
         "compartidoAyuda": "El texto del botón y la animación al agregar son los del celular."
+      },
+      "selectorIconos": {
+        "titulo": "Ícono de «{nombre}»",
+        "buscar": "Buscar ícono: casa, carrito, bolsa…",
+        "pesoRejilla": "Estilo de la rejilla",
+        "peso": {
+          "regular": "Línea",
+          "fill": "Relleno",
+          "duotone": "Duotono",
+          "bold": "Gruesa",
+          "thin": "Fina",
+          "light": "Liviana"
+        },
+        "sugeridos": "Sugeridos para esta acción",
+        "categorias": "Categorías",
+        "categoria": {
+          "todos": "Todos",
+          "clasicos": "De siempre",
+          "comercio": "Comercio",
+          "navegacion": "Navegación",
+          "personas": "Personas",
+          "comunicacion": "Comunicación",
+          "pagos": "Pagos",
+          "envios": "Envíos",
+          "comida": "Comida",
+          "hogar": "Hogar",
+          "moda": "Moda",
+          "belleza": "Belleza",
+          "mascotas": "Mascotas"
+        },
+        "mas": "Más…",
+        "menos": "Menos",
+        "clasicosAyuda": "los dibujos que ya usa la tienda, se ven igual que hoy",
+        "cargando": "Cargando íconos…",
+        "sinResultados": "No hay íconos con «{q}». Prueba otra palabra (también sirve en inglés).",
+        "mostrando": "Mostrando {n} de {total} · sigue bajando para ver más. Al pasar el mouse se ve el nombre.",
+        "mostrandoTodos": "Mostrando los {n}. Al pasar el mouse se ve el nombre.",
+        "usar": "Usar ícono",
+        "subir": "Subir mi ícono (SVG o PNG)",
+        "subirAyuda": "Pronto podrás subir tu propio ícono. Un PNG no cambia de color.",
+        "subirMio": "Subir mío",
+        "fase2": "Fase 2",
+        "pronto": "Pronto",
+        "icono": "Ícono",
+        "cambiar": "Cambiar",
+        "propioResumen": "{estilo} · propio",
+        "deSiempreResumen": "De siempre · se ve como hoy",
+        "comoTodos": "{estilo} · como todos",
+        "estiloCard": {
+          "linea": "Línea",
+          "relleno": "Relleno",
+          "duotono": "Duotono",
+          "gruesa": "Línea gruesa"
+        },
+        "sugeridosPara": "Sugeridos para {accion}",
+        "estilo": "Estilo",
+        "igualTodos": "Igual que todos",
+        "propio": "Propio",
+        "verTodos": "Ver los {n} íconos",
+        "verMas": "Ver más",
+        "estiloTitulo": "Estilo de los íconos",
+        "estiloAyudaMenu": "Los mismos ajustes existen en Encabezado › Íconos. «Igual que la cabecera» copia todo de un clic.",
+        "estiloAyudaCabecera": "Los mismos ajustes existen en el menú inferior. Si eliges un estilo aquí, manda sobre «Trazo». Sin tocarlo, los íconos se ven como hoy.",
+        "aplicar": "Aplicar",
+        "alcance": {
+          "all": "Igual para todos",
+          "item": "Propio por botón"
+        },
+        "grosor": "Grosor",
+        "grosorOpcion": {
+          "fino": "Fino",
+          "normal": "Normal",
+          "grueso": "Grueso"
+        },
+        "grosorSoloLinea": "El grosor aplica al estilo Línea.",
+        "tamano": "Tamaño",
+        "tamanoHoy": "El de hoy",
+        "tamanoVolver": "Volver al tamaño de hoy",
+        "efectos": "Efectos",
+        "sombra": "Sombra",
+        "sombraOpcion": {
+          "none": "Ninguna",
+          "soft": "Suave",
+          "strong": "Marcada"
+        },
+        "fondo": "Fondo del ícono",
+        "fondoOpcion": {
+          "none": "Ninguno",
+          "circle": "Círculo",
+          "square": "Cuadrado"
+        },
+        "colorFondo": "Color del fondo",
+        "colorFondoNulo": "Tono del ícono",
+        "colorFondoNuloMenu": "Tono del ícono (el activo, la marca)",
+        "colorActivo": "Color activo",
+        "colorInactivo": "Color inactivo",
+        "comoElMenu": "Como el menú",
+        "volverHoy": "Volver a como se ve hoy",
+        "igualCabecera": "Igual que la cabecera",
+        "igualMenu": "Igual que el menú inferior",
+        "vistaPrevia": "Vista previa de los íconos",
+        "muestra": {
+          "tienda": "Tu tienda"
+        },
+        "estiloDibujo": "Estilo del dibujo"
       }
     },
     "paginas": {

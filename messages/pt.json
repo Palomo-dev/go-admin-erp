@@ -35832,7 +35832,9 @@
           "monedaCambiar": "Mudar como o seletor aparece",
           "monedaCelular": "No celular: a linha do menu e o modo «Na barra» usam o mesmo estilo do computador.",
           "filaEstilo": "Os ícones são configurados em Conteúdo › Ícones",
-          "filaEstiloAyuda": "Estilo, forma, tamanho, traço, fundo e desenhos. Toque para abrir a vista."
+          "filaEstiloAyuda": "Estilo, forma, tamanho, traço, fundo e desenhos. Toque para abrir a vista.",
+          "buscarEsBarra": "Sua busca é uma barra: o botão dela não usa este desenho. O desenho e a forma da lupa aparecem aqui quando você escolhe a busca «Ícone» em Design › Busca.",
+          "monedaSinDibujo": "Com o estilo «{estilo}» a moeda não usa desenho: ela aparece como você escolheu em «Mudar como o seletor aparece». O desenho só é usado com «Só ícone»."
         },
         "moneda": {
           "titulo": "Cabeçalho › Seletor de moeda",

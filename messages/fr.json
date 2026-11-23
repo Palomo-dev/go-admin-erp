@@ -35822,7 +35822,9 @@
           "monedaCambiar": "Changer l’aspect du sélecteur",
           "monedaCelular": "Sur mobile : la ligne du menu et le mode «Dans la barre» utilisent le même style que l’ordinateur.",
           "filaEstilo": "Les icônes se configurent dans Contenu › Icônes",
-          "filaEstiloAyuda": "Style, forme, taille, trait, fond et dessins. Touchez pour ouvrir la vue."
+          "filaEstiloAyuda": "Style, forme, taille, trait, fond et dessins. Touchez pour ouvrir la vue.",
+          "buscarEsBarra": "Votre recherche est une barre : son bouton n’utilise pas ce dessin. Le dessin et la forme de la loupe apparaissent ici quand vous choisissez la recherche « Icône » dans Design › Recherche.",
+          "monedaSinDibujo": "Avec le style « {estilo} », la devise n’utilise pas de dessin : elle s’affiche comme vous l’avez choisi dans « Changer l’apparence du sélecteur ». Le dessin ne sert qu’avec « Icône seule »."
         },
         "moneda": {
           "titulo": "En-tête › Sélecteur de devise",

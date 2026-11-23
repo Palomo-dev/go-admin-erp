@@ -43,6 +43,7 @@ import {
   estiloSoloComputador,
   opcionesCuenta,
   opcionesIconos,
+  opcionesMoneda,
   trazoUnificado,
   type EstiloIconos,
   type FormaIcono,
@@ -57,6 +58,7 @@ import { ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaCompos
 import { ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, iconoAccionEncabezado } from './iconosAccionesLogica';
 import { FORMAS_CAJA, SOMBRAS_CAJA, cajaIconos, cambioCaja, cambioForma, formaCaja, tamanoIcono } from './encabezadoCapacidades';
 import { circuloAcentoActivo } from './anterioresLogica';
+import { buscadorCelular, buscadorComputador, formaBuscadorCelular } from './buscadorCelularLogica';
 import {
   cambioCuenta,
   cambioEstiloIconos,
@@ -646,6 +648,11 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
   const visibleCarrito = a.show_header_cart !== false;
   const visibleCuenta = a.show_header_auth !== false;
   const visibleMoneda = a.header_show_currency !== false;
+  // Solo se ofrece lo que la tienda de verdad pinta (queja del dueño 2026-11-23: dibujos que no cambian nada).
+  const lupaVisible =
+    formaBuscadorCelular(buscadorComputador(a)) === 'icon' || formaBuscadorCelular(buscadorCelular(a)) === 'icon';
+  const estiloMoneda = opcionesMoneda(a).estilo;
+  const dibujoMonedaVisible = estiloMoneda === null || estiloMoneda === 'icono';
 
   return (
     <>
@@ -742,8 +749,16 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
           forma={op.porIcono.buscar ?? null}
           derecha={<span className="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-[10px] font-medium text-fg-secondary">{t('iconos.buscarEnDiseno')}</span>}
         >
-          <DibujoIcono accion="search" ajustes={a} cambiar={cambiar} />
-          <FormaIconoCampo icono="buscar" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_BUSCAR} />
+          {/* El dibujo y la forma de la lupa solo se ven cuando el buscador es un ícono (en
+              computador o en el celular). Con barra, el botón de la barra no los usa. */}
+          {lupaVisible ? (
+            <>
+              <DibujoIcono accion="search" ajustes={a} cambiar={cambiar} />
+              <FormaIconoCampo icono="buscar" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_BUSCAR} />
+            </>
+          ) : (
+            <Ayuda>{t('iconos.buscarEsBarra')}</Ayuda>
+          )}
           <FilaEnlace texto={t('iconos.buscarMostrar')} enlace={t('iconos.buscarIr')} onClick={onIrBuscador} />
           <NotaCelular>{t('iconos.buscarCelular')}</NotaCelular>
         </TarjetaIcono>
@@ -822,8 +837,16 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
         >
           {visibleMoneda && (
             <>
-              <DibujoIcono accion="currency" ajustes={a} cambiar={cambiar} />
-              <Ayuda>{t('iconos.monedaTexto')}</Ayuda>
+              {/* El dibujo de la moneda solo se usa sin estilo propio o con «Solo ícono»; con
+                  Bandera, Código, Código + símbolo o Segmento la tienda no lo pinta. */}
+              {dibujoMonedaVisible ? (
+                <>
+                  <DibujoIcono accion="currency" ajustes={a} cambiar={cambiar} />
+                  <Ayuda>{t('iconos.monedaTexto')}</Ayuda>
+                </>
+              ) : (
+                <Ayuda>{t('iconos.monedaSinDibujo', { estilo: t(`moneda.estiloOpcion.${estiloMoneda}`) })}</Ayuda>
+              )}
               <FormaIconoCampo icono="moneda" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} />
               <FilaEnlace texto={t('iconos.monedaEstiloFila')} enlace={t('iconos.monedaCambiar')} onClick={() => onAbrir('moneda')} />
               {notaSoloComputador('moneda') ?? <NotaCelular>{t('iconos.monedaCelular')}</NotaCelular>}

@@ -35822,7 +35822,9 @@
           "monedaCambiar": "Change how the selector looks",
           "monedaCelular": "On mobile: the menu row and the «In the bar» mode use the same desktop style.",
           "filaEstilo": "Icons are set up in Content › Icons",
-          "filaEstiloAyuda": "Style, shape, size, stroke, background and drawings. Tap to open the view."
+          "filaEstiloAyuda": "Style, shape, size, stroke, background and drawings. Tap to open the view.",
+          "buscarEsBarra": "Your search is a bar: its button does not use this icon. The magnifier icon and shape appear here when you choose the «Icon» search in Design › Search.",
+          "monedaSinDibujo": "With the «{estilo}» style the currency uses no icon: it looks the way you set it in «Change how the selector looks». The icon is only used with «Icon only»."
         },
         "moneda": {
           "titulo": "Header › Currency selector",

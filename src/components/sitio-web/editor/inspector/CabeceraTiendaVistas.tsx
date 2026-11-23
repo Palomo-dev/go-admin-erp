@@ -142,6 +142,24 @@ export function FilaAbrirVistaTienda({ vista, onAbrir }: { vista: VistaCabeceraT
   );
 }
 
+/**
+ * Accesos a las vistas de la cabecera de la tienda, ARRIBA de «Contenido» (antes estaban al final,
+ * entre los interruptores de Acciones, y no se encontraban): Íconos · Selector de moneda ·
+ * Carrito · Favoritos (Figma «16 Sitio web» 2754:59674, 2757:60344, 2754:60110, 2772:62317).
+ */
+export function AccesosCabeceraTienda({ onAbrir }: { onAbrir: (v: VistaCabeceraTienda) => void }) {
+  const t = useT();
+  return (
+    <section className="flex flex-col gap-2">
+      <TituloBloque>{t('accesos.titulo')}</TituloBloque>
+      <FilaAbrirVistaTienda vista="iconos" onAbrir={onAbrir} />
+      <FilaAbrirVistaTienda vista="moneda" onAbrir={onAbrir} />
+      <FilaAbrirVistaTienda vista="carrito" onAbrir={onAbrir} />
+      <FilaAbrirVistaTienda vista="favoritos" onAbrir={onAbrir} />
+    </section>
+  );
+}
+
 /** Segmentado con «ninguno elegido» (= como hoy): el valor vacío no marca ninguna opción. */
 function Segmento<V extends string>({ etiqueta, opciones, valor, onCambiar }: { etiqueta: string; opciones: readonly { valor: V; etiqueta: string }[]; valor: V | null; onCambiar: (v: V) => void }) {
   const id = useId();

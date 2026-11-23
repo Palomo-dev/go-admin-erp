@@ -35960,7 +35960,68 @@
           "corazonTarjetas": "Cœur sur les cartes",
           "corazonFicha": "Cœur sur la fiche produit",
           "tarjetasAyuda": "Le style et la position du cœur sur la carte restent dans Style du site › Carte produit."
+        },
+        "accesos": {
+          "titulo": "Icônes, devise et panier"
         }
+      },
+      "accionesFicha": {
+        "distribucion": "Disposition prête",
+        "personalizada": "Personnalisée",
+        "distribuciones": {
+          "clasica": "Classique",
+          "dos_mitad": "Deux moitiés",
+          "compacta": "Compacte",
+          "solo_agregar": "Ajouter seulement",
+          "comprar_primero": "Acheter d’abord",
+          "con_whatsapp": "Avec WhatsApp"
+        },
+        "ayudaDistribucion": "En choisir une réorganise les boutons ci-dessous et conserve les textes saisis. Vous pouvez ensuite ajuster chaque bouton.",
+        "ayudaPersonalizada": "Vous avez changé l’ordre ou un bouton : cela ne correspond plus à aucune disposition prête. Touchez une carte pour y revenir.",
+        "botones": "Boutons et ordre",
+        "ayudaBotones": "Faites glisser par la poignée pour réordonner. Les boutons dans le même cadre bleu partagent une ligne. L’œil les affiche ou les masque.",
+        "mismaFila": "Même ligne · {nombres}",
+        "tipos": {
+          "cantidad": "Quantité",
+          "agregar": "Ajouter au panier",
+          "comprar": "Acheter maintenant",
+          "favorito": "Favori (cœur)",
+          "whatsapp": "Commander par WhatsApp",
+          "compartir": "Partager"
+        },
+        "conEtiqueta": "Avec libellé",
+        "tamanos": {
+          "largo": "Long",
+          "mitad": "Moitié",
+          "pequeno": "Petit"
+        },
+        "estilos": {
+          "relleno": "Plein",
+          "borde": "Contour",
+          "enlace": "Lien"
+        },
+        "mostrar": "Afficher sur la fiche",
+        "ocultar": "Masquer {nombre}",
+        "mostrarBoton": "Afficher {nombre}",
+        "noSeOculta": "« Ajouter au panier » ne peut pas être masqué : il peut être déplacé et modifié.",
+        "abrir": "Options de {nombre}",
+        "tamano": "Taille",
+        "estilo": "Style",
+        "texto": "Texte du bouton",
+        "ayudaTexto": "Vide = « {texto} » (texte par défaut).",
+        "textoCorto": "Texte court sur mobile",
+        "ayudaTextoCorto": "En gris, le texte par défaut. Utilisé sur mobile quand le bouton partage sa ligne.",
+        "ayudaCantidad": "La quantité n’a ni taille ni style : elle prend sa propre largeur. Elle affiche le libellé « Quantité » quand elle ne partage pas la ligne avec un bouton.",
+        "ayudaFavorito": "Le cœur ne s’affiche pas si vous désactivez « Cœur sur la fiche » (En-tête › Favoris), ni sur la carte du restaurant.",
+        "compartirFila": "Partager la ligne avec le suivant",
+        "ayudaCompartirFila": "Réunit ce bouton avec « {siguiente} » même s’ils ne se réuniraient pas seuls (3 maximum par ligne).",
+        "ultimo": "C’est le dernier de la liste : il n’y a pas de suivant.",
+        "sinWhatsapp": {
+          "titulo": "WhatsApp n’a pas de numéro",
+          "descripcion": "Sans numéro, « Commander par WhatsApp » ne s’affiche pas dans la boutique. Ajoutez-le dans Configuration › Contact.",
+          "ir": "Aller à Contact"
+        },
+        "comportamiento": "Comportement"
       }
     },
     "paginas": {
@@ -36541,6 +36602,16 @@
       "errorTitulo": "Nous n'avons pas pu ouvrir la configuration du site",
       "errorDescripcion": "Votre avancement est enregistré. Vérifiez la connexion et réessayez.",
       "conflicto": "Quelqu'un d'autre a enregistré une version plus récente du site. Nous avons rechargé pour que vous repreniez depuis la dernière.",
+      "omitir": "Ignorer cette étape",
+      "omitirCorto": "Ignorer",
+      "saltar": {
+        "boton": "Passer la configuration",
+        "titulo": "Passer la configuration ?",
+        "descripcion": "Nous gardons ce que vous avez déjà choisi. Votre site reste en brouillon et n'est pas publié. Vous pouvez terminer la configuration quand vous voulez depuis Site web › Résumé, ou le construire directement dans l'éditeur.",
+        "seguir": "Continuer la configuration",
+        "irEditor": "Aller à l'éditeur",
+        "irResumen": "Passer et aller au résumé"
+      },
       "pasos": {
         "giro": "Activité et objectif",
         "plantilla": "Modèle",
@@ -36576,12 +36647,15 @@
       },
       "plantilla": {
         "titulo": "Choisissez un modèle",
-        "descripcion": "Nous montrons d'abord ceux pour {giro}. Le modèle définit la structure ; vous choisissez le style à l'étape suivante.",
+        "descripcion": "Nous montrons d'abord ceux pour {giro}. Chaque modèle apporte son design complet et vous pouvez le changer quand vous voulez dans Design.",
         "todas": "Tous",
         "filtros": "Filtrer les modèles",
         "errorCatalogo": "Nous n'avons pas pu charger les modèles",
         "vacio": "Aucun modèle pour ce filtre. Essayez « Tous ».",
-        "elige": "Choisissez un modèle pour continuer."
+        "elige": "Choisissez un modèle pour continuer.",
+        "descripcionTienda": "Nous montrons d'abord ceux pour boutique. Chaque modèle apporte son design complet : accueil, page de catégorie et fiche produit. Vous pouvez le changer quand vous voulez dans Design.",
+        "soloEstilo": "Votre site est déjà publié : nous prenons les couleurs et les polices du modèle et votre contenu reste tel quel. Pour changer toute la structure, utilisez Design › Modèles.",
+        "nueva": "Nouveau"
       },
       "estilo": {
         "titulo": "Choisissez un style",

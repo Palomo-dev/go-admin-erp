@@ -11,8 +11,18 @@
  * Organización y de la sede principal; lo que se cambia aquí va SOLO al
  * borrador V2 del sitio (`useSitioV2`, compare-and-swap por versión). Publicar
  * usa el mismo punto único que el Resumen, Diseño y el editor.
+ *
+ * Desde el 2026-11-22 (Figma «Asistente / Paso 2 — todas a la vista», aprobado):
+ * - El paso 2 ofrece las plantillas reales del catálogo de Diseño y, al seguir, arma el sitio
+ *   con la elegida: la misma «Plantilla completa» de Diseño (`apiPaginas.plantillaCompleta`; lo
+ *   anterior queda en el historial). Con el sitio ya publicado, solo colores y fuentes («Solo
+ *   estilo», `modoPorDefecto`), igual que Diseño. Si la plantilla ya está en el borrador, no se
+ *   vuelve a armar: volver al paso 2 y seguir no pisa lo editado.
+ * - Nada obliga a terminar: «Saltar configuración» (confirmación con «Ir al editor» y «Saltar e
+ *   ir al resumen»), «Omitir este paso» en los pasos opcionales y el Stepper lleva a los pasos ya
+ *   hechos. Saltar guarda dónde iba; el sitio queda en borrador y no se publica.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { AvisoTonal, Dialogo, EmptyState, Skeleton } from '@/components/kit';
@@ -22,11 +32,14 @@ import {
   aplicarAcento,
   aplicarDatosNegocio,
   aplicarEstilo,
-  aplicarPlantilla,
   enlaceWhatsapp,
   whatsappLegible,
 } from '@/lib/website/v2/temaDesdePreset';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
+import { aplicarEstiloPlantilla } from '@/lib/website/v2/usarPlantilla';
+import { tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { modoPorDefecto } from '@/lib/website/v2/plantillaCompleta';
+import { plantillaEnUso } from '@/lib/website/contrato/catalogoPlantillas';
 import {
   objetivosPorDefecto,
   pasoDesdeParametro,
@@ -37,7 +50,10 @@ import {
 } from '@/lib/website/onboardingSitio';
 import { activarAlPublicarSitio } from '@/lib/website/v2/activarAlPublicar';
 import { useSitioV2 } from '../../useSitioV2';
-import { RAIZ_SITIO_WEB } from '../../rutasSitioWeb';
+import { RAIZ_SITIO_WEB, rutaEditorSitio } from '../../rutasSitioWeb';
+import { apiPaginas, ErrorApiPaginas } from '../../paginas/apiPaginas';
+import { CATALOGO_SITIO } from '../../diseno/catalogo';
+import { esInicio } from '../../paginas/tipoPagina';
 import { useTextosResumen } from '../textos';
 import { MarcoAsistente } from './MarcoAsistente';
 import { useOnboardingSitio } from './useOnboardingSitio';
@@ -48,7 +64,22 @@ import { PasoDatosNegocio, type DatosNegocioForm } from './PasoDatosNegocio';
 import { PasoDominio } from './PasoDominio';
 import { PasoRevisarPublicar } from './PasoRevisarPublicar';
 import { VistaPreviaAsistente } from './VistaPreviaAsistente';
-import { plantillaPorId, type PlantillaAsistente } from './catalogoAsistente';
+import {
+  estilosConPlantilla,
+  plantillaCatalogoPorId,
+  plantillaPorId,
+  type PlantillaAsistente,
+  type PlantillaCatalogoAsistente,
+} from './catalogoAsistente';
+
+/** Pasos que se pueden omitir: el giro hace falta para sugerir y revisar es el final. */
+export const PASOS_OMITIBLES: readonly number[] = [2, 3, 4, 5];
+
+/** La plantilla que ya está en el borrador (la que dejó Diseño o este asistente), por su id. */
+export function plantillaDelBorrador(tema: { preset?: string | null; plantillaBase?: string | null; fuenteTitulos?: string | null }): PlantillaCatalogoAsistente | null {
+  const enUso = plantillaEnUso(CATALOGO_SITIO, tema);
+  return enUso ? plantillaCatalogoPorId(enUso.id) : null;
+}
 
 /** Ajustes que el sitio aplica en vivo en la vista previa (`goadmin:settings`, columnas legacy). */
 export function ajustesEnVivo(estilo: EstiloElegido | null, plantilla: PlantillaAsistente | null, logoUrl: string | null): Record<string, unknown> | undefined {
@@ -100,7 +131,10 @@ export function AsistenteSitio() {
   const [inicializado, setInicializado] = useState(false);
   const [giro, setGiro] = useState<GiroSitio>('otro');
   const [objetivos, setObjetivos] = useState<ObjetivoSitio[]>([]);
-  const [plantilla, setPlantilla] = useState<PlantillaAsistente | null>(null);
+  const [plantilla, setPlantilla] = useState<PlantillaCatalogoAsistente | null>(null);
+  const [saltarAbierto, setSaltarAbierto] = useState(false);
+  // Plantilla ya armada en esta visita: volver al paso 2 y seguir con la misma no la rearma.
+  const armada = useRef<string | null>(null);
   const [estilo, setEstilo] = useState<EstiloElegido | null>(null);
   const [datos, setDatos] = useState<DatosNegocioForm>({ nombre: '', whatsapp: '', logoUrl: null });
   const [errores, setErrores] = useState<{ nombre?: string | null; whatsapp?: string | null }>({});
@@ -116,9 +150,18 @@ export function AsistenteSitio() {
     const g = o.giro ?? contexto.organizacion.giro;
     setGiro(g);
     setObjetivos(o.objetivos ? [...o.objetivos] : objetivosPorDefecto(g));
-    const p = plantillaPorId(plantillaUrl) ?? plantillaPorId(o.pasos?.plantilla) ?? plantillaPorId(valorCampo(doc?.tema.plantillaBase));
+    const enBorrador = doc
+      ? plantillaDelBorrador({
+          preset: valorCampo(doc.tema.preset),
+          plantillaBase: valorCampo(doc.tema.plantillaBase),
+          fuenteTitulos: valorCampo(doc.tema.tipografia.titulos),
+        })
+      : null;
+    const p = plantillaCatalogoPorId(plantillaUrl) ?? plantillaCatalogoPorId(o.pasos?.plantilla) ?? enBorrador;
     setPlantilla(p);
-    const e = plantillaPorId(o.pasos?.estilo);
+    // Lo que el asistente ya dejó en el borrador no se vuelve a armar.
+    if (p && o.pasos?.plantilla && enBorrador?.id === p.id) armada.current = p.id;
+    const e = plantillaPorId(o.pasos?.estilo) ?? (p && o.pasos?.estilo === p.id ? p : null);
     if (e) setEstilo({ preset: e, acentoLogo: null });
     const redes = valorCampo(doc?.contenido.redesSociales);
     setDatos({
@@ -163,23 +206,61 @@ export function AsistenteSitio() {
 
   const fallar = (mensaje?: string | null) => toast.error(t('asistente.errorGuardar', { mensaje: mensaje ?? '' }).trim());
 
+  // Con una revisión publicada el sitio ya es del dueño: de la plantilla, solo colores y fuentes.
+  const soloEstilo = modoPorDefecto(sitio.sitio) === 'estilo';
+  const extendidos = tokensExtendidosDisponibles();
+
+  /**
+   * Paso 2: arma el sitio con la plantilla (la «Plantilla completa» de Diseño) o solo su estilo.
+   * `'invalido'` = ya se avisó (conflicto o error del servidor): no se repite el aviso genérico.
+   */
+  const usarPlantilla = async (p: PlantillaCatalogoAsistente): Promise<boolean | 'invalido'> => {
+    if (armada.current === p.id) return true;
+    if (soloEstilo) {
+      if (!(await sitio.guardar((d) => aplicarEstiloPlantilla(d, p.catalogo, extendidos)))) return false;
+      armada.current = p.id;
+      return true;
+    }
+    const actual = await sitio.asegurar();
+    if (!actual) return false;
+    try {
+      await apiPaginas.plantillaCompleta({ branchId: actual.branchId, version: sitio.borrador?.version ?? actual.versionBorrador }, p.id);
+      await sitio.recargar();
+      armada.current = p.id;
+      return true;
+    } catch (error) {
+      if (error instanceof ErrorApiPaginas && error.esConflicto) {
+        toast.error(t('asistente.conflicto'));
+        await sitio.recargar();
+        return 'invalido';
+      }
+      fallar(error instanceof Error ? error.message : null);
+      return 'invalido';
+    }
+  };
+
   const guardarPaso = async (): Promise<boolean | 'invalido'> => {
     switch (paso) {
       case 1:
         return ob.guardar({ giro, objetivos, pasoActual: 2 });
       case 2: {
         if (!plantilla) return false;
-        if (!(await sitio.guardar((d) => aplicarPlantilla(d, plantilla.preset)))) return false;
+        const ok = await usarPlantilla(plantilla);
+        if (ok !== true) return ok;
         return ob.guardar({ pasos: { plantilla: plantilla.id }, pasoActual: 3 });
       }
       case 3: {
         const e = estilo ?? (plantilla ? { preset: plantilla, acentoLogo: null } : null);
         if (!e) return ob.guardar({ pasoActual: 4 });
-        const ok = await sitio.guardar((d) => {
-          const conEstilo = aplicarEstilo(d, e.preset.preset);
-          return e.acentoLogo ? aplicarAcento(conEstilo, e.acentoLogo) : conEstilo;
-        });
-        if (!ok) return false;
+        // El estilo de la plantilla ya lo escribió el paso 2 (con sus tokens): no se reescribe.
+        const delaPlantilla = !!plantilla && e.preset.id === plantilla.id;
+        if (!delaPlantilla || e.acentoLogo) {
+          const ok = await sitio.guardar((d) => {
+            const conEstilo = delaPlantilla ? d : aplicarEstilo(d, e.preset.preset);
+            return e.acentoLogo ? aplicarAcento(conEstilo, e.acentoLogo) : conEstilo;
+          });
+          if (!ok) return false;
+        }
         return ob.guardar({ pasos: { estilo: e.acentoLogo ? 'logo' : e.preset.id }, pasoActual: 4 });
       }
       case 4: {
@@ -219,6 +300,29 @@ export function AsistenteSitio() {
   const guardarYSalir = async () => {
     await ob.guardar({ pasoActual: paso });
     router.push(RAIZ_SITIO_WEB);
+  };
+
+  /** «Omitir este paso»: sin validar ni escribir nada del paso; solo se recuerda el avance. */
+  const omitirPaso = async () => {
+    const destino = Math.min(paso + 1, TOTAL_PASOS_ASISTENTE);
+    setTrabajando(true);
+    try {
+      await ob.guardar({ pasoActual: destino });
+    } finally {
+      setTrabajando(false);
+    }
+    irA(destino);
+  };
+
+  // Editor de Inicio para «Ir al editor»; sin página aún, Diseño (que arma lo que falte).
+  const paginaInicioId = sitio.documento?.paginas.find(esInicio)?.id ?? null;
+  const rutaEditor = paginaInicioId ? rutaEditorSitio(paginaInicioId) : `${RAIZ_SITIO_WEB}/diseno`;
+
+  /** «Saltar configuración»: guarda dónde iba y sale; el sitio queda en borrador, sin publicar. */
+  const saltar = async (destino: 'resumen' | 'editor') => {
+    setSaltarAbierto(false);
+    await ob.guardar({ pasoActual: paso });
+    router.push(destino === 'editor' ? rutaEditor : RAIZ_SITIO_WEB);
   };
 
   const guardarBorrador = async () => {
@@ -294,9 +398,18 @@ export function AsistenteSitio() {
       />
     );
   } else if (paso === 2) {
-    contenido = <PasoPlantilla giro={giro} seleccionada={plantilla?.id ?? null} onSeleccionar={setPlantilla} />;
+    contenido = <PasoPlantilla giro={giro} seleccionada={plantilla?.id ?? null} onSeleccionar={setPlantilla} soloEstilo={soloEstilo} />;
   } else if (paso === 3) {
-    contenido = <PasoEstilo giro={giro} elegido={estilo} onElegir={setEstilo} logoUrl={datos.logoUrl} onVistaPrevia={() => setVistaMovilAbierta(true)} />;
+    contenido = (
+      <PasoEstilo
+        giro={giro}
+        elegido={estilo}
+        onElegir={setEstilo}
+        logoUrl={datos.logoUrl}
+        onVistaPrevia={() => setVistaMovilAbierta(true)}
+        catalogo={estilosConPlantilla(plantilla, giro)}
+      />
+    );
   } else if (paso === 4) {
     contenido = (
       <PasoDatosNegocio
@@ -332,6 +445,13 @@ export function AsistenteSitio() {
         paso={paso}
         onGuardarSalir={() => void guardarYSalir()}
         onAtras={paso > 1 ? () => irA(paso - 1) : undefined}
+        onSaltar={cargando ? undefined : () => setSaltarAbierto(true)}
+        onIrAPaso={cargando || trabajando ? undefined : irA}
+        omitir={
+          !cargando && PASOS_OMITIBLES.includes(paso)
+            ? { etiqueta: t('asistente.omitir'), etiquetaCorta: t('asistente.omitirCorto'), onClick: () => void omitirPaso(), deshabilitado: trabajando }
+            : undefined
+        }
         guardando={sitio.guardando || ob.guardando}
         primario={
           ultimo
@@ -352,6 +472,16 @@ export function AsistenteSitio() {
       >
         {vista(false)}
       </Dialogo>
+      <Dialogo
+        abierto={saltarAbierto}
+        onAbiertoChange={setSaltarAbierto}
+        titulo={t('asistente.saltar.titulo')}
+        descripcion={t('asistente.saltar.descripcion')}
+        ancho={560}
+        textoCancelar={t('asistente.saltar.seguir')}
+        secundarios={[{ etiqueta: t('asistente.saltar.irEditor'), onClick: () => void saltar('editor') }]}
+        primario={{ etiqueta: t('asistente.saltar.irResumen'), onClick: () => void saltar('resumen') }}
+      />
     </>
   );
 }

@@ -35975,7 +35975,68 @@
           "corazonTarjetas": "Corazón en las tarjetas",
           "corazonFicha": "Corazón en la ficha del producto",
           "tarjetasAyuda": "El estilo y la posición del corazón en la tarjeta siguen en Estilo del sitio › Tarjeta de producto."
+        },
+        "accesos": {
+          "titulo": "Íconos, moneda y carrito"
         }
+      },
+      "accionesFicha": {
+        "distribucion": "Distribución lista",
+        "personalizada": "Personalizada",
+        "distribuciones": {
+          "clasica": "Clásica",
+          "dos_mitad": "Dos a la mitad",
+          "compacta": "Compacta",
+          "solo_agregar": "Solo agregar",
+          "comprar_primero": "Comprar primero",
+          "con_whatsapp": "Con WhatsApp"
+        },
+        "ayudaDistribucion": "Al elegir una se reacomodan los botones de abajo y se conservan los textos que escribiste. Después puedes ajustar cada botón.",
+        "ayudaPersonalizada": "Cambiaste el orden o un botón: ya no coincide con ninguna distribución lista. Toca una tarjeta para volver a ella.",
+        "botones": "Botones y orden",
+        "ayudaBotones": "Arrastra por la agarradera para ordenar. Los botones dentro del mismo recuadro azul comparten fila. El ojo los muestra u oculta.",
+        "mismaFila": "Misma fila · {nombres}",
+        "tipos": {
+          "cantidad": "Cantidad",
+          "agregar": "Agregar al carrito",
+          "comprar": "Comprar ahora",
+          "favorito": "Favorito (corazón)",
+          "whatsapp": "Pedir por WhatsApp",
+          "compartir": "Compartir"
+        },
+        "conEtiqueta": "Con etiqueta",
+        "tamanos": {
+          "largo": "Largo",
+          "mitad": "Mitad",
+          "pequeno": "Pequeño"
+        },
+        "estilos": {
+          "relleno": "Relleno",
+          "borde": "Con borde",
+          "enlace": "Enlace"
+        },
+        "mostrar": "Mostrar en la ficha",
+        "ocultar": "Ocultar {nombre}",
+        "mostrarBoton": "Mostrar {nombre}",
+        "noSeOculta": "«Agregar al carrito» no se puede ocultar: se puede mover y cambiar.",
+        "abrir": "Opciones de {nombre}",
+        "tamano": "Tamaño",
+        "estilo": "Estilo",
+        "texto": "Texto del botón",
+        "ayudaTexto": "Vacío = «{texto}» (texto por defecto).",
+        "textoCorto": "Texto corto en el celular",
+        "ayudaTextoCorto": "En gris, el texto por defecto. Se usa en el celular cuando el botón comparte fila.",
+        "ayudaCantidad": "La cantidad no tiene tamaño ni estilo: toma su ancho. Lleva la etiqueta «Cantidad» cuando no comparte fila con un botón.",
+        "ayudaFavorito": "El corazón no sale si apagas «Corazón en la ficha» (Encabezado › Favoritos) ni en la carta del restaurante.",
+        "compartirFila": "Compartir fila con el siguiente",
+        "ayudaCompartirFila": "Une este botón con «{siguiente}» aunque no se unirían solos (máximo 3 por fila).",
+        "ultimo": "Es el último de la lista: no hay siguiente.",
+        "sinWhatsapp": {
+          "titulo": "WhatsApp no tiene número",
+          "descripcion": "Sin número, «Pedir por WhatsApp» no sale en la tienda. Escríbelo en Configuración › Contacto.",
+          "ir": "Ir a Contacto"
+        },
+        "comportamiento": "Comportamiento"
       }
     },
     "paginas": {
@@ -36556,6 +36617,16 @@
       "errorTitulo": "No pudimos abrir la configuración del sitio",
       "errorDescripcion": "Tu avance está guardado. Revisa la conexión e inténtalo de nuevo.",
       "conflicto": "Otra persona guardó una versión más nueva del sitio. Recargamos para que sigas desde lo último.",
+      "omitir": "Omitir este paso",
+      "omitirCorto": "Omitir",
+      "saltar": {
+        "boton": "Saltar configuración",
+        "titulo": "¿Saltar la configuración?",
+        "descripcion": "Guardamos lo que ya elegiste. Tu sitio queda en borrador y no se publica. Puedes terminar la configuración cuando quieras desde Sitio web › Resumen, o armarlo directo en el editor.",
+        "seguir": "Seguir configurando",
+        "irEditor": "Ir al editor",
+        "irResumen": "Saltar e ir al resumen"
+      },
       "pasos": {
         "giro": "Giro y objetivo",
         "plantilla": "Plantilla",
@@ -36591,12 +36662,15 @@
       },
       "plantilla": {
         "titulo": "Elige una plantilla",
-        "descripcion": "Mostramos primero las de {giro}. La plantilla define la estructura; el estilo lo eliges en el paso siguiente.",
+        "descripcion": "Mostramos primero las de {giro}. Cada plantilla trae su diseño completo y la puedes cambiar cuando quieras en Diseño.",
         "todas": "Todas",
         "filtros": "Filtrar plantillas",
         "errorCatalogo": "No pudimos cargar las plantillas",
         "vacio": "No hay plantillas para este filtro. Prueba con «Todas».",
-        "elige": "Elige una plantilla para seguir."
+        "elige": "Elige una plantilla para seguir.",
+        "descripcionTienda": "Mostramos primero las de tienda. Cada plantilla trae su diseño completo: inicio, página de categoría y ficha de producto. La puedes cambiar cuando quieras en Diseño.",
+        "soloEstilo": "Tu sitio ya está publicado: de la plantilla tomamos los colores y las fuentes, y tu contenido se queda como está. Para cambiar la estructura entera, usa Diseño › Plantillas.",
+        "nueva": "Nueva"
       },
       "estilo": {
         "titulo": "Elige un estilo",

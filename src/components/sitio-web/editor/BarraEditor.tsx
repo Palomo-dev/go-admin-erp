@@ -120,10 +120,12 @@ export function BarraEditor(p: BarraEditorProps) {
         </span>
         <Select value={p.paginaId} onValueChange={p.onCambiarPagina}>
           <SelectTrigger aria-label={t('barra.pagina')} className={cn(CLASE_SELECTOR, 'w-[140px] xl:w-[190px]')}>
-            <span className="flex min-w-0 items-center gap-2">
+            {/* div y no span: el SelectTrigger le pone line-clamp a sus <span> hijos, que los apila
+                en columna (el ícono quedaba encima del nombre). */}
+            <div className="flex min-w-0 items-center gap-2">
               {IconoActual && <IconoActual aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />}
               <span className="truncate">{paginaActual?.title ?? ''}</span>
-            </span>
+            </div>
           </SelectTrigger>
           <SelectContent>
             {grupos.sitio.map((x) => (

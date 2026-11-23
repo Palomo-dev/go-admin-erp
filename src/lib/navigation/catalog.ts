@@ -163,6 +163,16 @@ export interface PaginaNav {
    * (Figma 01c: «Solo restaurantes», «Checkout, pagos y envíos»…).
    */
   descripcion?: string;
+  /**
+   * Código del módulo DUEÑO de la página cuando el menú la muestra dentro de
+   * otro módulo (Figma 24 Ventas, 2026-11-23: Cotizaciones vive en
+   * /app/finanzas/cotizaciones y además sale en Ventas › Vender). La página se
+   * ve solo si la organización tiene activo ese módulo y no la apagó ahí; no
+   * es una página del módulo que la muestra: no entra en `RUTAS_MODULOS`, en
+   * `MODULE_PAGES` (activación por organización y por cargo) ni marca el
+   * módulo activo (`rutaActiva` resalta al dueño). Ver `paginasPropias()`.
+   */
+  moduloDueno?: string;
 }
 
 export interface ModuloNav {
@@ -184,6 +194,13 @@ export interface ModuloNav {
   rutas: string[];
   /** Páginas en orden. Si solo queda una visible, el módulo es un enlace directo. */
   paginas: PaginaNav[];
+  /**
+   * Página con que abre el módulo (enlace del menú, pestaña móvil, Inicio)
+   * cuando no es la primera de la lista. Si la organización o el cargo la
+   * ocultan, el módulo abre en su primera página visible, como siempre.
+   * Ventas abre en «Todas las ventas», no en la pantalla del POS (Figma 24).
+   */
+  inicio?: string;
   /**
    * Cómo pinta sus páginas el nivel 2 del menú móvil. `'grupos'` (por defecto):
    * filas de texto bajo los rótulos de grupo (MobileDrawerNivel2 622:13996).
@@ -213,7 +230,9 @@ export const CAPACIDADES_NAV: readonly CapacidadNav[] = ['gestionarNotificacione
 
 export const SECCIONES: { codigo: CodigoSeccion; etiqueta: string }[] = [
   { codigo: 'principal', etiqueta: 'sectionMain' },
-  { codigo: 'ventas', etiqueta: 'sectionSales' },
+  // «Comercial» (Figma 24 Ventas, 2026-11-23): para no leer «Ventas › Ventas»
+  // ahora que el módulo del POS se llama Ventas. El código sigue siendo 'ventas'.
+  { codigo: 'ventas', etiqueta: 'sectionCommercial' },
   // «Operación» (Figma 21 Logística, barra lateral 2792:19): Logística y Transporte.
   { codigo: 'operacion', etiqueta: 'sectionOperation' },
   { codigo: 'gestion', etiqueta: 'sectionManagement' },
@@ -237,21 +256,32 @@ export const CATALOGO_NAV: ModuloNav[] = [
     ],
   },
 
-  // ─── Ventas ───────────────────────────────────────────────────────────────
+  // ─── Comercial ────────────────────────────────────────────────────────────
   {
+    // «Ventas» (Figma 24, aprobado por el dueño el 2026-11-23): el módulo vende
+    // por todos los canales y el POS es solo una de sus páginas. Cambian el
+    // nombre visible, el icono (Receipt, «Venta» en CATALOGO-ICONOS; el carrito
+    // queda para el POS), los grupos y la página de inicio. NO cambian el código
+    // `pos` (planes, organization_modules, cargos y permisos) ni las rutas
+    // /app/pos/** (opción A de la lámina «Qué cambia»).
     codigo: 'pos',
     id: 'pos',
-    etiqueta: 'pointOfSale',
-    icono: ShoppingCart,
+    etiqueta: 'ventas',
+    icono: Receipt,
     seccion: 'ventas',
     rutas: ['/app/pos'],
+    inicio: '/app/pos/ventas',
     paginas: [
-      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Venta', pantallaCompleta: true },
-      { href: '/app/pos/pedidos-online', nombre: 'Pedidos online', icono: ShoppingBag, grupo: 'Venta' },
-      { href: '/app/pos/ventas', nombre: 'Ventas', icono: Receipt, grupo: 'Venta' },
-      { href: '/app/pos/cajas', nombre: 'Cajas', icono: Banknote, grupo: 'Venta' },
-      { href: '/app/pos/devoluciones', nombre: 'Devoluciones', icono: Undo2, grupo: 'Venta' },
-      { href: '/app/pos/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Venta' },
+      // Vender: donde se vende (mostrador, pedidos que entran, cotizaciones).
+      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Vender', pantallaCompleta: true },
+      { href: '/app/pos/pedidos-online', nombre: 'Pedidos online', icono: ShoppingBag, grupo: 'Vender' },
+      // Ruta de Finanzas (se sigue viendo también allí): solo con el módulo finance activo.
+      { href: '/app/finanzas/cotizaciones', nombre: 'Cotizaciones', icono: Calculator, grupo: 'Vender', moduloDueno: 'finance' },
+      // Movimientos: revisar lo vendido. «Todas las ventas» es la página de inicio.
+      { href: '/app/pos/ventas', nombre: 'Todas las ventas', icono: Receipt, grupo: 'Movimientos' },
+      { href: '/app/pos/devoluciones', nombre: 'Devoluciones', icono: Undo2, grupo: 'Movimientos' },
+      { href: '/app/pos/cajas', nombre: 'Cajas', icono: Banknote, grupo: 'Movimientos' },
+      { href: '/app/pos/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Movimientos' },
       { href: '/app/pos/mesas', nombre: 'Mesas', icono: UtensilsCrossed, grupo: 'Restaurante', pantallaCompleta: true },
       { href: '/app/pos/reservas-mesas', nombre: 'Reservas de mesas', icono: CalendarClock, grupo: 'Restaurante' },
       { href: '/app/pos/comandas', nombre: 'Comandas', icono: ChefHat, grupo: 'Restaurante' },
@@ -749,6 +779,25 @@ export const CATALOGO_NAV: ModuloNav[] = [
 /** Busca un módulo por su código de base de datos. */
 export function moduloPorCodigo(codigo: string): ModuloNav | undefined {
   return CATALOGO_NAV.find((m) => m.codigo === codigo);
+}
+
+/**
+ * Páginas que PERTENECEN al módulo: sin las que solo muestra prestadas de otro
+ * (`moduloDueno`). Es la lista que usan el middleware (`RUTAS_MODULOS`), la
+ * activación por organización y por cargo (`MODULE_PAGES`) y todo lo que
+ * pregunta «¿de qué módulo es esta ruta?».
+ */
+export function paginasPropias(modulo: Pick<ModuloNav, 'paginas'>): PaginaNav[] {
+  return modulo.paginas.filter((p) => !p.moduloDueno);
+}
+
+/**
+ * Enlace con que abre un módulo entre sus páginas visibles: `inicio` si sigue
+ * visible; si no, la primera. `null` si no le queda ninguna.
+ */
+export function hrefInicioModulo(modulo: Pick<ModuloNav, 'inicio'>, hrefsVisibles: readonly string[]): string | null {
+  if (modulo.inicio && hrefsVisibles.includes(modulo.inicio)) return modulo.inicio;
+  return hrefsVisibles[0] ?? null;
 }
 
 /**

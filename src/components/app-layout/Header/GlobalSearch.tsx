@@ -101,6 +101,8 @@ export interface PaginaBuscable {
   name: string;
   url: string;
   description?: string;
+  /** Sinónimos que encuentran la página sin pintarse (`nav.sinonimos.<módulo>`). */
+  palabrasClave?: string;
   /** Icono de la página en el catálogo de navegación. */
   icono?: LucideIcon;
 }

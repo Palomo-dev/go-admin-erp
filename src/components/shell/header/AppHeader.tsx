@@ -29,7 +29,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, Bell, Bot, ChevronDown, Home, Menu, Search, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Bell, Bot, ChevronDown, Home, Menu, Receipt, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -394,8 +394,9 @@ function MobileTabBar({
   const [detalle, setDetalle] = useState<NotificacionHeader | null>(null);
   const [tareaId, setTareaId] = useState<string | null>(null);
 
-  // «Ventas» lleva al primer módulo visible de la sección Ventas (POS, PMS,
-  // gimnasio…): el plan de la organización decide cuál existe.
+  // «Ventas» lleva al primer módulo visible de la sección Comercial (Ventas,
+  // PMS, gimnasio…): el plan de la organización decide cuál existe. Con el
+  // módulo Ventas abre «Todas las ventas» (su página de inicio).
   const ventas = useMemo(() => secciones.find((s) => s.codigo === 'ventas')?.modulos[0] ?? null, [secciones]);
   const enVentas = !!ventas && !!pathname && ventas.modulo.rutas.some((r) => pathname.startsWith(r));
   const enInicio = pathname === '/app/inicio';
@@ -423,7 +424,8 @@ function MobileTabBar({
         {ventas ? (
           <Link href={ventas.href} className={item(enVentas)} aria-current={enVentas ? 'page' : undefined}>
             {enVentas && indicador}
-            <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+            {/* Receipt: la pestaña es «Ventas» (todos los canales), no el carrito del POS (Figma 24, celular nivel 1). */}
+            <Receipt className="h-5 w-5" aria-hidden="true" />
             {t('tabSales')}
           </Link>
         ) : (

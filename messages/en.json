@@ -4378,7 +4378,7 @@
       "inicio": "Home",
       "pos": "POS",
       "pos_pedidos-online": "Online orders",
-      "pos_ventas": "Sales",
+      "pos_ventas": "All sales",
       "pos_cajas": "Cash registers",
       "pos_devoluciones": "Returns",
       "pos_cuentas-por-cobrar": "Accounts receivable",
@@ -4664,7 +4664,9 @@
       "tributario": "Taxes",
       "operacion-del-dia": "Today's operations",
       "catalogo-comun": "Shared catalog",
-      "cobertura": "Coverage"
+      "cobertura": "Coverage",
+      "vender": "Sell",
+      "movimientos": "Transactions"
     },
     "backToMenu": "Menu",
     "membresias": "Memberships",
@@ -4676,7 +4678,12 @@
       "sitio-web_sedes": "If you have more than one location"
     },
     "logistics": "Logistics",
-    "sectionOperation": "Operations"
+    "sectionOperation": "Operations",
+    "ventas": "Sales",
+    "sectionCommercial": "Commercial",
+    "sinonimos": {
+      "ventas": "POS point of sale register checkout"
+    }
   },
   "crm": {
     "title": "CRM",

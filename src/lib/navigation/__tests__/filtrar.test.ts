@@ -1,7 +1,7 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { Target } from 'lucide-react';
-import { CATALOGO_NAV, moduloPorCodigo } from '../catalog';
+import { CATALOGO_NAV, moduloPorCodigo, paginasPropias } from '../catalog';
 import { filtrarNavegacion, rutaActiva, type AccesoNav } from '../filtrar';
 
 const todosLosModulos = CATALOGO_NAV.map((m) => m.codigo).filter((c): c is string => c !== null);
@@ -28,18 +28,28 @@ describe('catálogo de navegación', () => {
   });
 
   test('ningún href de página se repite entre módulos', () => {
-    const hrefs = CATALOGO_NAV.flatMap((m) => m.paginas.map((p) => p.href));
+    // Una página prestada (`moduloDueno`, Cotizaciones en Ventas) no es del módulo que la muestra.
+    const hrefs = CATALOGO_NAV.flatMap((m) => paginasPropias(m).map((p) => p.href));
     const repetidos = hrefs.filter((h, i) => hrefs.indexOf(h) !== i);
     expect(repetidos).toEqual([]);
   });
 
   test('toda página vive bajo una de las rutas de su módulo', () => {
     const fuera = CATALOGO_NAV.flatMap((m) =>
-      m.paginas
+      paginasPropias(m)
         .filter((p) => !m.rutas.some((r) => p.href === r || p.href.startsWith(r + '/')))
         .map((p) => `${m.id}: ${p.href}`)
     );
     expect(fuera).toEqual([]);
+  });
+
+  test('una página prestada existe, igual, en su módulo dueño', () => {
+    const prestadas = CATALOGO_NAV.flatMap((m) => m.paginas.filter((p) => p.moduloDueno).map((p) => ({ m, p })));
+    expect(prestadas.length).toBeGreaterThan(0);
+    for (const { m, p } of prestadas) {
+      expect(p.moduloDueno).not.toBe(m.codigo);
+      expect(moduloPorCodigo(p.moduloDueno!)!.paginas.some((x) => x.href === p.href && !x.moduloDueno)).toBe(true);
+    }
   });
 
   test('el CRM trae todas sus páginas de crmNav (antes el panel tenía 10 y el sidebar 16)', () => {
@@ -224,5 +234,46 @@ describe('rutaActiva', () => {
   test('una ruta fuera del catálogo no activa nada', () => {
     expect(rutaActiva('/app/perfil')).toBeNull();
     expect(rutaActiva(null)).toBeNull();
+  });
+});
+
+describe('Ventas (Figma 24, 2026-11-23): el POS es una página del módulo', () => {
+  const ventasDe = (a: AccesoNav) => filtrarNavegacion(a).flatMap((s) => s.modulos).find((m) => m.modulo.id === 'pos');
+
+  test('se llama «Ventas», con Receipt, en la sección Comercial, y el código sigue siendo pos', () => {
+    const m = moduloPorCodigo('pos')!;
+    expect(m.etiqueta).toBe('ventas');
+    expect(m.rutas).toEqual(['/app/pos']);
+    expect(filtrarNavegacion(acceso()).find((s) => s.codigo === 'ventas')?.etiqueta).toBe('sectionCommercial');
+  });
+
+  test('grupos Vender · Movimientos · Restaurante · Promociones, sin perder ninguna página', () => {
+    const m = moduloPorCodigo('pos')!;
+    expect([...new Set(m.paginas.map((p) => p.grupo))]).toEqual(['Vender', 'Movimientos', 'Restaurante', 'Promociones']);
+    expect(paginasPropias(m)).toHaveLength(13);
+    expect(m.paginas).toHaveLength(14);
+  });
+
+  test('abre en «Todas las ventas», no en la pantalla del POS', () => {
+    expect(ventasDe(acceso())?.href).toBe('/app/pos/ventas');
+  });
+
+  test('si «Todas las ventas» está oculta, abre en la primera visible', () => {
+    expect(ventasDe(acceso({ paginasOcultas: { pos: ['/app/pos/ventas'] } }))?.href).toBe('/app/pos');
+  });
+
+  test('Cotizaciones sale en Vender solo con Finanzas activo y no apagada en Finanzas', () => {
+    const conFinanzas = ventasDe(acceso({ modulosActivos: ['pos', 'finance'] }))!;
+    expect(conFinanzas.paginas.map((p) => p.href)).toContain('/app/finanzas/cotizaciones');
+    const sinFinanzas = ventasDe(acceso({ modulosActivos: ['pos'] }))!;
+    expect(sinFinanzas.paginas.map((p) => p.href)).not.toContain('/app/finanzas/cotizaciones');
+    const apagada = ventasDe(acceso({ modulosActivos: ['pos', 'finance'], paginasOcultas: { finance: ['/app/finanzas/cotizaciones'] } }))!;
+    expect(apagada.paginas.map((p) => p.href)).not.toContain('/app/finanzas/cotizaciones');
+    const cargoSinFinanzas = ventasDe(acceso({ modulosActivos: ['pos', 'finance'], modulosCargo: ['pos'] }))!;
+    expect(cargoSinFinanzas.paginas.map((p) => p.href)).not.toContain('/app/finanzas/cotizaciones');
+  });
+
+  test('en /app/finanzas/cotizaciones el módulo activo sigue siendo Finanzas', () => {
+    expect(rutaActiva('/app/finanzas/cotizaciones')?.modulo.id).toBe('finanzas');
   });
 });

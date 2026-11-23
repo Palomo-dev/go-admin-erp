@@ -3,7 +3,7 @@
  * estados no se confunden entre sí; y los «Ir a …» usan el icono de la página
  * destino tal como sale en el menú (catálogo de navegación).
  */
-import { CreditCard, Link2, MapPin, ShoppingBag, ShoppingCart, Ticket, CalendarClock, ArrowRight } from 'lucide-react';
+import { CreditCard, Link2, MapPin, Receipt, ShoppingBag, ShoppingCart, Ticket, CalendarClock, ArrowRight } from 'lucide-react';
 import { CATALOGO_NAV } from '@/lib/navigation/catalog';
 import { ICONO_TAREA_SITIO } from '../../ui/iconosSitio';
 import { TEMAS_VENTA, TIPOS_ENTREGA } from '../estadoVentas';
@@ -70,7 +70,8 @@ describe('iconoDestino: el icono del menú de la página destino', () => {
   });
 
   test('ruta fuera del menú: el icono de su módulo; desconocida: flecha', () => {
-    expect(iconoDestino('/app/pos/una-ruta-sin-menu')).toBe(ShoppingCart);
+    // El módulo del POS se llama «Ventas» con Receipt desde el 2026-11-23 (Figma 24).
+    expect(iconoDestino('/app/pos/una-ruta-sin-menu')).toBe(Receipt);
     expect(iconoDestino('/otra/cosa')).toBe(ArrowRight);
   });
 });

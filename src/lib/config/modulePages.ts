@@ -11,7 +11,7 @@
  *
  * La API pública no cambia.
  */
-import { CATALOGO_NAV } from '@/lib/navigation/catalog';
+import { CATALOGO_NAV, paginasPropias } from '@/lib/navigation/catalog';
 
 export interface ModulePage {
   name: string;
@@ -21,7 +21,9 @@ export interface ModulePage {
 export const MODULE_PAGES: Record<string, ModulePage[]> = Object.fromEntries(
   CATALOGO_NAV.filter((m) => m.codigo !== null).map((m) => [
     m.codigo as string,
-    m.paginas.map((p) => ({ name: p.nombre, href: p.href })),
+    // Sin las páginas prestadas de otro módulo (Cotizaciones en Ventas): se
+    // activan y se asignan a un cargo en su módulo dueño, una sola vez.
+    paginasPropias(m).map((p) => ({ name: p.nombre, href: p.href })),
   ])
 );
 

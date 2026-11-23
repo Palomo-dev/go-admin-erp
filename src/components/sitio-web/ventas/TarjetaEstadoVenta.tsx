@@ -221,9 +221,10 @@ const MODULO_TEMA: Partial<Record<TemaVenta, string>> = {
   envios: 'logistics',
   pagos: 'finance',
   pasarela: 'integrations',
-  cupones: 'pointOfSale',
-  pedidos: 'pointOfSale',
-  reservas: 'pointOfSale',
+  // El módulo del POS se llama «Ventas» desde el 2026-11-23 (Figma 24).
+  cupones: 'ventas',
+  pedidos: 'ventas',
+  reservas: 'ventas',
 };
 
 /** Error parcial de una tarjeta (B/10-03): las demás siguen al día. */

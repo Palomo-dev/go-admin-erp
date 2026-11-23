@@ -33,7 +33,7 @@ import { moduleManagementService } from '@/lib/services/moduleManagementService'
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 import { resolverCargoMiembro, type FilaAccesoModulo } from '@/lib/navigation/accesoCargo';
-import { clavePagina, moduloPorCodigo } from '@/lib/navigation/catalog';
+import { clavePagina, hrefInicioModulo, moduloPorCodigo, paginasPropias } from '@/lib/navigation/catalog';
 import { paginaActiva } from '@/lib/navigation/paginaActiva';
 import { moduloDeRuta, paginaDeRuta } from '@/lib/navigation/rutasModulos';
 import { defaultLocale, isValidLocale, type Locale } from '@/i18n/config';
@@ -448,8 +448,8 @@ export async function modulosNoUsados(ctx: Ctx): Promise<{ puedeEncender: boolea
     const estado = causaDeEstado(estadoModulo(m, ctxModulos));
     const nav = moduloPorCodigo(m.code);
     if (!estado || !nav) continue;
-    const paginas = nav.paginas.filter((p) => p.enMenu !== false).map((p) => p.href);
-    lista.push({ codigo: m.code, estado, href: paginas[0] ?? nav.rutas[0], paginas });
+    const paginas = paginasPropias(nav).filter((p) => p.enMenu !== false).map((p) => p.href);
+    lista.push({ codigo: m.code, estado, href: hrefInicioModulo(nav, paginas) ?? nav.rutas[0], paginas });
   }
   return { puedeEncender, plan: plan?.name ?? null, modulos: lista };
 }

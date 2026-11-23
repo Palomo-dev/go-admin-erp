@@ -4375,7 +4375,7 @@
       "inicio": "Accueil",
       "pos": "POS",
       "pos_pedidos-online": "Commandes en ligne",
-      "pos_ventas": "Ventes",
+      "pos_ventas": "Toutes les ventes",
       "pos_cajas": "Caisses",
       "pos_devoluciones": "Retours",
       "pos_cuentas-por-cobrar": "Créances clients",
@@ -4661,7 +4661,9 @@
       "tributario": "Fiscalité",
       "operacion-del-dia": "Opérations du jour",
       "catalogo-comun": "Catalogue commun",
-      "cobertura": "Couverture"
+      "cobertura": "Couverture",
+      "vender": "Vendre",
+      "movimientos": "Mouvements"
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
@@ -4676,7 +4678,12 @@
       "sitio-web_sedes": "Si vous avez plusieurs sites"
     },
     "logistics": "Logistique",
-    "sectionOperation": "Opérations"
+    "sectionOperation": "Opérations",
+    "ventas": "Ventes",
+    "sectionCommercial": "Commercial",
+    "sinonimos": {
+      "ventas": "POS point de vente caisse"
+    }
   },
   "posCustomerDisplay": {
     "indicator": {

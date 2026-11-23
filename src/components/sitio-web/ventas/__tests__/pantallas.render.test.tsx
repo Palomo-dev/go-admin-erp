@@ -54,9 +54,9 @@ function tablero(): EntradaTablero[] {
     tarjetaCheckout({ modo: 'steps', tiposEntrega: ['delivery_own'], invitado: true, pedidoMinimo: 30000, sellos: true, logosPago: true, ventaEnLinea: true, hayAjustes: true, editable: true }),
     tarjetaPagos([{ nombre: 'Wompi · tarjeta, PSE, Nequi', visible: true, activo: true, conPasarela: true }], enlace('irFinanzasMetodos', 'finance')),
     tarjetaEnvios({ enlace: enlace('irTransporteTarifas', 'transport'), envioActivo: true, tiposEntrega: ['delivery_own'], tarifaPlana: 12000, envioGratisDesde: 200000, tarifasZonaWeb: 0 }),
-    tarjetaCupones({ enlace: enlace('irPosPromociones', 'pointOfSale'), cuponesUsables: 2, promocionesWeb: 0 }),
-    tarjetaPedidos({ enlace: enlace('irPosPedidos', 'pointOfSale'), ventaEnLinea: true, pendientes: 12, pagadosHoy: 8, totalHoy: 1240000, avisosCliente: ['correo'] }),
-    tarjetaReservas({ enlace: enlace('irPosReservas', 'pointOfSale'), sedes: [{ nombre: 'Sede Centro', recibiendo: true }, { nombre: 'Sede Norte', recibiendo: false }] }, true),
+    tarjetaCupones({ enlace: enlace('irPosPromociones', 'ventas'), cuponesUsables: 2, promocionesWeb: 0 }),
+    tarjetaPedidos({ enlace: enlace('irPosPedidos', 'ventas'), ventaEnLinea: true, pendientes: 12, pagadosHoy: 8, totalHoy: 1240000, avisosCliente: ['correo'] }),
+    tarjetaReservas({ enlace: enlace('irPosReservas', 'ventas'), sedes: [{ nombre: 'Sede Centro', recibiendo: true }, { nombre: 'Sede Norte', recibiendo: false }] }, true),
     tarjetaPasarela({ enlace: enlace('irIntegraciones', 'integrations'), conexiones: [{ proveedor: 'Wompi', estado: 'connected', entorno: 'production' }], firma: 'match', ultimoPago: null, enlazadaAlSitio: true }),
   ];
 }

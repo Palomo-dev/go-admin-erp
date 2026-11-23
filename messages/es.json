@@ -4379,7 +4379,7 @@
       "inicio": "Inicio",
       "pos": "POS",
       "pos_pedidos-online": "Pedidos online",
-      "pos_ventas": "Ventas",
+      "pos_ventas": "Todas las ventas",
       "pos_cajas": "Cajas",
       "pos_devoluciones": "Devoluciones",
       "pos_cuentas-por-cobrar": "Cuentas por cobrar",
@@ -4665,7 +4665,9 @@
       "tributario": "Tributario",
       "operacion-del-dia": "Operación del día",
       "catalogo-comun": "Catálogo común",
-      "cobertura": "Cobertura"
+      "cobertura": "Cobertura",
+      "vender": "Vender",
+      "movimientos": "Movimientos"
     },
     "backToMenu": "Menú",
     "membresias": "Membresías",
@@ -4677,7 +4679,12 @@
       "sitio-web_sedes": "Si tienes más de una sede"
     },
     "logistics": "Logística",
-    "sectionOperation": "Operación"
+    "sectionOperation": "Operación",
+    "ventas": "Ventas",
+    "sectionCommercial": "Comercial",
+    "sinonimos": {
+      "ventas": "POS punto de venta caja"
+    }
   },
   "crm": {
     "title": "CRM",

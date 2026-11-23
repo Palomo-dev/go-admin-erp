@@ -199,7 +199,7 @@ describe('enlaces a los módulos dueños', () => {
     expect(e.envios).toMatchObject({ visible: true, modulo: 'logistics' });
     expect(e.reservas.visible).toBe(true);
     expect(e.pagos).toMatchObject({ visible: false, modulo: 'finance' });
-    expect(moduloDeRuta('/app/pos/cupones')).toBe('pointOfSale');
+    expect(moduloDeRuta('/app/pos/cupones')).toBe('ventas');
     expect(moduloDeRuta('/app/integraciones/conexiones')).toBe('integrations');
   });
 });

@@ -911,7 +911,15 @@ export const AppLayout = ({
         s.modulos.flatMap((m) =>
           m.paginas
             .filter((p) => p.enMenu !== false)
-            .map((p) => ({ id: p.href, name: nombresNav.pagina(p), url: p.href, description: tNav(m.modulo.etiqueta), icono: p.icono }))
+            .map((p) => ({
+              id: p.href,
+              name: nombresNav.pagina(p),
+              url: p.href,
+              description: tNav(m.modulo.etiqueta),
+              // Nombres viejos del módulo («POS», «punto de venta», «caja» para Ventas).
+              palabrasClave: tNav.has(`sinonimos.${m.modulo.etiqueta}`) ? tNav(`sinonimos.${m.modulo.etiqueta}`) : undefined,
+              icono: p.icono,
+            }))
         )
       ),
     [seccionesNav, tNav, nombresNav]

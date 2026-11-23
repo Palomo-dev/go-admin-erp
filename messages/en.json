@@ -65630,5 +65630,45 @@
         "pinDescripcion": "It is the Human resources PIN (the same as the time clock kiosk). It is verified on the server; it is never stored on the device."
       }
     }
+  },
+  "ventas": {
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Online store",
+      "menu_qr": "QR menu",
+      "marketplace": "Marketplace",
+      "manual": "Manual"
+    },
+    "todas": {
+      "abrirPos": "Open POS",
+      "nuevoPedidoManual": "New manual order",
+      "verEnReportes": "See sales by channel and by branch in Reports",
+      "todosLosCanales": "all channels",
+      "columnaCanal": "Channel",
+      "chips": {
+        "etiqueta": "Channel",
+        "todos": "All · {n}",
+        "canal": "{canal} · {n}"
+      },
+      "filtros": {
+        "canal": "Channel",
+        "todosLosCanales": "All channels",
+        "canalChip": "Channel: {canal}"
+      },
+      "kpis": {
+        "hoy": "Today's sales",
+        "hoyCorto": "Today",
+        "hoyVentas": "{count, plural, one {{n} sale} other {{n} sales}}",
+        "vsDia": "{pct} % vs. last {dia}",
+        "periodo": "Sales in the period",
+        "periodoVentas": "{count, plural, one {{n} sale} other {{n} sales}}",
+        "porCanal": "By channel",
+        "canalPct": "{canal} {pct} %",
+        "unSoloCanal": "All sales in the period came through this channel",
+        "sinVentas": "No sales in the period",
+        "ticketTodos": "in the period, all channels",
+        "ticketCanal": "in the period · {canal}"
+      }
+    }
   }
 }

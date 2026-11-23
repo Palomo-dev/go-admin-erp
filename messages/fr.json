@@ -65630,5 +65630,45 @@
         "pinDescripcion": "C’est le PIN des Ressources humaines (le même que la borne de pointage). Il est vérifié sur le serveur ; il n’est jamais enregistré sur l’appareil."
       }
     }
+  },
+  "ventas": {
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Boutique en ligne",
+      "menu_qr": "Menu QR",
+      "marketplace": "Marketplace",
+      "manual": "Manuel"
+    },
+    "todas": {
+      "abrirPos": "Ouvrir le POS",
+      "nuevoPedidoManual": "Nouvelle commande manuelle",
+      "verEnReportes": "Voir les ventes par canal et par site dans Rapports",
+      "todosLosCanales": "tous les canaux",
+      "columnaCanal": "Canal",
+      "chips": {
+        "etiqueta": "Canal",
+        "todos": "Tous · {n}",
+        "canal": "{canal} · {n}"
+      },
+      "filtros": {
+        "canal": "Canal",
+        "todosLosCanales": "Tous les canaux",
+        "canalChip": "Canal : {canal}"
+      },
+      "kpis": {
+        "hoy": "Ventes du jour",
+        "hoyCorto": "Aujourd'hui",
+        "hoyVentas": "{count, plural, one {{n} vente} other {{n} ventes}}",
+        "vsDia": "{pct} % vs. {dia} dernier",
+        "periodo": "Ventes de la période",
+        "periodoVentas": "{count, plural, one {{n} vente} other {{n} ventes}}",
+        "porCanal": "Par canal",
+        "canalPct": "{canal} {pct} %",
+        "unSoloCanal": "Toutes les ventes de la période par ce canal",
+        "sinVentas": "Aucune vente sur la période",
+        "ticketTodos": "de la période, tous les canaux",
+        "ticketCanal": "de la période · {canal}"
+      }
+    }
   }
 }

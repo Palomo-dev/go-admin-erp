@@ -1,9 +1,16 @@
 'use client';
 
 /**
- * Ventas del POS — listado (Figma `329:36071`, filtros `329:111220`, selección
- * `329:111876`, menú `329:112636`, móvil `331:54670`). Paso 15 de
- * docs/implementacion/CAJAS-VENTAS-PLAN.md.
+ * Todas las ventas — la página con que abre el módulo Ventas (Figma 24 Ventas,
+ * escritorio 2896:10945, filtros 2898:207872, celular 2898:207555, aprobado el
+ * 2026-11-23; antes «Historial de ventas», Figma `329:36071`, filtros
+ * `329:111220`, selección `329:111876`, menú `329:112636`, móvil `331:54670`).
+ *
+ * - Todos los canales: columna, filtro y chips «Canal» (InsigniaCanal) con su
+ *   conteo; «Abrir POS» y «Nuevo pedido manual» en la cabecera, «Exportar» en
+ *   el menú «⋯». Sin gráficas: van a Reportes (enlace junto a los chips).
+ * - StatCards: ventas de hoy (frente al mismo día de la semana pasada), del
+ *   periodo, por canal y ticket promedio.
  *
  * - Solo filas de `sales` (D1): los pedidos web sin venta viven en Pedidos online.
  * - Paginado, filtrado y ordenado en el servidor (`GET /api/pos/ventas`) con el
@@ -20,10 +27,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeftRight, Ban, CircleDollarSign, Copy, Download, Eye, FileText, Globe, Landmark, Percent, Plus, Printer, Receipt, RefreshCw, Undo2 } from 'lucide-react';
+import { Ban, CircleDollarSign, Copy, Download, Eye, FileText, Globe, Landmark, Plus, Printer, Receipt, RefreshCw, ShoppingBag, ShoppingCart, Undo2 } from 'lucide-react';
 import {
   BulkActionBar,
   CampoNumero,
+  ChipsOpcion,
   CustomerPicker,
   DataTable,
   DateRangeButton,
@@ -52,7 +60,6 @@ import {
 import { MultiSelect } from '@/components/kit/MultiSelect';
 import { simboloMoneda } from '@/components/kit/documento/documentoLineasLogica';
 import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -65,9 +72,11 @@ import { guardarArchivo, imprimirDocumento } from '@/lib/documents/cliente';
 import { filasACsv } from '@/lib/utils/csv';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { listarClientes } from '@/lib/services/clientesListadoService';
-import { BADGE_ESTADO_VENTA, ESTADOS_VENTA, ORIGENES_VENTA, TONO_ORIGEN_VENTA } from '@/lib/pos/ventas/estadoVenta';
+import { BADGE_ESTADO_VENTA, ESTADOS_VENTA } from '@/lib/pos/ventas/estadoVenta';
+import { CANALES_VENTA, canalSiempreVisible, esCanalVenta, type CanalVenta } from '@/lib/pos/ventas/canalVenta';
+import { mismoDiaSemanaAnterior } from '@/lib/pos/ventas/filtrosVentas';
 import { CAMPOS_ORDEN_VENTAS, ESTADOS_PAGO_VENTA } from '@/lib/pos/ventas/filtrosVentas';
-import { formatearDocumento, lineaCliente, lineaNumero, mesaEsNumero, nombreImpuesto, partesTransacciones, variacion } from '@/lib/pos/ventas/presentacionVentas';
+import { formatearDocumento, lineaCliente, lineaNumero, mesaEsNumero, variacion } from '@/lib/pos/ventas/presentacionVentas';
 import { accionesDeVenta, destinoCobro, SIN_PERMISOS_VENTAS, type DisponibilidadAccion, type PermisosVentas } from '@/lib/pos/ventas/accionesVenta';
 import {
   ErrorPeticionVentas,
@@ -78,15 +87,19 @@ import {
   pedirVentas,
   type PaginaVentasCliente,
 } from '@/lib/pos/ventas/clienteVentas';
-import type { CajeroVentas, CifrasVentas, FilaVenta, ImpuestoVentas } from '@/lib/pos/ventas/listadoServidor';
+import type { CajeroVentas, CifrasVentas, FilaVenta } from '@/lib/pos/ventas/listadoServidor';
 import { useFechaHoraCaja, useMetodosPagoActivos } from '@/components/pos/cajas/comunesCaja';
 import { useEtiquetaMetodoPago } from '@/components/pos/cajas/paymentMethodLabels';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { AnularVentaDialog } from './AnularVentaDialog';
+import { InsigniaCanal, useNombreCanal } from './InsigniaCanal';
+import { DialogoPedidoManual } from '@/components/pos/pedidos-online/manual/DialogoPedidoManual';
+import { usePaginasModulo } from '@/lib/navigation/NavegacionVisible';
+import { rutaGrupo } from '@/components/reportes/rutasReportes';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA = '/app/pos/ventas';
-const FILTROS = ['origen', 'estado', 'pago', 'metodo', 'cliente', 'cajero', 'desde', 'hasta', 'min', 'max', 'saldo', 'devolucion', 'sync'] as const;
+const FILTROS = ['canal', 'origen', 'estado', 'pago', 'metodo', 'cliente', 'cajero', 'desde', 'hasta', 'min', 'max', 'saldo', 'devolucion', 'sync'] as const;
 /** Casillas del panel: en la URL como `1`. */
 const CASILLAS = ['saldo', 'devolucion', 'sync'] as const;
 /** «Todas las sucursales» del selector del header (`ALL_BRANCHES`). */
@@ -94,6 +107,10 @@ const TODAS = 'all' as const;
 
 export function VentasPage() {
   const t = useTranslations('posVentas');
+  const tv = useTranslations('ventas.todas');
+  const nombreCanal = useNombreCanal();
+  const paginasVentas = usePaginasModulo('pos');
+  const paginasReportes = usePaginasModulo('reports');
   const migaVentas = useMigaVentas();
   const router = useRouter();
   const entero = useFormatoEntero();
@@ -126,6 +143,8 @@ export function VentasPage() {
   const [anular, setAnular] = useState<FilaVenta | null>(null);
   const [clienteElegido, setClienteElegido] = useState<ClientePicker | null>(null);
   const [cajeros, setCajeros] = useState<CajeroVentas[]>([]);
+  const [manualAbierto, setManualAbierto] = useState(false);
+  const canalFiltro: CanalVenta | null = esCanalVenta(l.filtros.canal) ? l.filtros.canal : null;
 
   // Periodo por defecto: el mes en curso de la organización (el mismo de las cifras).
   const desde = l.filtros.desde ?? inicioDeMes(hoy);
@@ -294,7 +313,7 @@ export function VentasPage() {
         [
           t('listado.columnas.fecha'),
           t('listado.columnas.numero'),
-          t('listado.columnas.origen'),
+          tv('columnaCanal'),
           t('listado.columnas.cliente'),
           t('listado.columnas.documentoCliente'),
           t('listado.columnas.sucursal'),
@@ -307,7 +326,7 @@ export function VentasPage() {
         elegidas.map((f) => [
           fechaHora(f.fecha),
           f.numero,
-          t(`listado.origenes.${f.origen}`),
+          nombreCanal(f.canal ?? 'pos'),
           f.cliente?.nombre ?? t('listado.consumidorFinal'),
           f.cliente?.documento,
           f.sucursal.nombre,
@@ -355,6 +374,7 @@ export function VentasPage() {
 
   const chips: ChipFiltro[] = [
     periodoElegido ? { clave: 'desde', etiqueta: t('listado.filtros.periodoChip', { rango: etiquetaRango({ desde, hasta }, locale) }) } : null,
+    canalFiltro ? { clave: 'canal', etiqueta: tv('filtros.canalChip', { canal: nombreCanal(canalFiltro) }) } : null,
     l.filtros.origen ? { clave: 'origen', etiqueta: t('listado.filtros.origenChip', { origen: t(`listado.origenes.${l.filtros.origen}` as never) }) } : null,
     // La sucursal del header cuenta como filtro (Figma): quitarla vuelve a «Todas».
     canSelectAll && sucursalActiva ? { clave: 'sucursal', etiqueta: t('listado.filtros.sucursalChip', { sucursal: sucursalActiva.name }) } : null,
@@ -381,15 +401,12 @@ export function VentasPage() {
 
   // Subtítulo (Figma): «1.312 ventas encontradas · 01–22 de septiembre de 2026 · Sucursal Principal».
   const textoPeriodo = etiquetaRangoLarga({ desde, hasta }, locale);
-  const subtitulo = [t('listado.encontradas', { n: entero(total), count: total }), textoPeriodo, nombreSucursal].filter(Boolean).join(' · ');
+  const textoCanal = canalFiltro ? nombreCanal(canalFiltro) : tv('todosLosCanales');
+  const subtitulo = [t('listado.encontradas', { n: entero(total), count: total }), textoPeriodo, nombreSucursal, textoCanal].filter(Boolean).join(' · ');
   const subtituloMovil = [t('listado.subtitulo', { n: entero(total), count: total }), nombreSucursal].filter(Boolean).join(' · ');
 
   const badgeEstado = (f: FilaVenta) => <StatusBadge estado={BADGE_ESTADO_VENTA[f.estado]} etiqueta={t(`estados.${f.estado}`)} />;
-  const badgeOrigen = (f: FilaVenta) => (
-    <Badge tono={TONO_ORIGEN_VENTA[f.origen]} apariencia="suave" tamano="sm">
-      {t(`listado.origenes.${f.origen}`)}
-    </Badge>
-  );
+  const insigniaCanal = (f: FilaVenta) => <InsigniaCanal canal={f.canal ?? 'pos'} />;
 
   /** Segunda línea bajo el N.º (Figma): saldo, NC, «pedido web», «local-…» o el id corto. */
   const textoLineaNumero = (f: FilaVenta): { texto: string; tono?: 'advertencia' } => {
@@ -464,7 +481,7 @@ export function VentasPage() {
         );
       },
     },
-    { id: 'origen', encabezado: t('listado.columnas.origen'), ocultarDebajo: 'lg', celda: badgeOrigen },
+    { id: 'canal', encabezado: tv('columnaCanal'), ocultarDebajo: 'lg', celda: insigniaCanal },
     {
       id: 'cliente',
       encabezado: t('listado.columnas.cliente'),
@@ -495,33 +512,65 @@ export function VentasPage() {
   const estadoTabla =
     error === 'sin_permiso' ? 'sinPermiso' : cargando && !datos ? 'cargando' : error ? 'error' : filas.length === 0 ? (l.hayCriterios || chips.length > 0 ? 'sinResultados' : 'vacio') : 'listo';
 
-  // ── KPI (Figma `329:36071`): sobre las ventas listadas ─────────────────────
+  // ── KPI (Figma 24 Ventas, 2896:10952): hoy, periodo, por canal y ticket ────
   const actual = cifras?.actual;
-  const anterior = cifras?.anterior ?? null;
-  const cambio = actual ? variacion(actual.ventas, anterior?.ventas) : null;
-  const detalleCambio = cambio === null ? t('kpis.sinAnterior') : t('kpis.vsAnterior', { pct: `${cambio > 0 ? '+' : ''}${cambio}` });
-  const detalleTransacciones = actual
-    ? partesTransacciones(actual)
-        .map((p) => t(`kpis.partes.${p.clave}`, { n: entero(p.n), count: p.n }))
+  const cifrasHoy = cifras?.hoy ?? null;
+  const cambioHoy = cifrasHoy ? variacion(cifrasHoy.ventas, cifrasHoy.anterior) : null;
+  // «+8 % vs. domingo pasado»: el día de la semana del comparativo, en el idioma de la persona.
+  const [anioDia, mesDia, numDia] = mismoDiaSemanaAnterior(hoy).split('-').map(Number);
+  const diaComparado = new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(anioDia, mesDia - 1, numDia)));
+  const detalleHoy = cifrasHoy
+    ? [
+        tv('kpis.hoyVentas', { n: entero(cifrasHoy.transacciones), count: cifrasHoy.transacciones }),
+        cambioHoy === null ? null : tv('kpis.vsDia', { pct: `${cambioHoy > 0 ? '+' : ''}${cambioHoy}`, dia: diaComparado }),
+      ]
+        .filter(Boolean)
         .join(' · ')
     : undefined;
-  const nombreDeImpuesto = (i: ImpuestoVentas) => {
-    const n = nombreImpuesto(i);
-    if (n.clase === 'tipoTasa') return t('kpis.impuestoTasa', { tipo: n.tipo, tasa: new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(n.tasa) });
-    if (n.clase === 'nombre') return n.nombre;
-    return t('kpis.impuestoSinDetalle');
-  };
-  const detalleImpuestos =
-    actual && actual.impuestos_detalle.length > 0
-      ? actual.impuestos_detalle.map((i) => `${nombreDeImpuesto(i)} ${formatear(i.monto)}`).join(' · ')
-      : actual
-        ? t('kpis.sinImpuestos')
-        : undefined;
+  const detallePeriodo = actual
+    ? [tv('kpis.periodoVentas', { n: entero(actual.efectivas), count: actual.efectivas }), etiquetaRango({ desde, hasta }, locale)].join(' · ')
+    : undefined;
+
+  // Por canal: con todos los filtros menos el de canal (chips y StatCard).
+  const porCanal = cifras?.por_canal ?? [];
+  const totalCanales = porCanal.reduce((suma, c) => suma + c.transacciones, 0);
+  const pct = (n: number) => (totalCanales > 0 ? Math.round((n / totalCanales) * 100) : 0);
+  const canalPrincipal = porCanal[0] ?? null;
+  const valorPorCanal = canalPrincipal ? tv('kpis.canalPct', { canal: nombreCanal(canalPrincipal.canal), pct: pct(canalPrincipal.transacciones) }) : '—';
+  const detallePorCanal = cifras
+    ? porCanal.length > 1
+      ? porCanal
+          .slice(1)
+          .map((c) => tv('kpis.canalPct', { canal: nombreCanal(c.canal), pct: pct(c.transacciones) }))
+          .join(' · ')
+      : porCanal.length === 1
+        ? tv('kpis.unSoloCanal')
+        : tv('kpis.sinVentas')
+    : undefined;
+  const conteoCanal = (c: CanalVenta) => porCanal.find((x) => x.canal === c)?.transacciones ?? 0;
+  // Marketplace solo aparece cuando tiene ventas (decisión 9 de la lámina «Qué cambia»).
+  const canalesOfrecidos = CANALES_VENTA.filter((c) => canalSiempreVisible(c) || conteoCanal(c) > 0 || c === canalFiltro);
+  const opcionesCanal = [
+    { valor: 'todos' as const, etiqueta: tv('chips.todos', { n: entero(totalCanales) }) },
+    ...canalesOfrecidos.map((c) => ({ valor: c, etiqueta: tv('chips.canal', { canal: nombreCanal(c), n: entero(conteoCanal(c)) }) })),
+  ];
 
   const motivoExportar = sinRed ? t('listado.motivos.sin_red') : !permisos.exportar ? t('listado.motivos.sin_permiso') : undefined;
+  // «Exportar» pasa al menú «⋯» (Figma 24): sigue disponible igual que antes.
   const accionesCabecera: AccionFila[] = [
+    {
+      id: 'exportar',
+      etiqueta: exportando ? t('listado.exportando') : t('listado.exportar'),
+      icono: Download,
+      onSelect: () => void exportar(),
+      deshabilitada: exportando || !!motivoExportar,
+      motivo: motivoExportar,
+    },
     { id: 'pedidosOnline', etiqueta: t('listado.pedidosOnline'), icono: Globe, onSelect: () => router.push('/app/pos/pedidos-online') },
   ];
+  // «Nuevo pedido manual» se ofrece a quien ve Pedidos online (el servidor vuelve a validar el permiso).
+  const puedePedidoManual = paginasVentas === null || paginasVentas.some((p) => p.href === '/app/pos/pedidos-online');
+  const verReportes = paginasReportes !== null && paginasReportes.length > 0;
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
@@ -530,27 +579,23 @@ export function VentasPage() {
         subtitulo={subtitulo}
         icono={Receipt}
         cargando={cargando}
-        migas={[migaVentas, { etiqueta: t('listado.migas.ventas') }]}
+        migas={[migaVentas, { etiqueta: t('listado.titulo') }]}
         acciones={
           <>
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('listado.actualizar')} title={t('listado.actualizar')}>
               <RefreshCw aria-hidden="true" className={`size-4 ${cargando ? 'animate-spin' : ''}`} strokeWidth={1.5} />
             </Button>
-            <Button
-              variant="outline"
-              className="h-10 gap-2"
-              onClick={() => void exportar()}
-              disabled={exportando || !!motivoExportar}
-              title={motivoExportar}
-            >
-              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {exportando ? t('listado.exportando') : t('listado.exportar')}
-            </Button>
+            {puedePedidoManual && (
+              <Button variant="outline" className="h-10 gap-2" onClick={() => setManualAbierto(true)}>
+                <ShoppingBag aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {tv('nuevoPedidoManual')}
+              </Button>
+            )}
             {permisos.vender && (
               <Button asChild className="h-10 gap-2">
                 <Link href="/app/pos">
-                  <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                  {t('listado.nueva')}
+                  <ShoppingCart aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {tv('abrirPos')}
                 </Link>
               </Button>
             )}
@@ -561,7 +606,7 @@ export function VentasPage() {
           subtitulo: subtituloMovil,
           accion: permisos.vender ? (
             <Button asChild variant="ghost" size="icon" className="size-10">
-              <Link href="/app/pos" aria-label={t('listado.nueva')}>
+              <Link href="/app/pos" aria-label={tv('abrirPos')}>
                 <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
               </Link>
             </Button>
@@ -578,28 +623,22 @@ export function VentasPage() {
       <div className="hidden md:block">
         <KpiStrip etiqueta={t('kpis.etiqueta')}>
           <StatCard
-            etiqueta={t('kpis.ventas')}
+            etiqueta={tv('kpis.hoy')}
             icono={CircleDollarSign}
             cargando={cargandoCifras}
-            valor={actual ? formatear(actual.ventas) : '—'}
-            tendencia={cambio === null ? undefined : cambio >= 0 ? 'sube' : 'baja'}
-            detalle={actual ? detalleCambio : undefined}
+            valor={cifrasHoy ? formatear(cifrasHoy.ventas) : '—'}
+            tendencia={cambioHoy === null ? undefined : cambioHoy >= 0 ? 'sube' : 'baja'}
+            detalle={detalleHoy}
           />
+          <StatCard etiqueta={tv('kpis.periodo')} icono={CircleDollarSign} cargando={cargandoCifras} valor={actual ? formatear(actual.ventas) : '—'} detalle={detallePeriodo} />
+          <StatCard etiqueta={tv('kpis.porCanal')} icono={ShoppingCart} cargando={cargandoCifras} valor={valorPorCanal} detalle={detallePorCanal} />
           <StatCard
             etiqueta={t('kpis.ticket')}
-            icono={Receipt}
+            icono={CircleDollarSign}
             cargando={cargandoCifras}
             valor={actual ? formatear(actual.ticket_promedio) : '—'}
-            detalle={actual ? t('kpis.sobreTransacciones', { n: entero(actual.efectivas), count: actual.efectivas }) : undefined}
+            detalle={actual ? (canalFiltro ? tv('kpis.ticketCanal', { canal: nombreCanal(canalFiltro) }) : tv('kpis.ticketTodos')) : undefined}
           />
-          <StatCard
-            etiqueta={t('kpis.transacciones')}
-            icono={ArrowLeftRight}
-            cargando={cargandoCifras}
-            valor={actual ? entero(actual.transacciones) : '—'}
-            detalle={detalleTransacciones}
-          />
-          <StatCard etiqueta={t('kpis.impuestos')} icono={Percent} cargando={cargandoCifras} valor={actual ? formatear(actual.impuestos) : '—'} detalle={detalleImpuestos} />
         </KpiStrip>
       </div>
       <KpiCompacto
@@ -607,11 +646,26 @@ export function VentasPage() {
         etiqueta={t('kpis.etiqueta')}
         cargando={cargandoCifras}
         cifras={[
+          { id: 'hoy', etiqueta: tv('kpis.hoyCorto'), valor: cifrasHoy ? formatear(cifrasHoy.ventas) : '—' },
           { id: 'ventas', etiqueta: t('kpis.ventasCorto'), valor: actual ? formatear(actual.ventas) : '—' },
           { id: 'ticket', etiqueta: t('kpis.ticketCorto'), valor: actual ? formatear(actual.ticket_promedio) : '—' },
-          { id: 'transacciones', etiqueta: t('kpis.transaccionesCorto'), valor: actual ? entero(actual.transacciones) : '—' },
         ]}
       />
+
+      {/* Chips de canal con su conteo (Figma 2898:13733) y el enlace a las gráficas, que viven en Reportes. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ChipsOpcion<'todos' | CanalVenta>
+          etiqueta={tv('chips.etiqueta')}
+          opciones={opcionesCanal}
+          valor={canalFiltro ?? 'todos'}
+          onValorChange={(v) => l.setFiltro('canal', v === 'todos' ? null : v)}
+        />
+        {verReportes && (
+          <Link href={rutaGrupo('ventas')} className="text-sm font-medium text-brand hover:underline">
+            {tv('verEnReportes')}
+          </Link>
+        )}
+      </div>
 
       <ListToolbar
         busqueda={
@@ -632,17 +686,17 @@ export function VentasPage() {
             textoVerResultados={t('listado.filtros.verN', { count: total, n: entero(total) })}
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField etiqueta={t('listado.filtros.origen')}>
+              <FormField etiqueta={tv('filtros.canal')}>
                 {(c) => (
-                  <Select value={l.filtros.origen ?? 'todos'} onValueChange={(v) => l.setFiltro('origen', v === 'todos' ? null : v)}>
+                  <Select value={canalFiltro ?? 'todos'} onValueChange={(v) => l.setFiltro('canal', v === 'todos' ? null : v)}>
                     <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="todos">{t('listado.filtros.todos')}</SelectItem>
-                      {ORIGENES_VENTA.map((o) => (
-                        <SelectItem key={o} value={o}>
-                          {t(`listado.origenes.${o}`)}
+                      <SelectItem value="todos">{tv('filtros.todosLosCanales')}</SelectItem>
+                      {canalesOfrecidos.map((x) => (
+                        <SelectItem key={x} value={x}>
+                          {nombreCanal(x)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -809,7 +863,7 @@ export function VentasPage() {
           return (
             <ListCard
               titulo={numeroDe(f)}
-              insignia={badgeOrigen(f)}
+              insignia={insigniaCanal(f)}
               subtitulo={f.cliente?.nombre ?? t('listado.consumidorFinal')}
               meta={<span>{[fechaHora(f.fecha), metodosDe(f), saldo, f.cajero.nombre, f.sucursal.nombre].filter(Boolean).join(' · ')}</span>}
               valor={formatear(f.total)}
@@ -876,6 +930,10 @@ export function VentasPage() {
           origen="venta_pos"
           onRegistrado={recargar}
         />
+      )}
+      {/* Se monta al abrirlo: es el mismo diálogo de Pedidos online (pedidosManualesServer), sin lógica nueva. */}
+      {puedePedidoManual && manualAbierto && (
+        <DialogoPedidoManual organizationId={getOrganizationId()} abierto={manualAbierto} onAbiertoChange={setManualAbierto} onCreado={recargar} />
       )}
       <AnularVentaDialog
         abierto={anular !== null}

@@ -61,6 +61,8 @@ describe('Filtros nuevos del panel (Figma 329:111220)', () => {
       p_hasta: CTX.hasta,
       p_busqueda: 'FV-1',
       p_origenes: ['pos'],
+      // Canal (Figma 24 Ventas, 2026-11-23): `?canal=`; sin él, todos los canales.
+      p_canales: null,
       p_estados: ['pagada'],
       p_metodos: ['cash', 'card'],
       p_cliente_id: null,
@@ -235,5 +237,14 @@ describe('SQL de la migración 20261120180446', () => {
       const cuerpo = sql.slice(sql.indexOf(`create or replace function public.${f}`));
       expect(cuerpo.slice(0, 2500)).toMatch(/perform public\.fn_assert_acceso_org\(p_organization_id\);/);
     }
+  });
+});
+
+describe('Canal (Figma 24 Ventas, 2026-11-23)', () => {
+  test('`?canal=` pasa por la lista blanca y llega como p_canales', () => {
+    const f = filtrosVentas({ canal: 'pos,menu_qr,hackeo' });
+    expect(f.canales).toEqual(['pos', 'menu_qr']);
+    expect(parametrosFiltro(f, CTX).p_canales).toEqual(['pos', 'menu_qr']);
+    expect(parametrosFiltro(filtrosVentas({}), CTX).p_canales).toBeNull();
   });
 });

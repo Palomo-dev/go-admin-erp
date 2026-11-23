@@ -65628,5 +65628,45 @@
         "pinDescripcion": "Es el PIN de Recursos humanos (el mismo del kiosco de marcación). Se verifica en el servidor; nunca se guarda en el equipo."
       }
     }
+  },
+  "ventas": {
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Tienda web",
+      "menu_qr": "Menú QR",
+      "marketplace": "Marketplace",
+      "manual": "Manual"
+    },
+    "todas": {
+      "abrirPos": "Abrir POS",
+      "nuevoPedidoManual": "Nuevo pedido manual",
+      "verEnReportes": "Ver ventas por canal y por sede en Reportes",
+      "todosLosCanales": "todos los canales",
+      "columnaCanal": "Canal",
+      "chips": {
+        "etiqueta": "Canal",
+        "todos": "Todos · {n}",
+        "canal": "{canal} · {n}"
+      },
+      "filtros": {
+        "canal": "Canal",
+        "todosLosCanales": "Todos los canales",
+        "canalChip": "Canal: {canal}"
+      },
+      "kpis": {
+        "hoy": "Ventas de hoy",
+        "hoyCorto": "Hoy",
+        "hoyVentas": "{count, plural, one {{n} venta} other {{n} ventas}}",
+        "vsDia": "{pct} % vs. el {dia} pasado",
+        "periodo": "Ventas del periodo",
+        "periodoVentas": "{count, plural, one {{n} venta} other {{n} ventas}}",
+        "porCanal": "Por canal",
+        "canalPct": "{canal} {pct} %",
+        "unSoloCanal": "Todas las ventas del periodo por este canal",
+        "sinVentas": "Sin ventas en el periodo",
+        "ticketTodos": "del periodo, todos los canales",
+        "ticketCanal": "del periodo · {canal}"
+      }
+    }
   }
 }

@@ -23,8 +23,9 @@ import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneServ
 import { getOperatingHours } from '@/lib/services/organizationOperatingHoursService';
 import { getDateRange } from '@/lib/utils/dateRanges';
 import { todayInTz } from '@/lib/utils/dateCore';
-import { filtrosVentas, parametrosFiltro, parametrosListado, periodoAnterior, type FiltrosVentas } from './filtrosVentas';
+import { filtrosVentas, mismoDiaSemanaAnterior, parametrosFiltro, parametrosListado, periodoAnterior, type FiltrosVentas } from './filtrosVentas';
 import type { EstadoVenta, OrigenVenta } from './estadoVenta';
+import type { CanalVenta } from './canalVenta';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId'>;
 
@@ -38,6 +39,8 @@ export interface FilaVenta {
   payment_status: string | null;
   estado: EstadoVenta;
   origen: OrigenVenta;
+  /** Canal (Figma 24 Ventas): POS, Tienda web, Menú QR, Marketplace o Manual. */
+  canal: CanalVenta;
   numero: string | null;
   tipo_numero: 'factura' | 'pedido' | null;
   factura_id: string | null;
@@ -96,6 +99,16 @@ export interface CifrasVentas {
   };
   /** Mismos filtros en el periodo anterior de igual duración. */
   anterior: { ventas: number; transacciones: number } | null;
+  /**
+   * Ventas por canal en el periodo con todos los filtros MENOS el de canal
+   * (chips «Todos · POS · Tienda web…» y StatCard «Por canal»).
+   */
+  por_canal?: { canal: CanalVenta; transacciones: number; ventas: number }[];
+  /**
+   * «Ventas de hoy» (Figma 24): hoy en la zona de la organización, con los
+   * mismos filtros, frente al mismo día de la semana anterior.
+   */
+  hoy?: { ventas: number; transacciones: number; anterior: number | null };
 }
 
 export interface CajeroVentas {
@@ -187,7 +200,23 @@ export async function cifrasVentas(ctx: Ctx, crudo: Record<string, string | stri
     p_hasta_anterior: rangoPrevio.hasta,
   });
   if (error) throw errorRpc(error);
-  return data as CifrasVentas;
+  const cifras = data as CifrasVentas;
+  cifras.hoy = await cifrasDeHoy(ctx, f, hoy, sucursalId).catch(() => undefined);
+  return cifras;
+}
+
+/** «Ventas de hoy» frente al mismo día de la semana pasada, con los filtros del listado. */
+async function cifrasDeHoy(ctx: Ctx, f: FiltrosVentas, hoy: string, sucursalId: number | null): Promise<CifrasVentas['hoy']> {
+  const semanaPasada = mismoDiaSemanaAnterior(hoy);
+  const [rango, rangoPrevio] = await Promise.all([rangoDeDias(ctx, hoy, hoy), rangoDeDias(ctx, semanaPasada, semanaPasada)]);
+  const { data, error } = await ctx.supabase.rpc('pos_ventas_cifras', {
+    ...parametrosFiltro(f, { organizacionId: ctx.organizationId, sucursalId, desde: rango.desde, hasta: rango.hasta }),
+    p_desde_anterior: rangoPrevio.desde,
+    p_hasta_anterior: rangoPrevio.hasta,
+  });
+  if (error) throw errorRpc(error);
+  const c = data as CifrasVentas;
+  return { ventas: c.actual.ventas, transacciones: c.actual.efectivas, anterior: c.anterior?.ventas ?? null };
 }
 
 /** Quiénes han vendido en las sucursales visibles (o en la elegida). */

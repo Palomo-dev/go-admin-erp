@@ -71,6 +71,7 @@ const FILA: FilaVenta = {
   payment_status: 'paid',
   estado: 'pagada' as FilaVenta['estado'],
   origen: 'pos' as FilaVenta['origen'],
+  canal: 'pos',
   numero: 'V-0001',
   tipo_numero: 'pedido',
   factura_id: null,

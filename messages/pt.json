@@ -35743,7 +35743,8 @@
           "trazo": "Traço",
           "trazoOpcion": {
             "fino": "Fino",
-            "normal": "Normal"
+            "normal": "Normal",
+            "relleno": "Preenchido"
           },
           "mostrarTexto": "Mostrar texto",
           "mostrarTextoAyuda": "Com «Com texto» fica abaixo do ícone; com «Pílula» e «Preenchido», ao lado.",
@@ -35771,7 +35772,67 @@
           "monedaEstilo": "Estilo e moedas",
           "monedaVer": "Ver «Seletor de moeda»",
           "favoritosAyudaPanel": "Abre o painel de favoritos ou a página /favoritos (Cabeçalho › Favoritos).",
-          "favoritosVer": "Ver «Favoritos»"
+          "favoritosVer": "Ver «Favoritos»",
+          "migasUnico": "Global · Conteúdo › Ícones, moeda e carrinho · o único lugar dos ícones",
+          "estiloGeneral": "Estilo geral",
+          "estiloGeneralAyuda": "Todos os ícones o usam por padrão. Para deixar um diferente (por exemplo o carrinho como botão), mude no cartão dele, em «Forma».",
+          "soloComputador": "Só computador",
+          "celular": "No celular",
+          "celularOpcion": {
+            "auto": "Automático",
+            "icono": "Só ícone",
+            "circulo": "Círculo",
+            "texto": "Com texto embaixo"
+          },
+          "celularAyuda": "No celular (390 px) a pílula e o preenchido não cabem. «Automático» —como hoje— mostra como só ícone ou círculo, conforme a caixa que o site já tem. Vale também para ícones com forma própria. O desenho, o tamanho e o traço valem no celular.",
+          "tamanoAyuda": "Um só para todos. Sem escolher S, M ou L, fica o de hoje.",
+          "tamanoAyudaCaja": "Um só para todos. Hoje aparecem com {n} px (o tamanho da caixa salvo); escolher S, M ou L o substitui.",
+          "trazoAyuda": "Um só traço. Fino e Normal são a espessura da linha; Preenchido é o ícone preenchido de antes. Escolher um limpa o outro.",
+          "fondo": {
+            "titulo": "Fundo dos ícones",
+            "ayuda": "Forma, cor, degradê, sombra e hover da caixa (antes em Estilo › Ícones). Toque para abrir.",
+            "mas": "Mais opções",
+            "colorMarca": "cor da marca",
+            "colorPropio": "cor própria",
+            "caja": "Caixa dos ícones",
+            "cajaAyuda": "Forma, fundo e sombra de carrinho, conta, moeda, favoritos e busca. Sem escolher, fica o ícone de hoje.",
+            "tamanoGuardado": "Sem «Tamanho» aqui: o tamanho é um só, acima (S / M / L). A loja tem {n} px salvo e continua igual enquanto você não escolher S, M ou L.",
+            "sinTamano": "Sem «Tamanho» aqui: o tamanho é um só, acima (S / M / L)."
+          },
+          "cualesTitulo": "Quais aparecem e com qual desenho",
+          "cualesTituloAyuda": "Na ordem do cabeçalho. Em cada um: mostrar ou ocultar, o desenho, a forma (se quiser diferente dos demais) e o texto.",
+          "buscar": "Buscar",
+          "buscarEnDiseno": "Aparece em Design",
+          "buscarMostrar": "Mostrar ou ocultar, ícone ou barra",
+          "buscarIr": "Design › Busca",
+          "buscarCelular": "Igual no celular. Sem interruptor aqui: a busca liga e desliga em um só lugar (Design › Busca).",
+          "dibujo": "Desenho",
+          "dibujoFavoritos": "Ícone de favoritos",
+          "corazon": "Coração",
+          "soloCorazon": "Por enquanto a loja só mostra o coração.",
+          "dibujoCarritoAyuda": "Substitui o antigo «Ícone: Carrinho / Sacola» deste cartão.",
+          "forma": "Forma",
+          "formaOpcion": {
+            "demas": "Como os demais",
+            "icono": "Só ícone",
+            "circulo": "Círculo",
+            "texto": "Com texto",
+            "pildora": "Pílula",
+            "relleno": "Preenchido"
+          },
+          "formaDemasAyuda": "Segue o estilo geral: {estilo}.",
+          "formaPropiaAyuda": "Forma própria: não segue o estilo geral.",
+          "volverDemas": "Voltar a como os demais",
+          "notaFormaCelular": "No celular «{forma}» não cabe: usa «No celular» (Automático → círculo ou só ícone).",
+          "favoritosAbre": "Abre o painel ou a página /favoritos",
+          "favoritosVerPanel": "Ver painel de favoritos",
+          "favoritosCelular": "No celular vai no menu lateral (não na barra de cima).",
+          "monedaTexto": "Com texto, a moeda mostra seu código (COP).",
+          "monedaEstiloFila": "Bandeira, código, segmento…",
+          "monedaCambiar": "Mudar como o seletor aparece",
+          "monedaCelular": "No celular: a linha do menu e o modo «Na barra» usam o mesmo estilo do computador.",
+          "filaEstilo": "Os ícones são configurados em Conteúdo › Ícones",
+          "filaEstiloAyuda": "Estilo, forma, tamanho, traço, fundo e desenhos. Toque para abrir a vista."
         },
         "moneda": {
           "titulo": "Cabeçalho › Seletor de moeda",
@@ -35972,7 +36033,37 @@
           "tarjetasAyuda": "O estilo e a posição do coração no cartão continuam em Estilo do site › Cartão de produto."
         },
         "accesos": {
-          "titulo": "Ícones, moeda e carrinho"
+          "titulo": "Ícones, moeda e carrinho",
+          "accionesAyuda": "Busca: Design › Busca. Carrinho, conta, moeda e favoritos (mostrar, desenho e forma): em «Ícones, moeda e carrinho», acima."
+        },
+        "cuenta": {
+          "alTocar": "Ao tocar o ícone de conta",
+          "modo": {
+            "pagina": "Página",
+            "panel": "Painel lateral",
+            "ventana": "Janela a partir do ícone",
+            "dialogo": "Diálogo"
+          },
+          "ayudaPagina": "Como hoje: o ícone leva a /auth (e a /mi-cuenta com sessão). Toda loja começa aqui.",
+          "ayudaOtros": "No celular, painel, janela e diálogo aparecem como folha inferior. Com sessão, o mesmo formato mostra o menu da conta.",
+          "notaPagina": "Com «Página» os textos são editados na página /auth. Escolha outro modo para ver título, botão, benefícios e «Depois de entrar».",
+          "titulo": "Título",
+          "boton": "Texto do botão",
+          "vacio": "Vazio = «{texto}».",
+          "beneficios": "Mostrar benefícios",
+          "beneficiosAyuda": "Ver pedidos · Favoritos salvos · Endereços.",
+          "destino": "«Criar conta» e «Esqueceu…?» abrem",
+          "destinoOpcion": {
+            "panel": "Painel lateral",
+            "pagina": "Página"
+          },
+          "destinoAyuda": "A janela é compacta: o cadastro e a recuperação vão no painel ou na página.",
+          "despues": "Depois de entrar",
+          "despuesOpcion": {
+            "quedarse": "Ficar na página",
+            "cuenta": "Ir para Minha conta"
+          },
+          "despuesAyuda": "«Ficar» fecha o acesso e deixa o cliente onde estava (carrinho ou pagamento incluídos)."
         }
       },
       "accionesFicha": {

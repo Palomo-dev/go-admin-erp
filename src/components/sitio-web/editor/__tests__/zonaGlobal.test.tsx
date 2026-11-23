@@ -193,10 +193,12 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ first_section_offset_px: 24 });
   });
 
-  test('Contenido: carrito y cuenta encendidos por defecto; segundo botón, barra superior, sede e idioma deshabilitado', () => {
+  test('Contenido: segundo botón, barra superior, sede e idioma deshabilitado; Acciones solo con la sede', () => {
     const onCambiar = encabezado({ show_topbar: true }, { pestanaInicial: 'contenido' });
-    expect(screen.getByRole('switch', { name: 'Carrito' }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByRole('switch', { name: 'Cuenta' }).getAttribute('aria-checked')).toBe('true');
+    // Íconos en un solo lugar (Figma 2830:76237): carrito, cuenta y moneda se prenden en la vista «Íconos».
+    expect(screen.queryByRole('switch', { name: 'Carrito' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: /^Cuenta/ })).toBeNull();
+    expect(screen.queryByRole('switch', { name: /^Moneda/ })).toBeNull();
     fireEvent.click(screen.getByRole('switch', { name: /Mostrar segundo botón/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_cta2_text: 'WhatsApp', header_cta2_url: 'whatsapp' });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Sede y horario' }));
@@ -205,8 +207,6 @@ describe('InspectorEncabezado', () => {
     expect((screen.getByRole('checkbox', { name: 'Idioma' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('switch', { name: /Selector de sede en el encabezado/ }));
     expect(onCambiar).toHaveBeenCalledWith({ header_show_branch_selector: true });
-    fireEvent.click(screen.getByRole('switch', { name: /Moneda/ }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_show_currency: false });
     // DUP-28oct: mostrar u ocultar el buscador se elige una sola vez, en Diseño › Buscador («Oculto»).
     expect(screen.queryByRole('switch', { name: 'Buscador' })).toBeNull();
     // Fuera del Figma v2: ya no están en el panel.
@@ -235,12 +235,8 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: false, header_scroll: null });
     fireEvent.click(screen.getByRole('radio', { name: 'Se encoge' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_sticky: true, header_scroll: 'encoger' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Círculo' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Cuadrado' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'square', scope: 'all', background: 'accent' } });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Tamaño de los íconos' })).getByRole('radio', { name: '28 px' }));
-    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'none', scope: 'all', icon: 28 } });
+    // La caja de los íconos pasó a la vista «Íconos» › «Fondo de los íconos» (Figma 2830:76009).
+    expect(screen.queryByRole('radiogroup', { name: 'Caja de los íconos' })).toBeNull();
     // El radio 0/8/999 («Forma del botón de acción») pasó a «Forma» en la vista «Botón principal».
     expect(screen.queryByRole('radiogroup', { name: 'Forma del botón de acción' })).toBeNull();
     expect(screen.getByRole('button', { name: /Botón principal: Forma, tamaño, estilo y colores/ })).toBeTruthy();
@@ -251,8 +247,18 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenLastCalledWith(expect.objectContaining({ header_style: 'default', logo_position: 'center', header_cta_text: 'Reservar mesa' }));
   });
 
-  test('Estilo › Íconos: trazo y un ícono por acción (lo que hoy se ve marcado)', () => {
-    const onCambiar = encabezado({ cart_icon: 'gift', header_cart_glyph: null }, { pestanaInicial: 'estilo' });
+  /** Abre la vista «Íconos» desde la fila de Estilo (Figma 2830:76378). */
+  function abrirIconosDesdeEstilo(ajustes: Record<string, unknown>) {
+    const onCambiar = encabezado(ajustes, { pestanaInicial: 'estilo' });
+    // Estilo › Íconos ya no tiene controles: una sola fila-enlace a la vista.
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono del carrito' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Trazo de los iconos' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Los íconos se configuran en Contenido › Íconos/ }));
+    return onCambiar;
+  }
+
+  test('Estilo › Íconos: una sola fila que abre la vista; ahí, el dibujo de cada acción y el trazo único', () => {
+    const onCambiar = abrirIconosDesdeEstilo({ cart_icon: 'gift', header_cart_glyph: null });
     const carrito = screen.getByRole('radiogroup', { name: 'Ícono del carrito' });
     expect(within(carrito).getByRole('radio', { name: 'Regalo' }).getAttribute('aria-checked')).toBe('true');
     fireEvent.click(within(carrito).getByRole('radio', { name: 'Carrito' }));
@@ -263,12 +269,12 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ auth_icon: 'user-round' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Monedas' }));
     expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'coins' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Trazo de los iconos' })).getByRole('radio', { name: 'Relleno' }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Trazo' })).getByRole('radio', { name: 'Relleno' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_weight: 'relleno' });
   });
 
-  test('Estilo › Íconos: los nuevos (canasta, tienda, persona redonda, entrar, pesos en círculo, idiomas)', () => {
-    const onCambiar = encabezado({}, { pestanaInicial: 'estilo' });
+  test('vista «Íconos»: los nuevos (canasta, tienda, persona redonda, entrar, pesos en círculo, idiomas)', () => {
+    const onCambiar = abrirIconosDesdeEstilo({});
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Canasta' }));
     expect(onCambiar).toHaveBeenCalledWith({ cart_icon: 'shopping-basket' });
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }));
@@ -283,44 +289,43 @@ describe('InspectorEncabezado', () => {
     expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'languages' });
   });
 
-  test('Contenido › Acciones: el ícono va debajo de cada interruptor encendido y usa la misma clave que Estilo', () => {
-    const onCambiar = encabezado({ cart_icon: 'store', auth_icon: 'log-in', currency_icon: 'languages' }, { pestanaInicial: 'contenido' });
-    const carrito = screen.getByRole('radiogroup', { name: 'Ícono del carrito' });
-    expect(within(carrito).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked')).toBe('true');
-    expect(within(screen.getByRole('radiogroup', { name: 'Ícono de cuenta' })).getByRole('radio', { name: 'Entrar' }).getAttribute('aria-checked')).toBe('true');
-    expect(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Idiomas' }).getAttribute('aria-checked')).toBe('true');
-    // El buscador se elige en Estilo › Íconos; Contenido no tiene interruptor para él.
-    expect(screen.queryByRole('radiogroup', { name: 'Ícono de buscar' })).toBeNull();
-    // Debajo de su interruptor: el selector viene justo después en el documento.
-    const interruptor = screen.getByRole('switch', { name: 'Carrito' });
-    expect(interruptor.compareDocumentPosition(carrito) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    fireEvent.click(within(carrito).getByRole('radio', { name: 'Canasta' }));
-    expect(onCambiar).toHaveBeenCalledWith({ cart_icon: 'shopping-basket' });
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).getByRole('radio', { name: 'Pesos en círculo' }));
-    expect(onCambiar).toHaveBeenCalledWith({ currency_icon: 'circle-dollar-sign' });
-  });
-
-  test('Contenido › Acciones: con el interruptor apagado no sale el selector', () => {
-    encabezado({ show_header_cart: false, show_header_auth: false, header_show_currency: false }, { pestanaInicial: 'contenido' });
+  test('Contenido › Acciones: sin selectores de ícono; queda el selector de sede y la ayuda de dónde está lo demás', () => {
+    encabezado({ cart_icon: 'store', auth_icon: 'log-in', currency_icon: 'languages' }, { pestanaInicial: 'contenido' });
     expect(screen.queryByRole('radiogroup', { name: 'Ícono del carrito' })).toBeNull();
     expect(screen.queryByRole('radiogroup', { name: 'Ícono de cuenta' })).toBeNull();
     expect(screen.queryByRole('radiogroup', { name: 'Ícono de moneda' })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono de buscar' })).toBeNull();
+    expect(screen.getByRole('switch', { name: /Selector de sede en el encabezado/ })).toBeTruthy();
+    expect(screen.getByText(/Buscador: Diseño › Buscador/)).toBeTruthy();
   });
 
-  test('Estilo y Contenido marcan el mismo ícono (misma clave de settings)', () => {
-    const ajustes = { header_icons: { cart: { icono: 'store' } } };
-    encabezado(ajustes, { pestanaInicial: 'estilo' });
-    const enEstilo = within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked');
-    document.body.innerHTML = '';
-    encabezado(ajustes, { pestanaInicial: 'contenido' });
-    const enContenido = within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked');
-    expect([enEstilo, enContenido]).toEqual(['true', 'true']);
+  test('la vista marca el ícono guardado en header_icons (misma clave de siempre)', () => {
+    abrirIconosDesdeEstilo({ header_icons: { cart: { icono: 'store' } } });
+    expect(within(screen.getByRole('radiogroup', { name: 'Ícono del carrito' })).getByRole('radio', { name: 'Tienda' }).getAttribute('aria-checked')).toBe('true');
   });
 
-  test('Círculo acento: fondo y color del ícono con Sigue el tema / Fijar color', () => {
-    const onCambiar = encabezado({ header_icons_circle: true }, { pestanaInicial: 'estilo' });
+  test('Círculo acento: fondo y color del ícono en «Fondo de los íconos» (plegado)', () => {
+    const onCambiar = abrirIconosDesdeEstilo({ header_icons_circle: true });
+    expect(screen.queryByRole('radiogroup', { name: 'Fondo del círculo' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Fondo de los íconos/ }));
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Fondo del círculo' })).getByRole('radio', { name: 'Fijar color' }));
     expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle_bg: expect.any(String) });
+  });
+
+  test('Fondo de los íconos: la forma de la caja, sin tamaño propio', () => {
+    const onCambiar = abrirIconosDesdeEstilo({});
+    fireEvent.click(screen.getByRole('button', { name: /Fondo de los íconos/ }));
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Círculo' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_circle: true });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Caja de los íconos' })).getByRole('radio', { name: 'Cuadrado' }));
+    expect(onCambiar).toHaveBeenCalledWith({ header_icons_box: { shape: 'square', scope: 'all', background: 'accent' } });
+    expect(screen.queryByRole('radiogroup', { name: 'Tamaño de los íconos' })).toBeNull();
+  });
+
+  test('«Diseño › Buscador» desde la vista vuelve a la pestaña Diseño', () => {
+    abrirIconosDesdeEstilo({});
+    fireEvent.click(screen.getByRole('button', { name: /Diseño › Buscador/ }));
+    expect(screen.getByRole('tab', { name: 'Diseño' }).getAttribute('aria-selected')).toBe('true');
   });
 
   test('Ajustes anteriores: solo con valores guardados, y Quitar vuelve al de siempre', () => {

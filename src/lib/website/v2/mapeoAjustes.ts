@@ -405,6 +405,13 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    */
   header_favoritos: { zona: 'header', porDefecto: null, nueva: true },
   /**
+   * Iniciar sesión (Figma 2834:68670, aprobado 2026-11-22): qué abre el ícono de cuenta (página,
+   * panel, ventana o diálogo), título, botón, beneficios, destino de «Crear cuenta» desde la
+   * ventana y «Después de ingresar». Lo valida `cabeceraTienda.ts` (`opcionesCuenta`). `null` =
+   * «Página», como hoy.
+   */
+  header_cuenta: { zona: 'header', porDefecto: null, nueva: true },
+  /**
    * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
    * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.
    */

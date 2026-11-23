@@ -45,10 +45,10 @@ describe('Encabezado › Íconos', () => {
     expect(screen.getByRole('radio', { name: 'iconos.estiloOpcion.circulo' }).getAttribute('aria-checked')).toBe('true');
   });
 
-  test('«Ver Selector de moneda» abre la otra vista', () => {
+  test('«Cambiar cómo se ve el selector» abre la vista de la moneda (Figma 2830:75542)', () => {
     const onAbrir = jest.fn();
     render(<VistaIconos ajustes={{}} cambiar={jest.fn()} onAbrir={onAbrir} />);
-    fireEvent.click(screen.getByText('iconos.monedaVer'));
+    fireEvent.click(screen.getByText('iconos.monedaCambiar'));
     expect(onAbrir).toHaveBeenCalledWith('moneda');
   });
 });

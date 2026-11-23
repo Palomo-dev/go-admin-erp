@@ -2,13 +2,19 @@
  * Cabecera de la tienda: íconos, selector de moneda y cajón del carrito (Figma «16 Sitio web»,
  * sección 2747:57859, aprobada el 2026-11-22).
  *
- * Cuatro opciones nuevas del documento V2, cada una un objeto en `shell.header.opciones`
+ * Opciones nuevas del documento V2, cada una un objeto en `shell.header.opciones`
  * (OPCIONES_SHELL de mapeoAjustes.ts, sin columna en `website_settings`, ADR-002):
  * - `header_iconos`: estilo, tamaño, trazo, textos propios, contador del carrito y favoritos.
  * - `header_moneda`: estilo del selector, flecha, monedas visibles, moneda al entrar y celular.
  * - `header_carrito`: botón principal (4 modos), botón «Comprar» de /carrito, enlace secundario,
  *   «Seguir comprando», título y envío gratis.
  * - `header_favoritos`: corazón de la cabecera, panel lateral y página /favoritos (Figma 2762:61067).
+ * - `header_cuenta`: qué abre el ícono de cuenta (página, panel, ventana o diálogo) y sus textos
+ *   (Figma 2834:68670).
+ *
+ * Íconos en un solo lugar (Figma 2830:73206): `header_iconos.movil` (forma en el celular) y
+ * `header_iconos.por_icono` (forma propia de cada ícono), y el trazo unificado con
+ * `header_icons_weight` ({@link trazoUnificado}).
  *
  * La regla de siempre: sin la clave (o con un valor que no cumple), la tienda se ve como hoy.
  * Por eso cada lector devuelve el default de hoy y `configurado` dice si hay algo nuevo; quien
@@ -77,13 +83,43 @@ export const TEXTOS_ICONOS_POR_DEFECTO: Readonly<Record<Exclude<IconoConTexto, '
 };
 export const LARGO_TEXTO_ICONO = 24;
 
+/**
+ * Los cinco íconos de la cabecera, en el orden de la vista «Íconos» del editor (Figma «16 Sitio
+ * web» 2830:73206, aprobado 2026-11-22). Cada uno puede tener su forma propia (`por_icono`).
+ */
+export const ICONOS_CABECERA = ['buscar', 'favoritos', 'carrito', 'cuenta', 'moneda'] as const;
+export type IconoCabecera = (typeof ICONOS_CABECERA)[number];
+
+/**
+ * Forma propia de un ícono (`header_iconos.por_icono[icono].estilo`): las del menú «Forma»
+ * (Figma A2b 2830:76085). Sin forma propia, «Como los demás» (el estilo general).
+ */
+export const FORMAS_ICONO = ['icono', 'circulo', 'texto', 'pildora', 'relleno'] as const;
+export type FormaIcono = (typeof FORMAS_ICONO)[number];
+
+/**
+ * Forma de los íconos en el celular (`header_iconos.movil`, Figma 2831:68365). Solo cambia los
+ * estilos que no caben en 390 px (Píldora, Relleno y «texto al lado»). `auto` = lo de hoy: solo
+ * ícono o círculo según la caja que ya tiene el sitio.
+ */
+export const ICONOS_EN_CELULAR = ['auto', 'icono', 'circulo', 'texto'] as const;
+export type IconosEnCelular = (typeof ICONOS_EN_CELULAR)[number];
+
+/**
+ * Trazo único del editor (Figma decisiones 2830:85479): Fino y Normal son el grosor
+ * (`header_iconos.trazo`, con `header_icons_weight` = contorno); Relleno es el glifo relleno de
+ * antes (`header_icons_weight` = relleno, sin `trazo`). Al leer, gana relleno.
+ */
+export const TRAZOS_UNIFICADOS = ['fino', 'normal', 'relleno'] as const;
+export type TrazoUnificado = (typeof TRAZOS_UNIFICADOS)[number];
+
 export interface OpcionesIconos {
   /** `true` si `header_iconos` trae al menos una opción válida. `false` = la cabecera de hoy. */
   configurado: boolean;
   estilo: EstiloIconos;
   /** `null` = el tamaño de hoy. */
   tamano: TamanoIcono | null;
-  /** `null` = el trazo de hoy (contorno 2, relleno 1,25). */
+  /** `null` = el trazo de hoy (contorno 2, relleno 1,25). Con el glifo relleno, siempre `null`. */
   trazo: TrazoIcono | null;
   /** Texto visible junto al ícono (solo en los estilos con texto). */
   mostrarTexto: boolean;
@@ -91,6 +127,10 @@ export interface OpcionesIconos {
   contador: ContadorCarrito;
   /** Ícono de favoritos en la cabecera (la tienda lo pinta solo si tiene favoritos). */
   favoritos: boolean;
+  /** Forma en el celular de Píldora, Relleno y «al lado». `auto` = lo de hoy. */
+  movil: IconosEnCelular;
+  /** Forma propia de cada ícono; sin clave = «Como los demás». */
+  porIcono: Partial<Record<IconoCabecera, FormaIcono>>;
 }
 
 /**
@@ -121,14 +161,42 @@ export function posicionTextoIcono(estilo: EstiloIconos): 'debajo' | 'lado' | nu
   return estiloConTexto(estilo) ? 'lado' : null;
 }
 
+/** Formas propias válidas de `header_iconos.por_icono` (`{ carrito: { estilo: 'relleno' } }`). */
+export function formasPorIcono(valor: unknown): Partial<Record<IconoCabecera, FormaIcono>> {
+  const crudo = objeto(valor) ?? {};
+  const salida: Partial<Record<IconoCabecera, FormaIcono>> = {};
+  for (const icono of ICONOS_CABECERA) {
+    const forma = unoDe(FORMAS_ICONO, objeto(crudo[icono])?.estilo);
+    if (forma) salida[icono] = forma;
+  }
+  return salida;
+}
+
+/** El sitio usa el glifo relleno de antes (`header_icons_weight` = relleno). */
+export function iconosRellenos(ajustes: Ajustes): boolean {
+  return (ajustes ?? {}).header_icons_weight === 'relleno';
+}
+
+/**
+ * Trazo que muestra el editor: relleno si el sitio lo usa (gana sobre `trazo`); si no, el
+ * grosor guardado. `null` = nada guardado (se ve «Normal», lo de hoy).
+ */
+export function trazoUnificado(ajustes: Ajustes): TrazoUnificado | null {
+  if (iconosRellenos(ajustes)) return 'relleno';
+  return unoDe(TRAZOS_ICONOS, objeto((ajustes ?? {}).header_iconos)?.trazo);
+}
+
 export function opcionesIconos(ajustes: Ajustes): OpcionesIconos {
   const crudo = objeto((ajustes ?? {}).header_iconos) ?? {};
   const estiloPropio = unoDe(ESTILOS_ICONOS_NUEVOS, crudo.estilo);
   const tamano = unoDe(TAMANOS_ICONOS, crudo.tamano);
-  const trazo = unoDe(TRAZOS_ICONOS, crudo.trazo);
+  // Relleno gana: con el glifo relleno, el grosor guardado no se aplica.
+  const trazo = iconosRellenos(ajustes) ? null : unoDe(TRAZOS_ICONOS, crudo.trazo);
   const contador = unoDe(CONTADORES_CARRITO, crudo.contador);
   const mostrar = typeof crudo.mostrarTexto === 'boolean' ? crudo.mostrarTexto : null;
   const favoritos = crudo.favoritos === true;
+  const movil = unoDe(ICONOS_EN_CELULAR, crudo.movil);
+  const porIcono = formasPorIcono(crudo.por_icono);
   const textos: Partial<Record<IconoConTexto, string>> = {};
   const textosCrudos = objeto(crudo.textos) ?? {};
   for (const clave of ICONOS_CON_TEXTO) {
@@ -137,18 +205,43 @@ export function opcionesIconos(ajustes: Ajustes): OpcionesIconos {
   }
   const estilo = estiloPropio ?? estiloIconosHeredado(ajustes);
   const configurado =
-    estiloPropio !== null || tamano !== null || trazo !== null || contador !== null || mostrar !== null || favoritos || Object.keys(textos).length > 0;
+    estiloPropio !== null || tamano !== null || trazo !== null || contador !== null || mostrar !== null || favoritos || Object.keys(textos).length > 0 ||
+    (movil !== null && movil !== 'auto') || Object.keys(porIcono).length > 0;
+  // «Mostrar texto» vale para el estilo general y para las formas propias con texto.
+  const algunoConTexto = estiloConTexto(estilo) || Object.values(porIcono).some((f) => f !== undefined && estiloConTexto(f));
   return {
     configurado,
     estilo,
     tamano,
     trazo,
     // Sin la opción, los estilos con texto lo muestran (por eso se eligen).
-    mostrarTexto: estiloConTexto(estilo) && (mostrar ?? true),
+    mostrarTexto: algunoConTexto && (mostrar ?? true),
     textos,
     contador: contador ?? 'numero',
     favoritos,
+    movil: movil ?? 'auto',
+    porIcono,
   };
+}
+
+/** Estilo de un ícono en el computador: su forma propia o el estilo general («Como los demás»). */
+export function estiloDeIcono(op: Pick<OpcionesIconos, 'estilo' | 'porIcono'>, icono: IconoCabecera): EstiloIconos {
+  return op.porIcono[icono] ?? op.estilo;
+}
+
+/** Estilos que no caben en el celular (390 px): en el editor llevan «Solo computador». */
+export function estiloSoloComputador(estilo: EstiloIconos): boolean {
+  return estilo === 'pildora' || estilo === 'relleno' || estilo === 'texto_lado';
+}
+
+/**
+ * Estilo que se pinta. En el computador, el elegido. En el celular, Píldora, Relleno y «al lado»
+ * (generales o propios) pasan a la forma de «En el celular»; con `auto`, a lo de hoy (`heredado`:
+ * solo ícono o círculo según la caja del sitio). Solo ícono, Círculo y Con texto no cambian.
+ */
+export function estiloEnPantalla(estilo: EstiloIconos, movil: boolean, enCelular: IconosEnCelular, heredado: 'icono' | 'circulo'): EstiloIconos {
+  if (!movil || !estiloSoloComputador(estilo)) return estilo;
+  return enCelular === 'auto' ? heredado : enCelular;
 }
 
 /** Texto de un ícono: el propio o el de siempre. La moneda, sin texto propio, su código. */
@@ -720,4 +813,104 @@ export function opcionesFavoritos(ajustes: Ajustes): OpcionesFavoritos {
 export function contadorFavoritos(cantidad: number, mostrar: boolean): string | null {
   if (!mostrar || !(cantidad > 0)) return null;
   return cantidad > 99 ? '99+' : String(Math.floor(cantidad));
+}
+
+// ─── Cuenta: iniciar sesión ───────────────────────────────────────────────────────────────
+
+/**
+ * Qué abre el ícono de cuenta (Figma «16 Sitio web» 2834:68670, aprobado 2026-11-22). Opción
+ * `header_cuenta` del documento V2 (`shell.header.opciones`, sin columna, ADR-002).
+ * - `pagina`: lo de hoy (y el valor sin clave): el ícono lleva a /auth, o a /mi-cuenta con sesión.
+ * - `panel`: panel lateral a la derecha · `ventana`: ventana compacta colgada del ícono, sin
+ *   beneficios · `dialogo`: diálogo centrado con pestañas Ingresar / Crear cuenta.
+ * En el celular, todo modo distinto de `pagina` es una hoja inferior. Con sesión, el mismo modo
+ * muestra el menú de cuenta (Hola {nombre}, Mis pedidos, Favoritos, Direcciones, Cerrar sesión).
+ * /auth, /auth?tab=register, /auth/reset-password y /mi-cuenta siguen funcionando siempre.
+ */
+export const MODOS_CUENTA = ['pagina', 'panel', 'ventana', 'dialogo'] as const;
+export type ModoCuenta = (typeof MODOS_CUENTA)[number];
+/** Desde la ventana, «Crear cuenta» y «¿Olvidaste…?» abren el panel o la página. */
+export const DESTINOS_VENTANA_CUENTA = ['panel', 'pagina'] as const;
+export type DestinoVentanaCuenta = (typeof DESTINOS_VENTANA_CUENTA)[number];
+/** Después de ingresar: quedarse donde estaba (carrito y pago incluidos) o ir a Mi cuenta. */
+export const DESPUES_INGRESAR = ['quedarse', 'cuenta'] as const;
+export type DespuesIngresar = (typeof DESPUES_INGRESAR)[number];
+
+export const TEXTOS_CUENTA_POR_DEFECTO = { titulo: 'Ingresa a tu cuenta', boton: 'Ingresar' } as const;
+export const LARGO_TITULO_CUENTA = 40;
+export const LARGO_BOTON_CUENTA = 30;
+
+export interface OpcionesCuenta {
+  /** `true` si `header_cuenta` trae al menos una opción válida. */
+  configurado: boolean;
+  modo: ModoCuenta;
+  titulo: string;
+  boton: string;
+  /** «Con tu cuenta puedes…» (panel, diálogo y hoja; la ventana nunca los muestra). */
+  beneficios: boolean;
+  ventanaDestino: DestinoVentanaCuenta;
+  despues: DespuesIngresar;
+}
+
+export function opcionesCuenta(ajustes: Ajustes): OpcionesCuenta {
+  const crudo = objeto((ajustes ?? {}).header_cuenta) ?? {};
+  const modo = unoDe(MODOS_CUENTA, crudo.modo);
+  const titulo = textoCorto(crudo.titulo, LARGO_TITULO_CUENTA);
+  const boton = textoCorto(crudo.boton, LARGO_BOTON_CUENTA);
+  const beneficios = typeof crudo.beneficios === 'boolean' ? crudo.beneficios : null;
+  const ventanaDestino = unoDe(DESTINOS_VENTANA_CUENTA, crudo.ventanaDestino);
+  const despues = unoDe(DESPUES_INGRESAR, crudo.despues);
+  return {
+    configurado: modo !== null || titulo !== null || boton !== null || beneficios !== null || ventanaDestino !== null || despues !== null,
+    modo: modo ?? 'pagina',
+    titulo: titulo ?? TEXTOS_CUENTA_POR_DEFECTO.titulo,
+    boton: boton ?? TEXTOS_CUENTA_POR_DEFECTO.boton,
+    beneficios: beneficios ?? true,
+    ventanaDestino: ventanaDestino ?? 'panel',
+    despues: despues ?? 'quedarse',
+  };
+}
+
+/** Vistas del acceso: ingresar, crear cuenta y recuperar la contraseña (con su confirmación). */
+export const VISTAS_ACCESO = ['ingresar', 'registro', 'recuperar'] as const;
+export type VistaAcceso = (typeof VISTAS_ACCESO)[number];
+
+/** Página de cada vista (los enlaces de hoy, que siguen sirviendo para correos y favoritos). */
+export function rutaAcceso(vista: VistaAcceso): string {
+  if (vista === 'registro') return '/auth?tab=register';
+  if (vista === 'recuperar') return '/auth?tab=forgot';
+  return '/auth';
+}
+
+/**
+ * Dónde se abre una vista. En la ventana, crear cuenta y recuperar abren el panel o la página
+ * (lo elegido en el editor); lo demás se queda en el mismo modo.
+ */
+export function destinoVistaAcceso(op: Pick<OpcionesCuenta, 'modo' | 'ventanaDestino'>, vista: VistaAcceso): ModoCuenta {
+  if (op.modo === 'ventana' && vista !== 'ingresar') return op.ventanaDestino;
+  return op.modo;
+}
+
+/** El error de ingreso no dice si falló el correo o la contraseña (Figma S2, reglas 2840:70345). */
+export const ERROR_INGRESO_GENERICO = 'Correo o contraseña incorrectos. Revisa los datos o recupera tu contraseña.';
+
+/** Confirmación de «Recuperar»: la misma exista o no la cuenta. */
+export function mensajeRecuperar(correo: string): string {
+  const c = correo.trim();
+  return `Si ${c || 'ese correo'} tiene una cuenta en esta tienda, te enviamos un enlace para crear una nueva contraseña.`;
+}
+
+/** Menú de cuenta con sesión: las rutas reales de /mi-cuenta. */
+export const MENU_CUENTA = [
+  { clave: 'pedidos', texto: 'Mis pedidos', href: '/mi-cuenta/pedidos' },
+  { clave: 'favoritos', texto: 'Favoritos', href: '/mi-cuenta/favoritos' },
+  { clave: 'direcciones', texto: 'Direcciones', href: '/mi-cuenta/direcciones' },
+] as const;
+
+/** «Hola, Ana»: el primer nombre; sin nombre, la parte del correo antes de la @; sin nada, «Hola». */
+export function saludoCuenta(nombre: string | null | undefined, correo?: string | null): string {
+  const primero = (nombre ?? '').trim().split(/\s+/)[0];
+  if (primero) return `Hola, ${primero}`;
+  const usuario = (correo ?? '').split('@')[0].trim();
+  return usuario ? `Hola, ${usuario}` : 'Hola';
 }

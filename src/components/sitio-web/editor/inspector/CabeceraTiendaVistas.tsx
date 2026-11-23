@@ -12,19 +12,17 @@
  */
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeft, ChevronRight, ExternalLink, GripVertical, Globe, Heart, PanelRight, Plus, Repeat, ShoppingCart, Timer, Trash2, Type, User } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, GripVertical, Globe, PanelRight, Plus, Repeat, ShoppingCart, Timer, Trash2, Type, UserRound } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { clasesBoton, SegmentedControl } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/config';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import {
   AL_TOCAR_FAVORITOS,
   CARRITO_HOY,
-  CONTADORES_CARRITO,
   ESTILOS_MONEDA,
   FUENTES_SUGERENCIAS_FAVORITOS,
   LARGO_TEXTO_BOTON_CARRITO,
@@ -37,15 +35,11 @@ import {
   ORDENES_BOTON_CARRITO,
   REGLAS_BOTON_CARRITO,
   SEGUNDOS_BOTON_CARRITO,
-  TAMANOS_ICONOS,
   TEXTO_BOTON_CARRITO_FIJO,
   TEXTOS_FAVORITOS,
   TEXTOS_FAVORITOS_POR_DEFECTO,
-  TEXTOS_ICONOS_POR_DEFECTO,
   TRANSICIONES_BOTON_CARRITO,
-  TRAZOS_ICONOS,
   datosMoneda,
-  estiloConTexto,
   indiceAlAbrir,
   mensajeEnvioGratis,
   opcionesCarrito,
@@ -62,7 +56,6 @@ import {
   type BotonCarrito,
   type ClaveTextoRegla,
   type EstadoCarritoBoton,
-  type EstiloIconos,
   type EstiloMoneda,
   type ModoBotonCarrito,
   type TextoFavoritos,
@@ -73,7 +66,6 @@ import {
   cambioBotonCarrito,
   cambioBotonPagina,
   cambioCarrito,
-  cambioEstiloIconos,
   cambioFavoritos,
   cambioIconos,
   cambioInterruptorFavoritos,
@@ -81,7 +73,6 @@ import {
   cambioMonedaVisible,
   cambioSugerenciasFavoritos,
   cambioTextoFavoritos,
-  cambioTextoIcono,
   cambioUsarEnPagina,
   modoDisponible,
   moverTexto,
@@ -115,7 +106,7 @@ export function CabeceraVistaTienda({ vista, onVolver }: { vista: VistaCabeceraT
       </button>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <h2 className="text-base font-semibold leading-[22px] text-fg">{t(`${vista}.titulo`)}</h2>
-        <p className="text-xs font-medium leading-4 text-fg-secondary">{t(`${vista}.migas`)}</p>
+        <p className="text-xs font-medium leading-4 text-fg-secondary">{t(vista === 'iconos' ? 'iconos.migasUnico' : `${vista}.migas`)}</p>
       </div>
     </div>
   );
@@ -158,6 +149,39 @@ export function AccesosCabeceraTienda({ onAbrir }: { onAbrir: (v: VistaCabeceraT
       <FilaAbrirVistaTienda vista="favoritos" onAbrir={onAbrir} />
     </section>
   );
+}
+
+/**
+ * Estilo › Íconos (Figma 2830:76378): se deja el título con una sola fila-enlace a la vista
+ * «Íconos», sin controles duplicados (hay quien busca los íconos en Estilo).
+ */
+export function FilaIconosEnEstilo({ onAbrir }: { onAbrir: () => void }) {
+  const t = useT();
+  return (
+    <button
+      type="button"
+      onClick={onAbrir}
+      data-fila-iconos-estilo=""
+      className="flex w-full items-center gap-3 rounded-lg border border-line bg-surface px-3 py-3 text-left transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      <span aria-hidden="true" className="flex shrink-0 items-center gap-0.5 text-fg">
+        <ShoppingCart className="size-3.5" strokeWidth={1.5} />
+        <UserRound className="size-3.5" strokeWidth={1.5} />
+        <Globe className="size-3.5" strokeWidth={1.5} />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="text-[13px] font-medium leading-[18px] text-fg">{t('iconos.filaEstilo')}</span>
+        <span className="text-[11px] leading-[14px] text-fg-muted">{t('iconos.filaEstiloAyuda')}</span>
+      </span>
+      <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+    </button>
+  );
+}
+
+/** Contenido › Acciones (Figma 2830:76237): solo queda el selector de sede; esto dice dónde está lo demás. */
+export function AyudaAccionesCabecera() {
+  const t = useT();
+  return <p className="text-[11px] leading-[14px] text-fg-muted">{t('accesos.accionesAyuda')}</p>;
 }
 
 /** Segmentado con «ninguno elegido» (= como hoy): el valor vacío no marca ninguna opción. */
@@ -217,41 +241,6 @@ const textoGuardado = (v: unknown) => (typeof v === 'string' ? v : '');
 
 // ─── Miniaturas de los estilos ────────────────────────────────────────────────────────────────
 
-function MiniaturaIcono({ estilo }: { estilo: EstiloIconos }) {
-  const t = useT();
-  const icono = <ShoppingCart aria-hidden="true" className="size-3.5" strokeWidth={2} />;
-  const insignia = <span className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full bg-brand-action text-[8px] font-bold text-white">3</span>;
-  const texto = t('iconos.miniTexto');
-  let cuerpo: ReactNode;
-  if (estilo === 'texto') {
-    cuerpo = (
-      <span className="relative flex flex-col items-center gap-0.5 text-white">
-        <span className="relative">{icono}{insignia}</span>
-        <span className="text-[8px] leading-none">{texto}</span>
-      </span>
-    );
-  } else if (estilo === 'pildora' || estilo === 'relleno' || estilo === 'texto_lado') {
-    cuerpo = (
-      <span
-        className={cn(
-          'relative flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-white',
-          estilo === 'pildora' && 'rounded-full border border-white/60',
-          estilo === 'relleno' && 'rounded-md bg-brand-action',
-        )}
-      >
-        {icono}
-        {texto}
-        {insignia}
-      </span>
-    );
-  } else if (estilo === 'circulo') {
-    cuerpo = <span className="relative flex size-7 items-center justify-center rounded-full bg-brand-action text-white">{icono}{insignia}</span>;
-  } else {
-    cuerpo = <span className="relative text-white">{icono}{insignia}</span>;
-  }
-  return <span className="absolute inset-0 flex items-center justify-center bg-[#0B1B46]">{cuerpo}</span>;
-}
-
 function MiniaturaMoneda({ estilo }: { estilo: EstiloMoneda }) {
   let cuerpo: ReactNode;
   if (estilo === 'icono') cuerpo = <Globe aria-hidden="true" className="size-4 text-white" strokeWidth={2} />;
@@ -275,156 +264,8 @@ function MiniaturaMoneda({ estilo }: { estilo: EstiloMoneda }) {
 
 // ─── Íconos ───────────────────────────────────────────────────────────────────────────────────
 
-const ESTILOS_EDITOR: readonly EstiloIconos[] = ['icono', 'texto', 'pildora', 'relleno', 'circulo'];
-
-function TarjetaIcono({ icono, titulo, visible, onVisible, children }: { icono: ReactNode; titulo: string; visible: boolean; onVisible: (v: boolean) => void; children?: ReactNode }) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3">
-      <div className="flex items-center gap-2">
-        <span aria-hidden="true" className="text-fg">{icono}</span>
-        <label htmlFor={id} className="min-w-0 flex-1 text-[13px] font-medium leading-[18px] text-fg">
-          {titulo}
-        </label>
-        <Switch id={id} checked={visible} onCheckedChange={onVisible} className="shrink-0" />
-      </div>
-      {visible && children}
-    </div>
-  );
-}
-
-export function VistaIconos({ ajustes: a, cambiar, onAbrir }: { ajustes: Ajustes; cambiar: Cambiar; onAbrir: (v: VistaCabeceraTienda) => void }) {
-  const t = useT();
-  const op = opcionesIconos(a);
-  const estiloVista: EstiloIconos = op.estilo === 'texto_lado' ? 'texto' : op.estilo;
-  const conTexto = estiloConTexto(op.estilo);
-  const textoDe = (k: 'cuenta' | 'carrito' | 'favoritos') => textoGuardado((leer(a, 'header_iconos', 'textos') as Record<string, unknown> | undefined)?.[k]);
-  const glifo = a.header_cart_glyph === 'bolsa' || a.header_cart_glyph === 'carrito' ? (a.header_cart_glyph as string) : null;
-  return (
-    <>
-      <section className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h3 className="flex items-center gap-1.5 text-[13px] font-semibold leading-[18px] text-fg">
-            {t('iconos.estilo')}
-            <InsigniaNuevo />
-          </h3>
-          <Ayuda>{t('iconos.estiloAyuda')}</Ayuda>
-        </div>
-        <div role="radiogroup" aria-label={t('iconos.estilo')} className="grid grid-cols-3 gap-2">
-          {ESTILOS_EDITOR.map((e) => (
-            <TarjetaComposicion key={e} etiqueta={t(`iconos.estiloOpcion.${e}`)} seleccionada={estiloVista === e} onElegir={() => cambiar(cambioEstiloIconos(a, e))}>
-              <MiniaturaIcono estilo={e} />
-            </TarjetaComposicion>
-          ))}
-        </div>
-        {estiloVista === 'texto' && (
-          <Segmento
-            etiqueta={t('iconos.posicionTexto')}
-            opciones={[
-              { valor: 'texto', etiqueta: t('iconos.debajo') },
-              { valor: 'texto_lado', etiqueta: t('iconos.alLado') },
-            ]}
-            valor={op.estilo === 'texto_lado' ? 'texto_lado' : 'texto'}
-            onCambiar={(v) => cambiar(cambioEstiloIconos(a, v))}
-          />
-        )}
-      </section>
-
-      <Segmento
-        etiqueta={t('iconos.tamano')}
-        opciones={TAMANOS_ICONOS.map((v) => ({ valor: v, etiqueta: v.toUpperCase() }))}
-        valor={op.tamano}
-        onCambiar={(v) => cambiar(cambioIconos(a, { tamano: v }))}
-      />
-      <Segmento
-        etiqueta={t('iconos.trazo')}
-        opciones={TRAZOS_ICONOS.map((v) => ({ valor: v, etiqueta: t(`iconos.trazoOpcion.${v}`) }))}
-        valor={op.trazo}
-        onCambiar={(v) => cambiar(cambioIconos(a, { trazo: v }))}
-      />
-      {(op.tamano || op.trazo) && <BotonComoHoy onClick={() => cambiar(cambioIconos(a, { tamano: null, trazo: null }))} />}
-      <FilaInterruptor
-        titulo={t('iconos.mostrarTexto')}
-        ayuda={conTexto ? t('iconos.mostrarTextoAyuda') : t('iconos.mostrarTextoSinTexto')}
-        valor={op.mostrarTexto}
-        deshabilitado={!conTexto}
-        onCambiar={(v) => cambiar(cambioIconos(a, { mostrarTexto: v ? null : false }))}
-      />
-
-      <section className="flex flex-col gap-3 border-t border-line pt-3">
-        <div className="flex flex-col gap-1">
-          <TituloBloque>{t('iconos.cuales')}</TituloBloque>
-          <Ayuda>{t('iconos.cualesAyuda')}</Ayuda>
-        </div>
-        <TarjetaIcono icono={<User className="size-4" strokeWidth={1.5} />} titulo={t('iconos.cuenta')} visible={a.show_header_auth !== false} onVisible={(v) => cambiar({ show_header_auth: v })}>
-          {conTexto && (
-            <CampoTextoVista
-              etiqueta={t('iconos.texto')}
-              valor={textoDe('cuenta')}
-              placeholder={TEXTOS_ICONOS_POR_DEFECTO.cuenta}
-              ayuda={t('iconos.porDefecto', { texto: TEXTOS_ICONOS_POR_DEFECTO.cuenta })}
-              max={24}
-              onCambiar={(v) => cambiar(cambioTextoIcono(a, 'cuenta', v ?? ''))}
-            />
-          )}
-        </TarjetaIcono>
-        <TarjetaIcono icono={<ShoppingCart className="size-4" strokeWidth={1.5} />} titulo={t('iconos.carrito')} visible={a.show_header_cart !== false} onVisible={(v) => cambiar({ show_header_cart: v })}>
-          {conTexto && (
-            <CampoTextoVista
-              etiqueta={t('iconos.texto')}
-              valor={textoDe('carrito')}
-              placeholder={TEXTOS_ICONOS_POR_DEFECTO.carrito}
-              ayuda={t('iconos.porDefecto', { texto: TEXTOS_ICONOS_POR_DEFECTO.carrito })}
-              max={24}
-              onCambiar={(v) => cambiar(cambioTextoIcono(a, 'carrito', v ?? ''))}
-            />
-          )}
-          <Segmento
-            etiqueta={t('iconos.contador')}
-            opciones={CONTADORES_CARRITO.map((v) => ({ valor: v, etiqueta: t(`iconos.contadorOpcion.${v}`) }))}
-            valor={op.contador}
-            onCambiar={(v) => cambiar(cambioIconos(a, { contador: v === 'numero' ? null : v }))}
-          />
-          <Segmento
-            etiqueta={t('iconos.glifo')}
-            opciones={[
-              { valor: 'carrito', etiqueta: t('iconos.glifoOpcion.carrito') },
-              { valor: 'bolsa', etiqueta: t('iconos.glifoOpcion.bolsa') },
-            ]}
-            valor={glifo}
-            onCambiar={(v) => cambiar({ header_cart_glyph: v })}
-          />
-        </TarjetaIcono>
-        <TarjetaIcono icono={<Heart className="size-4" strokeWidth={1.5} />} titulo={t('iconos.favoritos')} visible={op.favoritos} onVisible={(v) => cambiar(cambioIconos(a, { favoritos: v ? true : null }))}>
-          <div className="flex items-center justify-between gap-2">
-            <Ayuda>{t('iconos.favoritosAyudaPanel')}</Ayuda>
-            <button type="button" onClick={() => onAbrir('favoritos')} className="shrink-0 text-[13px] font-medium text-brand-deep hover:underline">
-              {t('iconos.favoritosVer')}
-            </button>
-          </div>
-          {conTexto && (
-            <CampoTextoVista
-              etiqueta={t('iconos.texto')}
-              valor={textoDe('favoritos')}
-              placeholder={TEXTOS_ICONOS_POR_DEFECTO.favoritos}
-              ayuda={t('iconos.porDefecto', { texto: TEXTOS_ICONOS_POR_DEFECTO.favoritos })}
-              max={24}
-              onCambiar={(v) => cambiar(cambioTextoIcono(a, 'favoritos', v ?? ''))}
-            />
-          )}
-        </TarjetaIcono>
-        <TarjetaIcono icono={<Globe className="size-4" strokeWidth={1.5} />} titulo={t('iconos.moneda')} visible={a.header_show_currency !== false} onVisible={(v) => cambiar({ header_show_currency: v })}>
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] text-fg-secondary">{t('iconos.monedaEstilo')}</span>
-            <button type="button" onClick={() => onAbrir('moneda')} className="text-[13px] font-medium text-brand-deep hover:underline">
-              {t('iconos.monedaVer')}
-            </button>
-          </div>
-        </TarjetaIcono>
-      </section>
-    </>
-  );
-}
+/** La vista «Íconos» vive en su archivo (Figma 2830:73206: el único lugar de los íconos). */
+export { VistaIconos } from './VistaIconosCabecera';
 
 // ─── Selector de moneda ─────────────────────────────────────────────────────────────────────
 

@@ -183,7 +183,7 @@ describe('peso y medidas', () => {
 describe('ajustes de Configuración › Logística', () => {
   it('por defecto: 2 h propio, 24 h transportadora, envío gratis en la web', () => {
     expect(normalizarAjustesLogistica(null)).toEqual(AJUSTES_LOGISTICA_POR_DEFECTO);
-    expect(AJUSTES_LOGISTICA_POR_DEFECTO).toEqual({ horasSinMovimientoPropio: 2, horasSinMovimientoTransportadora: 24, envioGratisPorDefecto: 'web' });
+    expect(AJUSTES_LOGISTICA_POR_DEFECTO).toEqual({ horasSinMovimientoPropio: 2, horasSinMovimientoTransportadora: 24, envioGratisPorDefecto: 'web', codigoEntregaContraentrega: true });
     expect(horasSinMovimiento(AJUSTES_LOGISTICA_POR_DEFECTO, true)).toBe(24);
     expect(horasSinMovimiento(AJUSTES_LOGISTICA_POR_DEFECTO, false)).toBe(2);
   });
@@ -192,11 +192,19 @@ describe('ajustes de Configuración › Logística', () => {
     expect(normalizarAjustesLogistica({ horasSinMovimientoPropio: 0, envioGratisPorDefecto: 'todo' })).toEqual(AJUSTES_LOGISTICA_POR_DEFECTO);
     expect(validarAjustesLogistica({ horasSinMovimientoPropio: 3, horasSinMovimientoTransportadora: 48, envioGratisPorDefecto: 'both' })).toEqual({
       ok: true,
-      ajustes: { horasSinMovimientoPropio: 3, horasSinMovimientoTransportadora: 48, envioGratisPorDefecto: 'both' },
+      ajustes: { horasSinMovimientoPropio: 3, horasSinMovimientoTransportadora: 48, envioGratisPorDefecto: 'both', codigoEntregaContraentrega: true },
     });
     expect(validarAjustesLogistica({ horasSinMovimientoPropio: 3.5, horasSinMovimientoTransportadora: 48, envioGratisPorDefecto: 'both' })).toEqual({ ok: false, error: 'horas_invalidas' });
     expect(validarAjustesLogistica({ horasSinMovimientoPropio: 3, horasSinMovimientoTransportadora: 500, envioGratisPorDefecto: 'web' })).toEqual({ ok: false, error: 'horas_invalidas' });
     expect(validarAjustesLogistica({ horasSinMovimientoPropio: 3, horasSinMovimientoTransportadora: 48, envioGratisPorDefecto: 'x' })).toEqual({ ok: false, error: 'envio_gratis_invalido' });
+  });
+
+  it('el código de entrega en contraentrega: encendido salvo un false explícito (igual que la base)', () => {
+    expect(normalizarAjustesLogistica({ codigoEntregaContraentrega: 'no' }).codigoEntregaContraentrega).toBe(true);
+    expect(normalizarAjustesLogistica({ codigoEntregaContraentrega: false }).codigoEntregaContraentrega).toBe(false);
+    const base = { horasSinMovimientoPropio: 3, horasSinMovimientoTransportadora: 48, envioGratisPorDefecto: 'web' };
+    expect(validarAjustesLogistica({ ...base, codigoEntregaContraentrega: false })).toEqual({ ok: true, ajustes: { ...base, codigoEntregaContraentrega: false } });
+    expect(validarAjustesLogistica({ ...base, codigoEntregaContraentrega: 'false' })).toEqual({ ok: false, error: 'codigo_entrega_invalido' });
   });
 });
 

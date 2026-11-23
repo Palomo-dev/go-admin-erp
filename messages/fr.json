@@ -40764,8 +40764,8 @@
         "palabras": "poids, dimensions, carton, volumétrique, par défaut"
       },
       "logisticaCodigoEntrega": {
-        "titulo": "Code de livraison",
-        "palabras": "code de livraison, paiement à la livraison, vérifier la livraison"
+        "titulo": "Demander un code de livraison en paiement à la livraison",
+        "palabras": "code de livraison, paiement à la livraison, vérifier la livraison, 4 chiffres, interrupteur"
       },
       "logisticaCargoDomicilio": {
         "titulo": "Qui peut modifier les frais de livraison",
@@ -64433,9 +64433,9 @@
         "errorGuardar": "Impossible d’enregistrer. Vérifiez vos permissions.",
         "soloLectura": "Lecture seule : modifier ces réglages exige la permission « Configurer l’organisation ».",
         "sinMovimiento": {
-          "titulo": "Envois sans mouvement",
-          "descripcion": "Après combien d’heures sans nouvelles un envoi en cours apparaît « sans mouvement » dans le Suivi.",
-          "propio": "Livreur propre",
+          "titulo": "Envoi sans mouvement",
+          "descripcion": "Passé ce délai sans nouvel événement, l’envoi apparaît dans Suivi › À résoudre comme « Sans mouvement ».",
+          "propio": "Propre et dernier kilomètre",
           "transportadora": "Transporteur"
         },
         "envioGratis": {
@@ -64452,23 +64452,30 @@
         },
         "informativos": "Fonctionnement",
         "codigoEntrega": {
-          "titulo": "Code de livraison",
-          "descripcion": "Toujours actif pour le paiement à la livraison avec votre livreur : le client le voit sur la page de suivi et le donne à la réception. Cinq erreurs le bloquent ; un administrateur le réinitialise."
+          "titulo": "Demander un code de livraison en paiement à la livraison",
+          "descripcion": "Le client reçoit un code à 4 chiffres sur la page de suivi ; le livreur le demande avant d’encaisser et de marquer « Livré ». Cinq essais erronés le bloquent ; un administrateur le réinitialise. S’applique aux envois créés après le changement."
         },
         "cargoDomicilio": {
-          "titulo": "Qui peut modifier les frais de livraison",
+          "titulo": "Qui peut modifier les frais de livraison au POS",
           "descripcion": "Dans le POS et la commande manuelle, les frais sont remplis par la zone. Les modifier exige la permission « Configurer l’organisation » et l’auteur est enregistré.",
           "accion": "Voir les rôles"
         },
         "avisos": {
           "titulo": "Avis de livraison au client",
-          "descripcion": "« En route », « Livré » et « Incident » partent par e-mail avec le lien de suivi. WhatsApp part quand le canal de l’organisation est connecté.",
-          "accion": "Ouvrir les avis"
+          "descripcion": "Les messages de chaque statut de l’envoi (en route, livré, incident) partent par e-mail avec le lien de suivi, et par WhatsApp quand le canal est connecté. Ils se modifient dans Point de vente › Avis au client.",
+          "accion": "Aller aux Avis au client"
         },
         "zonas": {
           "titulo": "Zones, tarifs et règles d’expédition",
-          "descripcion": "Ce sont des catalogues du module : ils se modifient dans Logistique.",
-          "accion": "Aller aux zones"
+          "descripcion": "Zones et tarifs et Règles d’expédition sont des pages de Logistique. Les prestataires d’envoi se connectent dans Intégrations › Connexions.",
+          "accion": "Aller à Zones et tarifs",
+          "conexiones": "Aller aux Connexions"
+        },
+        "grupos": {
+          "seguimiento": "Suivi et livraison",
+          "cobro": "Frais de livraison",
+          "avisos": "Avis au client",
+          "catalogos": "Catalogues et prestataires"
         }
       }
     },

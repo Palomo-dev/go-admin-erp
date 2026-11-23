@@ -40774,8 +40774,8 @@
         "palabras": "peso, medidas, caixa, cubado, padrão"
       },
       "logisticaCodigoEntrega": {
-        "titulo": "Código de entrega",
-        "palabras": "código de entrega, pagamento na entrega, verificar entrega"
+        "titulo": "Pedir código de entrega no pagamento na entrega",
+        "palabras": "código de entrega, pagamento na entrega, verificar entrega, 4 dígitos, interruptor"
       },
       "logisticaCargoDomicilio": {
         "titulo": "Quem pode alterar a taxa de entrega",
@@ -64443,9 +64443,9 @@
         "errorGuardar": "Não foi possível salvar. Verifique suas permissões.",
         "soloLectura": "Somente leitura: alterar estes ajustes exige a permissão “Configurar a organização”.",
         "sinMovimiento": {
-          "titulo": "Envios sem movimento",
-          "descripcion": "Depois de quantas horas sem novidades um envio em andamento aparece como “sem movimento” no Rastreamento.",
-          "propio": "Entregador próprio",
+          "titulo": "Envio sem movimento",
+          "descripcion": "Passado esse tempo sem um evento novo, o envio aparece em Rastreamento › A resolver como «Sem movimento».",
+          "propio": "Próprio e última milha",
           "transportadora": "Transportadora"
         },
         "envioGratis": {
@@ -64462,23 +64462,30 @@
         },
         "informativos": "Como funciona",
         "codigoEntrega": {
-          "titulo": "Código de entrega",
-          "descripcion": "Sempre ativo no pagamento na entrega com entregador próprio: o cliente o vê no rastreamento e o informa ao receber. Cinco tentativas erradas o bloqueiam; um administrador o reinicia."
+          "titulo": "Pedir código de entrega no pagamento na entrega",
+          "descripcion": "O cliente recebe um código de 4 dígitos no rastreamento; o entregador o pede antes de receber o pagamento e marcar «Entregue». Cinco tentativas erradas o bloqueiam; um administrador o reinicia. Vale para os envios criados depois da mudança."
         },
         "cargoDomicilio": {
-          "titulo": "Quem pode alterar a taxa de entrega",
+          "titulo": "Quem pode mudar a taxa de entrega no PDV",
           "descripcion": "No POS e no pedido manual, a taxa é preenchida pela zona. Alterá-la exige a permissão “Configurar a organização” e fica registrado quem alterou.",
           "accion": "Ver funções"
         },
         "avisos": {
           "titulo": "Avisos de entrega ao cliente",
-          "descripcion": "“A caminho”, “Entregue” e “Ocorrência” saem por e-mail com o link de rastreamento. O WhatsApp sai quando o canal da organização estiver conectado.",
-          "accion": "Abrir avisos"
+          "descripcion": "As mensagens de cada status do envio (a caminho, entregue, ocorrência) saem por e-mail com o link de rastreamento e por WhatsApp quando o canal está conectado. São editadas em Ponto de venda › Avisos ao cliente.",
+          "accion": "Ir para Avisos ao cliente"
         },
         "zonas": {
           "titulo": "Zonas, tarifas e regras de despacho",
-          "descripcion": "São catálogos do módulo: editam-se em Logística.",
-          "accion": "Ir para zonas"
+          "descripcion": "Zonas e tarifas e Regras de despacho são páginas de Logística. Os fornecedores de envio se conectam em Integrações › Conexões.",
+          "accion": "Ir para Zonas e tarifas",
+          "conexiones": "Ir para Conexões"
+        },
+        "grupos": {
+          "seguimiento": "Rastreamento e entrega",
+          "cobro": "Cobrança da entrega",
+          "avisos": "Avisos ao cliente",
+          "catalogos": "Catálogos e fornecedores"
         }
       }
     },

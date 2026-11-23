@@ -40764,8 +40764,8 @@
         "palabras": "weight, dimensions, box, volumetric, default"
       },
       "logisticaCodigoEntrega": {
-        "titulo": "Delivery code",
-        "palabras": "delivery code, cash on delivery, verify delivery"
+        "titulo": "Ask for a delivery code on cash on delivery",
+        "palabras": "delivery code, cash on delivery, verify delivery, 4 digits, switch"
       },
       "logisticaCargoDomicilio": {
         "titulo": "Who can change the delivery fee",
@@ -64433,9 +64433,9 @@
         "errorGuardar": "Could not save. Check your permissions.",
         "soloLectura": "Read only: changing these settings requires the “Configure the organization” permission.",
         "sinMovimiento": {
-          "titulo": "Shipments with no movement",
-          "descripcion": "After how many hours without updates an in-progress shipment shows as “no movement” in Tracking.",
-          "propio": "Own courier",
+          "titulo": "Shipment without movement",
+          "descripcion": "After this time without a new event, the shipment shows up in Tracking › To resolve as «No movement».",
+          "propio": "Own and last mile",
           "transportadora": "Carrier"
         },
         "envioGratis": {
@@ -64452,23 +64452,30 @@
         },
         "informativos": "How it works",
         "codigoEntrega": {
-          "titulo": "Delivery code",
-          "descripcion": "Always on for cash on delivery with your own courier: the customer sees it on the tracking page and reads it out on receipt. Five wrong attempts lock it; an administrator resets it."
+          "titulo": "Ask for a delivery code on cash on delivery",
+          "descripcion": "The customer gets a 4-digit code on the tracking page; the courier asks for it before taking the payment and marking «Delivered». Five wrong attempts lock it; an administrator resets it. Applies to shipments created after the change."
         },
         "cargoDomicilio": {
-          "titulo": "Who can change the delivery fee",
+          "titulo": "Who can change the delivery charge in the POS",
           "descripcion": "In the POS and manual orders, the fee is filled by the zone. Changing it requires the “Configure the organization” permission and records who changed it.",
           "accion": "View roles"
         },
         "avisos": {
           "titulo": "Delivery notices to the customer",
-          "descripcion": "“On the way”, “Delivered” and “Issue” go out by email with the tracking link. WhatsApp goes out once the organization’s channel is connected.",
-          "accion": "Open notices"
+          "descripcion": "The messages for each shipment status (on the way, delivered, issue) go out by email with the tracking link, and by WhatsApp when the channel is connected. They are edited in Point of sale › Customer notices.",
+          "accion": "Go to Customer notices"
         },
         "zonas": {
           "titulo": "Zones, rates and dispatch rules",
-          "descripcion": "They are module catalogs: edit them in Logistics.",
-          "accion": "Go to zones"
+          "descripcion": "Zones and rates and Dispatch rules are Logistics pages. Shipping providers are connected in Integrations › Connections.",
+          "accion": "Go to Zones and rates",
+          "conexiones": "Go to Connections"
+        },
+        "grupos": {
+          "seguimiento": "Tracking and delivery",
+          "cobro": "Delivery charge",
+          "avisos": "Customer notices",
+          "catalogos": "Catalogs and providers"
         }
       }
     },

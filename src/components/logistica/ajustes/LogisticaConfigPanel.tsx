@@ -4,18 +4,22 @@
  * Configuración › Logística (`logistica.general`). Ajustes del módulo, no catálogos: las zonas y
  * las reglas siguen en Logística (/app/logistica/zonas y /reglas), con el atajo «Configurar».
  *
- * Ajustes con ancla (buscador y deep link): `sin-movimiento`, `envio-gratis`, `peso-organizacion`,
- * `codigo-entrega`, `cargo-domicilio` y `avisos`. Los dos últimos y el código de entrega se
- * explican y enlazan (no son interruptores: lo decide la base o un permiso de Roles).
+ * Figma «22 Logística» › 10 (2933:9477): Seguimiento y entrega · Cobro del domicilio · Avisos al
+ * cliente · Catálogos y proveedores. Ajustes con ancla (buscador y deep link): `sin-movimiento`,
+ * `codigo-entrega` (interruptor que lee la base), `cargo-domicilio`, `envio-gratis`,
+ * `peso-organizacion` y `avisos`. El cargo de domicilio y los avisos se explican y enlazan (los
+ * decide un permiso de Roles o su propia sección).
  *
  * Lee y guarda por `GET/PUT /api/logistica/ajustes` (permiso resuelto en el servidor). Dentro del
  * diálogo, la barra «Descartar · Guardar» la pinta el diálogo (`useRegistrarCambios`).
  */
 import * as React from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpRight } from 'lucide-react';
+import { Bell, Link2 } from 'lucide-react';
 import { AvisoTonal, CampoNumero, EmptyState, SegmentedControl, SettingGroup, SettingRow, SettingsSaveBar } from '@/components/kit';
 import { clasesBoton } from '@/components/kit/botonClases';
+import { Switch } from '@/components/ui/switch';
+import { TarjetaEnlaceConfig } from '@/components/configuracion/TarjetaEnlaceConfig';
 import { useToast } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { contarCambios, useDentroDelDialogo, useRegistrarCambios } from '@/components/configuracion/dialogo/cambiosSinGuardar';
@@ -98,92 +102,113 @@ export function LogisticaConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href:
     <div className="flex max-w-3xl flex-col gap-6">
       {!puedeEditar && <AvisoTonal tono="neutro" titulo={t('soloLectura')} compacto />}
 
-      <section id="sin-movimiento" className="flex flex-col gap-2" aria-labelledby="logistica-sin-movimiento">
-        <h3 id="logistica-sin-movimiento" className="text-base font-semibold text-fg">{t('sinMovimiento.titulo')}</h3>
-        <p className="text-sm text-fg-secondary">{t('sinMovimiento.descripcion')}</p>
-        <SettingGroup etiqueta={t('sinMovimiento.titulo')}>
-          <SettingRow titulo={t('sinMovimiento.propio')} htmlFor="logistica-horas-propio">
-            <div className="w-32">
-              <CampoNumero
-                id="logistica-horas-propio"
-                valor={editado.ajustes.horasSinMovimientoPropio}
-                onValorChange={(v) => cambiarAjuste('horasSinMovimientoPropio', Math.min(Math.max(Math.round(v ?? HORAS_MIN), HORAS_MIN), HORAS_MAX))}
-                decimales={0}
-                minimo={HORAS_MIN}
-                maximo={HORAS_MAX}
-                sufijo="h"
-                disabled={!puedeEditar}
-              />
+      {/* Figma «22 Logística» › 10 (2933:9477): cuatro bloques. */}
+      <section className="flex flex-col gap-2" aria-labelledby="logistica-seguimiento">
+        <h3 id="logistica-seguimiento" className="text-base font-semibold text-fg">{t('grupos.seguimiento')}</h3>
+        <SettingGroup etiqueta={t('grupos.seguimiento')}>
+          <SettingRow titulo={<span id="sin-movimiento">{t('sinMovimiento.titulo')}</span>} descripcion={t('sinMovimiento.descripcion')}>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex w-32 flex-col gap-1 text-xs text-fg-secondary">
+                {t('sinMovimiento.transportadora')}
+                <CampoNumero
+                  id="logistica-horas-transportadora"
+                  valor={editado.ajustes.horasSinMovimientoTransportadora}
+                  onValorChange={(v) => cambiarAjuste('horasSinMovimientoTransportadora', Math.min(Math.max(Math.round(v ?? HORAS_MIN), HORAS_MIN), HORAS_MAX))}
+                  decimales={0}
+                  minimo={HORAS_MIN}
+                  maximo={HORAS_MAX}
+                  sufijo="h"
+                  disabled={!puedeEditar}
+                />
+              </label>
+              <label className="flex w-32 flex-col gap-1 text-xs text-fg-secondary">
+                {t('sinMovimiento.propio')}
+                <CampoNumero
+                  id="logistica-horas-propio"
+                  valor={editado.ajustes.horasSinMovimientoPropio}
+                  onValorChange={(v) => cambiarAjuste('horasSinMovimientoPropio', Math.min(Math.max(Math.round(v ?? HORAS_MIN), HORAS_MIN), HORAS_MAX))}
+                  decimales={0}
+                  minimo={HORAS_MIN}
+                  maximo={HORAS_MAX}
+                  sufijo="h"
+                  disabled={!puedeEditar}
+                />
+              </label>
             </div>
           </SettingRow>
-          <SettingRow titulo={t('sinMovimiento.transportadora')} htmlFor="logistica-horas-transportadora">
-            <div className="w-32">
-              <CampoNumero
-                id="logistica-horas-transportadora"
-                valor={editado.ajustes.horasSinMovimientoTransportadora}
-                onValorChange={(v) => cambiarAjuste('horasSinMovimientoTransportadora', Math.min(Math.max(Math.round(v ?? HORAS_MIN), HORAS_MIN), HORAS_MAX))}
-                decimales={0}
-                minimo={HORAS_MIN}
-                maximo={HORAS_MAX}
-                sufijo="h"
-                disabled={!puedeEditar}
-              />
-            </div>
+          <SettingRow titulo={<span id="codigo-entrega">{t('codigoEntrega.titulo')}</span>} descripcion={t('codigoEntrega.descripcion')} htmlFor="logistica-codigo-entrega">
+            <Switch
+              id="logistica-codigo-entrega"
+              checked={editado.ajustes.codigoEntregaContraentrega}
+              onCheckedChange={(v) => cambiarAjuste('codigoEntregaContraentrega', v === true)}
+              disabled={!puedeEditar}
+            />
           </SettingRow>
         </SettingGroup>
       </section>
 
-      <section id="envio-gratis" className="flex flex-col gap-2" aria-labelledby="logistica-envio-gratis">
-        <h3 id="logistica-envio-gratis" className="text-base font-semibold text-fg">{t('envioGratis.titulo')}</h3>
-        <p className="text-sm text-fg-secondary">{t('envioGratis.descripcion')}</p>
-        <SegmentedControl
-          opciones={(['web', 'pos', 'both'] as const).map((v) => ({ valor: v, etiqueta: tz(`gratisAplica.${v}`) }))}
-          valor={editado.ajustes.envioGratisPorDefecto}
-          onValorChange={(v: AplicaEnvioGratis) => cambiarAjuste('envioGratisPorDefecto', v)}
-          etiqueta={t('envioGratis.titulo')}
-          deshabilitado={!puedeEditar}
+      <section className="flex flex-col gap-2" aria-labelledby="logistica-cobro">
+        <h3 id="logistica-cobro" className="text-base font-semibold text-fg">{t('grupos.cobro')}</h3>
+        <SettingGroup etiqueta={t('grupos.cobro')}>
+          <SettingRow titulo={<span id="cargo-domicilio">{t('cargoDomicilio.titulo')}</span>} descripcion={t('cargoDomicilio.descripcion')}>
+            <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => abrirConfiguracion({ seccionId: 'roles.general' })}>
+              {t('cargoDomicilio.accion')}
+            </button>
+          </SettingRow>
+          <SettingRow titulo={<span id="envio-gratis">{t('envioGratis.titulo')}</span>} descripcion={t('envioGratis.descripcion')}>
+            <SegmentedControl
+              opciones={(['web', 'pos', 'both'] as const).map((v) => ({ valor: v, etiqueta: tz(`gratisAplica.${v}`) }))}
+              valor={editado.ajustes.envioGratisPorDefecto}
+              onValorChange={(v: AplicaEnvioGratis) => cambiarAjuste('envioGratisPorDefecto', v)}
+              etiqueta={t('envioGratis.titulo')}
+              deshabilitado={!puedeEditar}
+            />
+          </SettingRow>
+          <div className="flex flex-col gap-3 px-4 py-3">
+            <div className="flex flex-col gap-0.5">
+              <p id="peso-organizacion" className="text-sm font-medium text-fg">{t('peso.titulo')}</p>
+              <p className="text-[13px] leading-[18px] text-fg-secondary">{t('peso.descripcion')}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ['default_weight_kg', 'kg', 3],
+                  ['default_length_cm', 'cm', 1],
+                  ['default_width_cm', 'cm', 1],
+                  ['default_height_cm', 'cm', 1],
+                ] as const
+              ).map(([campo, unidad, dec]) => (
+                <label key={campo} className="flex flex-col gap-1 text-xs text-fg-secondary">
+                  {t(`peso.${campo}`)}
+                  <CampoNumero valor={editado.peso[campo]} onValorChange={(v) => cambiarPeso(campo, v)} decimales={dec} minimo={0} sufijo={unidad} disabled={!puedeEditar} />
+                </label>
+              ))}
+            </div>
+          </div>
+        </SettingGroup>
+      </section>
+
+      <section className="flex flex-col gap-2" aria-labelledby="logistica-avisos">
+        <h3 id="logistica-avisos" className="text-base font-semibold text-fg">{t('grupos.avisos')}</h3>
+        <TarjetaEnlaceConfig
+          id="avisos"
+          icono={Bell}
+          texto={t('avisos.descripcion')}
+          enlaces={[{ etiqueta: t('avisos.accion'), onClick: () => abrirConfiguracion({ seccionId: 'pos.avisos-cliente' }) }]}
         />
       </section>
 
-      <section id="peso-organizacion" className="flex flex-col gap-2" aria-labelledby="logistica-peso">
-        <h3 id="logistica-peso" className="text-base font-semibold text-fg">{t('peso.titulo')}</h3>
-        <p className="text-sm text-fg-secondary">{t('peso.descripcion')}</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {(
-            [
-              ['default_weight_kg', 'kg', 3],
-              ['default_length_cm', 'cm', 1],
-              ['default_width_cm', 'cm', 1],
-              ['default_height_cm', 'cm', 1],
-            ] as const
-          ).map(([campo, unidad, dec]) => (
-            <label key={campo} className="flex flex-col gap-1 text-sm font-medium text-fg">
-              {t(`peso.${campo}`)}
-              <CampoNumero valor={editado.peso[campo]} onValorChange={(v) => cambiarPeso(campo, v)} decimales={dec} minimo={0} sufijo={unidad} disabled={!puedeEditar} />
-            </label>
-          ))}
-        </div>
+      <section className="flex flex-col gap-2" aria-labelledby="logistica-catalogos">
+        <h3 id="logistica-catalogos" className="text-base font-semibold text-fg">{t('grupos.catalogos')}</h3>
+        <TarjetaEnlaceConfig
+          icono={Link2}
+          texto={t('zonas.descripcion')}
+          enlaces={[
+            { etiqueta: t('zonas.accion'), onClick: () => abrir('/app/logistica/zonas') },
+            { etiqueta: t('zonas.conexiones'), onClick: () => abrir('/app/integraciones/conexiones/logistica') },
+          ]}
+        />
       </section>
-
-      <SettingGroup etiqueta={t('informativos')}>
-        <SettingRow titulo={<span id="codigo-entrega">{t('codigoEntrega.titulo')}</span>} descripcion={t('codigoEntrega.descripcion')} />
-        <SettingRow titulo={<span id="cargo-domicilio">{t('cargoDomicilio.titulo')}</span>} descripcion={t('cargoDomicilio.descripcion')}>
-          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => abrirConfiguracion({ seccionId: 'roles.general' })}>
-            {t('cargoDomicilio.accion')}
-          </button>
-        </SettingRow>
-        <SettingRow titulo={<span id="avisos">{t('avisos.titulo')}</span>} descripcion={t('avisos.descripcion')}>
-          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => abrirConfiguracion({ seccionId: 'pos.avisos-cliente' })}>
-            {t('avisos.accion')}
-          </button>
-        </SettingRow>
-        <SettingRow titulo={t('zonas.titulo')} descripcion={t('zonas.descripcion')}>
-          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => abrir('/app/logistica/zonas')}>
-            {t('zonas.accion')}
-            <ArrowUpRight aria-hidden="true" className="size-4" />
-          </button>
-        </SettingRow>
-      </SettingGroup>
 
       {!enDialogo && puedeEditar && <SettingsSaveBar cambios={cambios} onGuardar={() => void guardar()} onDescartar={descartar} guardando={guardando} />}
     </div>

@@ -40762,8 +40762,8 @@
         "palabras": "peso, medidas, caja, volumétrico, por defecto"
       },
       "logisticaCodigoEntrega": {
-        "titulo": "Código de entrega",
-        "palabras": "código de entrega, contraentrega, verificar entrega"
+        "titulo": "Pedir código de entrega en contraentrega",
+        "palabras": "código de entrega, contraentrega, verificar entrega, 4 dígitos, interruptor"
       },
       "logisticaCargoDomicilio": {
         "titulo": "Quién cambia el cargo de domicilio",
@@ -64431,9 +64431,9 @@
         "errorGuardar": "No se pudieron guardar. Revisa tus permisos.",
         "soloLectura": "Solo lectura: cambiar estos ajustes pide el permiso «Configurar la organización».",
         "sinMovimiento": {
-          "titulo": "Envíos sin movimiento",
-          "descripcion": "Desde cuántas horas sin novedades un envío en curso aparece como «sin movimiento» en Seguimiento.",
-          "propio": "Domiciliario propio",
+          "titulo": "Envío sin movimiento",
+          "descripcion": "Pasado este tiempo sin un evento nuevo, el envío sale en Seguimiento › Por resolver como «Sin movimiento».",
+          "propio": "Propio y última milla",
           "transportadora": "Transportadora"
         },
         "envioGratis": {
@@ -64450,23 +64450,30 @@
         },
         "informativos": "Cómo funciona",
         "codigoEntrega": {
-          "titulo": "Código de entrega",
-          "descripcion": "Siempre activo en contraentrega con domiciliario propio: el cliente lo ve en el rastreo y lo dicta al recibir. Cinco intentos errados lo bloquean; un administrador lo reinicia."
+          "titulo": "Pedir código de entrega en contraentrega",
+          "descripcion": "El cliente recibe un código de 4 dígitos en el rastreo; el domiciliario lo pide antes de recibir el pago y marcar «Entregado». Cinco intentos errados lo bloquean; un administrador lo reinicia. Aplica a los envíos que se creen después del cambio."
         },
         "cargoDomicilio": {
-          "titulo": "Quién cambia el cargo de domicilio",
+          "titulo": "Quién puede cambiar el cargo de domicilio en el POS",
           "descripcion": "En el POS y el pedido manual, el cargo lo llena la zona. Cambiarlo pide el permiso «Configurar la organización» y queda registrado quién lo cambió.",
           "accion": "Ver roles"
         },
         "avisos": {
           "titulo": "Avisos de entrega al cliente",
-          "descripcion": "«En camino», «Entregado» y «Novedad» salen por correo con el enlace de rastreo. WhatsApp sale cuando el canal de la organización esté conectado.",
-          "accion": "Abrir avisos"
+          "descripcion": "Los mensajes de cada estado del envío (en camino, entregado, novedad) salen por correo con el enlace de rastreo y por WhatsApp cuando el canal está conectado. Se editan en Punto de venta › Avisos al cliente.",
+          "accion": "Ir a Avisos al cliente"
         },
         "zonas": {
           "titulo": "Zonas, tarifas y reglas de despacho",
-          "descripcion": "Son catálogos del módulo: se editan en Logística.",
-          "accion": "Ir a zonas"
+          "descripcion": "Zonas y tarifas y Reglas de despacho son páginas de Logística. Los proveedores de envío se conectan en Integraciones › Conexiones.",
+          "accion": "Ir a Zonas y tarifas",
+          "conexiones": "Ir a Conexiones"
+        },
+        "grupos": {
+          "seguimiento": "Seguimiento y entrega",
+          "cobro": "Cobro del domicilio",
+          "avisos": "Avisos al cliente",
+          "catalogos": "Catálogos y proveedores"
         }
       }
     },

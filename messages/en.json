@@ -65678,7 +65678,10 @@
         "poliza": "Liability policy",
         "tarjeta_operacion": "Operating card",
         "licencia": "Driver's license",
-        "examen_medico": "Medical exam"
+        "examen_medico": "Medical exam",
+        "matricula": "Registration",
+        "navegabilidad": "Seaworthiness certificate",
+        "otro": "Other document"
       },
       "venceEn": "{documento} expires {dias, plural, =0 {today} one {in # day} other {in # days}}",
       "cumplimiento": {
@@ -65858,7 +65861,9 @@
         "de": "Of",
         "vence": "Expires",
         "estado": "Status",
-        "bloquea": "Blocks dispatch?"
+        "bloquea": "Blocks dispatch?",
+        "numero": "Number",
+        "archivo": "File"
       },
       "estados": {
         "vencido": "Expired",
@@ -65868,11 +65873,16 @@
       "bloquea": {
         "vehiculo": "Blocks dispatch",
         "conductor": "Cannot be assigned",
-        "hasta": "No, until {fecha}"
+        "hasta": "No, until {fecha}",
+        "no": "Does not block"
       },
       "acciones": {
         "verVehiculos": "Go to Vehicles",
-        "verConductores": "Go to Drivers"
+        "verConductores": "Go to Drivers",
+        "verArchivo": "View file",
+        "renovar": "Renew document",
+        "cargar": "Upload document",
+        "archivar": "Archive"
       },
       "sustantivo": {
         "singular": "document",
@@ -65896,11 +65906,14 @@
         "vigilados": "of {n} documents watched",
         "mantenimiento": "In maintenance",
         "sinFecha": "{n, plural, one {# with no dates recorded} other {# with no dates recorded}}",
-        "mantenimientoDetalle": "vehicles out of service"
+        "mantenimientoDetalle": "vehicles out of service",
+        "sinArchivo": "No file",
+        "sinArchivoDetalle": "only the date is recorded",
+        "enMantenimiento": "{n, plural, one {# vehicle in maintenance} other {# vehicles in maintenance}}"
       },
       "aviso": {
         "titulo": "How it warns",
-        "descripcion": "An expired document blocks the vehicle's dispatch or the person's assignment (Trips › Today's dispatches). Notices 30, 15 and 7 days before and each document's file arrive with the next release."
+        "descripcion": "Notice by the bell and email to whoever manages Transport and to the driver 30, 15 and 7 days before. Once expired, the document blocks the vehicle dispatch or the person assignment (Trips › Today's dispatches)."
       },
       "documentos": "Documents and expirations",
       "buscar": {
@@ -65918,6 +65931,54 @@
       "errorCarga": "Could not load the documents",
       "masivo": {
         "exportar": "Export CSV"
+      },
+      "subir": "Upload document",
+      "archivoVer": "View file",
+      "sinArchivo": "No file",
+      "toast": {
+        "guardado": "Document saved",
+        "archivado": "Document archived"
+      },
+      "errores": {
+        "archivo": "Could not open the file",
+        "archivo_grande": "The file is over 10 MB.",
+        "archivo_tipo": "PDF or image only (JPG, PNG, WEBP).",
+        "subida": "Could not upload the file.",
+        "sin_permiso": "You need the «Manage transport» permission.",
+        "error": "Could not save the document."
+      },
+      "archivar": {
+        "titulo": "Archive {documento} of {de}?",
+        "descripcion": "It is no longer watched nor counted for dispatch. It stays in the history and the usual date of the vehicle or driver does not change.",
+        "confirmar": "Archive",
+        "volver": "Back"
+      },
+      "dialogo": {
+        "titulo": "Upload document",
+        "tituloRenovar": "Renew document",
+        "descripcion": "The new one becomes current and the previous one moves to history.",
+        "cancelar": "Cancel",
+        "guardar": "Save",
+        "faltan": "Choose whose it is and the expiration date",
+        "de": "Belongs to",
+        "vehiculo": "Vehicle",
+        "conductor": "Driver",
+        "elegir": "Choose",
+        "sinDuenos": "No records",
+        "tipo": "Document",
+        "numero": "Number",
+        "entidad": "Issuer",
+        "entidadPlaceholder": "Insurer, inspection center, transit office…",
+        "categoria": "Category",
+        "vence": "Expires",
+        "archivo": "File",
+        "archivoAyuda": "PDF or image, up to 10 MB. Stored privately; opened with a temporary link.",
+        "bloquea": "Blocks dispatch when expired",
+        "bloqueaAyuda": "Insurance, inspection, policy, operating card, license and medical exam always block.",
+        "errores": {
+          "archivo_grande": "The file is over 10 MB.",
+          "archivo_tipo": "PDF or image only (JPG, PNG, WEBP)."
+        }
       }
     }
   },

@@ -65676,7 +65676,10 @@
         "poliza": "Póliza de responsabilidad",
         "tarjeta_operacion": "Tarjeta de operación",
         "licencia": "Licencia de conducción",
-        "examen_medico": "Examen médico"
+        "examen_medico": "Examen médico",
+        "matricula": "Matrícula",
+        "navegabilidad": "Certificado de navegabilidad",
+        "otro": "Otro documento"
       },
       "venceEn": "{documento} vence en {dias, plural, =0 {hoy} one {# día} other {# días}}",
       "cumplimiento": {
@@ -65856,7 +65859,9 @@
         "de": "De",
         "vence": "Vence",
         "estado": "Estado",
-        "bloquea": "¿Bloquea el despacho?"
+        "bloquea": "¿Bloquea el despacho?",
+        "numero": "Número",
+        "archivo": "Archivo"
       },
       "estados": {
         "vencido": "Vencido",
@@ -65866,11 +65871,16 @@
       "bloquea": {
         "vehiculo": "Bloquea el despacho",
         "conductor": "No se puede asignar",
-        "hasta": "No, hasta el {fecha}"
+        "hasta": "No, hasta el {fecha}",
+        "no": "No bloquea"
       },
       "acciones": {
         "verVehiculos": "Ir a Vehículos",
-        "verConductores": "Ir a Conductores"
+        "verConductores": "Ir a Conductores",
+        "verArchivo": "Ver archivo",
+        "renovar": "Renovar documento",
+        "cargar": "Cargar documento",
+        "archivar": "Archivar"
       },
       "sustantivo": {
         "singular": "documento",
@@ -65894,11 +65904,14 @@
         "vigilados": "de {n} documentos vigilados",
         "mantenimiento": "En mantenimiento",
         "sinFecha": "{n, plural, one {# sin fechas registradas} other {# sin fechas registradas}}",
-        "mantenimientoDetalle": "vehículos fuera de servicio"
+        "mantenimientoDetalle": "vehículos fuera de servicio",
+        "sinArchivo": "Sin archivo",
+        "sinArchivoDetalle": "solo tienen la fecha",
+        "enMantenimiento": "{n, plural, one {# vehículo en mantenimiento} other {# vehículos en mantenimiento}}"
       },
       "aviso": {
         "titulo": "Cómo avisa",
-        "descripcion": "Un documento vencido bloquea el despacho del vehículo o la asignación de la persona (Viajes › Despachos de hoy). Los avisos 30, 15 y 7 días antes y el archivo de cada documento llegan con la siguiente entrega."
+        "descripcion": "Aviso por la campana y el correo a quien gestiona Transporte y al conductor 30, 15 y 7 días antes. Vencido, el documento bloquea el despacho del vehículo o la asignación de la persona (Viajes › Despachos de hoy)."
       },
       "documentos": "Documentos y vencimientos",
       "buscar": {
@@ -65916,6 +65929,54 @@
       "errorCarga": "No se pudieron cargar los documentos",
       "masivo": {
         "exportar": "Exportar CSV"
+      },
+      "subir": "Subir documento",
+      "archivoVer": "Ver archivo",
+      "sinArchivo": "Sin archivo",
+      "toast": {
+        "guardado": "Documento guardado",
+        "archivado": "Documento archivado"
+      },
+      "errores": {
+        "archivo": "No se pudo abrir el archivo",
+        "archivo_grande": "El archivo pasa de 10 MB.",
+        "archivo_tipo": "Solo PDF o imagen (JPG, PNG, WEBP).",
+        "subida": "No se pudo subir el archivo.",
+        "sin_permiso": "Te falta el permiso «Gestionar transporte».",
+        "error": "No se pudo guardar el documento."
+      },
+      "archivar": {
+        "titulo": "¿Archivar {documento} de {de}?",
+        "descripcion": "Deja de vigilarse y de contar para el despacho. Queda en el historial y la fecha de siempre del vehículo o del conductor no cambia.",
+        "confirmar": "Archivar",
+        "volver": "Volver"
+      },
+      "dialogo": {
+        "titulo": "Subir documento",
+        "tituloRenovar": "Renovar documento",
+        "descripcion": "El nuevo queda vigente y el anterior pasa al historial.",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar",
+        "faltan": "Elige de quién es y la fecha de vencimiento",
+        "de": "Es de",
+        "vehiculo": "Vehículo",
+        "conductor": "Conductor",
+        "elegir": "Elegir",
+        "sinDuenos": "No hay registros",
+        "tipo": "Documento",
+        "numero": "Número",
+        "entidad": "Entidad",
+        "entidadPlaceholder": "Aseguradora, CDA, tránsito…",
+        "categoria": "Categoría",
+        "vence": "Vence",
+        "archivo": "Archivo",
+        "archivoAyuda": "PDF o imagen, hasta 10 MB. Se guarda privado; se abre con un enlace temporal.",
+        "bloquea": "Bloquea el despacho al vencer",
+        "bloqueaAyuda": "SOAT, técnico-mecánica, póliza, tarjeta de operación, licencia y examen siempre bloquean.",
+        "errores": {
+          "archivo_grande": "El archivo pasa de 10 MB.",
+          "archivo_tipo": "Solo PDF o imagen (JPG, PNG, WEBP)."
+        }
       }
     }
   },

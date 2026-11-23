@@ -18,6 +18,7 @@ const GRUPOS_CORREO: { clave: GrupoAviso; titulo: string; detalle: string }[] = 
   { clave: 'caja.diferencia', titulo: 'Caja con diferencia', detalle: 'Cuando una caja cierra y el arqueo no queda en cero' },
   { clave: 'cartera.resumen', titulo: 'Cartera vencida', detalle: 'Un resumen por la mañana, si tiene acceso a finanzas' },
   { clave: 'inventario', titulo: 'Inventario', detalle: 'Un producto bajo el mínimo, o el resumen de productos en cero' },
+  { clave: 'transporte', titulo: 'Documentos de transporte', detalle: 'SOAT, licencias y demás documentos de la flota 30, 15 y 7 días antes de vencer' },
 ];
 
 interface NotificacionesSectionProps {

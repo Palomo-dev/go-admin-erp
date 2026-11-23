@@ -65678,7 +65678,10 @@
         "poliza": "Police de responsabilité",
         "tarjeta_operacion": "Carte d’exploitation",
         "licencia": "Permis de conduire",
-        "examen_medico": "Examen médical"
+        "examen_medico": "Examen médical",
+        "matricula": "Immatriculation",
+        "navegabilidad": "Certificat de navigabilité",
+        "otro": "Autre document"
       },
       "venceEn": "{documento} expire {dias, plural, =0 {aujourd’hui} one {dans # jour} other {dans # jours}}",
       "cumplimiento": {
@@ -65858,7 +65861,9 @@
         "de": "De",
         "vence": "Expire",
         "estado": "Statut",
-        "bloquea": "Bloque le départ ?"
+        "bloquea": "Bloque le départ ?",
+        "numero": "Numéro",
+        "archivo": "Fichier"
       },
       "estados": {
         "vencido": "Expiré",
@@ -65868,11 +65873,16 @@
       "bloquea": {
         "vehiculo": "Bloque le départ",
         "conductor": "Ne peut pas être assigné",
-        "hasta": "Non, jusqu’au {fecha}"
+        "hasta": "Non, jusqu’au {fecha}",
+        "no": "Ne bloque pas"
       },
       "acciones": {
         "verVehiculos": "Aller aux Véhicules",
-        "verConductores": "Aller aux Conducteurs"
+        "verConductores": "Aller aux Conducteurs",
+        "verArchivo": "Voir le fichier",
+        "renovar": "Renouveler le document",
+        "cargar": "Téléverser le document",
+        "archivar": "Archiver"
       },
       "sustantivo": {
         "singular": "document",
@@ -65896,11 +65906,14 @@
         "vigilados": "sur {n} documents suivis",
         "mantenimiento": "En maintenance",
         "sinFecha": "{n, plural, one {# sans dates enregistrées} other {# sans dates enregistrées}}",
-        "mantenimientoDetalle": "véhicules hors service"
+        "mantenimientoDetalle": "véhicules hors service",
+        "sinArchivo": "Sans fichier",
+        "sinArchivoDetalle": "seule la date est enregistrée",
+        "enMantenimiento": "{n, plural, one {# véhicule en maintenance} other {# véhicules en maintenance}}"
       },
       "aviso": {
         "titulo": "Comment il avertit",
-        "descripcion": "Un document expiré bloque le départ du véhicule ou l’assignation de la personne (Trajets › Départs du jour). Les avis 30, 15 et 7 jours avant et le fichier de chaque document arrivent avec la prochaine livraison."
+        "descripcion": "Avis par la cloche et par e-mail à qui gère le Transport et au conducteur 30, 15 et 7 jours avant. Expiré, le document bloque le départ du véhicule ou l’assignation de la personne (Trajets › Départs du jour)."
       },
       "documentos": "Documents et expirations",
       "buscar": {
@@ -65918,6 +65931,54 @@
       "errorCarga": "Impossible de charger les documents",
       "masivo": {
         "exportar": "Exporter en CSV"
+      },
+      "subir": "Téléverser un document",
+      "archivoVer": "Voir le fichier",
+      "sinArchivo": "Sans fichier",
+      "toast": {
+        "guardado": "Document enregistré",
+        "archivado": "Document archivé"
+      },
+      "errores": {
+        "archivo": "Impossible d’ouvrir le fichier",
+        "archivo_grande": "Le fichier dépasse 10 Mo.",
+        "archivo_tipo": "PDF ou image uniquement (JPG, PNG, WEBP).",
+        "subida": "Impossible de téléverser le fichier.",
+        "sin_permiso": "Il vous manque l’autorisation « Gérer le transport ».",
+        "error": "Impossible d’enregistrer le document."
+      },
+      "archivar": {
+        "titulo": "Archiver {documento} de {de} ?",
+        "descripcion": "Il n’est plus suivi ni pris en compte pour le départ. Il reste dans l’historique et la date habituelle du véhicule ou du conducteur ne change pas.",
+        "confirmar": "Archiver",
+        "volver": "Retour"
+      },
+      "dialogo": {
+        "titulo": "Téléverser un document",
+        "tituloRenovar": "Renouveler le document",
+        "descripcion": "Le nouveau devient en vigueur et l’ancien passe à l’historique.",
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer",
+        "faltan": "Choisissez à qui il appartient et la date d’expiration",
+        "de": "Appartient à",
+        "vehiculo": "Véhicule",
+        "conductor": "Conducteur",
+        "elegir": "Choisir",
+        "sinDuenos": "Aucun enregistrement",
+        "tipo": "Document",
+        "numero": "Numéro",
+        "entidad": "Émetteur",
+        "entidadPlaceholder": "Assureur, centre de contrôle, préfecture…",
+        "categoria": "Catégorie",
+        "vence": "Expire",
+        "archivo": "Fichier",
+        "archivoAyuda": "PDF ou image, jusqu’à 10 Mo. Stocké en privé ; ouvert avec un lien temporaire.",
+        "bloquea": "Bloque le départ à l’expiration",
+        "bloqueaAyuda": "Assurance, contrôle technique, police, carte d’exploitation, permis et examen bloquent toujours.",
+        "errores": {
+          "archivo_grande": "Le fichier dépasse 10 Mo.",
+          "archivo_tipo": "PDF ou image uniquement (JPG, PNG, WEBP)."
+        }
       }
     }
   },

@@ -20,6 +20,9 @@ export const EVENTOS_AVISO = [
   'cartera.resumen',
   'inventario.cero',
   'inventario.bajo',
+  // Transporte (2026-11-23): documentos de la flota a 30, 15 y 7 días de vencer
+  // (fn_transporte_avisar_vencimientos, migración 20261123234500).
+  'transporte.documento.vence',
 ] as const;
 
 export type EventoAviso = (typeof EVENTOS_AVISO)[number];
@@ -49,6 +52,7 @@ export const GRUPOS_AVISO = {
   'caja.diferencia': ['caja.diferencia'],
   'cartera.resumen': ['cartera.resumen'],
   inventario: ['inventario.cero', 'inventario.bajo'],
+  transporte: ['transporte.documento.vence'],
 } as const;
 
 export type GrupoAviso = keyof typeof GRUPOS_AVISO;

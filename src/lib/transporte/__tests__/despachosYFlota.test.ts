@@ -143,7 +143,24 @@ describe('documentos de la flota', () => {
       ['tecnomecanica', 'vigente', 100],
     ]);
     const k = kpisDocumentos(docs, 2);
-    expect(k).toEqual({ vencidos: 1, porVencer: 2, vigentes: 1, total: 4, sinFecha: 2, primero: '2026-12-01' });
+    expect(k).toEqual({ vencidos: 1, porVencer: 2, vigentes: 1, total: 4, sinFecha: 2, primero: '2026-12-01', sinArchivo: 4 });
+  });
+
+  test('documentos cargados: reemplazan la fecha de siempre del mismo tipo y traen número y archivo', () => {
+    const vehiculos = [{ id: 'v1', plate: 'WNP 104', vehicle_type: 'boat', soat_expiry: '2026-11-20', techno_expiry: '2027-03-03', insurance_expiry: null, operating_card_expiry: null }];
+    const tabla = [
+      { id: 'd1', vehicle_id: 'v1', driver_credential_id: null, doc_type: 'soat' as const, number: 'AT-1329', issuer: null, category: null, expires_on: '2027-11-20', blocks_dispatch: true, file_path: '358/d1/soat.pdf', file_name: 'soat.pdf', notes: null },
+      { id: 'd2', vehicle_id: 'v1', driver_credential_id: null, doc_type: 'navegabilidad' as const, number: null, issuer: null, category: null, expires_on: '2026-11-25', blocks_dispatch: false, file_path: null, file_name: null, notes: null },
+      // Dueño de otra sede (no está en la lista): no se muestra.
+      { id: 'd3', vehicle_id: 'otro', driver_credential_id: null, doc_type: 'soat' as const, number: null, issuer: null, category: null, expires_on: '2026-11-25', blocks_dispatch: true, file_path: null, file_name: null, notes: null },
+    ];
+    const docs = documentosFlota(vehiculos, [], '2026-11-23', tabla);
+    expect(docs.map((d) => [d.id, d.tipo, d.numero, d.archivo, d.bloquea])).toEqual([
+      ['d2', 'navegabilidad', null, null, false],
+      ['vehiculo:v1:tecnomecanica', 'tecnomecanica', null, null, true],
+      ['d1', 'soat', 'AT-1329', '358/d1/soat.pdf', true],
+    ]);
+    expect(kpisDocumentos(docs, 0).sinArchivo).toBe(2);
   });
 
   test('CSV con BOM, punto y coma y comillas', () => {

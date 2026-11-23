@@ -6,10 +6,12 @@
  * arriba (vencidos, por vencer, vigentes, sin fecha), filtro «Vencidos o por vencer», tabla del
  * kit y barra masiva flotante.
  *
- * Lo que aún no está (ver el informe de la entrega): Mantenimiento, Combustible y Costos
- * (tablas `vehicle_maintenance` y `fuel_logs` propuestas, sin crear), número y archivo de cada
- * documento y «Pedir renovación» (necesitan `vehicle_documents`). Vehículos y Conductores siguen
- * en sus páginas del catálogo común.
+ * Fase 1 «Documentos completos» (2026-11-23): número, entidad, archivo (bucket privado, URL
+ * firmada), «Subir documento», renovar (archiva el anterior) y archivar; avisos a 30, 15 y 7 días
+ * por la campana y el correo (cron `transporte-avisar-vencimientos`).
+ *
+ * Lo que aún no está: Mantenimiento, Combustible y Costos (fase 3) y «Pedir renovación».
+ * Vehículos y Conductores siguen en sus páginas del catálogo común.
  *
  * `?estado=vencido|por_vencer` deja la lista en ese estado (lo abre el Inicio desde «2 documentos
  * vencidos» y «Documentos por vencer», Figma `03` › Inicio 2917:45560); el chip lo quita de la URL.
@@ -18,7 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, Bus, Download, Eye, FileCheck2, RefreshCw, User } from 'lucide-react';
+import { AlertTriangle, Archive, Bus, Download, Eye, FileCheck2, FileUp, Paperclip, RefreshCw, User } from 'lucide-react';
 import {
   AvisoTonal,
   BranchBadgeActiva,
@@ -44,12 +46,18 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { listarConductores } from '@/lib/services/transporte/despachosService';
+import { DocumentoError, archivarDocumento, guardarDocumento, listarDocumentos, urlArchivo, type DatosDocumento } from '@/lib/services/transporte/documentosService';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
+import { DialogoDocumento, type InicialDocumento } from './DialogoDocumento';
 import {
   documentosACsv,
   documentosFlota,
   kpisDocumentos,
   type ConductorConFechas,
   type DocumentoFlota,
+  type DocumentoTabla,
+  type TipoDocumento,
   type VehiculoConFechas,
 } from '@/lib/transporte/documentosFlota';
 
@@ -82,6 +90,9 @@ export function FlotaPage() {
 
   const [vehiculos, setVehiculos] = useState<VehiculoConFechas[]>([]);
   const [conductores, setConductores] = useState<ConductorConFechas[]>([]);
+  const [tabla, setTabla] = useState<DocumentoTabla[]>([]);
+  const [dialogo, setDialogo] = useState<{ inicial: InicialDocumento | null } | null>(null);
+  const [aArchivar, setAArchivar] = useState<DocumentoFlota | null>(null);
   const [enMantenimiento, setEnMantenimiento] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
@@ -110,8 +121,10 @@ export function FlotaPage() {
         .filter((c) => c.activo && (!branchFilter || c.sedeId === branchFilter))
         .map<ConductorConFechas>((c) => ({ id: c.id, full_name: c.nombre, license_category: c.licenciaCategoria, license_expiry: c.licenciaVence, medical_certificate_expiry: c.examenVence })),
     ).catch(() => [] as ConductorConFechas[]);
-    Promise.all([qv, qc])
-      .then(([v, c]) => {
+    // Documentos cargados (número, archivo); sin transporte.view la lista queda vacía.
+    const qd = listarDocumentos(supabase, organizationId).catch(() => [] as DocumentoTabla[]);
+    Promise.all([qv, qc, qd])
+      .then(([v, c, d]) => {
         if (cancelado) return;
         if (v.error) throw v.error;
         const lista = (v.data ?? []) as (VehiculoConFechas & { status: string | null })[];
@@ -119,6 +132,7 @@ export function FlotaPage() {
         setEnMantenimiento(lista.filter((x) => x.status === 'maintenance').length);
         // Sin transporte.view la lista de conductores queda vacía: no es error.
         setConductores(c);
+        setTabla(d);
       })
       .catch(() => !cancelado && setError(true))
       .finally(() => !cancelado && setCargando(false));
@@ -127,7 +141,7 @@ export function FlotaPage() {
     };
   }, [organizationId, branchFilter, recarga]);
 
-  const docs = useMemo(() => documentosFlota(vehiculos, conductores, hoy), [vehiculos, conductores, hoy]);
+  const docs = useMemo(() => documentosFlota(vehiculos, conductores, hoy, tabla), [vehiculos, conductores, hoy, tabla]);
   const sinFecha = useMemo(
     () =>
       vehiculos.filter((v) => !v.soat_expiry && !v.techno_expiry && !v.insurance_expiry && !v.operating_card_expiry).length +
@@ -140,7 +154,7 @@ export function FlotaPage() {
     return docs.filter(
       (d) =>
         (filtroEstado ? d.estado === filtroEstado : !soloAtencion || d.estado !== 'vigente') &&
-        (!q || [d.nombre, tCausas(d.tipo), d.detalle ?? ''].some((x) => x.toLowerCase().includes(q))),
+        (!q || [d.nombre, tCausas(d.tipo), d.detalle ?? '', d.numero ?? ''].some((x) => x.toLowerCase().includes(q))),
     );
   }, [docs, soloAtencion, filtroEstado, busqueda, tCausas]);
   const porId = useMemo(() => new Map(docs.map((d) => [d.id, d])), [docs]);
@@ -161,8 +175,52 @@ export function FlotaPage() {
     URL.revokeObjectURL(url);
   };
 
+  const verArchivo = async (d: DocumentoFlota) => {
+    if (!d.archivo) return;
+    // La pestaña se abre dentro del clic; la URL firmada (5 min) llega después.
+    const ventana = window.open('', '_blank');
+    try {
+      const url = await urlArchivo(supabase, d.archivo);
+      if (ventana) ventana.location.href = url;
+      else window.location.href = url;
+    } catch {
+      ventana?.close();
+      toastError(t('errores.archivo'));
+    }
+  };
+
+  const guardar = async (datos: DatosDocumento, archivo: File | null) => {
+    if (!organizationId) return false;
+    try {
+      await guardarDocumento(supabase, organizationId, datos, archivo);
+      toastSuccess(t('toast.guardado'));
+      recargar();
+      return true;
+    } catch (e) {
+      toastError(t(`errores.${e instanceof DocumentoError ? e.codigo : 'error'}`));
+      return false;
+    }
+  };
+
+  const archivar = async (d: DocumentoFlota) => {
+    if (!organizationId || !d.docId) return;
+    try {
+      await archivarDocumento(supabase, organizationId, d.docId);
+      toastSuccess(t('toast.archivado'));
+      setAArchivar(null);
+      recargar();
+    } catch (e) {
+      toastError(t(`errores.${e instanceof DocumentoError ? e.codigo : 'error'}`));
+    }
+  };
+
+  const renovar = (d: DocumentoFlota) => setDialogo({ inicial: { de: d.de, duenoId: d.duenoId, tipo: d.tipo as TipoDocumento } });
+
   const acciones = (d: DocumentoFlota): AccionFila[] => [
-    { id: 'ver', etiqueta: d.de === 'vehiculo' ? t('acciones.verVehiculos') : t('acciones.verConductores'), icono: Eye, onSelect: () => abrir(d) },
+    { id: 'archivo', etiqueta: t('acciones.verArchivo'), icono: Paperclip, onSelect: () => void verArchivo(d), oculta: !d.archivo },
+    { id: 'renovar', etiqueta: d.docId ? t('acciones.renovar') : t('acciones.cargar'), icono: FileUp, onSelect: () => renovar(d) },
+    { id: 'ver', etiqueta: d.de === 'vehiculo' ? t('acciones.verVehiculos') : t('acciones.verConductores'), icono: Eye, onSelect: () => abrir(d), separadorAntes: true },
+    { id: 'archivar', etiqueta: t('acciones.archivar'), icono: Archive, onSelect: () => setAArchivar(d), oculta: !d.docId, destructiva: true, separadorAntes: true },
   ];
 
   const columnas: ColumnaTabla<DocumentoFlota>[] = [
@@ -187,16 +245,40 @@ export function FlotaPage() {
         </div>
       ),
     },
+    { id: 'numero', encabezado: t('columnas.numero'), ocultarDebajo: 'lg', variante: 'mono', celda: (d) => d.numero ?? '—' },
     { id: 'estado', encabezado: t('columnas.estado'), celda: (d) => <StatusBadge estado={d.estado} tono={TONO[d.estado]} etiqueta={t(`estados.${d.estado}`)} /> },
     {
       id: 'bloquea',
       encabezado: t('columnas.bloquea'),
       ocultarDebajo: 'md',
       celda: (d) =>
-        d.estado === 'vencido' ? (
+        !d.bloquea ? (
+          <span className="text-sm text-fg-secondary">{t('bloquea.no')}</span>
+        ) : d.estado === 'vencido' ? (
           <StatusBadge estado="bloquea" tono="peligro" apariencia="solido" etiqueta={d.de === 'vehiculo' ? t('bloquea.vehiculo') : t('bloquea.conductor')} />
         ) : (
           <span className="text-sm text-fg-secondary">{t('bloquea.hasta', { fecha: formatPlain(d.vence) })}</span>
+        ),
+    },
+    {
+      id: 'archivo',
+      encabezado: t('columnas.archivo'),
+      ocultarDebajo: 'md',
+      celda: (d) =>
+        d.archivo ? (
+          <button
+            type="button"
+            className="text-sm font-medium text-brand underline-offset-2 hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              void verArchivo(d);
+            }}
+            title={d.archivoNombre ?? undefined}
+          >
+            {t('archivoVer')}
+          </button>
+        ) : (
+          <span className="text-sm text-warning-text">{t('sinArchivo')}</span>
         ),
     },
   ];
@@ -219,10 +301,14 @@ export function FlotaPage() {
               <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
             </button>
             <AtajoConfigurar seccion="transporte.general" ancla="tipos-vehiculo" />
-            <Link href="/app/transporte/vehiculos" className={clasesBoton({ variante: 'primario' })}>
+            <Link href="/app/transporte/vehiculos" className={clasesBoton({ variante: 'secundario' })}>
               <Bus aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('irVehiculos')}
             </Link>
+            <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => setDialogo({ inicial: null })} disabled={vehiculos.length === 0 && conductores.length === 0}>
+              <FileUp aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('subir')}
+            </button>
           </>
         }
         movil={{ accion: <AtajoConfigurar seccion="transporte.general" ancla="tipos-vehiculo" soloIcono /> }}
@@ -255,11 +341,13 @@ export function FlotaPage() {
               detalle={k.primero ? t('kpis.primero', { fecha: formatPlain(k.primero) }) : t('kpis.porVencerVacio')}
             />
             <StatCard etiqueta={t('kpis.vigentes')} cargando={cargando} valor={entero(k.vigentes)} detalle={t('kpis.vigilados', { n: k.total })} />
+            {/* Figma 2889:8513: «Sin archivo». Los vehículos en mantenimiento se siguen contando en el detalle. */}
             <StatCard
-              etiqueta={t('kpis.mantenimiento')}
+              etiqueta={t('kpis.sinArchivo')}
               cargando={cargando}
-              valor={entero(enMantenimiento)}
-              detalle={k.sinFecha > 0 ? t('kpis.sinFecha', { n: k.sinFecha }) : t('kpis.mantenimientoDetalle')}
+              valor={entero(k.sinArchivo)}
+              tono={k.sinArchivo > 0 ? 'advertencia' : 'neutro'}
+              detalle={[k.sinFecha > 0 ? t('kpis.sinFecha', { n: k.sinFecha }) : t('kpis.sinArchivoDetalle'), enMantenimiento > 0 ? t('kpis.enMantenimiento', { n: enMantenimiento }) : null].filter(Boolean).join(' · ')}
             />
           </KpiStrip>
 
@@ -336,6 +424,30 @@ export function FlotaPage() {
         onSeleccionarTodos={() => setSeleccion(new Set(visibles.map((d) => d.id)))}
         onLimpiar={() => setSeleccion(new Set())}
         acciones={[{ id: 'exportar', etiqueta: t('masivo.exportar'), icono: Download, onClick: () => exportar(seleccionados) }]}
+      />
+
+      {dialogo && (
+        <DialogoDocumento
+          vehiculos={vehiculos.map((v) => ({ id: v.id, nombre: v.plate }))}
+          conductores={conductores.map((c) => ({ id: c.id, nombre: c.full_name?.trim() || '—' }))}
+          inicial={dialogo.inicial}
+          onCerrar={() => setDialogo(null)}
+          onGuardar={guardar}
+        />
+      )}
+
+      <ConfirmDialog
+        abierto={aArchivar !== null}
+        onAbiertoChange={(v) => !v && setAArchivar(null)}
+        titulo={t('archivar.titulo', { documento: aArchivar ? tCausas(aArchivar.tipo) : '', de: aArchivar?.nombre ?? '' })}
+        descripcion={t('archivar.descripcion')}
+        textoConfirmar={t('archivar.confirmar')}
+        textoCancelar={t('archivar.volver')}
+        tono="peligro"
+        icono={Archive}
+        onConfirmar={() => {
+          if (aArchivar) void archivar(aArchivar);
+        }}
       />
     </div>
   );

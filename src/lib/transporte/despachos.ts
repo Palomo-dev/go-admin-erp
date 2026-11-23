@@ -17,6 +17,10 @@ export const CAUSAS_BLOQUEO = [
   'tarjeta_operacion',
   'licencia',
   'examen_medico',
+  // Documentos sin columna propia en vehicles (vehicle_documents, migración 20261123234500).
+  'matricula',
+  'navegabilidad',
+  'otro',
 ] as const;
 export type CausaBloqueo = (typeof CAUSAS_BLOQUEO)[number];
 export type GrupoCausa = 'asignacion' | 'vehiculo' | 'conductor';

@@ -65688,7 +65688,10 @@
         "poliza": "Apólice de responsabilidade",
         "tarjeta_operacion": "Cartão de operação",
         "licencia": "Habilitação",
-        "examen_medico": "Exame médico"
+        "examen_medico": "Exame médico",
+        "matricula": "Matrícula",
+        "navegabilidad": "Certificado de navegabilidade",
+        "otro": "Outro documento"
       },
       "venceEn": "{documento} vence {dias, plural, =0 {hoje} one {em # dia} other {em # dias}}",
       "cumplimiento": {
@@ -65868,7 +65871,9 @@
         "de": "De",
         "vence": "Vence",
         "estado": "Status",
-        "bloquea": "Bloqueia o despacho?"
+        "bloquea": "Bloqueia o despacho?",
+        "numero": "Número",
+        "archivo": "Arquivo"
       },
       "estados": {
         "vencido": "Vencido",
@@ -65878,11 +65883,16 @@
       "bloquea": {
         "vehiculo": "Bloqueia o despacho",
         "conductor": "Não pode ser atribuído",
-        "hasta": "Não, até {fecha}"
+        "hasta": "Não, até {fecha}",
+        "no": "Não bloqueia"
       },
       "acciones": {
         "verVehiculos": "Ir para Veículos",
-        "verConductores": "Ir para Motoristas"
+        "verConductores": "Ir para Motoristas",
+        "verArchivo": "Ver arquivo",
+        "renovar": "Renovar documento",
+        "cargar": "Enviar documento",
+        "archivar": "Arquivar"
       },
       "sustantivo": {
         "singular": "documento",
@@ -65906,11 +65916,14 @@
         "vigilados": "de {n} documentos vigiados",
         "mantenimiento": "Em manutenção",
         "sinFecha": "{n, plural, one {# sem datas registradas} other {# sem datas registradas}}",
-        "mantenimientoDetalle": "veículos fora de serviço"
+        "mantenimientoDetalle": "veículos fora de serviço",
+        "sinArchivo": "Sem arquivo",
+        "sinArchivoDetalle": "só têm a data",
+        "enMantenimiento": "{n, plural, one {# veículo em manutenção} other {# veículos em manutenção}}"
       },
       "aviso": {
         "titulo": "Como avisa",
-        "descripcion": "Um documento vencido bloqueia o despacho do veículo ou a atribuição da pessoa (Viagens › Despachos de hoje). Os avisos 30, 15 e 7 dias antes e o arquivo de cada documento chegam na próxima entrega."
+        "descripcion": "Aviso pelo sino e por e-mail a quem gerencia o Transporte e ao motorista 30, 15 e 7 dias antes. Vencido, o documento bloqueia o despacho do veículo ou a atribuição da pessoa (Viagens › Despachos de hoje)."
       },
       "documentos": "Documentos e vencimentos",
       "buscar": {
@@ -65928,6 +65941,54 @@
       "errorCarga": "Não foi possível carregar os documentos",
       "masivo": {
         "exportar": "Exportar CSV"
+      },
+      "subir": "Enviar documento",
+      "archivoVer": "Ver arquivo",
+      "sinArchivo": "Sem arquivo",
+      "toast": {
+        "guardado": "Documento salvo",
+        "archivado": "Documento arquivado"
+      },
+      "errores": {
+        "archivo": "Não foi possível abrir o arquivo",
+        "archivo_grande": "O arquivo passa de 10 MB.",
+        "archivo_tipo": "Só PDF ou imagem (JPG, PNG, WEBP).",
+        "subida": "Não foi possível enviar o arquivo.",
+        "sin_permiso": "Falta a permissão «Gerenciar transporte».",
+        "error": "Não foi possível salvar o documento."
+      },
+      "archivar": {
+        "titulo": "Arquivar {documento} de {de}?",
+        "descripcion": "Deixa de ser vigiado e de contar para o despacho. Fica no histórico e a data de sempre do veículo ou do motorista não muda.",
+        "confirmar": "Arquivar",
+        "volver": "Voltar"
+      },
+      "dialogo": {
+        "titulo": "Enviar documento",
+        "tituloRenovar": "Renovar documento",
+        "descripcion": "O novo fica vigente e o anterior passa ao histórico.",
+        "cancelar": "Cancelar",
+        "guardar": "Salvar",
+        "faltan": "Escolha de quem é e a data de vencimento",
+        "de": "É de",
+        "vehiculo": "Veículo",
+        "conductor": "Motorista",
+        "elegir": "Escolher",
+        "sinDuenos": "Sem registros",
+        "tipo": "Documento",
+        "numero": "Número",
+        "entidad": "Emissor",
+        "entidadPlaceholder": "Seguradora, centro de vistoria, trânsito…",
+        "categoria": "Categoria",
+        "vence": "Vence",
+        "archivo": "Arquivo",
+        "archivoAyuda": "PDF ou imagem, até 10 MB. Fica privado; abre com um link temporário.",
+        "bloquea": "Bloqueia o despacho ao vencer",
+        "bloqueaAyuda": "Seguro, vistoria, apólice, cartão de operação, habilitação e exame sempre bloqueiam.",
+        "errores": {
+          "archivo_grande": "O arquivo passa de 10 MB.",
+          "archivo_tipo": "Só PDF ou imagem (JPG, PNG, WEBP)."
+        }
       }
     }
   },

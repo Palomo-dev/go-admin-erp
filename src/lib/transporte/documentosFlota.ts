@@ -1,19 +1,48 @@
 /**
  * Transporte › Flota › Documentos y vencimientos (Figma «23 Transporte» › 13, 2889:8513). Puro.
  *
- * Fase Cumplimiento, primera entrega: los documentos salen de las fechas que ya guardan
+ * Fase 1 «Documentos completos» (2026-11-23): cada documento sale de `vehicle_documents`
+ * (número, entidad, archivo, si bloquea; migración 20261123234500). Las fechas de siempre de
  * `vehicles` (SOAT, técnico-mecánica, póliza, tarjeta de operación) y `driver_credentials`
- * (licencia, examen médico). Número y archivo de cada documento llegan con la tabla
- * `vehicle_documents` (propuesta en la lámina 24, aún no creada). La regla del bloqueo es la
- * misma de la base (`fn_transporte_cumplimiento`): vencido a la fecha del viaje → no sale.
+ * (licencia, examen médico) que aún no tienen documento cargado se siguen mostrando: nada que
+ * funcionaba se pierde. La regla del bloqueo es la de la base (`fn_transporte_cumplimiento`):
+ * vencido a la fecha del viaje → no sale.
  */
 import type { CausaBloqueo } from './despachos';
 
 export type EstadoDocumento = 'vencido' | 'por_vencer' | 'vigente';
 
+/** `vehicle_documents.doc_type`. */
+export const TIPOS_DOCUMENTO = ['soat', 'tecnomecanica', 'poliza', 'tarjeta_operacion', 'matricula', 'navegabilidad', 'licencia', 'examen_medico', 'otro'] as const;
+export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number];
+export const TIPOS_DE_VEHICULO: readonly TipoDocumento[] = ['soat', 'tecnomecanica', 'poliza', 'tarjeta_operacion', 'matricula', 'navegabilidad', 'otro'];
+export const TIPOS_DE_CONDUCTOR: readonly TipoDocumento[] = ['licencia', 'examen_medico', 'otro'];
+
+/** Fila de `vehicle_documents` (vigente). */
+export interface DocumentoTabla {
+  id: string;
+  vehicle_id: string | null;
+  driver_credential_id: string | null;
+  doc_type: TipoDocumento;
+  number: string | null;
+  issuer: string | null;
+  category: string | null;
+  expires_on: string | null;
+  blocks_dispatch: boolean;
+  file_path: string | null;
+  file_name: string | null;
+  notes: string | null;
+}
+
 export interface DocumentoFlota {
   id: string;
   tipo: CausaBloqueo;
+  /** Id en `vehicle_documents` (null: fecha de siempre sin documento cargado). */
+  docId: string | null;
+  numero: string | null;
+  archivo: string | null;
+  archivoNombre: string | null;
+  bloquea: boolean;
   de: 'vehiculo' | 'conductor';
   /** Id del vehículo o del conductor (driver_credentials). */
   duenoId: string;
@@ -61,14 +90,60 @@ export interface ConductorConFechas {
   medical_certificate_expiry: string | null;
 }
 
-/** Un documento por cada fecha registrada; sin fecha no hay documento que vigilar. */
-export function documentosFlota(vehiculos: readonly VehiculoConFechas[], conductores: readonly ConductorConFechas[], hoy: string): DocumentoFlota[] {
+type BaseDoc = Omit<DocumentoFlota, 'dias' | 'estado' | 'id' | 'docId' | 'numero' | 'archivo' | 'archivoNombre' | 'bloquea'> & Partial<Pick<DocumentoFlota, 'docId' | 'numero' | 'archivo' | 'archivoNombre' | 'bloquea'>>;
+
+/**
+ * Un documento por cada fila vigente de `vehicle_documents` con vencimiento y, para los tipos
+ * que no tienen fila, uno por cada fecha de siempre; sin fecha no hay documento que vigilar.
+ */
+export function documentosFlota(
+  vehiculos: readonly VehiculoConFechas[],
+  conductores: readonly ConductorConFechas[],
+  hoy: string,
+  tabla: readonly DocumentoTabla[] = [],
+): DocumentoFlota[] {
   const out: DocumentoFlota[] = [];
-  const agregar = (d: Omit<DocumentoFlota, 'dias' | 'estado' | 'id'>) => {
+  const agregar = (d: BaseDoc) => {
     const dias = diasEntre(hoy, d.vence);
     if (!Number.isFinite(dias)) return;
-    out.push({ ...d, id: `${d.de}:${d.duenoId}:${d.tipo}`, dias, estado: estadoDocumento(dias) });
+    out.push({
+      docId: null,
+      numero: null,
+      archivo: null,
+      archivoNombre: null,
+      bloquea: true,
+      ...d,
+      id: d.docId ?? `${d.de}:${d.duenoId}:${d.tipo}`,
+      dias,
+      estado: estadoDocumento(dias),
+    });
   };
+  const porVehiculo = new Map(vehiculos.map((v) => [v.id, v]));
+  const porConductor = new Map(conductores.map((c) => [c.id, c]));
+  const cargados = new Set<string>();
+  for (const d of tabla) {
+    const de = d.vehicle_id ? 'vehiculo' : 'conductor';
+    const duenoId = (d.vehicle_id ?? d.driver_credential_id) as string;
+    cargados.add(`${de}:${duenoId}:${d.doc_type}`);
+    if (!d.expires_on) continue;
+    const v = d.vehicle_id ? porVehiculo.get(d.vehicle_id) : undefined;
+    const c = d.driver_credential_id ? porConductor.get(d.driver_credential_id) : undefined;
+    if (!v && !c) continue; // dueño de otra sede o inactivo
+    agregar({
+      tipo: d.doc_type,
+      de,
+      duenoId,
+      nombre: v ? v.plate : c?.full_name?.trim() || '—',
+      detalle: v ? v.vehicle_type : d.category ?? c?.license_category ?? null,
+      vence: d.expires_on,
+      docId: d.id,
+      numero: d.number,
+      archivo: d.file_path,
+      archivoNombre: d.file_name,
+      bloquea: d.blocks_dispatch,
+    });
+  }
+  const sinFila = (de: string, duenoId: string, tipo: string) => !cargados.has(`${de}:${duenoId}:${tipo}`);
   for (const v of vehiculos) {
     const fechas: [CausaBloqueo, string | null][] = [
       ['soat', v.soat_expiry],
@@ -76,14 +151,14 @@ export function documentosFlota(vehiculos: readonly VehiculoConFechas[], conduct
       ['poliza', v.insurance_expiry],
       ['tarjeta_operacion', v.operating_card_expiry],
     ];
-    for (const [tipo, vence] of fechas) if (vence) agregar({ tipo, de: 'vehiculo', duenoId: v.id, nombre: v.plate, detalle: v.vehicle_type, vence });
+    for (const [tipo, vence] of fechas) if (vence && sinFila('vehiculo', v.id, tipo)) agregar({ tipo, de: 'vehiculo', duenoId: v.id, nombre: v.plate, detalle: v.vehicle_type, vence });
   }
   for (const c of conductores) {
     const fechas: [CausaBloqueo, string | null][] = [
       ['licencia', c.license_expiry],
       ['examen_medico', c.medical_certificate_expiry],
     ];
-    for (const [tipo, vence] of fechas) if (vence) agregar({ tipo, de: 'conductor', duenoId: c.id, nombre: c.full_name?.trim() || '—', detalle: c.license_category, vence });
+    for (const [tipo, vence] of fechas) if (vence && sinFila('conductor', c.id, tipo)) agregar({ tipo, de: 'conductor', duenoId: c.id, nombre: c.full_name?.trim() || '—', detalle: c.license_category, vence });
   }
   return out.sort((a, b) => a.dias - b.dias || a.nombre.localeCompare(b.nombre));
 }
@@ -97,6 +172,8 @@ export interface KpisDocumentos {
   sinFecha: number;
   /** Fecha del primero que vence entre los por vencer. */
   primero: string | null;
+  /** Documentos vigilados sin archivo cargado. */
+  sinArchivo: number;
 }
 
 export function kpisDocumentos(docs: readonly DocumentoFlota[], sinFecha: number): KpisDocumentos {
@@ -108,6 +185,7 @@ export function kpisDocumentos(docs: readonly DocumentoFlota[], sinFecha: number
     total: docs.length,
     sinFecha,
     primero: porVencer.length ? porVencer.reduce((m, d) => (d.vence < m ? d.vence : m), porVencer[0].vence) : null,
+    sinArchivo: docs.filter((d) => !d.archivo).length,
   };
 }
 

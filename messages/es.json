@@ -65950,5 +65950,196 @@
         "ticketCanal": "del periodo · {canal}"
       }
     }
+  },
+  "inicioWidgets": {
+    "comun": {
+      "sinDatos": "Sin datos",
+      "alDia": "Al día",
+      "porAtender": "{n, plural, one {# por atender} other {# por atender}}",
+      "requiereAtencion": "Requiere atención",
+      "parcial": "Una parte no se pudo leer: puede faltar algo en esta lista."
+    },
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Tienda web",
+      "menu_qr": "Menú QR",
+      "marketplace": "Marketplace",
+      "manual": "Manual"
+    },
+    "ventas": {
+      "porCanal": "Ventas por canal",
+      "porSede": "Ventas por sede",
+      "kpis": {
+        "hoy": "Ventas de hoy",
+        "periodo": "Ventas del periodo",
+        "ticket": "Ticket promedio",
+        "porAtender": "Por atender"
+      },
+      "detalles": {
+        "hoySinVentas": "Todavía no hay ventas hoy: la primera aparece aquí",
+        "hoyVsSemana": "{n, plural, one {# venta} other {# ventas}} · frente al mismo día de la semana pasada a esta hora",
+        "ventas": "{n, plural, one {# venta} other {# ventas}}",
+        "periodo": "{n, plural, one {# venta} other {# ventas}} · todos los canales",
+        "ticket": "Del periodo, entre {n, plural, one {# venta} other {# ventas}}",
+        "pedidos": "{n, plural, one {# pedido} other {# pedidos}}",
+        "ningunPedido": "Ningún pedido web ni de menú QR esperando",
+        "porExpirar": "{n, plural, one {# expira} other {# expiran}} en menos de {minutos} min",
+        "pedidosEsperando": "Pedidos web y de menú QR esperando confirmación"
+      },
+      "acciones": {
+        "abrirPos": "Abrir POS",
+        "pedidoManual": "Nuevo pedido manual"
+      },
+      "fila": {
+        "porAtender": "{n} por atender",
+        "cajasAntiguas": "{n, plural, one {# caja de días anteriores} other {# cajas de días anteriores}}",
+        "sinVentas": "Módulo activo, sin ventas todavía",
+        "ventasHoy": "{n, plural, one {# venta hoy} other {# ventas hoy}}",
+        "monto": "{valor}",
+        "periodo": "periodo {valor}",
+        "canales": "{n} canales"
+      },
+      "ultimas": {
+        "titulo": "Últimas ventas · todos los canales",
+        "hoy": "{n} hoy",
+        "vacio": "Hoy no hay ventas todavía. Las del periodo están en Ventas.",
+        "mesa": "Mesa {mesa}",
+        "clienteGenerico": "Cliente genérico"
+      },
+      "cajas": {
+        "abiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
+        "conAnteriores": "{n, plural, one {# caja abierta} other {# cajas abiertas}} · {anteriores} de días anteriores",
+        "ver": "Ver cajas"
+      },
+      "vacio": {
+        "titulo": "Aún no hay ventas",
+        "descripcion": "Haz la primera venta en el POS o registra un pedido que llegó por teléfono o WhatsApp."
+      },
+      "notaReportes": "El detalle por producto, vendedor o impuesto está en Reportes."
+    },
+    "logistica": {
+      "kpis": {
+        "porDespachar": "Por despachar",
+        "atrasados": "Atrasados",
+        "contraentrega": "Contraentrega por cobrar hoy",
+        "sinDomiciliario": "Sin domiciliario"
+      },
+      "detalles": {
+        "nadaPendiente": "Nada pendiente para hoy ni mañana",
+        "hoyManana": "{hoy} para hoy · {manana} para mañana · de todos los canales",
+        "atrasados": "Ya pasaron la promesa de entrega",
+        "aTiempo": "Todos dentro de la promesa",
+        "contraentrega": "En {n, plural, one {# envío} other {# envíos}}",
+        "sinContraentrega": "Ningún envío contraentrega hoy",
+        "todosConDomiciliario": "Todos los envíos tienen quién los lleve",
+        "salenHoy": "{n} de los {total} que salen hoy"
+      },
+      "atencion": {
+        "atrasados": "{n, plural, one {# despacho atrasado} other {# despachos atrasados}}",
+        "masAtrasado": "El más atrasado: {numero}, {minutos} min sobre la promesa",
+        "novedadesHoy": "{n, plural, one {# novedad vence hoy} other {# novedades vencen hoy}}",
+        "novedadesAbiertas": "{n, plural, one {# novedad abierta} other {# novedades abiertas}}",
+        "novedades": "{n, plural, one {# novedad abierta} other {# novedades abiertas}}",
+        "sinMovimiento": "{n, plural, one {# envío sin movimiento} other {# envíos sin movimiento}}",
+        "conTransportadora": "{n} con transportadora · se abre reclamo si siguen quietos",
+        "conDiferencia": "{n, plural, one {# cuadre con diferencia} other {# cuadres con diferencia}} hoy",
+        "faltante": "Falta dinero: revisa el motivo y el responsable",
+        "porRecibir": "Dinero de domiciliarios por recibir",
+        "domiciliariosConDinero": "{n, plural, one {# domiciliario aún con dinero por entregar} other {# domiciliarios aún con dinero por entregar}}"
+      },
+      "acciones": {
+        "verAtrasados": "Ver atrasados",
+        "resolver": "Resolver",
+        "revisar": "Revisar",
+        "recibirDinero": "Recibir dinero",
+        "configurarZonas": "Configurar zonas de domicilio",
+        "agregarDomiciliario": "Agregar domiciliario"
+      },
+      "abiertos": {
+        "titulo": "Envíos abiertos por estado",
+        "porDespachar": "Por despachar",
+        "enCamino": "En camino",
+        "conNovedad": "Con novedad"
+      },
+      "fila": {
+        "atrasados": "{n, plural, one {# atrasado} other {# atrasados}}",
+        "sinEnvios": "Módulo activo, sin envíos todavía",
+        "porDespachar": "{n} por despachar",
+        "sinDomiciliario": "{n} sin domiciliario",
+        "contraentrega": "contraentrega hoy {valor}",
+        "enCamino": "{n} en camino",
+        "aTiempo": "todo a tiempo"
+      },
+      "vacio": {
+        "titulo": "Aún no hay envíos",
+        "descripcion": "Los pedidos con domicilio del POS, la tienda web y el menú QR llegarán a «Por despachar». Primero define tus zonas y tarifas."
+      },
+      "alDia": "Nada que atender: sin atrasos, sin novedades abiertas y sin dinero por recibir.",
+      "primerIntento": "Entregas al primer intento (30 días): {tasa}, meta {meta}"
+    },
+    "transporte": {
+      "kpis": {
+        "viajesHoy": "Viajes de hoy",
+        "ocupacion": "Ocupación",
+        "vehiculos": "Vehículos disponibles",
+        "documentos": "Documentos por vencer"
+      },
+      "detalles": {
+        "sinViajesHoy": "No hay viajes programados para hoy",
+        "viajesHoy": "{completados} completados · {enRuta} en ruta · {porSalir} por salir",
+        "porcentaje": "{p} %",
+        "sinSalidos": "Sin viajes salidos hoy",
+        "ocupacion": "De {n, plural, one {# viaje ya salido} other {los # viajes ya salidos}}",
+        "deTotal": "{n} de {total}",
+        "ningunoMantenimiento": "Ninguno en mantenimiento",
+        "vehiculos": "{enUso} en ruta · {mantenimiento} en mantenimiento",
+        "documentosVencidos": "Próximos 30 días · y {n} ya vencidos",
+        "proximos30": "Próximos 30 días",
+        "nadaVence": "Nada vence en los próximos 30 días"
+      },
+      "atencion": {
+        "bloqueado": "Despacho bloqueado · {codigo}",
+        "bloqueadoDetalle": "{salida} · {ruta} · {causa} · {placa}",
+        "masBloqueados": "{n, plural, one {# despacho bloqueado más} other {# despachos bloqueados más}}",
+        "retrasados": "{n, plural, one {# viaje con retraso} other {# viajes con retraso}}",
+        "documentosVencidos": "{n, plural, one {# documento vencido} other {# documentos vencidos}}",
+        "documentoEjemplo": "{nombre} · {causa}",
+        "mantenimiento": "{n, plural, one {# vehículo en mantenimiento} other {# vehículos en mantenimiento}}",
+        "placas": "{placas}"
+      },
+      "acciones": {
+        "resolver": "Resolver",
+        "verDespachos": "Ver despachos",
+        "verViajes": "Ver viajes",
+        "verDocumentos": "Ver documentos",
+        "verFlota": "Ver flota",
+        "programarViaje": "Programar viaje",
+        "registrarVehiculo": "Registrar vehículo"
+      },
+      "porEstado": {
+        "titulo": "Viajes de hoy por estado",
+        "completados": "Completados",
+        "enRuta": "En ruta",
+        "porSalir": "Por salir",
+        "bloqueados": "Bloqueados"
+      },
+      "fila": {
+        "bloqueados": "{n, plural, one {# bloqueado} other {# bloqueados}}",
+        "documentosVencidos": "{n, plural, one {# documento vencido} other {# documentos vencidos}}",
+        "retrasados": "{n, plural, one {# retrasado} other {# retrasados}}",
+        "sinViajes": "Módulo activo, sin viajes todavía",
+        "viajesHoy": "{n, plural, one {# viaje hoy} other {# viajes hoy}}",
+        "enRuta": "{n} en ruta",
+        "completados": "{n, plural, one {# completado} other {# completados}}",
+        "ocupacion": "ocupación {p} %",
+        "flotaDisponible": "flota disponible"
+      },
+      "vacio": {
+        "titulo": "Aún no hay viajes programados",
+        "descripcion": "Registra tus vehículos y conductores, crea una ruta y programa el primer viaje."
+      },
+      "alDia": "Nada que atender: ningún despacho bloqueado ni documentos vencidos.",
+      "notaReportes": "El detalle de costos y rendimiento está en Reportes."
+    }
   }
 }

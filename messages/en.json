@@ -65952,5 +65952,196 @@
         "ticketCanal": "in the period · {canal}"
       }
     }
+  },
+  "inicioWidgets": {
+    "comun": {
+      "sinDatos": "No data",
+      "alDia": "Up to date",
+      "porAtender": "{n} to handle",
+      "requiereAtencion": "Needs attention",
+      "parcial": "Part of it could not be read: something may be missing from this list."
+    },
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Online store",
+      "menu_qr": "QR menu",
+      "marketplace": "Marketplace",
+      "manual": "Manual"
+    },
+    "ventas": {
+      "porCanal": "Sales by channel",
+      "porSede": "Sales by branch",
+      "kpis": {
+        "hoy": "Today's sales",
+        "periodo": "Sales in the period",
+        "ticket": "Average ticket",
+        "porAtender": "To handle"
+      },
+      "detalles": {
+        "hoySinVentas": "No sales yet today: the first one will show up here",
+        "hoyVsSemana": "{n, plural, one {# sale} other {# sales}} · vs. the same day last week at this time",
+        "ventas": "{n, plural, one {# sale} other {# sales}}",
+        "periodo": "{n, plural, one {# sale} other {# sales}} · all channels",
+        "ticket": "For the period, across {n, plural, one {# sale} other {# sales}}",
+        "pedidos": "{n, plural, one {# order} other {# orders}}",
+        "ningunPedido": "No online or QR menu orders waiting",
+        "porExpirar": "{n, plural, one {# expires} other {# expire}} in less than {minutos} min",
+        "pedidosEsperando": "Online and QR menu orders waiting for confirmation"
+      },
+      "acciones": {
+        "abrirPos": "Open POS",
+        "pedidoManual": "New manual order"
+      },
+      "fila": {
+        "porAtender": "{n} to handle",
+        "cajasAntiguas": "{n, plural, one {# register from previous days} other {# registers from previous days}}",
+        "sinVentas": "Module active, no sales yet",
+        "ventasHoy": "{n, plural, one {# sale today} other {# sales today}}",
+        "monto": "{valor}",
+        "periodo": "period {valor}",
+        "canales": "{n} channels"
+      },
+      "ultimas": {
+        "titulo": "Latest sales · all channels",
+        "hoy": "{n} today",
+        "vacio": "No sales today yet. Sales for the period are in Sales.",
+        "mesa": "Table {mesa}",
+        "clienteGenerico": "Walk-in customer"
+      },
+      "cajas": {
+        "abiertas": "{n, plural, one {# open register} other {# open registers}}",
+        "conAnteriores": "{n, plural, one {# open register} other {# open registers}} · {anteriores} from previous days",
+        "ver": "View registers"
+      },
+      "vacio": {
+        "titulo": "No sales yet",
+        "descripcion": "Make your first sale in the POS or record an order that came in by phone or WhatsApp."
+      },
+      "notaReportes": "Details by product, seller or tax are in Reports."
+    },
+    "logistica": {
+      "kpis": {
+        "porDespachar": "To dispatch",
+        "atrasados": "Late",
+        "contraentrega": "Cash on delivery to collect today",
+        "sinDomiciliario": "No courier"
+      },
+      "detalles": {
+        "nadaPendiente": "Nothing pending for today or tomorrow",
+        "hoyManana": "{hoy} for today · {manana} for tomorrow · from all channels",
+        "atrasados": "Already past the delivery promise",
+        "aTiempo": "All within the promise",
+        "contraentrega": "Across {n, plural, one {# shipment} other {# shipments}}",
+        "sinContraentrega": "No cash-on-delivery shipments today",
+        "todosConDomiciliario": "Every shipment has someone to take it",
+        "salenHoy": "{n} of the {total} leaving today"
+      },
+      "atencion": {
+        "atrasados": "{n, plural, one {# late dispatch} other {# late dispatches}}",
+        "masAtrasado": "Latest one: {numero}, {minutos} min past the promise",
+        "novedadesHoy": "{n, plural, one {# issue due today} other {# issues due today}}",
+        "novedadesAbiertas": "{n, plural, one {# open issue} other {# open issues}}",
+        "novedades": "{n, plural, one {# open issue} other {# open issues}}",
+        "sinMovimiento": "{n, plural, one {# shipment with no movement} other {# shipments with no movement}}",
+        "conTransportadora": "{n} with a carrier · a claim opens if they stay idle",
+        "conDiferencia": "{n, plural, one {# settlement with a difference} other {# settlements with a difference}} today",
+        "faltante": "Money is missing: review the reason and who is responsible",
+        "porRecibir": "Courier money to receive",
+        "domiciliariosConDinero": "{n, plural, one {# courier still holding money} other {# couriers still holding money}}"
+      },
+      "acciones": {
+        "verAtrasados": "View late",
+        "resolver": "Resolve",
+        "revisar": "Review",
+        "recibirDinero": "Receive money",
+        "configurarZonas": "Set up delivery zones",
+        "agregarDomiciliario": "Add courier"
+      },
+      "abiertos": {
+        "titulo": "Open shipments by status",
+        "porDespachar": "To dispatch",
+        "enCamino": "On the way",
+        "conNovedad": "With an issue"
+      },
+      "fila": {
+        "atrasados": "{n} late",
+        "sinEnvios": "Module active, no shipments yet",
+        "porDespachar": "{n} to dispatch",
+        "sinDomiciliario": "{n} without courier",
+        "contraentrega": "cash on delivery today {valor}",
+        "enCamino": "{n} on the way",
+        "aTiempo": "all on time"
+      },
+      "vacio": {
+        "titulo": "No shipments yet",
+        "descripcion": "Delivery orders from the POS, the online store and the QR menu will arrive at «To dispatch». First set up your zones and rates."
+      },
+      "alDia": "Nothing to handle: no delays, no open issues and no money to receive.",
+      "primerIntento": "First-attempt deliveries (30 days): {tasa}, target {meta}"
+    },
+    "transporte": {
+      "kpis": {
+        "viajesHoy": "Today's trips",
+        "ocupacion": "Occupancy",
+        "vehiculos": "Available vehicles",
+        "documentos": "Documents expiring"
+      },
+      "detalles": {
+        "sinViajesHoy": "No trips scheduled for today",
+        "viajesHoy": "{completados} completed · {enRuta} en route · {porSalir} to depart",
+        "porcentaje": "{p} %",
+        "sinSalidos": "No trips have departed today",
+        "ocupacion": "Of {n, plural, one {# departed trip} other {the # departed trips}}",
+        "deTotal": "{n} of {total}",
+        "ningunoMantenimiento": "None in maintenance",
+        "vehiculos": "{enUso} en route · {mantenimiento} in maintenance",
+        "documentosVencidos": "Next 30 days · and {n} already expired",
+        "proximos30": "Next 30 days",
+        "nadaVence": "Nothing expires in the next 30 days"
+      },
+      "atencion": {
+        "bloqueado": "Dispatch blocked · {codigo}",
+        "bloqueadoDetalle": "{salida} · {ruta} · {causa} · {placa}",
+        "masBloqueados": "{n, plural, one {# more blocked dispatch} other {# more blocked dispatches}}",
+        "retrasados": "{n, plural, one {# delayed trip} other {# delayed trips}}",
+        "documentosVencidos": "{n, plural, one {# expired document} other {# expired documents}}",
+        "documentoEjemplo": "{nombre} · {causa}",
+        "mantenimiento": "{n, plural, one {# vehicle in maintenance} other {# vehicles in maintenance}}",
+        "placas": "{placas}"
+      },
+      "acciones": {
+        "resolver": "Resolve",
+        "verDespachos": "View dispatches",
+        "verViajes": "View trips",
+        "verDocumentos": "View documents",
+        "verFlota": "View fleet",
+        "programarViaje": "Schedule trip",
+        "registrarVehiculo": "Register vehicle"
+      },
+      "porEstado": {
+        "titulo": "Today's trips by status",
+        "completados": "Completed",
+        "enRuta": "En route",
+        "porSalir": "To depart",
+        "bloqueados": "Blocked"
+      },
+      "fila": {
+        "bloqueados": "{n} blocked",
+        "documentosVencidos": "{n, plural, one {# expired document} other {# expired documents}}",
+        "retrasados": "{n} delayed",
+        "sinViajes": "Module active, no trips yet",
+        "viajesHoy": "{n, plural, one {# trip today} other {# trips today}}",
+        "enRuta": "{n} en route",
+        "completados": "{n} completed",
+        "ocupacion": "occupancy {p} %",
+        "flotaDisponible": "fleet available"
+      },
+      "vacio": {
+        "titulo": "No trips scheduled yet",
+        "descripcion": "Register your vehicles and drivers, create a route and schedule the first trip."
+      },
+      "alDia": "Nothing to handle: no blocked dispatches and no expired documents.",
+      "notaReportes": "Cost and performance details are in Reports."
+    }
   }
 }

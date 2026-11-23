@@ -65952,5 +65952,196 @@
         "ticketCanal": "de la période · {canal}"
       }
     }
+  },
+  "inicioWidgets": {
+    "comun": {
+      "sinDatos": "Aucune donnée",
+      "alDia": "À jour",
+      "porAtender": "{n} à traiter",
+      "requiereAtencion": "Requiert votre attention",
+      "parcial": "Une partie n’a pas pu être lue : il peut manquer des éléments dans cette liste."
+    },
+    "canales": {
+      "pos": "Caisse",
+      "tienda_web": "Boutique en ligne",
+      "menu_qr": "Menu QR",
+      "marketplace": "Marketplace",
+      "manual": "Manuel"
+    },
+    "ventas": {
+      "porCanal": "Ventes par canal",
+      "porSede": "Ventes par site",
+      "kpis": {
+        "hoy": "Ventes du jour",
+        "periodo": "Ventes de la période",
+        "ticket": "Panier moyen",
+        "porAtender": "À traiter"
+      },
+      "detalles": {
+        "hoySinVentas": "Pas encore de vente aujourd’hui : la première apparaîtra ici",
+        "hoyVsSemana": "{n, plural, one {# vente} other {# ventes}} · par rapport au même jour la semaine dernière à cette heure",
+        "ventas": "{n, plural, one {# vente} other {# ventes}}",
+        "periodo": "{n, plural, one {# vente} other {# ventes}} · tous les canaux",
+        "ticket": "Sur la période, pour {n, plural, one {# vente} other {# ventes}}",
+        "pedidos": "{n, plural, one {# commande} other {# commandes}}",
+        "ningunPedido": "Aucune commande en ligne ou du menu QR en attente",
+        "porExpirar": "{n, plural, one {# expire} other {# expirent}} dans moins de {minutos} min",
+        "pedidosEsperando": "Commandes en ligne et du menu QR en attente de confirmation"
+      },
+      "acciones": {
+        "abrirPos": "Ouvrir la caisse",
+        "pedidoManual": "Nouvelle commande manuelle"
+      },
+      "fila": {
+        "porAtender": "{n} à traiter",
+        "cajasAntiguas": "{n, plural, one {# caisse des jours précédents} other {# caisses des jours précédents}}",
+        "sinVentas": "Module actif, aucune vente pour l’instant",
+        "ventasHoy": "{n, plural, one {# vente aujourd’hui} other {# ventes aujourd’hui}}",
+        "monto": "{valor}",
+        "periodo": "période {valor}",
+        "canales": "{n} canaux"
+      },
+      "ultimas": {
+        "titulo": "Dernières ventes · tous les canaux",
+        "hoy": "{n} aujourd’hui",
+        "vacio": "Pas encore de vente aujourd’hui. Celles de la période sont dans Ventes.",
+        "mesa": "Table {mesa}",
+        "clienteGenerico": "Client de passage"
+      },
+      "cajas": {
+        "abiertas": "{n, plural, one {# caisse ouverte} other {# caisses ouvertes}}",
+        "conAnteriores": "{n, plural, one {# caisse ouverte} other {# caisses ouvertes}} · {anteriores} des jours précédents",
+        "ver": "Voir les caisses"
+      },
+      "vacio": {
+        "titulo": "Pas encore de ventes",
+        "descripcion": "Faites votre première vente à la caisse ou enregistrez une commande reçue par téléphone ou WhatsApp."
+      },
+      "notaReportes": "Le détail par produit, vendeur ou taxe se trouve dans Rapports."
+    },
+    "logistica": {
+      "kpis": {
+        "porDespachar": "À expédier",
+        "atrasados": "En retard",
+        "contraentrega": "Contre-remboursement à encaisser aujourd’hui",
+        "sinDomiciliario": "Sans livreur"
+      },
+      "detalles": {
+        "nadaPendiente": "Rien en attente pour aujourd’hui ni demain",
+        "hoyManana": "{hoy} pour aujourd’hui · {manana} pour demain · tous canaux",
+        "atrasados": "La promesse de livraison est dépassée",
+        "aTiempo": "Tous dans les délais promis",
+        "contraentrega": "Sur {n, plural, one {# envoi} other {# envois}}",
+        "sinContraentrega": "Aucun envoi contre remboursement aujourd’hui",
+        "todosConDomiciliario": "Chaque envoi a quelqu’un pour le livrer",
+        "salenHoy": "{n} des {total} qui partent aujourd’hui"
+      },
+      "atencion": {
+        "atrasados": "{n, plural, one {# expédition en retard} other {# expéditions en retard}}",
+        "masAtrasado": "Le plus en retard : {numero}, {minutos} min au-delà de la promesse",
+        "novedadesHoy": "{n, plural, one {# incident arrive à échéance aujourd’hui} other {# incidents arrivent à échéance aujourd’hui}}",
+        "novedadesAbiertas": "{n, plural, one {# incident ouvert} other {# incidents ouverts}}",
+        "novedades": "{n, plural, one {# incident ouvert} other {# incidents ouverts}}",
+        "sinMovimiento": "{n, plural, one {# envoi sans mouvement} other {# envois sans mouvement}}",
+        "conTransportadora": "{n} avec un transporteur · une réclamation s’ouvre s’ils restent immobiles",
+        "conDiferencia": "{n, plural, one {# règlement avec écart} other {# règlements avec écart}} aujourd’hui",
+        "faltante": "Il manque de l’argent : vérifiez le motif et le responsable",
+        "porRecibir": "Argent des livreurs à recevoir",
+        "domiciliariosConDinero": "{n, plural, one {# livreur a encore de l’argent à remettre} other {# livreurs ont encore de l’argent à remettre}}"
+      },
+      "acciones": {
+        "verAtrasados": "Voir les retards",
+        "resolver": "Résoudre",
+        "revisar": "Vérifier",
+        "recibirDinero": "Recevoir l’argent",
+        "configurarZonas": "Configurer les zones de livraison",
+        "agregarDomiciliario": "Ajouter un livreur"
+      },
+      "abiertos": {
+        "titulo": "Envois ouverts par statut",
+        "porDespachar": "À expédier",
+        "enCamino": "En route",
+        "conNovedad": "Avec incident"
+      },
+      "fila": {
+        "atrasados": "{n} en retard",
+        "sinEnvios": "Module actif, aucun envoi pour l’instant",
+        "porDespachar": "{n} à expédier",
+        "sinDomiciliario": "{n} sans livreur",
+        "contraentrega": "contre-remboursement aujourd’hui {valor}",
+        "enCamino": "{n} en route",
+        "aTiempo": "tout est dans les délais"
+      },
+      "vacio": {
+        "titulo": "Pas encore d’envois",
+        "descripcion": "Les commandes à livrer de la caisse, de la boutique en ligne et du menu QR arriveront dans « À expédier ». Définissez d’abord vos zones et tarifs."
+      },
+      "alDia": "Rien à traiter : aucun retard, aucun incident ouvert et aucun argent à recevoir.",
+      "primerIntento": "Livraisons au premier essai (30 jours) : {tasa}, objectif {meta}"
+    },
+    "transporte": {
+      "kpis": {
+        "viajesHoy": "Trajets du jour",
+        "ocupacion": "Taux de remplissage",
+        "vehiculos": "Véhicules disponibles",
+        "documentos": "Documents à échéance"
+      },
+      "detalles": {
+        "sinViajesHoy": "Aucun trajet prévu aujourd’hui",
+        "viajesHoy": "{completados} terminés · {enRuta} en route · {porSalir} à partir",
+        "porcentaje": "{p} %",
+        "sinSalidos": "Aucun trajet parti aujourd’hui",
+        "ocupacion": "Sur {n, plural, one {# trajet déjà parti} other {les # trajets déjà partis}}",
+        "deTotal": "{n} sur {total}",
+        "ningunoMantenimiento": "Aucun en maintenance",
+        "vehiculos": "{enUso} en route · {mantenimiento} en maintenance",
+        "documentosVencidos": "30 prochains jours · et {n} déjà expirés",
+        "proximos30": "30 prochains jours",
+        "nadaVence": "Rien n’expire dans les 30 prochains jours"
+      },
+      "atencion": {
+        "bloqueado": "Départ bloqué · {codigo}",
+        "bloqueadoDetalle": "{salida} · {ruta} · {causa} · {placa}",
+        "masBloqueados": "{n, plural, one {# autre départ bloqué} other {# autres départs bloqués}}",
+        "retrasados": "{n, plural, one {# trajet en retard} other {# trajets en retard}}",
+        "documentosVencidos": "{n, plural, one {# document expiré} other {# documents expirés}}",
+        "documentoEjemplo": "{nombre} · {causa}",
+        "mantenimiento": "{n, plural, one {# véhicule en maintenance} other {# véhicules en maintenance}}",
+        "placas": "{placas}"
+      },
+      "acciones": {
+        "resolver": "Résoudre",
+        "verDespachos": "Voir les départs",
+        "verViajes": "Voir les trajets",
+        "verDocumentos": "Voir les documents",
+        "verFlota": "Voir la flotte",
+        "programarViaje": "Programmer un trajet",
+        "registrarVehiculo": "Enregistrer un véhicule"
+      },
+      "porEstado": {
+        "titulo": "Trajets du jour par statut",
+        "completados": "Terminés",
+        "enRuta": "En route",
+        "porSalir": "À partir",
+        "bloqueados": "Bloqués"
+      },
+      "fila": {
+        "bloqueados": "{n, plural, one {# bloqué} other {# bloqués}}",
+        "documentosVencidos": "{n, plural, one {# document expiré} other {# documents expirés}}",
+        "retrasados": "{n} en retard",
+        "sinViajes": "Module actif, aucun trajet pour l’instant",
+        "viajesHoy": "{n, plural, one {# trajet aujourd’hui} other {# trajets aujourd’hui}}",
+        "enRuta": "{n} en route",
+        "completados": "{n, plural, one {# terminé} other {# terminés}}",
+        "ocupacion": "remplissage {p} %",
+        "flotaDisponible": "flotte disponible"
+      },
+      "vacio": {
+        "titulo": "Pas encore de trajets programmés",
+        "descripcion": "Enregistrez vos véhicules et conducteurs, créez une ligne et programmez le premier trajet."
+      },
+      "alDia": "Rien à traiter : aucun départ bloqué ni document expiré.",
+      "notaReportes": "Le détail des coûts et du rendement se trouve dans Rapports."
+    }
   }
 }

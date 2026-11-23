@@ -291,6 +291,7 @@ export async function crearPedidoManual(ctx: ServerOrgContext, body: PedidoManua
         enviado: body.envio,
         ciudad: texto(body.cliente?.ciudad, 80),
         barrio: texto(body.cliente?.barrio, 80),
+        items: lineas.map((l) => ({ product_id: Number(l.product_id), cantidad: Number(l.quantity) })),
       });
       if (!envio.decision.ok) {
         throw new CambioPedidoError(

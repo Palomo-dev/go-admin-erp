@@ -11,8 +11,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   direccionParaCotizar,
+  itemsParaCotizar,
   leerCotizacion,
   type CanalCotizacion,
+  type ItemCotizacion,
   type CotizacionEnvio,
   type DireccionCotizacion,
   type OpcionesCotizacion,
@@ -38,9 +40,12 @@ export class CotizacionEnvioError extends Error {
 const CODIGOS = ['CANAL_INVALIDO', 'SEDE_INVALIDA', 'ORGANIZACION_REQUERIDA'] as const;
 
 export async function cotizarEnvio(client: SupabaseClient, s: SolicitudCotizacion): Promise<CotizacionEnvio> {
-  const opciones: Record<string, string | number> = {};
+  const opciones: Record<string, string | number | ItemCotizacion[]> = {};
   if (s.opciones?.metodo_pago) opciones.metodo_pago = s.opciones.metodo_pago;
   if (typeof s.opciones?.peso_kg === 'number' && Number.isFinite(s.opciones.peso_kg)) opciones.peso_kg = s.opciones.peso_kg;
+  // Sin peso explícito, la base suma el de los productos (reglas de despacho por peso).
+  const items = itemsParaCotizar(s.opciones?.items);
+  if (items.length > 0) opciones.items = items;
 
   const { data, error } = await client.rpc('logistica_cotizar_envio', {
     p_organization_id: s.organizationId,

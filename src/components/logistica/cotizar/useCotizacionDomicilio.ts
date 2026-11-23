@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { leerCotizacion, type CanalCotizacion, type CotizacionEnvio } from '@/lib/logistica/cotizacion';
+import { itemsParaCotizar, leerCotizacion, type CanalCotizacion, type CotizacionEnvio } from '@/lib/logistica/cotizacion';
 
 export interface DireccionCotizar {
   ciudad?: string | null;
@@ -28,6 +28,8 @@ export interface SolicitudCotizarCliente {
   direccion: DireccionCotizar;
   metodoPago?: string | null;
   pesoKg?: number | null;
+  /** Productos del pedido: la base suma su peso para las reglas de despacho por peso. */
+  items?: ReadonlyArray<{ product_id: number; cantidad: number }>;
 }
 
 export interface RespuestaCotizar {
@@ -57,7 +59,7 @@ export async function pedirCotizacion(s: SolicitudCotizarCliente, signal?: Abort
         lat: s.direccion.lat ?? null,
         lng: s.direccion.lng ?? null,
       },
-      opciones: { metodo_pago: s.metodoPago ?? null, peso_kg: s.pesoKg ?? null },
+      opciones: { metodo_pago: s.metodoPago ?? null, peso_kg: s.pesoKg ?? null, items: itemsParaCotizar(s.items) },
     }),
   });
   const d = (await r.json().catch(() => null)) as { cotizacion?: unknown; municipioDane?: string | null; puedeEditarCargo?: boolean; code?: string } | null;
@@ -109,7 +111,7 @@ export function useCotizacionDomicilio(s: SolicitudCotizarCliente & {
   const [respuesta, setRespuesta] = useState<RespuestaCotizar | null>(null);
   const vuelta = useRef(0);
   const hayDireccion = hayDireccionParaCotizar(s.direccion);
-  const clave = JSON.stringify([s.activo, s.sondearSinDireccion === true, s.branchId, s.canal, Math.round(s.subtotal), s.direccion, s.metodoPago ?? null, s.pesoKg ?? null]);
+  const clave = JSON.stringify([s.activo, s.sondearSinDireccion === true, s.branchId, s.canal, Math.round(s.subtotal), s.direccion, s.metodoPago ?? null, s.pesoKg ?? null, itemsParaCotizar(s.items)]);
 
   useEffect(() => {
     if (!s.activo || (!s.sondearSinDireccion && !hayDireccionParaCotizar(s.direccion))) {

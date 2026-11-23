@@ -22,7 +22,15 @@ export interface EnvioPedidoManual {
 
 export async function envioPedidoManual(
   ctx: Pick<ServerOrgContext, 'organizationId' | 'supabase'>,
-  e: { branchId: number; subtotal: number; enviado: number | null | undefined; ciudad: string | null; barrio: string | null },
+  e: {
+    branchId: number;
+    subtotal: number;
+    enviado: number | null | undefined;
+    ciudad: string | null;
+    barrio: string | null;
+    /** Productos del pedido: la base suma su peso para las reglas de despacho por peso. */
+    items?: ReadonlyArray<{ product_id: number; cantidad: number }>;
+  },
 ): Promise<EnvioPedidoManual> {
   const municipioDane = await resolverMunicipioDane(ctx.supabase, { ciudad: e.ciudad }).catch(() => null);
   const [cotizacion, puedeEditar] = await Promise.all([
@@ -32,6 +40,7 @@ export async function envioPedidoManual(
       direccion: { municipio_dane: municipioDane, barrio: e.barrio },
       canal: 'manual',
       subtotal: e.subtotal,
+      opciones: { items: e.items ? [...e.items] : undefined },
     }).catch((err) => {
       console.warn('[pedido manual] no se pudo cotizar el domicilio; se usa el valor escrito', {
         organizationId: ctx.organizationId,

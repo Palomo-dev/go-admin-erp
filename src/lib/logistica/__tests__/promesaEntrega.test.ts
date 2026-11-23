@@ -48,3 +48,14 @@ describe('promesa de entrega', () => {
     expect(promesaEntrega(cot(3 * DIA, 15 * DIA).tiempo)?.mismoDia).toBe(false);
   });
 });
+
+describe('ítems para la cotización (peso del pedido)', () => {
+  it('suma por producto, descarta basura y limita a 200', async () => {
+    const { itemsParaCotizar } = await import('../cotizacion');
+    expect(itemsParaCotizar([{ product_id: 7, cantidad: 2 }, { product_id: '7', cantidad: 1 }, { product_id: 'x', cantidad: 3 }, { product_id: 9, cantidad: 0 }])).toEqual([
+      { product_id: 7, cantidad: 3 },
+    ]);
+    expect(itemsParaCotizar(null)).toEqual([]);
+    expect(itemsParaCotizar(Array.from({ length: 250 }, (_, i) => ({ product_id: i + 1, cantidad: 1 })))).toHaveLength(200);
+  });
+});

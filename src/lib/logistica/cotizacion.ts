@@ -22,7 +22,27 @@ export interface DireccionCotizacion {
 
 export interface OpcionesCotizacion {
   metodo_pago?: string | null;
+  /** Peso explícito (simulador, prueba de reglas). Manda sobre `items`. */
   peso_kg?: number | null;
+  /** Productos del pedido: la base suma el peso (`fn_logistica_peso_items`) para las reglas por peso. */
+  items?: ItemCotizacion[];
+}
+
+export interface ItemCotizacion {
+  product_id: number;
+  cantidad: number;
+}
+
+/** Ítems listos para la RPC: ids enteros positivos, cantidades > 0, sumados por producto y como mucho 200. */
+export function itemsParaCotizar(items: ReadonlyArray<{ product_id?: unknown; cantidad?: unknown }> | null | undefined): ItemCotizacion[] {
+  const porProducto = new Map<number, number>();
+  for (const it of items ?? []) {
+    const id = Number(it?.product_id);
+    const cant = Number(it?.cantidad);
+    if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(cant) || cant <= 0) continue;
+    porProducto.set(id, (porProducto.get(id) ?? 0) + cant);
+  }
+  return [...porProducto.entries()].slice(0, 200).map(([product_id, cantidad]) => ({ product_id, cantidad: Math.min(cantidad, 999999) }));
 }
 
 export interface CotizacionEnvio {

@@ -363,6 +363,8 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     canal: 'pos',
     subtotal: Number(totalesCobro.subtotal || cart.subtotal || 0),
     direccion: { ciudad: deliveryCity, municipioId: deliveryMunicipioId, barrio: deliveryBarrio },
+    // Peso del pedido para las reglas de despacho por peso: lo suma la base con los productos.
+    items: cart.items.map((it) => ({ product_id: it.product_id, cantidad: it.quantity })),
     // Sin dirección también se pregunta: así se sabe si la organización tiene zonas y aparece el barrio.
     sondearSinDireccion: true,
   });

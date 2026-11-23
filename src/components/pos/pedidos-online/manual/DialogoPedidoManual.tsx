@@ -83,6 +83,7 @@ export function DialogoPedidoManual({ organizationId, abierto, onAbiertoChange, 
     canal: 'manual',
     subtotal: subtotalLineas,
     direccion: { ciudad: cliente.ciudad, barrio: cliente.barrio },
+    items: lineas.map((l) => ({ product_id: Number(l.product_id), cantidad: Number(l.quantity ?? 0) })),
     sondearSinDireccion: true,
   });
   const estadoZona = estadoCotizacion(cot.cotizacion);

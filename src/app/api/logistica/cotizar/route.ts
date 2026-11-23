@@ -11,11 +11,12 @@
  *   en el navegador).
  *
  * Body: { branchId, canal: 'pos' | 'manual' | 'web', subtotal, direccion: { ciudad, municipio_id,
- *         municipio_dane, barrio, codigo_postal, lat, lng }, opciones?: { metodo_pago, peso_kg } }
+ *         municipio_dane, barrio, codigo_postal, lat, lng }, opciones?: { metodo_pago, peso_kg,
+ *         items: [{ product_id, cantidad }] } } — con `items` la base suma el peso del pedido.
  */
 import { NextResponse } from 'next/server';
 import { readOrgBody, withOrg } from '@/lib/utils/orgContext';
-import { CANALES_COTIZACION, type CanalCotizacion, type DireccionCotizacion } from '@/lib/logistica/cotizacion';
+import { CANALES_COTIZACION, itemsParaCotizar, type CanalCotizacion, type DireccionCotizacion } from '@/lib/logistica/cotizacion';
 import { cotizarEnvio, CotizacionEnvioError } from '@/lib/services/logistica/cotizacionEnvioService';
 import { resolverMunicipioDane } from '@/lib/services/logistica/municipioDaneService';
 import { puedeEditarCargoDomicilio } from '@/lib/logistica/permisosLogistica.server';
@@ -35,7 +36,7 @@ interface CuerpoCotizar {
     lat?: unknown;
     lng?: unknown;
   } | null;
-  opciones?: { metodo_pago?: unknown; peso_kg?: unknown } | null;
+  opciones?: { metodo_pago?: unknown; peso_kg?: unknown; items?: unknown } | null;
 }
 
 const texto = (v: unknown, max = 120): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
@@ -72,7 +73,12 @@ export const POST = withOrg(async (ctx, request) => {
         direccion,
         canal,
         subtotal,
-        opciones: { metodo_pago: texto(body?.opciones?.metodo_pago, 40), peso_kg: pesoKg !== null && pesoKg > 0 ? pesoKg : null },
+        opciones: {
+          metodo_pago: texto(body?.opciones?.metodo_pago, 40),
+          peso_kg: pesoKg !== null && pesoKg > 0 ? pesoKg : null,
+          // Productos del pedido: la base suma su peso (solo ids y cantidades; nada más del cliente).
+          items: itemsParaCotizar(Array.isArray(body?.opciones?.items) ? (body.opciones.items as { product_id?: unknown; cantidad?: unknown }[]) : []),
+        },
       }),
       puedeEditarCargoDomicilio(ctx),
     ]);

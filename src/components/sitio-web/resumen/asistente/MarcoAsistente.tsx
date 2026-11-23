@@ -11,6 +11,11 @@
  * - Móvil (< lg): X (guardar y salir) con el título, el Stepper debajo y la
  *   barra inferior con «Atrás» y el primario a medias.
  *
+ * Saltar (Figma «Asistente / Paso 2 — todas a la vista», aprobado el 2026-11-22): nada obliga a
+ * terminar el asistente. «Saltar configuración» va junto a «Guardar y salir» (en móvil, como
+ * enlace bajo el título), los pasos opcionales llevan «Omitir este paso» en el pie y los pasos ya
+ * hechos del Stepper llevan a ese paso.
+ *
  * Cubre el shell con una capa fija: el asistente vive en /app (puerta de
  * módulos y sesión) pero no muestra el menú (catálogo: pantalla completa).
  */
@@ -33,10 +38,28 @@ export interface MarcoAsistenteProps {
   /** Vista previa a la derecha en escritorio; sin ella el contenido ocupa el ancho (paso 2). */
   vistaPrevia?: ReactNode;
   guardando?: boolean;
+  /** «Saltar configuración»: abre la confirmación (la decide quien usa el marco). */
+  onSaltar?: () => void;
+  /** «Omitir este paso» en el pie (solo los pasos opcionales). */
+  omitir?: { etiqueta: string; etiquetaCorta?: string; onClick: () => void; deshabilitado?: boolean };
+  /** Ir a un paso ya hecho desde el Stepper (número de paso, 1…6). */
+  onIrAPaso?: (paso: number) => void;
   children: ReactNode;
 }
 
-export function MarcoAsistente({ paso, onGuardarSalir, onAtras, primario, secundario, vistaPrevia, guardando, children }: MarcoAsistenteProps) {
+export function MarcoAsistente({
+  paso,
+  onGuardarSalir,
+  onAtras,
+  primario,
+  secundario,
+  vistaPrevia,
+  guardando,
+  onSaltar,
+  omitir,
+  onIrAPaso,
+  children,
+}: MarcoAsistenteProps) {
   const t = useTextosResumen();
   const total = PASOS_ASISTENTE.length;
   const pasos = PASOS_ASISTENTE.map((p) => ({ valor: p, etiqueta: t(`asistente.pasos.${p}`) }));
@@ -47,6 +70,7 @@ export function MarcoAsistente({ paso, onGuardarSalir, onAtras, primario, secund
       pasos={pasos}
       actual={actual}
       etiqueta={t('asistente.etiquetaStepper')}
+      onPasoClick={onIrAPaso ? (valor) => onIrAPaso(PASOS_ASISTENTE.indexOf(valor) + 1) : undefined}
       resumenMovil={(n, tot, etiqueta) => t('asistente.resumenPaso', { n, total: tot, etiqueta })}
     />
   );
@@ -67,9 +91,19 @@ export function MarcoAsistente({ paso, onGuardarSalir, onAtras, primario, secund
           <span className="hidden text-sm font-semibold text-fg lg:inline">{t('asistente.marca')}</span>
           <span aria-hidden="true" className="hidden text-fg-muted lg:inline">·</span>
           <h1 className="truncate text-sm font-medium text-fg lg:font-normal lg:text-fg-secondary">{t('asistente.titulo')}</h1>
+          {onSaltar && (
+            <button type="button" onClick={onSaltar} className="ml-auto shrink-0 text-sm font-medium text-brand hover:underline lg:hidden">
+              {t('asistente.saltar.boton')}
+            </button>
+          )}
         </div>
         <div className="w-full">{stepper}</div>
-        <div className="hidden justify-end lg:flex">
+        <div className="hidden justify-end gap-2 lg:flex">
+          {onSaltar && (
+            <button type="button" onClick={onSaltar} className={clasesBoton({ variante: 'fantasma', tamano: 'md' })}>
+              {t('asistente.saltar.boton')}
+            </button>
+          )}
           <button type="button" onClick={onGuardarSalir} className={clasesBoton({ variante: 'fantasma', tamano: 'md' })}>
             {t('asistente.guardarSalir')}
           </button>
@@ -113,6 +147,18 @@ export function MarcoAsistente({ paso, onGuardarSalir, onAtras, primario, secund
             className={cn(clasesBoton({ variante: 'secundario', tamano: 'md' }), 'hidden lg:inline-flex')}
           >
             {secundario.etiqueta}
+          </button>
+        )}
+        {omitir && (
+          <button
+            type="button"
+            onClick={omitir.onClick}
+            disabled={omitir.deshabilitado}
+            className={cn(clasesBoton({ variante: 'fantasma', tamano: 'md' }), 'shrink-0 px-2 lg:px-4')}
+          >
+            {/* Móvil: el pie va a medias con «Atrás» y el primario; cabe la forma corta. */}
+            <span className="lg:hidden">{omitir.etiquetaCorta ?? omitir.etiqueta}</span>
+            <span className="hidden lg:inline">{omitir.etiqueta}</span>
           </button>
         )}
         <span className="hidden text-[13px] tabular-nums text-fg-secondary lg:inline">{t('asistente.pasoDe', { n: paso, total })}</span>

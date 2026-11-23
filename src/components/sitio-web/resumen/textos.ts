@@ -216,6 +216,17 @@ export const TEXTOS_RESUMEN = {
     errorTitulo: 'No pudimos abrir la configuración del sitio',
     errorDescripcion: 'Tu avance está guardado. Revisa la conexión e inténtalo de nuevo.',
     conflicto: 'Otra persona guardó una versión más nueva del sitio. Recargamos para que sigas desde lo último.',
+    omitir: 'Omitir este paso',
+    omitirCorto: 'Omitir',
+    saltar: {
+      boton: 'Saltar configuración',
+      titulo: '¿Saltar la configuración?',
+      descripcion:
+        'Guardamos lo que ya elegiste. Tu sitio queda en borrador y no se publica. Puedes terminar la configuración cuando quieras desde Sitio web › Resumen, o armarlo directo en el editor.',
+      seguir: 'Seguir configurando',
+      irEditor: 'Ir al editor',
+      irResumen: 'Saltar e ir al resumen',
+    },
     pasos: {
       giro: 'Giro y objetivo',
       plantilla: 'Plantilla',
@@ -251,7 +262,11 @@ export const TEXTOS_RESUMEN = {
     },
     plantilla: {
       titulo: 'Elige una plantilla',
-      descripcion: 'Mostramos primero las de {giro}. La plantilla define la estructura; el estilo lo eliges en el paso siguiente.',
+      descripcion: 'Mostramos primero las de {giro}. Cada plantilla trae su diseño completo y la puedes cambiar cuando quieras en Diseño.',
+      descripcionTienda:
+        'Mostramos primero las de tienda. Cada plantilla trae su diseño completo: inicio, página de categoría y ficha de producto. La puedes cambiar cuando quieras en Diseño.',
+      soloEstilo: 'Tu sitio ya está publicado: de la plantilla tomamos los colores y las fuentes, y tu contenido se queda como está. Para cambiar la estructura entera, usa Diseño › Plantillas.',
+      nueva: 'Nueva',
       todas: 'Todas',
       filtros: 'Filtrar plantillas',
       errorCatalogo: 'No pudimos cargar las plantillas',

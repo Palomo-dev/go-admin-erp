@@ -55,10 +55,13 @@ describe('menú: Logística y Transporte en «Operación»', () => {
   });
 
   test('Transporte se queda con lo suyo y el catálogo común', () => {
+    // Figma «23 Transporte» (2026-11-23): Paradas, Tarifas de pasajeros e Incidentes pasan a
+    // pestañas (ver src/__tests__/transporte/navegacionTransporte.test.ts); el catálogo común
+    // (conductores y vehículos) queda en el grupo «Flota».
     expect(transporte.paginas.map((p) => p.href.replace('/app/transporte/', '')).sort()).toEqual(
-      ['boletos', 'conductores', 'horarios', 'incidentes', 'manifiestos', 'paradas', 'rutas', 'tarifas-pasajeros', 'vehiculos', 'viajes'].sort(),
+      ['boletos', 'conductores', 'flota', 'horarios', 'incidentes', 'manifiestos', 'rutas', 'vehiculos', 'viajes'].sort(),
     );
-    expect(transporte.paginas.filter((p) => p.grupo === 'Catálogo común').map((p) => p.href)).toEqual(['/app/transporte/conductores', '/app/transporte/vehiculos']);
+    expect(transporte.paginas.filter((p) => p.grupo === 'Flota').map((p) => p.href)).toEqual(['/app/transporte/flota', '/app/transporte/vehiculos', '/app/transporte/conductores']);
     expect(logistica.paginas.filter((p) => p.grupo === 'Catálogo común').map((p) => p.href)).toEqual(['/app/logistica/conductores', '/app/logistica/vehiculos']);
   });
 

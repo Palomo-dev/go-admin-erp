@@ -77,7 +77,7 @@ export default function IncidentDetailPage() {
           description: 'Incidente no encontrado',
           variant: 'destructive',
         });
-        router.push('/app/transporte/incidentes');
+        router.push('/app/transporte/viajes?pestana=novedades');
         return;
       }
       setIncident(data);

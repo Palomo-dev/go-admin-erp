@@ -62,7 +62,7 @@ export function DashboardQuickActions() {
     { label: 'Transportadoras', href: '/app/integraciones/conexiones/logistica', icon: Truck },
     { label: 'Vehículos', href: '/app/transporte/vehiculos', icon: Bus },
     { label: 'Conductores', href: '/app/transporte/conductores', icon: Users },
-    { label: 'Paradas', href: '/app/transporte/paradas', icon: MapPin },
+    { label: 'Paradas', href: '/app/transporte/rutas?pestana=paradas', icon: MapPin },
     { label: 'Rutas', href: '/app/transporte/rutas', icon: Route },
     { label: 'Horarios', href: '/app/transporte/horarios', icon: Calendar },
   ];
@@ -73,7 +73,7 @@ export function DashboardQuickActions() {
     { label: 'Envíos', href: '/app/logistica/envios', icon: Package },
     { label: 'Tracking', href: '/app/logistica/seguimiento', icon: Navigation },
     { label: 'Etiquetas', href: '/app/logistica/etiquetas', icon: ClipboardList },
-    { label: 'Incidentes', href: '/app/transporte/incidentes', icon: AlertTriangle },
+    { label: 'Incidentes', href: '/app/transporte/viajes?pestana=novedades', icon: AlertTriangle },
   ];
 
   return (

@@ -4438,12 +4438,12 @@
       "transporte_tarifas-envio": "Shipping rates",
       "transporte_tracking": "Tracking",
       "transporte_etiquetas": "Labels",
-      "transporte_manifiestos": "Manifests",
+      "transporte_manifiestos": "Cargo manifests",
       "transporte_transportadoras": "Carriers",
       "transporte_vehiculos": "Vehicles",
-      "transporte_conductores": "Drivers",
+      "transporte_conductores": "Drivers and crew",
       "transporte_paradas": "Stops",
-      "transporte_rutas": "Routes",
+      "transporte_rutas": "Routes and stops",
       "transporte_horarios": "Schedules",
       "transporte_direcciones-clientes": "Customer addresses",
       "transporte_incidentes": "Incidents",
@@ -4623,7 +4623,8 @@
       "logistica_etiquetas": "Labels",
       "logistica_direcciones-clientes": "Customer addresses",
       "logistica_zonas": "Zones and rates",
-      "logistica_reglas": "Dispatch rules"
+      "logistica_reglas": "Dispatch rules",
+      "transporte_flota": "Fleet"
     },
     "grupos": {
       "venta": "Sales",
@@ -4666,7 +4667,9 @@
       "catalogo-comun": "Shared catalog",
       "cobertura": "Coverage",
       "vender": "Sell",
-      "movimientos": "Transactions"
+      "movimientos": "Transactions",
+      "red": "Network",
+      "flota": "Fleet"
     },
     "backToMenu": "Menu",
     "membresias": "Memberships",
@@ -65628,6 +65631,284 @@
         "manifiestoDescripcion": "The trip leaves and the manifest is issued within the next 2 hours. Applies once the electronic manifest arrives (Cargo phase).",
         "pin": "Ask for the supervisor's PIN",
         "pinDescripcion": "It is the Human resources PIN (the same as the time clock kiosk). It is verified on the server; it is never stored on the device."
+      }
+    },
+    "pestanas": {
+      "viajesAria": "Trip views",
+      "rutasAria": "Route views",
+      "boletosAria": "Ticket views",
+      "todos": "All trips",
+      "despachos": "Today's dispatches",
+      "novedades": "Incidents",
+      "rutas": "Routes",
+      "paradas": "Stops",
+      "boletos": "Tickets",
+      "tarifas": "Fares"
+    },
+    "viajes": {
+      "titulo": "Trips",
+      "subtitulo": "{fecha} · {n, plural, =0 {no trips today} one {# trip today} other {# trips today}} · every departure goes through dispatch",
+      "migas": {
+        "transporte": "Transport"
+      },
+      "actualizar": "Refresh",
+      "kpis": {
+        "etiqueta": "Today's summary",
+        "hoy": "Today's trips",
+        "hoyDetalle": "{despachados} dispatched · {pendientes} to dispatch",
+        "despachados": "Dispatched today",
+        "despachadosDetalle": "with their dispatch sheet",
+        "porDespachar": "To dispatch",
+        "porDespacharDetalle": "{listos} ready · {bloqueados} blocked",
+        "bloqueados": "Blocked",
+        "bloqueadosDetalle": "expired documents or unassigned",
+        "porVencer": "{n, plural, one {# document expires} other {# documents expire}} within 30 days",
+        "bloqueadosVacio": "all up to date"
+      }
+    },
+    "despachos": {
+      "causas": {
+        "sin_vehiculo": "No vehicle assigned",
+        "sin_conductor": "No driver assigned",
+        "sin_credencial": "Driver without a registered license",
+        "soat": "Mandatory insurance (SOAT)",
+        "tecnomecanica": "Technical inspection",
+        "poliza": "Liability policy",
+        "tarjeta_operacion": "Operating card",
+        "licencia": "Driver's license",
+        "examen_medico": "Medical exam"
+      },
+      "venceEn": "{documento} expires {dias, plural, =0 {today} one {in # day} other {in # days}}",
+      "cumplimiento": {
+        "listo": "Documents up to date",
+        "vence": "Expiring soon",
+        "bloqueado": "Blocked",
+        "excepcion": "Authorized exception",
+        "despachado": "Dispatched",
+        "cancelado": "Cancelled"
+      },
+      "estados": {
+        "listo": "Ready to leave",
+        "bloqueado": "Blocked",
+        "despachado": "On the road",
+        "excepcion": "On the road with exception",
+        "cancelado": "Cancelled"
+      },
+      "revision": {
+        "vencio": "expired on {fecha}",
+        "vence": "expires on {fecha}",
+        "sinFecha": "no date recorded",
+        "asignar": "assign it on the trip",
+        "registrarLicencia": "register it in Drivers",
+        "hoy": "today {hora}",
+        "vehiculo": "Vehicle · {placa}",
+        "conductor": "Driver · {nombre}",
+        "viaje": "Trip",
+        "pasajeros": "{vendidos} of {total} seats sold",
+        "planilla": "Dispatch sheet",
+        "planillaAlDespachar": "generated on dispatch"
+      },
+      "dialogo": {
+        "titulo": "Dispatch {codigo}",
+        "cancelar": "Cancel",
+        "despachar": "Dispatch",
+        "autorizarYDespachar": "Authorize and dispatch",
+        "faltaExcepcion": "Write the reason and the supervisor's PIN",
+        "sinExcepcion": "This block does not allow an exception: assign what is missing or change vehicle",
+        "cambiarVehiculo": "Change vehicle",
+        "eligeVehiculo": "Choose a vehicle",
+        "noSale": "Cannot be dispatched",
+        "explicaExcepcion": "The trip does not leave until this is fixed or the vehicle is changed. If there is no other vehicle, only a supervisor can authorize an exception, and it is recorded.",
+        "explicaSinExcepcion": "Fix what is missing so the trip can leave.",
+        "cambiarA": "Change to another vehicle",
+        "puestos": "{n} seats",
+        "cambiarNota": "Passengers keep their seat if the other vehicle has the same seat map."
+      },
+      "excepcion": {
+        "titulo": "Dispatch with an authorized exception",
+        "descripcion": "Authorized by someone with the «Authorize dispatch exception» permission («Dispatch supervisor» position), with their PIN. Valid for this trip only.",
+        "motivo": "Reason",
+        "motivoPlaceholder": "E.g.: the insurance was renewed today and the policy arrives by email before 3:00 p.m.",
+        "motivoMin": "At least {n} characters.",
+        "pin": "Supervisor PIN",
+        "pinAyuda": "The Human resources PIN (6 digits). It is verified on the server.",
+        "registro": "The reason, who authorizes, who dispatches and when are recorded. It appears on the dispatch sheet and the trip log."
+      },
+      "resultado": {
+        "no_admite_excepcion": "This block does not allow an exception. Check Settings › Transport.",
+        "motivo_invalido": "The reason must be between 10 and 500 characters.",
+        "pin_rechazado": "The PIN is not valid or that person cannot authorize exceptions.",
+        "pin_bloqueado": "Too many wrong PINs. Wait 15 minutes.",
+        "sin_permiso_excepcion": "You need the «Authorize dispatch exception» permission.",
+        "no_despachable": "This trip already left or was cancelled."
+      },
+      "errores": {
+        "sin_permiso": "You need the «Dispatch trips» permission.",
+        "no_encontrado": "The trip was not found.",
+        "error": "Could not dispatch. Try again.",
+        "vehiculo": "Could not change the vehicle.",
+        "carga": "Could not load the dispatches"
+      },
+      "toast": {
+        "despachado": "{codigo} dispatched · sheet {planilla}",
+        "conExcepcion": "{codigo} dispatched with an authorized exception · sheet {planilla}",
+        "bloqueado": "{codigo} is still blocked",
+        "vehiculoCambiado": "Vehicle for {codigo} changed",
+        "masivo": "{count, plural, one {# trip dispatched} other {# trips dispatched}}",
+        "masivoBloqueados": "{count, plural, one {# trip did not leave: open it to see why} other {# trips did not leave: open them to see why}}"
+      },
+      "acciones": {
+        "verViaje": "View trip",
+        "despachar": "Dispatch",
+        "planilla": "Print sheet",
+        "novedad": "Report incident",
+        "planillaDe": "Print dispatch sheet of {codigo}",
+        "despacharDe": "Dispatch {codigo}"
+      },
+      "ocupacion": "{vendidos} of {total}",
+      "pasajeros": "passengers",
+      "planillaN": "Sheet {numero}",
+      "columnas": {
+        "sale": "Departs",
+        "viaje": "Trip",
+        "vehiculo": "Vehicle",
+        "ocupacion": "Occupancy",
+        "cumplimiento": "Compliance",
+        "estado": "Status",
+        "acciones": "Quick actions"
+      },
+      "sustantivo": {
+        "singular": "trip",
+        "plural": "trips"
+      },
+      "vacio": {
+        "titulo": "No trips today",
+        "descripcion": "There are no departures scheduled today at this branch. Schedule a trip or generate today's trips from Schedules.",
+        "programar": "Schedule trip",
+        "horarios": "Go to Schedules"
+      },
+      "buscar": {
+        "placeholder": "Search by trip, plate or driver…",
+        "etiqueta": "Search dispatches"
+      },
+      "tabla": "Today's dispatches",
+      "sinResultados": "No trip today matches the search.",
+      "sinPermiso": {
+        "titulo": "No access to dispatches",
+        "descripcion": "Ask an administrator for the «View transport» permission."
+      },
+      "masivo": {
+        "despacharListos": "Dispatch ready ones",
+        "sinListos": "The selection has no trips ready to leave",
+        "imprimir": "Print sheets",
+        "sinPlanillas": "The selection has no dispatched trips"
+      },
+      "pie": "A trip with expired documents does not leave; a supervisor authorizes the exception with their PIN.",
+      "verNovedades": "View incidents"
+    },
+    "planilla": {
+      "titulo": "Dispatch sheet",
+      "viaje": "Trip",
+      "ruta": "Route",
+      "fecha": "Date",
+      "salida": "departs",
+      "llegada": "arrives",
+      "vehiculo": "Vehicle",
+      "conductor": "Driver",
+      "documento": "Document",
+      "licencia": "License",
+      "vence": "expires",
+      "pasajeros": "Passengers",
+      "puesto": "Seat",
+      "nombre": "Name",
+      "valor": "Amount",
+      "total": "Total",
+      "sinPasajeros": "No passengers recorded",
+      "excepcion": "Authorized exception",
+      "autorizo": "Authorized by",
+      "despachado": "Dispatched",
+      "firmaConductor": "Driver's signature",
+      "firmaDespachador": "Dispatcher's signature",
+      "ventanaBloqueada": "The browser blocked the print window. Allow pop-ups for GO Admin.",
+      "error": "Could not prepare the dispatch sheet"
+    },
+    "flota": {
+      "titulo": "Fleet",
+      "subtitulo": "Documents of vehicles, vessels and people · notices before they expire",
+      "migas": {
+        "transporte": "Transport"
+      },
+      "actualizar": "Refresh",
+      "irVehiculos": "Vehicles",
+      "conductor": "driver",
+      "hace": "{n, plural, one {# day ago} other {# days ago}}",
+      "hoy": "expires today",
+      "en": "in {n, plural, one {# day} other {# days}}",
+      "columnas": {
+        "documento": "Document",
+        "de": "Of",
+        "vence": "Expires",
+        "estado": "Status",
+        "bloquea": "Blocks dispatch?"
+      },
+      "estados": {
+        "vencido": "Expired",
+        "por_vencer": "Expiring",
+        "vigente": "Valid"
+      },
+      "bloquea": {
+        "vehiculo": "Blocks dispatch",
+        "conductor": "Cannot be assigned",
+        "hasta": "No, until {fecha}"
+      },
+      "acciones": {
+        "verVehiculos": "Go to Vehicles",
+        "verConductores": "Go to Drivers"
+      },
+      "sustantivo": {
+        "singular": "document",
+        "plural": "documents"
+      },
+      "vacio": {
+        "titulo": "No vehicles or drivers",
+        "descripcion": "Register the fleet and its documents so trips check expirations before leaving.",
+        "agregarVehiculo": "Add vehicle",
+        "agregarConductor": "Add driver"
+      },
+      "kpis": {
+        "etiqueta": "Fleet summary",
+        "vencidos": "Expired",
+        "vencidosDetalle": "they block dispatch",
+        "vencidosVacio": "none",
+        "porVencer": "Expire within 30 days",
+        "primero": "the first on {fecha}",
+        "porVencerVacio": "none within 30 days",
+        "vigentes": "Valid",
+        "vigilados": "of {n} documents watched",
+        "mantenimiento": "In maintenance",
+        "sinFecha": "{n, plural, one {# with no dates recorded} other {# with no dates recorded}}",
+        "mantenimientoDetalle": "vehicles out of service"
+      },
+      "aviso": {
+        "titulo": "How it warns",
+        "descripcion": "An expired document blocks the vehicle's dispatch or the person's assignment (Trips › Today's dispatches). Notices 30, 15 and 7 days before and each document's file arrive with the next release."
+      },
+      "documentos": "Documents and expirations",
+      "buscar": {
+        "placeholder": "Search by document, plate or person…",
+        "etiqueta": "Search documents"
+      },
+      "filtroAtencion": "Expired or expiring",
+      "verTodos": "See all",
+      "sinDocumentos": {
+        "titulo": "No expiration dates",
+        "descripcion": "Record the insurance, inspection, policy and license dates in Vehicles and Drivers."
+      },
+      "todoAlDia": "Nothing expired or expiring within 30 days.",
+      "sinResultados": "No document matches the search.",
+      "errorCarga": "Could not load the documents",
+      "masivo": {
+        "exportar": "Export CSV"
       }
     }
   },

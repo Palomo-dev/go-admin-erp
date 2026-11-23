@@ -74,6 +74,18 @@ const REDIRECCIONES_LOGISTICA = [
   { source: '/app/transporte/direcciones-clientes', destination: '/app/logistica/direcciones-clientes', permanent: true },
 ];
 
+/**
+ * Transporte (Figma «23 Transporte» 2867:17, lámina 1 · sección 4; 2026-11-23): Paradas, Tarifas
+ * de pasajeros e Incidentes pasan a pestañas de Rutas, Boletos y Viajes. Redirecciones
+ * PERMANENTES (308). El detalle /app/transporte/incidentes/[id] NO redirige (sigue siendo la
+ * página de la novedad). Lo verifica `src/__tests__/transporte/navegacionTransporte.test.ts`.
+ */
+const REDIRECCIONES_TRANSPORTE = [
+  { source: '/app/transporte/paradas', destination: '/app/transporte/rutas?pestana=paradas', permanent: true },
+  { source: '/app/transporte/tarifas-pasajeros', destination: '/app/transporte/boletos?pestana=tarifas', permanent: true },
+  { source: '/app/transporte/incidentes', destination: '/app/transporte/viajes?pestana=novedades', permanent: true },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -168,6 +180,7 @@ const nextConfig = {
       ...REDIRECCIONES_SITIO_WEB,
       ...REDIRECCIONES_CONFIGURACION,
       ...REDIRECCIONES_LOGISTICA,
+      ...REDIRECCIONES_TRANSPORTE,
     ];
   },
   // Sitio web: el editor visual vive en /app/sitio-web/editor/:pageId (bajo la

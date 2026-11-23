@@ -4439,15 +4439,15 @@
       "transporte_tarifas-envio": "Tarifas de envío",
       "transporte_tracking": "Tracking",
       "transporte_etiquetas": "Etiquetas",
-      "transporte_manifiestos": "Manifiestos",
+      "transporte_manifiestos": "Manifiestos de carga",
       "transporte_transportadoras": "Transportadoras",
       "transporte_vehiculos": "Vehículos",
-      "transporte_conductores": "Conductores",
+      "transporte_conductores": "Conductores y tripulación",
       "transporte_paradas": "Paradas",
-      "transporte_rutas": "Rutas",
+      "transporte_rutas": "Rutas y paradas",
       "transporte_horarios": "Horarios",
       "transporte_direcciones-clientes": "Direcciones de clientes",
-      "transporte_incidentes": "Incidentes",
+      "transporte_incidentes": "Novedades",
       "inventario_productos": "Productos",
       "inventario_categorias": "Categorías",
       "inventario_etiquetas": "Etiquetas de producto",
@@ -4624,7 +4624,8 @@
       "logistica_etiquetas": "Etiquetas",
       "logistica_direcciones-clientes": "Direcciones de clientes",
       "logistica_zonas": "Zonas y tarifas",
-      "logistica_reglas": "Reglas de despacho"
+      "logistica_reglas": "Reglas de despacho",
+      "transporte_flota": "Flota"
     },
     "grupos": {
       "venta": "Venta",
@@ -4667,7 +4668,9 @@
       "catalogo-comun": "Catálogo común",
       "cobertura": "Cobertura",
       "vender": "Vender",
-      "movimientos": "Movimientos"
+      "movimientos": "Movimientos",
+      "red": "Red",
+      "flota": "Flota"
     },
     "backToMenu": "Menú",
     "membresias": "Membresías",
@@ -65626,6 +65629,284 @@
         "manifiestoDescripcion": "El viaje sale y el manifiesto se emite en las 2 horas siguientes. Aplica cuando llegue el manifiesto electrónico (fase Carga).",
         "pin": "Pedir el PIN del supervisor",
         "pinDescripcion": "Es el PIN de Recursos humanos (el mismo del kiosco de marcación). Se verifica en el servidor; nunca se guarda en el equipo."
+      }
+    },
+    "pestanas": {
+      "viajesAria": "Vistas de Viajes",
+      "rutasAria": "Vistas de Rutas",
+      "boletosAria": "Vistas de Boletos",
+      "todos": "Todos los viajes",
+      "despachos": "Despachos de hoy",
+      "novedades": "Novedades",
+      "rutas": "Rutas",
+      "paradas": "Paradas",
+      "boletos": "Boletos",
+      "tarifas": "Tarifas"
+    },
+    "viajes": {
+      "titulo": "Viajes",
+      "subtitulo": "{fecha} · {n, plural, =0 {sin viajes hoy} one {# viaje hoy} other {# viajes hoy}} · cada salida pasa por el despacho",
+      "migas": {
+        "transporte": "Transporte"
+      },
+      "actualizar": "Actualizar",
+      "kpis": {
+        "etiqueta": "Resumen del día",
+        "hoy": "Viajes de hoy",
+        "hoyDetalle": "{despachados} despachados · {pendientes} por despachar",
+        "despachados": "Despachados hoy",
+        "despachadosDetalle": "con su planilla de despacho",
+        "porDespachar": "Por despachar",
+        "porDespacharDetalle": "{listos} listos · {bloqueados} bloqueados",
+        "bloqueados": "Bloqueados",
+        "bloqueadosDetalle": "documentos vencidos o sin asignar",
+        "porVencer": "{n, plural, one {# documento vence} other {# documentos vencen}} en 30 días",
+        "bloqueadosVacio": "todo al día"
+      }
+    },
+    "despachos": {
+      "causas": {
+        "sin_vehiculo": "Sin vehículo asignado",
+        "sin_conductor": "Sin conductor asignado",
+        "sin_credencial": "Conductor sin licencia registrada",
+        "soat": "SOAT",
+        "tecnomecanica": "Revisión técnico-mecánica",
+        "poliza": "Póliza de responsabilidad",
+        "tarjeta_operacion": "Tarjeta de operación",
+        "licencia": "Licencia de conducción",
+        "examen_medico": "Examen médico"
+      },
+      "venceEn": "{documento} vence en {dias, plural, =0 {hoy} one {# día} other {# días}}",
+      "cumplimiento": {
+        "listo": "Documentos al día",
+        "vence": "Vence pronto",
+        "bloqueado": "Bloqueado",
+        "excepcion": "Excepción autorizada",
+        "despachado": "Despachado",
+        "cancelado": "Cancelado"
+      },
+      "estados": {
+        "listo": "Listo para salir",
+        "bloqueado": "Bloqueado",
+        "despachado": "En ruta",
+        "excepcion": "En ruta con excepción",
+        "cancelado": "Cancelado"
+      },
+      "revision": {
+        "vencio": "venció el {fecha}",
+        "vence": "vence el {fecha}",
+        "sinFecha": "sin fecha registrada",
+        "asignar": "asígnalo en el viaje",
+        "registrarLicencia": "regístrala en Conductores",
+        "hoy": "hoy {hora}",
+        "vehiculo": "Vehículo · {placa}",
+        "conductor": "Conductor · {nombre}",
+        "viaje": "Viaje",
+        "pasajeros": "{vendidos} de {total} puestos vendidos",
+        "planilla": "Planilla de despacho",
+        "planillaAlDespachar": "se genera al despachar"
+      },
+      "dialogo": {
+        "titulo": "Despachar {codigo}",
+        "cancelar": "Cancelar",
+        "despachar": "Despachar",
+        "autorizarYDespachar": "Autorizar y despachar",
+        "faltaExcepcion": "Escribe el motivo y el PIN del supervisor",
+        "sinExcepcion": "Este bloqueo no admite excepción: asigna lo que falta o cambia de vehículo",
+        "cambiarVehiculo": "Cambiar vehículo",
+        "eligeVehiculo": "Elige un vehículo",
+        "noSale": "No se puede despachar",
+        "explicaExcepcion": "El viaje no sale hasta corregirlo o cambiar de vehículo. Si no hay otro, solo un supervisor puede autorizar una excepción, y queda registrada.",
+        "explicaSinExcepcion": "Corrige lo que falta para que el viaje pueda salir.",
+        "cambiarA": "Cambiar a otro vehículo",
+        "puestos": "{n} puestos",
+        "cambiarNota": "Los pasajeros conservan su puesto si el otro vehículo tiene el mismo plano."
+      },
+      "excepcion": {
+        "titulo": "Despachar con excepción autorizada",
+        "descripcion": "La autoriza quien tenga el permiso «Autorizar excepción de despacho» (cargo «Supervisor de despacho»), con su PIN. Vale solo para este viaje.",
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Ej.: el SOAT se renovó hoy y la póliza llega al correo antes de las 15:00",
+        "motivoMin": "Mínimo {n} caracteres.",
+        "pin": "PIN del supervisor",
+        "pinAyuda": "El PIN de Recursos humanos (6 dígitos). Se verifica en el servidor.",
+        "registro": "Queda registrado el motivo, quién autoriza, quién despacha y cuándo. Sale en la planilla y en la bitácora del viaje."
+      },
+      "resultado": {
+        "no_admite_excepcion": "Este bloqueo no admite excepción. Revisa Configuración › Transporte.",
+        "motivo_invalido": "El motivo debe tener entre 10 y 500 caracteres.",
+        "pin_rechazado": "El PIN no es válido o esa persona no puede autorizar excepciones.",
+        "pin_bloqueado": "Demasiados PIN errados. Espera 15 minutos.",
+        "sin_permiso_excepcion": "Te falta el permiso «Autorizar excepción de despacho».",
+        "no_despachable": "Este viaje ya salió o fue cancelado."
+      },
+      "errores": {
+        "sin_permiso": "Te falta el permiso «Despachar viajes».",
+        "no_encontrado": "No se encontró el viaje.",
+        "error": "No se pudo despachar. Intenta de nuevo.",
+        "vehiculo": "No se pudo cambiar el vehículo.",
+        "carga": "No se pudieron cargar los despachos"
+      },
+      "toast": {
+        "despachado": "{codigo} despachado · planilla {planilla}",
+        "conExcepcion": "{codigo} despachado con excepción autorizada · planilla {planilla}",
+        "bloqueado": "{codigo} sigue bloqueado",
+        "vehiculoCambiado": "Vehículo de {codigo} cambiado",
+        "masivo": "{count, plural, one {# viaje despachado} other {# viajes despachados}}",
+        "masivoBloqueados": "{count, plural, one {# viaje no salió: ábrelo para ver por qué} other {# viajes no salieron: ábrelos para ver por qué}}"
+      },
+      "acciones": {
+        "verViaje": "Ver viaje",
+        "despachar": "Despachar",
+        "planilla": "Imprimir planilla",
+        "novedad": "Reportar novedad",
+        "planillaDe": "Imprimir planilla de {codigo}",
+        "despacharDe": "Despachar {codigo}"
+      },
+      "ocupacion": "{vendidos} de {total}",
+      "pasajeros": "pasajeros",
+      "planillaN": "Planilla {numero}",
+      "columnas": {
+        "sale": "Sale",
+        "viaje": "Viaje",
+        "vehiculo": "Vehículo",
+        "ocupacion": "Ocupación",
+        "cumplimiento": "Cumplimiento",
+        "estado": "Estado",
+        "acciones": "Acciones rápidas"
+      },
+      "sustantivo": {
+        "singular": "viaje",
+        "plural": "viajes"
+      },
+      "vacio": {
+        "titulo": "Sin viajes hoy",
+        "descripcion": "No hay salidas programadas para hoy en esta sede. Programa un viaje o genera los del día desde Horarios.",
+        "programar": "Programar viaje",
+        "horarios": "Ir a Horarios"
+      },
+      "buscar": {
+        "placeholder": "Buscar por viaje, placa o conductor…",
+        "etiqueta": "Buscar despachos"
+      },
+      "tabla": "Despachos de hoy",
+      "sinResultados": "Ningún viaje de hoy coincide con la búsqueda.",
+      "sinPermiso": {
+        "titulo": "Sin acceso a los despachos",
+        "descripcion": "Pide a un administrador el permiso «Ver transporte»."
+      },
+      "masivo": {
+        "despacharListos": "Despachar listos",
+        "sinListos": "La selección no tiene viajes listos para salir",
+        "imprimir": "Imprimir planillas",
+        "sinPlanillas": "La selección no tiene viajes despachados"
+      },
+      "pie": "Un viaje con documentos vencidos no sale; la excepción la autoriza un supervisor con su PIN.",
+      "verNovedades": "Ver novedades"
+    },
+    "planilla": {
+      "titulo": "Planilla de despacho",
+      "viaje": "Viaje",
+      "ruta": "Ruta",
+      "fecha": "Fecha",
+      "salida": "sale",
+      "llegada": "llega",
+      "vehiculo": "Vehículo",
+      "conductor": "Conductor",
+      "documento": "Documento",
+      "licencia": "Licencia",
+      "vence": "vence",
+      "pasajeros": "Pasajeros",
+      "puesto": "Puesto",
+      "nombre": "Nombre",
+      "valor": "Valor",
+      "total": "Total",
+      "sinPasajeros": "Sin pasajeros registrados",
+      "excepcion": "Excepción autorizada",
+      "autorizo": "Autorizó",
+      "despachado": "Despachado",
+      "firmaConductor": "Firma del conductor",
+      "firmaDespachador": "Firma del despachador",
+      "ventanaBloqueada": "El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para GO Admin.",
+      "error": "No se pudo preparar la planilla"
+    },
+    "flota": {
+      "titulo": "Flota",
+      "subtitulo": "Documentos de vehículos, embarcaciones y personas · avisos antes de vencer",
+      "migas": {
+        "transporte": "Transporte"
+      },
+      "actualizar": "Actualizar",
+      "irVehiculos": "Vehículos",
+      "conductor": "conductor",
+      "hace": "hace {n, plural, one {# día} other {# días}}",
+      "hoy": "vence hoy",
+      "en": "en {n, plural, one {# día} other {# días}}",
+      "columnas": {
+        "documento": "Documento",
+        "de": "De",
+        "vence": "Vence",
+        "estado": "Estado",
+        "bloquea": "¿Bloquea el despacho?"
+      },
+      "estados": {
+        "vencido": "Vencido",
+        "por_vencer": "Por vencer",
+        "vigente": "Vigente"
+      },
+      "bloquea": {
+        "vehiculo": "Bloquea el despacho",
+        "conductor": "No se puede asignar",
+        "hasta": "No, hasta el {fecha}"
+      },
+      "acciones": {
+        "verVehiculos": "Ir a Vehículos",
+        "verConductores": "Ir a Conductores"
+      },
+      "sustantivo": {
+        "singular": "documento",
+        "plural": "documentos"
+      },
+      "vacio": {
+        "titulo": "Sin vehículos ni conductores",
+        "descripcion": "Registra la flota y sus documentos para que los viajes revisen los vencimientos antes de salir.",
+        "agregarVehiculo": "Agregar vehículo",
+        "agregarConductor": "Agregar conductor"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de la flota",
+        "vencidos": "Vencidos",
+        "vencidosDetalle": "bloquean el despacho",
+        "vencidosVacio": "ninguno",
+        "porVencer": "Vencen en 30 días",
+        "primero": "el primero el {fecha}",
+        "porVencerVacio": "ninguno en 30 días",
+        "vigentes": "Vigentes",
+        "vigilados": "de {n} documentos vigilados",
+        "mantenimiento": "En mantenimiento",
+        "sinFecha": "{n, plural, one {# sin fechas registradas} other {# sin fechas registradas}}",
+        "mantenimientoDetalle": "vehículos fuera de servicio"
+      },
+      "aviso": {
+        "titulo": "Cómo avisa",
+        "descripcion": "Un documento vencido bloquea el despacho del vehículo o la asignación de la persona (Viajes › Despachos de hoy). Los avisos 30, 15 y 7 días antes y el archivo de cada documento llegan con la siguiente entrega."
+      },
+      "documentos": "Documentos y vencimientos",
+      "buscar": {
+        "placeholder": "Buscar por documento, placa o persona…",
+        "etiqueta": "Buscar documentos"
+      },
+      "filtroAtencion": "Vencidos o por vencer",
+      "verTodos": "Ver todos",
+      "sinDocumentos": {
+        "titulo": "Sin fechas de vencimiento",
+        "descripcion": "Registra las fechas del SOAT, la técnico-mecánica, la póliza y la licencia en Vehículos y Conductores."
+      },
+      "todoAlDia": "Nada vencido ni por vencer en 30 días.",
+      "sinResultados": "Ningún documento coincide con la búsqueda.",
+      "errorCarga": "No se pudieron cargar los documentos",
+      "masivo": {
+        "exportar": "Exportar CSV"
       }
     }
   },

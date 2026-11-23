@@ -9,6 +9,8 @@ interface TripsHeaderProps {
   onExport?: () => void;
   onImport?: () => void;
   isLoading?: boolean;
+  /** Dentro de la página de Viajes con pestañas: el título ya lo pone su PageHeader. */
+  sinTitulo?: boolean;
 }
 
 export function TripsHeader({
@@ -17,10 +19,11 @@ export function TripsHeader({
   onExport,
   onImport,
   isLoading,
+  sinTitulo,
 }: TripsHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
-      <div>
+    <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 ${sinTitulo ? 'justify-end' : 'justify-between'}`}>
+      <div className={sinTitulo ? 'hidden' : undefined}>
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Viajes
         </h1>

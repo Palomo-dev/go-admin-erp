@@ -470,36 +470,27 @@ class TripsService {
     return data || [];
   }
 
+  /**
+   * Conductores para asignar a un viaje. `trips.driver_id` (y `co_driver_id`) apuntan a
+   * `auth.users`, no a `driver_credentials`: por eso el id que se devuelve es el `user_id` del
+   * conductor. Antes se devolvía `driver_credentials.id` y guardar un viaje con conductor fallaba
+   * por la llave foránea (2026-11-23, Despachos de hoy). Un conductor externo sin usuario no se
+   * puede asignar a un viaje (no tendría cómo ver «Mis viajes»).
+   */
   async getDrivers(organizationId: number) {
     const { data, error } = await supabase
       .from('driver_credentials')
-      .select(`
-        id,
-        is_active,
-        employments!inner(
-          id,
-          organization_members!inner(
-            organization_id,
-            profiles(first_name, last_name)
-          )
-        )
-      `)
-      .eq('employments.organization_members.organization_id', organizationId)
-      .eq('is_active', true);
+      .select('id, user_id, full_name, is_active')
+      .eq('organization_id', organizationId)
+      .eq('is_active', true)
+      .not('user_id', 'is', null)
+      .order('full_name');
 
     if (error) throw error;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data || []).map((d: any) => {
-      const emp = Array.isArray(d.employments) ? d.employments[0] : d.employments;
-      const orgMember = emp?.organization_members;
-      const member = Array.isArray(orgMember) ? orgMember[0] : orgMember;
-      const profile = member?.profiles;
-      const prof = Array.isArray(profile) ? profile[0] : profile;
-      return {
-        id: d.id,
-        name: prof ? `${prof.first_name || ''} ${prof.last_name || ''}`.trim() || 'Sin nombre' : 'Sin nombre',
-      };
-    });
+    return ((data || []) as { id: string; user_id: string; full_name: string | null }[]).map((d) => ({
+      id: d.user_id,
+      name: d.full_name?.trim() || 'Sin nombre',
+    }));
   }
 
   async getBranches(organizationId: number) {

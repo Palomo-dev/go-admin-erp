@@ -46,7 +46,7 @@ export function QuickActions() {
     { label: 'Transportadoras', href: '/app/integraciones/conexiones/logistica', icon: Truck },
     { label: 'Vehículos', href: '/app/transporte/vehiculos', icon: Bus },
     { label: 'Conductores', href: '/app/transporte/conductores', icon: Users },
-    { label: 'Paradas', href: '/app/transporte/paradas', icon: MapPin },
+    { label: 'Paradas', href: '/app/transporte/rutas?pestana=paradas', icon: MapPin },
     { label: 'Rutas', href: '/app/transporte/rutas', icon: Route },
   ];
 

@@ -494,16 +494,23 @@ export const CATALOGO_NAV: ModuloNav[] = [
     seccion: 'operacion',
     rutas: ['/app/transporte'],
     paginas: [
+      // Figma «23 Transporte» (2910:23236), 2026-11-23: tres grupos y sin «Configuración» (los
+      // ajustes viven en el diálogo, sección `transporte.general`). El módulo abre en Viajes ›
+      // Despachos de hoy (pestaña por defecto de Viajes); sin «Inicio del día»: el único tablero
+      // es Inicio. Paradas, Tarifas de pasajeros e Incidentes pasan a pestañas de Rutas, Boletos
+      // y Viajes (REDIRECCIONES_TRANSPORTE en next.config.js). Vehículos y Conductores son el
+      // catálogo común (la misma pantalla que en Logística).
       { href: '/app/transporte/viajes', nombre: 'Viajes', icono: Calendar, grupo: 'Operación' },
-      { href: '/app/transporte/rutas', nombre: 'Rutas', icono: MapPin, grupo: 'Operación' },
-      { href: '/app/transporte/paradas', nombre: 'Paradas', icono: MapPin, grupo: 'Operación' },
-      { href: '/app/transporte/horarios', nombre: 'Horarios', icono: Clock, grupo: 'Operación' },
       { href: '/app/transporte/boletos', nombre: 'Boletos', icono: Ticket, grupo: 'Operación' },
-      { href: '/app/transporte/tarifas-pasajeros', nombre: 'Tarifas de pasajeros', icono: DollarSign, grupo: 'Operación' },
-      { href: '/app/transporte/manifiestos', nombre: 'Manifiestos', icono: ClipboardList, grupo: 'Operación' },
-      { href: '/app/transporte/incidentes', nombre: 'Incidentes', icono: Shield, grupo: 'Operación' },
-      { href: '/app/transporte/conductores', nombre: 'Conductores', icono: User, grupo: 'Catálogo común' },
-      { href: '/app/transporte/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Catálogo común' },
+      { href: '/app/transporte/manifiestos', nombre: 'Manifiestos de carga', icono: ClipboardList, grupo: 'Operación' },
+      { href: '/app/transporte/rutas', nombre: 'Rutas y paradas', icono: MapPin, grupo: 'Red' },
+      { href: '/app/transporte/horarios', nombre: 'Horarios', icono: Clock, grupo: 'Red' },
+      { href: '/app/transporte/flota', nombre: 'Flota', icono: Truck, grupo: 'Flota' },
+      { href: '/app/transporte/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Flota' },
+      { href: '/app/transporte/conductores', nombre: 'Conductores y tripulación', icono: User, grupo: 'Flota' },
+      // Fuera del menú: la lista es la pestaña Viajes › Novedades (/incidentes redirige con 308);
+      // el detalle de cada novedad sigue en /app/transporte/incidentes/[id].
+      { href: '/app/transporte/incidentes', nombre: 'Novedades', icono: Shield, grupo: 'Operación', enMenu: false },
     ],
   },
 

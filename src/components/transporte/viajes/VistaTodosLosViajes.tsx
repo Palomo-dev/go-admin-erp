@@ -48,7 +48,11 @@ interface Branch {
   name: string;
 }
 
-export default function ViajesPage() {
+/**
+ * Transporte › Viajes › Todos los viajes (antes la página /app/transporte/viajes). Con
+ * `incrustado`, la cabecera la pone la página de Viajes (pestañas): aquí quedan solo sus botones.
+ */
+export default function VistaTodosLosViajes({ incrustado = false }: { incrustado?: boolean }) {
   const { toast } = useToast();
   const { organization, isLoading: orgLoading } = useOrganization();
   const { branchFilter: globalBranchFilter, isLoading: branchLoading } = useBranch();
@@ -315,6 +319,7 @@ export default function ViajesPage() {
         onNew={handleNew}
         onRefresh={loadData}
         isLoading={isRefreshing}
+        sinTitulo={incrustado}
       />
 
       <TripsStats stats={stats} />

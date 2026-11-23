@@ -4435,12 +4435,12 @@
       "transporte_tarifas-envio": "Tarifs d'envoi",
       "transporte_tracking": "Suivi",
       "transporte_etiquetas": "Étiquettes",
-      "transporte_manifiestos": "Manifestes",
+      "transporte_manifiestos": "Manifestes de fret",
       "transporte_transportadoras": "Transporteurs",
       "transporte_vehiculos": "Véhicules",
-      "transporte_conductores": "Chauffeurs",
+      "transporte_conductores": "Conducteurs et équipage",
       "transporte_paradas": "Arrêts",
-      "transporte_rutas": "Itinéraires",
+      "transporte_rutas": "Lignes et arrêts",
       "transporte_horarios": "Horaires",
       "transporte_direcciones-clientes": "Adresses clients",
       "transporte_incidentes": "Incidents",
@@ -4620,7 +4620,8 @@
       "logistica_etiquetas": "Étiquettes",
       "logistica_direcciones-clientes": "Adresses des clients",
       "logistica_zonas": "Zones et tarifs",
-      "logistica_reglas": "Règles d’expédition"
+      "logistica_reglas": "Règles d’expédition",
+      "transporte_flota": "Flotte"
     },
     "grupos": {
       "venta": "Vente",
@@ -4663,7 +4664,9 @@
       "catalogo-comun": "Catalogue commun",
       "cobertura": "Couverture",
       "vender": "Vendre",
-      "movimientos": "Mouvements"
+      "movimientos": "Mouvements",
+      "red": "Réseau",
+      "flota": "Flotte"
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
@@ -65628,6 +65631,284 @@
         "manifiestoDescripcion": "Le trajet part et le manifeste est émis dans les 2 heures suivantes. S’applique à l’arrivée du manifeste électronique (phase Fret).",
         "pin": "Demander le PIN du superviseur",
         "pinDescripcion": "C’est le PIN des Ressources humaines (le même que la borne de pointage). Il est vérifié sur le serveur ; il n’est jamais enregistré sur l’appareil."
+      }
+    },
+    "pestanas": {
+      "viajesAria": "Vues des trajets",
+      "rutasAria": "Vues des lignes",
+      "boletosAria": "Vues des billets",
+      "todos": "Tous les trajets",
+      "despachos": "Départs du jour",
+      "novedades": "Incidents",
+      "rutas": "Lignes",
+      "paradas": "Arrêts",
+      "boletos": "Billets",
+      "tarifas": "Tarifs"
+    },
+    "viajes": {
+      "titulo": "Trajets",
+      "subtitulo": "{fecha} · {n, plural, =0 {aucun trajet aujourd’hui} one {# trajet aujourd’hui} other {# trajets aujourd’hui}} · chaque départ passe par le contrôle",
+      "migas": {
+        "transporte": "Transport"
+      },
+      "actualizar": "Actualiser",
+      "kpis": {
+        "etiqueta": "Résumé du jour",
+        "hoy": "Trajets du jour",
+        "hoyDetalle": "{despachados} partis · {pendientes} à faire partir",
+        "despachados": "Partis aujourd’hui",
+        "despachadosDetalle": "avec leur feuille de départ",
+        "porDespachar": "À faire partir",
+        "porDespacharDetalle": "{listos} prêts · {bloqueados} bloqués",
+        "bloqueados": "Bloqués",
+        "bloqueadosDetalle": "documents expirés ou non assignés",
+        "porVencer": "{n, plural, one {# document expire} other {# documents expirent}} sous 30 jours",
+        "bloqueadosVacio": "tout est à jour"
+      }
+    },
+    "despachos": {
+      "causas": {
+        "sin_vehiculo": "Aucun véhicule assigné",
+        "sin_conductor": "Aucun conducteur assigné",
+        "sin_credencial": "Conducteur sans permis enregistré",
+        "soat": "Assurance obligatoire (SOAT)",
+        "tecnomecanica": "Contrôle technique",
+        "poliza": "Police de responsabilité",
+        "tarjeta_operacion": "Carte d’exploitation",
+        "licencia": "Permis de conduire",
+        "examen_medico": "Examen médical"
+      },
+      "venceEn": "{documento} expire {dias, plural, =0 {aujourd’hui} one {dans # jour} other {dans # jours}}",
+      "cumplimiento": {
+        "listo": "Documents à jour",
+        "vence": "Expire bientôt",
+        "bloqueado": "Bloqué",
+        "excepcion": "Exception autorisée",
+        "despachado": "Parti",
+        "cancelado": "Annulé"
+      },
+      "estados": {
+        "listo": "Prêt à partir",
+        "bloqueado": "Bloqué",
+        "despachado": "En route",
+        "excepcion": "En route avec exception",
+        "cancelado": "Annulé"
+      },
+      "revision": {
+        "vencio": "expiré le {fecha}",
+        "vence": "expire le {fecha}",
+        "sinFecha": "aucune date enregistrée",
+        "asignar": "assignez-le dans le trajet",
+        "registrarLicencia": "enregistrez-le dans Conducteurs",
+        "hoy": "aujourd’hui {hora}",
+        "vehiculo": "Véhicule · {placa}",
+        "conductor": "Conducteur · {nombre}",
+        "viaje": "Trajet",
+        "pasajeros": "{vendidos} sur {total} sièges vendus",
+        "planilla": "Feuille de départ",
+        "planillaAlDespachar": "générée au départ"
+      },
+      "dialogo": {
+        "titulo": "Faire partir {codigo}",
+        "cancelar": "Annuler",
+        "despachar": "Faire partir",
+        "autorizarYDespachar": "Autoriser et faire partir",
+        "faltaExcepcion": "Saisissez le motif et le PIN du superviseur",
+        "sinExcepcion": "Ce blocage n’admet pas d’exception : assignez ce qui manque ou changez de véhicule",
+        "cambiarVehiculo": "Changer de véhicule",
+        "eligeVehiculo": "Choisissez un véhicule",
+        "noSale": "Départ impossible",
+        "explicaExcepcion": "Le trajet ne part pas tant que ce n’est pas corrigé ou que le véhicule n’est pas changé. S’il n’y en a pas d’autre, seul un superviseur peut autoriser une exception, et elle est enregistrée.",
+        "explicaSinExcepcion": "Corrigez ce qui manque pour que le trajet puisse partir.",
+        "cambiarA": "Passer à un autre véhicule",
+        "puestos": "{n} sièges",
+        "cambiarNota": "Les passagers gardent leur siège si l’autre véhicule a le même plan."
+      },
+      "excepcion": {
+        "titulo": "Faire partir avec une exception autorisée",
+        "descripcion": "Autorisée par une personne ayant l’autorisation « Autoriser une exception de départ » (poste « Superviseur des départs »), avec son PIN. Valable pour ce trajet seulement.",
+        "motivo": "Motif",
+        "motivoPlaceholder": "Ex. : l’assurance a été renouvelée aujourd’hui et la police arrive par e-mail avant 15 h",
+        "motivoMin": "Au moins {n} caractères.",
+        "pin": "PIN du superviseur",
+        "pinAyuda": "Le PIN des Ressources humaines (6 chiffres). Il est vérifié sur le serveur.",
+        "registro": "Le motif, qui autorise, qui fait partir et quand sont enregistrés. Cela figure sur la feuille de départ et dans le journal du trajet."
+      },
+      "resultado": {
+        "no_admite_excepcion": "Ce blocage n’admet pas d’exception. Vérifiez Paramètres › Transport.",
+        "motivo_invalido": "Le motif doit faire entre 10 et 500 caractères.",
+        "pin_rechazado": "Le PIN n’est pas valide ou cette personne ne peut pas autoriser d’exceptions.",
+        "pin_bloqueado": "Trop de PIN erronés. Attendez 15 minutes.",
+        "sin_permiso_excepcion": "Il vous manque l’autorisation « Autoriser une exception de départ ».",
+        "no_despachable": "Ce trajet est déjà parti ou a été annulé."
+      },
+      "errores": {
+        "sin_permiso": "Il vous manque l’autorisation « Faire partir les trajets ».",
+        "no_encontrado": "Trajet introuvable.",
+        "error": "Départ impossible. Réessayez.",
+        "vehiculo": "Impossible de changer le véhicule.",
+        "carga": "Impossible de charger les départs"
+      },
+      "toast": {
+        "despachado": "{codigo} parti · feuille {planilla}",
+        "conExcepcion": "{codigo} parti avec une exception autorisée · feuille {planilla}",
+        "bloqueado": "{codigo} reste bloqué",
+        "vehiculoCambiado": "Véhicule de {codigo} changé",
+        "masivo": "{count, plural, one {# trajet parti} other {# trajets partis}}",
+        "masivoBloqueados": "{count, plural, one {# trajet n’est pas parti : ouvrez-le pour voir pourquoi} other {# trajets ne sont pas partis : ouvrez-les pour voir pourquoi}}"
+      },
+      "acciones": {
+        "verViaje": "Voir le trajet",
+        "despachar": "Faire partir",
+        "planilla": "Imprimer la feuille",
+        "novedad": "Signaler un incident",
+        "planillaDe": "Imprimer la feuille de {codigo}",
+        "despacharDe": "Faire partir {codigo}"
+      },
+      "ocupacion": "{vendidos} sur {total}",
+      "pasajeros": "passagers",
+      "planillaN": "Feuille {numero}",
+      "columnas": {
+        "sale": "Départ",
+        "viaje": "Trajet",
+        "vehiculo": "Véhicule",
+        "ocupacion": "Occupation",
+        "cumplimiento": "Conformité",
+        "estado": "Statut",
+        "acciones": "Actions rapides"
+      },
+      "sustantivo": {
+        "singular": "trajet",
+        "plural": "trajets"
+      },
+      "vacio": {
+        "titulo": "Aucun trajet aujourd’hui",
+        "descripcion": "Aucun départ prévu aujourd’hui dans ce site. Programmez un trajet ou générez ceux du jour depuis Horaires.",
+        "programar": "Programmer un trajet",
+        "horarios": "Aller aux Horaires"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par trajet, plaque ou conducteur…",
+        "etiqueta": "Rechercher des départs"
+      },
+      "tabla": "Départs du jour",
+      "sinResultados": "Aucun trajet du jour ne correspond à la recherche.",
+      "sinPermiso": {
+        "titulo": "Pas d’accès aux départs",
+        "descripcion": "Demandez à un administrateur l’autorisation « Voir le transport »."
+      },
+      "masivo": {
+        "despacharListos": "Faire partir les prêts",
+        "sinListos": "La sélection n’a aucun trajet prêt à partir",
+        "imprimir": "Imprimer les feuilles",
+        "sinPlanillas": "La sélection n’a aucun trajet parti"
+      },
+      "pie": "Un trajet avec des documents expirés ne part pas ; un superviseur autorise l’exception avec son PIN.",
+      "verNovedades": "Voir les incidents"
+    },
+    "planilla": {
+      "titulo": "Feuille de départ",
+      "viaje": "Trajet",
+      "ruta": "Ligne",
+      "fecha": "Date",
+      "salida": "départ",
+      "llegada": "arrivée",
+      "vehiculo": "Véhicule",
+      "conductor": "Conducteur",
+      "documento": "Document",
+      "licencia": "Permis",
+      "vence": "expire",
+      "pasajeros": "Passagers",
+      "puesto": "Siège",
+      "nombre": "Nom",
+      "valor": "Montant",
+      "total": "Total",
+      "sinPasajeros": "Aucun passager enregistré",
+      "excepcion": "Exception autorisée",
+      "autorizo": "Autorisée par",
+      "despachado": "Parti",
+      "firmaConductor": "Signature du conducteur",
+      "firmaDespachador": "Signature du répartiteur",
+      "ventanaBloqueada": "Le navigateur a bloqué la fenêtre d’impression. Autorisez les fenêtres pour GO Admin.",
+      "error": "Impossible de préparer la feuille de départ"
+    },
+    "flota": {
+      "titulo": "Flotte",
+      "subtitulo": "Documents des véhicules, embarcations et personnes · avis avant expiration",
+      "migas": {
+        "transporte": "Transport"
+      },
+      "actualizar": "Actualiser",
+      "irVehiculos": "Véhicules",
+      "conductor": "conducteur",
+      "hace": "il y a {n, plural, one {# jour} other {# jours}}",
+      "hoy": "expire aujourd’hui",
+      "en": "dans {n, plural, one {# jour} other {# jours}}",
+      "columnas": {
+        "documento": "Document",
+        "de": "De",
+        "vence": "Expire",
+        "estado": "Statut",
+        "bloquea": "Bloque le départ ?"
+      },
+      "estados": {
+        "vencido": "Expiré",
+        "por_vencer": "Expire bientôt",
+        "vigente": "Valide"
+      },
+      "bloquea": {
+        "vehiculo": "Bloque le départ",
+        "conductor": "Ne peut pas être assigné",
+        "hasta": "Non, jusqu’au {fecha}"
+      },
+      "acciones": {
+        "verVehiculos": "Aller aux Véhicules",
+        "verConductores": "Aller aux Conducteurs"
+      },
+      "sustantivo": {
+        "singular": "document",
+        "plural": "documents"
+      },
+      "vacio": {
+        "titulo": "Aucun véhicule ni conducteur",
+        "descripcion": "Enregistrez la flotte et ses documents pour que les trajets vérifient les expirations avant de partir.",
+        "agregarVehiculo": "Ajouter un véhicule",
+        "agregarConductor": "Ajouter un conducteur"
+      },
+      "kpis": {
+        "etiqueta": "Résumé de la flotte",
+        "vencidos": "Expirés",
+        "vencidosDetalle": "ils bloquent le départ",
+        "vencidosVacio": "aucun",
+        "porVencer": "Expirent sous 30 jours",
+        "primero": "le premier le {fecha}",
+        "porVencerVacio": "aucun sous 30 jours",
+        "vigentes": "Valides",
+        "vigilados": "sur {n} documents suivis",
+        "mantenimiento": "En maintenance",
+        "sinFecha": "{n, plural, one {# sans dates enregistrées} other {# sans dates enregistrées}}",
+        "mantenimientoDetalle": "véhicules hors service"
+      },
+      "aviso": {
+        "titulo": "Comment il avertit",
+        "descripcion": "Un document expiré bloque le départ du véhicule ou l’assignation de la personne (Trajets › Départs du jour). Les avis 30, 15 et 7 jours avant et le fichier de chaque document arrivent avec la prochaine livraison."
+      },
+      "documentos": "Documents et expirations",
+      "buscar": {
+        "placeholder": "Rechercher par document, plaque ou personne…",
+        "etiqueta": "Rechercher des documents"
+      },
+      "filtroAtencion": "Expirés ou bientôt expirés",
+      "verTodos": "Tout voir",
+      "sinDocumentos": {
+        "titulo": "Aucune date d’expiration",
+        "descripcion": "Saisissez les dates de l’assurance, du contrôle technique, de la police et du permis dans Véhicules et Conducteurs."
+      },
+      "todoAlDia": "Rien d’expiré ni qui expire sous 30 jours.",
+      "sinResultados": "Aucun document ne correspond à la recherche.",
+      "errorCarga": "Impossible de charger les documents",
+      "masivo": {
+        "exportar": "Exporter en CSV"
       }
     }
   },

@@ -66002,6 +66002,134 @@
           "archivo_tipo": "PDF ou image uniquement (JPG, PNG, WEBP)."
         }
       }
+    },
+    "pasajes": {
+      "titulo": "Vendre un billet",
+      "subtitulo": "Guichet : choisissez le trajet et le siège ; il reste réservé pendant l’encaissement.",
+      "migas": {
+        "transporte": "Transport",
+        "boletos": "Billets"
+      },
+      "canalTaquilla": "Canal : Guichet",
+      "retencionMin": "Réservation au guichet : {n} min",
+      "sinCaja": {
+        "titulo": "L’encaissement avec la caisse du POS n’est pas encore connecté",
+        "descripcion": "Le billet est émis « Paiement en attente » ou « Payé », comme dans la fenêtre habituelle. L’encaissement réutilisera le POS, sans seconde caisse."
+      },
+      "sinViajes": {
+        "titulo": "Aucun trajet à vendre",
+        "descripcion": "Programmez un trajet ou générez ceux du jour depuis Horaires.",
+        "programar": "Programmer un trajet"
+      },
+      "viaje": "Trajet",
+      "eligeViaje": "Choisissez un trajet",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "sube": "Monte à",
+      "baja": "Descend à",
+      "eligeParada": "Choisissez l’arrêt",
+      "plano": {
+        "titulo": "Plan des sièges",
+        "ayuda": "Touchez un siège libre ; il reste réservé {n} min pendant l’encaissement.",
+        "resumen": "{vendidos} vendus · {retenidos} réservés · {libres} libres",
+        "aria": "Plan des sièges",
+        "timon": "Barre",
+        "conductor": "Conducteur",
+        "puerta": "Porte",
+        "puestoAria": "Siège {puesto}, {estado}",
+        "ventana": "Fenêtre",
+        "leyenda": "Légende du plan",
+        "estados": {
+          "libre": "Libre",
+          "seleccionado": "Sélectionné",
+          "vendido": "Vendu",
+          "retenido": "Réservé",
+          "bloqueado": "Bloqué"
+        }
+      },
+      "sinPlano": {
+        "titulo": "Ce véhicule n’a pas de plan des sièges",
+        "sinVehiculo": "Le trajet n’a pas de véhicule assigné",
+        "descripcion": "Choisissez un modèle pour le créer (exige l’autorisation « Gérer le transport »).",
+        "plantilla": "Modèle",
+        "crear": "Créer le plan"
+      },
+      "plantillas": {
+        "bus40": "Bus 40 (2+2)",
+        "buseta19": "Minibus 19",
+        "lancha24": "Bateau 24",
+        "yate12": "Yacht 12"
+      },
+      "pasajero": "Passager",
+      "pasajeroPuesto": "Passager · siège {puesto}",
+      "retenido": "Siège {puesto} réservé pour vous · {tiempo} min",
+      "eligePuesto": "Touchez un siège libre du plan.",
+      "documento": "Pièce d’identité",
+      "nombre": "Nom",
+      "telefono": "Mobile",
+      "tarifa": "Tarif",
+      "tarifaBase": "Tarif du trajet",
+      "resumen": "Résumé",
+      "puesto": "Siège",
+      "puestoVentana": "{puesto} · fenêtre",
+      "total": "Total",
+      "pago": {
+        "pendiente": "Paiement en attente",
+        "pagado": "Payé",
+        "etiqueta": "État du paiement"
+      },
+      "faltan": "Choisissez un siège et saisissez le nom du passager",
+      "emitir": "Émettre le billet · {valor}",
+      "emitirSinValor": "Émettre le billet",
+      "verBoletos": "Voir les billets",
+      "toast": {
+        "retencionVencida": "La réservation a expiré : le siège a été libéré",
+        "emitido": "Billet {numero} émis · siège {puesto}",
+        "planoCreado": "Plan créé et appliqué au véhicule"
+      },
+      "errores": {
+        "viajes": "Impossible de charger les trajets",
+        "plano": "Impossible de créer le plan. Vérifiez vos autorisations."
+      },
+      "respuestas": {
+        "error": "Impossible de terminer. Réessayez.",
+        "ocupado": "Ce siège n’est plus libre.",
+        "viaje_cerrado": "Le trajet est déjà parti ou a été annulé.",
+        "datos_invalidos": "Vérifiez le nom du passager.",
+        "no_cambiable": "Ce billet ne peut plus être modifié.",
+        "fuera_de_plazo": "Hors du délai de modification gratuite : seule une personne qui gère le Transport peut le modifier.",
+        "no_anulable": "Ce billet ne peut plus être annulé.",
+        "motivo_invalido": "Saisissez le motif.",
+        "retenido": "Siège réservé",
+        "emitido": "Billet émis",
+        "cambiado": "Billet modifié",
+        "anulado": "Billet annulé"
+      },
+      "cambiar": {
+        "titulo": "Modifier le billet {numero}",
+        "descripcion": "Siège actuel : {puesto}. Choisissez le nouveau trajet et siège.",
+        "cancelar": "Annuler",
+        "confirmar": "Modifier le billet",
+        "eligePuesto": "Choisissez un siège libre",
+        "sinCosto": "Sans frais : plus de {n} min avant le départ.",
+        "fueraDePlazo": "Hors délai (moins de {n} min avant le départ) : seule une personne qui gère le Transport peut le modifier.",
+        "viaje": "Trajet",
+        "sinPlano": "Ce trajet n’a pas de plan des sièges.",
+        "hecho": "Billet {numero} déplacé au siège {puesto}"
+      },
+      "anular": {
+        "titulo": "Annuler le billet {numero}",
+        "descripcion": "Le siège redevient libre. L’annulation est enregistrée avec son motif.",
+        "volver": "Retour",
+        "confirmar": "Annuler le billet",
+        "faltaMotivo": "Saisissez le motif",
+        "conReembolso": "{valor} est remboursé ({pct} % du billet).",
+        "sinPago": "Pas de remboursement : le billet n’était pas payé.",
+        "fueraDePlazo": "Pas de remboursement : moins de {n} h avant le départ.",
+        "notaCaja": "Le remboursement est enregistré sur le billet ; rendre l’argent se fait par la caisse.",
+        "motivo": "Motif",
+        "hecho": "Billet {numero} annulé",
+        "hechoReembolso": "Billet {numero} annulé · remboursement {valor}"
+      }
     }
   },
   "ventas": {

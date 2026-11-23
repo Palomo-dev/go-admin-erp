@@ -66012,6 +66012,134 @@
           "archivo_tipo": "Só PDF ou imagem (JPG, PNG, WEBP)."
         }
       }
+    },
+    "pasajes": {
+      "titulo": "Vender passagem",
+      "subtitulo": "Bilheteria: escolha a viagem e o assento; ele fica reservado enquanto se cobra.",
+      "migas": {
+        "transporte": "Transporte",
+        "boletos": "Passagens"
+      },
+      "canalTaquilla": "Canal: Bilheteria",
+      "retencionMin": "Reserva na bilheteria: {n} min",
+      "sinCaja": {
+        "titulo": "A cobrança com o caixa do PDV ainda não está conectada",
+        "descripcion": "A passagem é emitida «Pagamento pendente» ou «Paga», como no diálogo de sempre. Cobrar com o caixa vai reutilizar o PDV, sem um segundo caixa."
+      },
+      "sinViajes": {
+        "titulo": "Não há viagens para vender",
+        "descripcion": "Programe uma viagem ou gere as do dia em Horários.",
+        "programar": "Programar viagem"
+      },
+      "viaje": "Viagem",
+      "eligeViaje": "Escolha uma viagem",
+      "libres": "{n, plural, one {# livre} other {# livres}}",
+      "sube": "Embarca em",
+      "baja": "Desembarca em",
+      "eligeParada": "Escolha a parada",
+      "plano": {
+        "titulo": "Mapa de assentos",
+        "ayuda": "Toque num assento livre; ele fica reservado {n} min enquanto você cobra.",
+        "resumen": "{vendidos} vendidos · {retenidos} reservados · {libres} livres",
+        "aria": "Mapa de assentos",
+        "timon": "Leme",
+        "conductor": "Motorista",
+        "puerta": "Porta",
+        "puestoAria": "Assento {puesto}, {estado}",
+        "ventana": "Janela",
+        "leyenda": "Legenda do mapa",
+        "estados": {
+          "libre": "Livre",
+          "seleccionado": "Selecionado",
+          "vendido": "Vendido",
+          "retenido": "Reservado",
+          "bloqueado": "Bloqueado"
+        }
+      },
+      "sinPlano": {
+        "titulo": "Este veículo não tem mapa de assentos",
+        "sinVehiculo": "A viagem não tem veículo atribuído",
+        "descripcion": "Escolha um modelo para criá-lo (exige a permissão «Gerenciar transporte»).",
+        "plantilla": "Modelo",
+        "crear": "Criar mapa"
+      },
+      "plantillas": {
+        "bus40": "Ônibus 40 (2+2)",
+        "buseta19": "Micro-ônibus 19",
+        "lancha24": "Lancha 24",
+        "yate12": "Iate 12"
+      },
+      "pasajero": "Passageiro",
+      "pasajeroPuesto": "Passageiro · assento {puesto}",
+      "retenido": "Assento {puesto} reservado para você · {tiempo} min",
+      "eligePuesto": "Toque num assento livre do mapa.",
+      "documento": "Documento",
+      "nombre": "Nome",
+      "telefono": "Celular",
+      "tarifa": "Tarifa",
+      "tarifaBase": "Tarifa da viagem",
+      "resumen": "Resumo",
+      "puesto": "Assento",
+      "puestoVentana": "{puesto} · janela",
+      "total": "Total",
+      "pago": {
+        "pendiente": "Pagamento pendente",
+        "pagado": "Pago",
+        "etiqueta": "Status do pagamento"
+      },
+      "faltan": "Escolha um assento e escreva o nome do passageiro",
+      "emitir": "Emitir passagem · {valor}",
+      "emitirSinValor": "Emitir passagem",
+      "verBoletos": "Ver passagens",
+      "toast": {
+        "retencionVencida": "A reserva venceu: o assento foi liberado",
+        "emitido": "Passagem {numero} emitida · assento {puesto}",
+        "planoCreado": "Mapa criado e aplicado ao veículo"
+      },
+      "errores": {
+        "viajes": "Não foi possível carregar as viagens",
+        "plano": "Não foi possível criar o mapa. Verifique suas permissões."
+      },
+      "respuestas": {
+        "error": "Não foi possível concluir. Tente de novo.",
+        "ocupado": "Esse assento não está mais livre.",
+        "viaje_cerrado": "A viagem já saiu ou foi cancelada.",
+        "datos_invalidos": "Revise o nome do passageiro.",
+        "no_cambiable": "Esta passagem não pode mais ser trocada.",
+        "fuera_de_plazo": "Fora do prazo de troca sem custo: só quem gerencia o Transporte pode trocá-la.",
+        "no_anulable": "Esta passagem não pode mais ser cancelada.",
+        "motivo_invalido": "Escreva o motivo.",
+        "retenido": "Assento reservado",
+        "emitido": "Passagem emitida",
+        "cambiado": "Passagem trocada",
+        "anulado": "Passagem cancelada"
+      },
+      "cambiar": {
+        "titulo": "Trocar passagem {numero}",
+        "descripcion": "Assento atual: {puesto}. Escolha a nova viagem e o assento.",
+        "cancelar": "Cancelar",
+        "confirmar": "Trocar passagem",
+        "eligePuesto": "Escolha um assento livre",
+        "sinCosto": "Sem custo: faltam mais de {n} min para a saída.",
+        "fueraDePlazo": "Fora do prazo (menos de {n} min para a saída): só quem gerencia o Transporte pode trocá-la.",
+        "viaje": "Viagem",
+        "sinPlano": "Esta viagem não tem mapa de assentos.",
+        "hecho": "Passagem {numero} trocada para o assento {puesto}"
+      },
+      "anular": {
+        "titulo": "Cancelar passagem {numero}",
+        "descripcion": "O assento fica livre. O cancelamento fica registrado com o motivo.",
+        "volver": "Voltar",
+        "confirmar": "Cancelar passagem",
+        "faltaMotivo": "Escreva o motivo",
+        "conReembolso": "Devolve-se {valor} ({pct} % da passagem).",
+        "sinPago": "Sem reembolso: a passagem não estava paga.",
+        "fueraDePlazo": "Sem reembolso: faltam menos de {n} h para a saída.",
+        "notaCaja": "O reembolso fica registrado na passagem; devolver o dinheiro é feito pelo caixa.",
+        "motivo": "Motivo",
+        "hecho": "Passagem {numero} cancelada",
+        "hechoReembolso": "Passagem {numero} cancelada · reembolso {valor}"
+      }
     }
   },
   "ventas": {

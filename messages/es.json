@@ -66000,6 +66000,134 @@
           "archivo_tipo": "Solo PDF o imagen (JPG, PNG, WEBP)."
         }
       }
+    },
+    "pasajes": {
+      "titulo": "Vender pasaje",
+      "subtitulo": "Taquilla: elige el viaje y el puesto; queda retenido mientras se cobra.",
+      "migas": {
+        "transporte": "Transporte",
+        "boletos": "Boletos"
+      },
+      "canalTaquilla": "Canal: Taquilla",
+      "retencionMin": "Retención en taquilla: {n} min",
+      "sinCaja": {
+        "titulo": "El cobro con la caja del POS todavía no está conectado",
+        "descripcion": "El boleto se emite «Pendiente de pago» o «Pagado», como en el diálogo de siempre. Cobrar con la caja se hará reutilizando el POS, sin una segunda caja."
+      },
+      "sinViajes": {
+        "titulo": "No hay viajes para vender",
+        "descripcion": "Programa un viaje o genera los del día desde Horarios.",
+        "programar": "Programar viaje"
+      },
+      "viaje": "Viaje",
+      "eligeViaje": "Elige un viaje",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "sube": "Sube en",
+      "baja": "Baja en",
+      "eligeParada": "Elige la parada",
+      "plano": {
+        "titulo": "Plano de puestos",
+        "ayuda": "Toca un puesto libre; queda retenido {n} min mientras cobras.",
+        "resumen": "{vendidos} vendidos · {retenidos} retenidos · {libres} libres",
+        "aria": "Plano de puestos",
+        "timon": "Timón",
+        "conductor": "Conductor",
+        "puerta": "Puerta",
+        "puestoAria": "Puesto {puesto}, {estado}",
+        "ventana": "Ventanilla",
+        "leyenda": "Leyenda del plano",
+        "estados": {
+          "libre": "Libre",
+          "seleccionado": "Seleccionado",
+          "vendido": "Vendido",
+          "retenido": "Retenido",
+          "bloqueado": "Bloqueado"
+        }
+      },
+      "sinPlano": {
+        "titulo": "Este vehículo no tiene plano de puestos",
+        "sinVehiculo": "El viaje no tiene vehículo asignado",
+        "descripcion": "Elige una plantilla para crearlo (pide el permiso «Gestionar transporte»).",
+        "plantilla": "Plantilla",
+        "crear": "Crear plano"
+      },
+      "plantillas": {
+        "bus40": "Bus 40 (2+2)",
+        "buseta19": "Buseta 19",
+        "lancha24": "Lancha 24",
+        "yate12": "Yate 12"
+      },
+      "pasajero": "Pasajero",
+      "pasajeroPuesto": "Pasajero · puesto {puesto}",
+      "retenido": "Puesto {puesto} retenido para ti · {tiempo} min",
+      "eligePuesto": "Toca un puesto libre del plano.",
+      "documento": "Documento",
+      "nombre": "Nombre",
+      "telefono": "Celular",
+      "tarifa": "Tarifa",
+      "tarifaBase": "Tarifa del viaje",
+      "resumen": "Resumen",
+      "puesto": "Puesto",
+      "puestoVentana": "{puesto} · ventanilla",
+      "total": "Total",
+      "pago": {
+        "pendiente": "Pendiente de pago",
+        "pagado": "Pagado",
+        "etiqueta": "Estado del pago"
+      },
+      "faltan": "Elige un puesto y escribe el nombre del pasajero",
+      "emitir": "Emitir boleto · {valor}",
+      "emitirSinValor": "Emitir boleto",
+      "verBoletos": "Ver boletos",
+      "toast": {
+        "retencionVencida": "Venció la retención: el puesto se liberó",
+        "emitido": "Boleto {numero} emitido · puesto {puesto}",
+        "planoCreado": "Plano creado y aplicado al vehículo"
+      },
+      "errores": {
+        "viajes": "No se pudieron cargar los viajes",
+        "plano": "No se pudo crear el plano. Revisa tus permisos."
+      },
+      "respuestas": {
+        "error": "No se pudo completar. Intenta de nuevo.",
+        "ocupado": "Ese puesto ya no está libre.",
+        "viaje_cerrado": "El viaje ya salió o se canceló.",
+        "datos_invalidos": "Revisa el nombre del pasajero.",
+        "no_cambiable": "Este boleto ya no se puede cambiar.",
+        "fuera_de_plazo": "Fuera del plazo de cambio sin costo: solo quien gestiona Transporte puede cambiarlo.",
+        "no_anulable": "Este boleto ya no se puede anular.",
+        "motivo_invalido": "Escribe el motivo.",
+        "retenido": "Puesto retenido",
+        "emitido": "Boleto emitido",
+        "cambiado": "Boleto cambiado",
+        "anulado": "Boleto anulado"
+      },
+      "cambiar": {
+        "titulo": "Cambiar boleto {numero}",
+        "descripcion": "Puesto actual: {puesto}. Elige el viaje y el puesto nuevo.",
+        "cancelar": "Cancelar",
+        "confirmar": "Cambiar boleto",
+        "eligePuesto": "Elige un puesto libre",
+        "sinCosto": "Sin costo: faltan más de {n} min para la salida.",
+        "fueraDePlazo": "Fuera de plazo (menos de {n} min para la salida): solo quien gestiona Transporte puede cambiarlo.",
+        "viaje": "Viaje",
+        "sinPlano": "Este viaje no tiene plano de puestos.",
+        "hecho": "Boleto {numero} cambiado al puesto {puesto}"
+      },
+      "anular": {
+        "titulo": "Anular boleto {numero}",
+        "descripcion": "El puesto queda libre. La anulación queda registrada con su motivo.",
+        "volver": "Volver",
+        "confirmar": "Anular boleto",
+        "faltaMotivo": "Escribe el motivo",
+        "conReembolso": "Se devuelve {valor} ({pct} % del pasaje).",
+        "sinPago": "Sin reembolso: el boleto no estaba pagado.",
+        "fueraDePlazo": "Sin reembolso: faltan menos de {n} h para la salida.",
+        "notaCaja": "El reembolso queda registrado en el boleto; devolver el dinero se hace por la caja.",
+        "motivo": "Motivo",
+        "hecho": "Boleto {numero} anulado",
+        "hechoReembolso": "Boleto {numero} anulado · reembolso {valor}"
+      }
     }
   },
   "ventas": {

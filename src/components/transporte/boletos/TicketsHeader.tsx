@@ -1,7 +1,8 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Plus, RefreshCw, Download } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, RefreshCw, Download, Armchair } from 'lucide-react';
 
 interface TicketsHeaderProps {
   onNew: () => void;
@@ -29,6 +30,13 @@ export function TicketsHeader({ onNew, onRefresh, onExport, isLoading }: Tickets
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Actualizar
+        </Button>
+        {/* Fase 2: venta con plano de puestos y retención por canal. */}
+        <Button asChild variant="outline" size="sm">
+          <Link href="/app/transporte/boletos/vender">
+            <Armchair className="h-4 w-4 mr-2" />
+            Vender pasaje
+          </Link>
         </Button>
         <Button onClick={onNew} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="h-4 w-4 mr-2" />

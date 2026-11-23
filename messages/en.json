@@ -66002,6 +66002,134 @@
           "archivo_tipo": "PDF or image only (JPG, PNG, WEBP)."
         }
       }
+    },
+    "pasajes": {
+      "titulo": "Sell ticket",
+      "subtitulo": "Ticket office: choose the trip and the seat; it stays held while you charge.",
+      "migas": {
+        "transporte": "Transport",
+        "boletos": "Tickets"
+      },
+      "canalTaquilla": "Channel: Ticket office",
+      "retencionMin": "Ticket office hold: {n} min",
+      "sinCaja": {
+        "titulo": "Charging with the POS cash register is not connected yet",
+        "descripcion": "The ticket is issued «Payment pending» or «Paid», as in the usual dialog. Charging with the register will reuse the POS, with no second register."
+      },
+      "sinViajes": {
+        "titulo": "No trips to sell",
+        "descripcion": "Schedule a trip or generate today's trips from Schedules.",
+        "programar": "Schedule trip"
+      },
+      "viaje": "Trip",
+      "eligeViaje": "Choose a trip",
+      "libres": "{n, plural, one {# free} other {# free}}",
+      "sube": "Boards at",
+      "baja": "Gets off at",
+      "eligeParada": "Choose the stop",
+      "plano": {
+        "titulo": "Seat map",
+        "ayuda": "Tap a free seat; it stays held {n} min while you charge.",
+        "resumen": "{vendidos} sold · {retenidos} held · {libres} free",
+        "aria": "Seat map",
+        "timon": "Helm",
+        "conductor": "Driver",
+        "puerta": "Door",
+        "puestoAria": "Seat {puesto}, {estado}",
+        "ventana": "Window",
+        "leyenda": "Seat map legend",
+        "estados": {
+          "libre": "Free",
+          "seleccionado": "Selected",
+          "vendido": "Sold",
+          "retenido": "Held",
+          "bloqueado": "Blocked"
+        }
+      },
+      "sinPlano": {
+        "titulo": "This vehicle has no seat map",
+        "sinVehiculo": "The trip has no vehicle assigned",
+        "descripcion": "Choose a template to create it (requires the «Manage transport» permission).",
+        "plantilla": "Template",
+        "crear": "Create map"
+      },
+      "plantillas": {
+        "bus40": "Bus 40 (2+2)",
+        "buseta19": "Minibus 19",
+        "lancha24": "Boat 24",
+        "yate12": "Yacht 12"
+      },
+      "pasajero": "Passenger",
+      "pasajeroPuesto": "Passenger · seat {puesto}",
+      "retenido": "Seat {puesto} held for you · {tiempo} min",
+      "eligePuesto": "Tap a free seat on the map.",
+      "documento": "ID document",
+      "nombre": "Name",
+      "telefono": "Mobile",
+      "tarifa": "Fare",
+      "tarifaBase": "Trip fare",
+      "resumen": "Summary",
+      "puesto": "Seat",
+      "puestoVentana": "{puesto} · window",
+      "total": "Total",
+      "pago": {
+        "pendiente": "Payment pending",
+        "pagado": "Paid",
+        "etiqueta": "Payment status"
+      },
+      "faltan": "Choose a seat and write the passenger name",
+      "emitir": "Issue ticket · {valor}",
+      "emitirSinValor": "Issue ticket",
+      "verBoletos": "View tickets",
+      "toast": {
+        "retencionVencida": "The hold expired: the seat was released",
+        "emitido": "Ticket {numero} issued · seat {puesto}",
+        "planoCreado": "Seat map created and applied to the vehicle"
+      },
+      "errores": {
+        "viajes": "Could not load the trips",
+        "plano": "Could not create the seat map. Check your permissions."
+      },
+      "respuestas": {
+        "error": "Could not complete. Try again.",
+        "ocupado": "That seat is no longer free.",
+        "viaje_cerrado": "The trip already left or was cancelled.",
+        "datos_invalidos": "Check the passenger name.",
+        "no_cambiable": "This ticket can no longer be changed.",
+        "fuera_de_plazo": "Outside the free-change window: only someone who manages Transport can change it.",
+        "no_anulable": "This ticket can no longer be cancelled.",
+        "motivo_invalido": "Write the reason.",
+        "retenido": "Seat held",
+        "emitido": "Ticket issued",
+        "cambiado": "Ticket changed",
+        "anulado": "Ticket cancelled"
+      },
+      "cambiar": {
+        "titulo": "Change ticket {numero}",
+        "descripcion": "Current seat: {puesto}. Choose the new trip and seat.",
+        "cancelar": "Cancel",
+        "confirmar": "Change ticket",
+        "eligePuesto": "Choose a free seat",
+        "sinCosto": "Free of charge: more than {n} min before departure.",
+        "fueraDePlazo": "Outside the window (less than {n} min before departure): only someone who manages Transport can change it.",
+        "viaje": "Trip",
+        "sinPlano": "This trip has no seat map.",
+        "hecho": "Ticket {numero} changed to seat {puesto}"
+      },
+      "anular": {
+        "titulo": "Cancel ticket {numero}",
+        "descripcion": "The seat becomes free. The cancellation is recorded with its reason.",
+        "volver": "Back",
+        "confirmar": "Cancel ticket",
+        "faltaMotivo": "Write the reason",
+        "conReembolso": "{valor} is refunded ({pct} % of the fare).",
+        "sinPago": "No refund: the ticket was not paid.",
+        "fueraDePlazo": "No refund: less than {n} h before departure.",
+        "notaCaja": "The refund is recorded on the ticket; returning the money is done through the cash register.",
+        "motivo": "Reason",
+        "hecho": "Ticket {numero} cancelled",
+        "hechoReembolso": "Ticket {numero} cancelled · refund {valor}"
+      }
     }
   },
   "ventas": {

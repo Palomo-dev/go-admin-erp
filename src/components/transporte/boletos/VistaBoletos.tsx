@@ -10,17 +10,8 @@ import {
   TicketsStats,
   TicketDialog,
 } from '@/components/transporte/boletos';
+import { DialogoAnularBoleto, DialogoCambiarBoleto, type BoletoParaGestionar } from '@/components/transporte/pasajes/DialogosBoleto';
 import { ticketsService, type TicketWithDetails } from '@/lib/services/ticketsService';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 interface Trip {
   id: string;
@@ -60,7 +51,6 @@ export default function BoletosPage() {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [tripFilter, setTripFilter] = useState('all');
 
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [ticketToCancel, setTicketToCancel] = useState<TicketWithDetails | null>(null);
 
   const [showTicketDialog, setShowTicketDialog] = useState(false);
@@ -213,26 +203,21 @@ export default function BoletosPage() {
     }
   };
 
+  // Anular (Fase 2): con las reglas de Configuración › Transporte (plazo y % de reembolso) y
+  // liberando el puesto, por fn_transporte_anular_boleto. Antes solo cambiaba el estado.
   const handleCancel = (ticket: TicketWithDetails) => {
     setTicketToCancel(ticket);
-    setShowCancelDialog(true);
   };
-
-  const confirmCancel = async () => {
-    if (!ticketToCancel) return;
-
-    try {
-      await ticketsService.cancelTicket(ticketToCancel.id);
-      toast({ title: 'Boleto cancelado' });
-      loadData();
-    } catch (error) {
-      console.error('Error cancelling ticket:', error);
-      toast({ title: 'Error', description: 'No se pudo cancelar', variant: 'destructive' });
-    } finally {
-      setShowCancelDialog(false);
-      setTicketToCancel(null);
-    }
-  };
+  const [ticketToChange, setTicketToChange] = useState<TicketWithDetails | null>(null);
+  const paraGestionar = (ticket: TicketWithDetails): BoletoParaGestionar => ({
+    id: ticket.id,
+    ticket_number: ticket.ticket_number,
+    trip_id: ticket.trip_id,
+    seat_number: ticket.seat_number ?? null,
+    total: Number(ticket.total) || 0,
+    payment_status: ticket.payment_status,
+    salida: ticket.trips?.scheduled_departure ?? null,
+  });
 
   const handleRefund = async (ticket: TicketWithDetails) => {
     try {
@@ -277,6 +262,7 @@ export default function BoletosPage() {
         onRefund={handleRefund}
         onDuplicate={handleDuplicate}
         onResendQR={handleResendQR}
+        onChangeTrip={setTicketToChange}
       />
 
       <TicketDialog
@@ -288,23 +274,12 @@ export default function BoletosPage() {
         onSave={handleSaveTicket}
       />
 
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Cancelar boleto?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción cancelará el boleto <strong>{ticketToCancel?.ticket_number}</strong>.
-              El pasajero no podrá abordar con este boleto.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Volver</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmCancel} className="bg-red-600 hover:bg-red-700">
-              Cancelar Boleto
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {ticketToCancel && (
+        <DialogoAnularBoleto boleto={paraGestionar(ticketToCancel)} onCerrar={() => setTicketToCancel(null)} onHecho={loadData} />
+      )}
+      {ticketToChange && (
+        <DialogoCambiarBoleto boleto={paraGestionar(ticketToChange)} onCerrar={() => setTicketToChange(null)} onHecho={loadData} />
+      )}
     </div>
   );
 }

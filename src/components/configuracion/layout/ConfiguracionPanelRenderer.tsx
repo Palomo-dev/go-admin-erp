@@ -62,6 +62,7 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   ),
   'pos.numero-pedido': dynamic(() => import('@/components/pos/pedidos-online/numeracion/NumeroPedidoPanel').then((m) => m.NumeroPedidoPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'logistica.general': dynamic(() => import('@/components/logistica/ajustes/LogisticaConfigPanel').then((m) => m.LogisticaConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'transporte.general': dynamic(() => import('@/components/transporte/ajustes/TransporteConfigPanel').then((m) => m.TransporteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'chat.general': dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'chat.ia': dynamic(() => import('@/components/chat/ia/configuracion/ConfiguracionIAChat').then((m) => m.ConfiguracionIAChat), { loading: () => <LoadingSkeleton />, ssr: false }),
   'integraciones.general': dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),

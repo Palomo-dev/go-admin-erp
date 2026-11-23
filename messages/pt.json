@@ -40569,7 +40569,8 @@
       "gym": "Assinaturas",
       "notificaciones": "Notificações",
       "datos-offline": "Dados offline",
-      "logistica": "Logística"
+      "logistica": "Logística",
+      "transporte": "Transporte"
     },
     "secciones": {
       "generalGeneral": {
@@ -40746,6 +40747,11 @@
         "titulo": "Logística",
         "descripcion": "Sem movimento, frete grátis, peso padrão e avisos de entrega",
         "palabras": "logística, entrega, envios, sem movimento, frete grátis, peso, medidas, pagamento na entrega, código de entrega, taxa de entrega, zonas"
+      },
+      "transporteGeneral": {
+        "titulo": "Transporte",
+        "descripcion": "Reserva do assento, trocas e cancelamentos, liquidação, tipos de veículo, motivos de ocorrência e exceções de despacho",
+        "palabras": "transporte, passagens, reserva, assento, trocas, cancelamento, reembolso, liquidação, afiliados, proprietários, RNDC, manifesto, tipos de veículo, lancha, iate, motivos de ocorrência, ocorrências, exceção, despacho, PIN, supervisor"
       }
     },
     "ajustes": {
@@ -40784,6 +40790,34 @@
       "logisticaAvisos": {
         "titulo": "Avisos de entrega ao cliente",
         "palabras": "avisos, a caminho, entregue, ocorrência, e-mail, WhatsApp"
+      },
+      "transporteRetencion": {
+        "titulo": "Reserva do assento",
+        "palabras": "reserva, assento, bilheteria, loja virtual, PDV, minutos"
+      },
+      "transporteCambios": {
+        "titulo": "Trocas e cancelamentos de passagens",
+        "palabras": "troca, cancelamento, reembolso, passagem, bilhete"
+      },
+      "transporteLiquidacion": {
+        "titulo": "Liquidação de motoristas e afiliados",
+        "palabras": "liquidação, folha, motoristas, proprietários, afiliados, administração"
+      },
+      "transporteRndc": {
+        "titulo": "RNDC · manifesto eletrônico",
+        "palabras": "RNDC, manifesto, remessa, Ministério dos Transportes, credenciais"
+      },
+      "transporteTiposVehiculo": {
+        "titulo": "Tipos de veículo",
+        "palabras": "tipos de veículo, ônibus, micro-ônibus, caminhão, lancha, iate, embarcação"
+      },
+      "transporteMotivos": {
+        "titulo": "Motivos de ocorrência",
+        "palabras": "motivos, ocorrências, falha, acidente, atraso"
+      },
+      "transporteExcepciones": {
+        "titulo": "Exceções ao bloqueio de despacho",
+        "palabras": "exceção, despacho, bloqueio, seguro, habilitação, PIN, supervisor"
       }
     },
     "telefonia": {
@@ -53692,7 +53726,8 @@
       "integraciones": "Integrações",
       "timeline": "Linha do tempo",
       "datos-offline": "Dados offline",
-      "logistica": "Logística"
+      "logistica": "Logística",
+      "transporte": "Transporte"
     },
     "pestanas": {
       "chatGeneral": "Etiquetas e respostas rápidas",
@@ -65466,6 +65501,136 @@
         "minutos": "{desde}–{hasta} min",
         "horas": "{desde}–{hasta} horas",
         "dias": "{desde}–{hasta} dias"
+      }
+    }
+  },
+  "transporte": {
+    "tiposVehiculo": {
+      "bus": "Ônibus",
+      "minibus": "Micro-ônibus",
+      "truck": "Caminhão",
+      "car": "Carro",
+      "van": "Van",
+      "motorcycle": "Moto",
+      "trailer": "Carreta",
+      "boat": "Lancha",
+      "yacht": "Iate",
+      "other": "Outro"
+    },
+    "motivos": {
+      "retraso": "Atraso",
+      "falla_mecanica": "Falha mecânica",
+      "accidente": "Acidente de trânsito",
+      "control_transito": "Blitz de trânsito",
+      "pasajero": "Passageiro (saúde ou conduta)",
+      "carga": "Carga (falta ou dano)",
+      "objeto_olvidado": "Objeto esquecido",
+      "clima": "Clima ou estado do mar"
+    },
+    "ajustes": {
+      "cargando": "Carregando…",
+      "errorCargar": "Não foi possível ler os ajustes de transporte",
+      "guardado": "Ajustes de transporte salvos",
+      "errorGuardar": "Não foi possível salvar. Verifique suas permissões.",
+      "soloLectura": "Somente leitura: mudar estes ajustes exige a permissão «Gerenciar transporte».",
+      "errores": {
+        "retencion_invalida": "A reserva vai de 1 a 120 minutos por canal.",
+        "plazos_invalidos": "Revise os prazos de troca e cancelamento.",
+        "porcentaje_invalido": "As porcentagens vão de 0 a 100.",
+        "tipos_invalidos": "Revise os tipos de veículo.",
+        "motivos_invalidos": "Cada motivo precisa de nome e pelo menos um deve ficar ativo.",
+        "booleano_invalido": "Há um interruptor sem valor.",
+        "SIN_PERMISO": "Falta a permissão «Gerenciar transporte»."
+      },
+      "pasajes": {
+        "titulo": "Venda de passagens e reserva",
+        "retencion": "Reserva do assento",
+        "retencionDescripcion": "Quanto tempo um assento fica reservado enquanto se cobra, conforme onde se vende.",
+        "taquilla": "Bilheteria",
+        "web": "Loja virtual",
+        "pos": "PDV",
+        "cambios": "Trocas e cancelamentos",
+        "cambiosDescripcion": "Até quando se troca sem custo ou se cancela com reembolso, e quanto se devolve.",
+        "cambioSinCosto": "Troca sem custo",
+        "anulacion": "Cancelamento",
+        "reembolso": "Reembolso",
+        "minAntes": "min antes",
+        "hAntes": "h antes",
+        "liberar": "Liberar o assento ao vencer a reserva",
+        "liberarDescripcion": "Se desligado, a bilheteria o libera à mão em Passagens.",
+        "nota": "A venda com mapa de assentos e reserva chega com a fase Passagens; estes valores ficam salvos para ela."
+      },
+      "liquidacion": {
+        "titulo": "Liquidação",
+        "descripcion": "Como se paga a quem dirige e aos donos dos veículos afiliados.",
+        "conductores": "Motoristas e tripulação",
+        "conductoresDescripcion": "São pagos pela folha, com as viagens e ocorrências do período.",
+        "irRrhh": "Recursos humanos",
+        "propietarios": "Proprietários afiliados",
+        "propietariosDescripcion": "São pagos por contas a pagar, com a receita de cada veículo.",
+        "irFinanzas": "Finanças",
+        "administracion": "Administração sobre afiliados",
+        "administracionDescripcion": "Porcentagem da receita que a empresa retém, conforme o contrato."
+      },
+      "rndc": {
+        "titulo": "RNDC · manifesto eletrônico de carga",
+        "descripcion": "As credenciais do web service do Ministério dos Transportes (NIT, código de habilitação, ambiente, usuário e senha) ficam em Integrações › Conexões, com «Ver» em claro como os gateways de pagamento. A conexão com o RNDC chega com a fase Carga.",
+        "accion": "Ir para Conexões"
+      },
+      "tipos": {
+        "titulo": "Tipos de veículo",
+        "descripcion": "Lancha e iate entram na lista: se houver pelo menos uma embarcação ativa, Viagens e Passagens mostram Embarcações. Também existem moto, van, carreta e outro.",
+        "agregar": "Adicionar tipo",
+        "tipo": "Tipo",
+        "codigo": "Código",
+        "uso": "Uso habitual",
+        "activo": "Ativo",
+        "activoDe": "{tipo} ativo",
+        "nuevo": "Novo",
+        "usos": {
+          "transporte": "Transporte",
+          "logistica": "Logística",
+          "ambos": "Transporte e Logística"
+        }
+      },
+      "motivos": {
+        "titulo": "Motivos de ocorrência",
+        "descripcion": "Uma só lista para o app do motorista, Viagens › Ocorrências e o diálogo de relato. A ordem daqui é a ordem em que são oferecidos.",
+        "agregar": "Adicionar motivo",
+        "nuevo": "Nome do motivo novo",
+        "placeholder": "Ex.: Pneu furado",
+        "anadir": "Adicionar",
+        "cancelar": "Cancelar",
+        "nombreDe": "Nome do motivo {n}",
+        "gravedadDe": "Gravidade de {motivo}",
+        "bloquea": "Bloqueia o veículo",
+        "inactivo": "Inativo",
+        "subir": "Subir",
+        "bajar": "Descer",
+        "desactivar": "Desativar",
+        "activar": "Ativar",
+        "quitar": "Remover",
+        "ultimoActivo": "Pelo menos um motivo deve ficar ativo",
+        "gravedades": {
+          "leve": "Leve",
+          "moderada": "Moderada",
+          "grave": "Grave"
+        }
+      },
+      "excepciones": {
+        "titulo": "Exceções ao bloqueio de despacho",
+        "descripcion": "Uma viagem com documentos vencidos não sai. Cada exceção vale para uma só viagem, pede motivo e fica na planilha de despacho e no registro da viagem.",
+        "quien": "Quem pode autorizar",
+        "quienDescripcion": "Quem tiver a permissão «Autorizar exceção de despacho» (o cargo «Supervisor de despacho» a inclui). É resolvida no servidor; a permissão se dá em Equipe e funções.",
+        "irRoles": "Equipe e funções",
+        "vehiculo": "Por documentos do veículo",
+        "vehiculoDescripcion": "Seguro obrigatório (SOAT), vistoria técnica, apólice e cartão de operação.",
+        "conductor": "Por documentos do motorista",
+        "conductorDescripcion": "Habilitação e exame médico.",
+        "manifiesto": "Por manifesto de carga faltante",
+        "manifiestoDescripcion": "A viagem sai e o manifesto é emitido nas 2 horas seguintes. Vale quando chegar o manifesto eletrônico (fase Carga).",
+        "pin": "Pedir o PIN do supervisor",
+        "pinDescripcion": "É o PIN de Recursos humanos (o mesmo do quiosque de ponto). É verificado no servidor; nunca é salvo no aparelho."
       }
     }
   }

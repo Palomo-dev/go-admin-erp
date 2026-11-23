@@ -19,6 +19,7 @@ import {
   Bot,
   Phone,
   Truck,
+  Bus,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -162,6 +163,18 @@ export const CONFIG_MODULES: ConfigModule[] = [
     description: 'Sin movimiento, envío gratis, peso por defecto y avisos de entrega',
     // CATALOGO-ICONOS.md / navigation/catalog.ts: el módulo Logística es `Truck`.
     icon: Truck,
+    grupo: 'operacion',
+  },
+  {
+    // Transporte (Figma «23 Transporte» › 21b, 2026-11-23): retención del puesto, cambios y
+    // anulaciones, liquidación, tipos de vehículo, motivos de novedad y excepciones al despacho.
+    // Sin página «Configuración» en el módulo: Despachos de hoy, Flota y Boletos llevan el atajo.
+    id: 'transporte',
+    moduleCode: 'transport',
+    title: 'Transporte',
+    description: 'Pasajes, liquidación, tipos de vehículo, novedades y excepciones de despacho',
+    // navigation/catalog.ts: el módulo Transporte es `Bus`.
+    icon: Bus,
     grupo: 'operacion',
   },
   {

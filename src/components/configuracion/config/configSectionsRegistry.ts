@@ -139,6 +139,25 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
       { ancla: 'avisos', clave: 'logisticaAvisos' },
     ],
   },
+  // Transporte (Figma «23 Transporte» › 21b): sin página de «Configuración» en el módulo. Editar
+  // exige `transporte.manage` (lo resuelve `PUT /api/transporte/ajustes`); los catálogos (rutas,
+  // tarifas, vehículos, conductores) se quedan en el módulo y el RNDC en Integraciones › Conexiones.
+  {
+    id: 'transporte.general',
+    modulo: 'transporte',
+    seccion: 'general',
+    clave: 'transporteGeneral',
+    permiso: 'transporte.manage',
+    ajustes: [
+      { ancla: 'retencion', clave: 'transporteRetencion' },
+      { ancla: 'cambios-anulaciones', clave: 'transporteCambios' },
+      { ancla: 'liquidacion', clave: 'transporteLiquidacion' },
+      { ancla: 'rndc', clave: 'transporteRndc' },
+      { ancla: 'tipos-vehiculo', clave: 'transporteTiposVehiculo' },
+      { ancla: 'motivos-novedad', clave: 'transporteMotivos' },
+      { ancla: 'excepciones', clave: 'transporteExcepciones' },
+    ],
+  },
   { id: 'chat.general', modulo: 'chat', seccion: 'general', clave: 'chatGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'chat.ia', modulo: 'chat', seccion: 'ia', clave: 'chatIa', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'integraciones.general', modulo: 'integraciones', seccion: 'general', clave: 'integracionesGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

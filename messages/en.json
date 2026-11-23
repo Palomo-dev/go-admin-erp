@@ -40559,7 +40559,8 @@
       "gym": "Memberships",
       "notificaciones": "Notifications",
       "datos-offline": "Offline data",
-      "logistica": "Logistics"
+      "logistica": "Logistics",
+      "transporte": "Transport"
     },
     "secciones": {
       "generalGeneral": {
@@ -40736,6 +40737,11 @@
         "titulo": "Logistics",
         "descripcion": "No movement, free shipping, default weight and delivery notices",
         "palabras": "logistics, delivery, shipments, no movement, free shipping, weight, dimensions, cash on delivery, delivery code, delivery fee, zones"
+      },
+      "transporteGeneral": {
+        "titulo": "Transport",
+        "descripcion": "Seat hold, changes and cancellations, settlement, vehicle types, incident reasons and dispatch exceptions",
+        "palabras": "transport, tickets, hold, seat, changes, cancellation, refund, settlement, affiliates, owners, RNDC, manifest, vehicle types, boat, yacht, incident reasons, incidents, exception, dispatch, PIN, supervisor"
       }
     },
     "ajustes": {
@@ -40774,6 +40780,34 @@
       "logisticaAvisos": {
         "titulo": "Delivery notices to the customer",
         "palabras": "notices, on the way, delivered, issue, email, WhatsApp"
+      },
+      "transporteRetencion": {
+        "titulo": "Seat hold",
+        "palabras": "hold, seat, ticket office, web store, POS, minutes"
+      },
+      "transporteCambios": {
+        "titulo": "Ticket changes and cancellations",
+        "palabras": "change, cancellation, refund, ticket"
+      },
+      "transporteLiquidacion": {
+        "titulo": "Driver and affiliate settlement",
+        "palabras": "settlement, payroll, drivers, owners, affiliates, fee"
+      },
+      "transporteRndc": {
+        "titulo": "RNDC · electronic manifest",
+        "palabras": "RNDC, manifest, consignment, Ministry of Transport, credentials"
+      },
+      "transporteTiposVehiculo": {
+        "titulo": "Vehicle types",
+        "palabras": "vehicle types, bus, minibus, truck, boat, yacht, vessel"
+      },
+      "transporteMotivos": {
+        "titulo": "Incident reasons",
+        "palabras": "reasons, incidents, failure, accident, delay"
+      },
+      "transporteExcepciones": {
+        "titulo": "Dispatch block exceptions",
+        "palabras": "exception, dispatch, block, insurance, license, PIN, supervisor"
       }
     },
     "telefonia": {
@@ -53682,7 +53716,8 @@
       "integraciones": "Integrations",
       "timeline": "Timeline",
       "datos-offline": "Offline data",
-      "logistica": "Logistics"
+      "logistica": "Logistics",
+      "transporte": "Transport"
     },
     "pestanas": {
       "chatGeneral": "Tags and quick replies",
@@ -65456,6 +65491,136 @@
         "minutos": "{desde}–{hasta} min",
         "horas": "{desde}–{hasta} hours",
         "dias": "{desde}–{hasta} days"
+      }
+    }
+  },
+  "transporte": {
+    "tiposVehiculo": {
+      "bus": "Bus",
+      "minibus": "Minibus",
+      "truck": "Truck",
+      "car": "Car",
+      "van": "Van",
+      "motorcycle": "Motorcycle",
+      "trailer": "Tractor-trailer",
+      "boat": "Boat",
+      "yacht": "Yacht",
+      "other": "Other"
+    },
+    "motivos": {
+      "retraso": "Delay",
+      "falla_mecanica": "Mechanical failure",
+      "accidente": "Traffic accident",
+      "control_transito": "Traffic stop",
+      "pasajero": "Passenger (health or behavior)",
+      "carga": "Cargo (missing or damaged)",
+      "objeto_olvidado": "Forgotten item",
+      "clima": "Weather or sea conditions"
+    },
+    "ajustes": {
+      "cargando": "Loading…",
+      "errorCargar": "Could not read the transport settings",
+      "guardado": "Transport settings saved",
+      "errorGuardar": "Could not save. Check your permissions.",
+      "soloLectura": "Read only: changing these settings requires the «Manage transport» permission.",
+      "errores": {
+        "retencion_invalida": "Hold time goes from 1 to 120 minutes per channel.",
+        "plazos_invalidos": "Check the change and cancellation deadlines.",
+        "porcentaje_invalido": "Percentages go from 0 to 100.",
+        "tipos_invalidos": "Check the vehicle types.",
+        "motivos_invalidos": "Every reason needs a name and at least one must stay active.",
+        "booleano_invalido": "A switch has no value.",
+        "SIN_PERMISO": "You need the «Manage transport» permission."
+      },
+      "pasajes": {
+        "titulo": "Ticket sales and seat hold",
+        "retencion": "Seat hold",
+        "retencionDescripcion": "How long a seat stays held while it is being paid, by sales channel.",
+        "taquilla": "Ticket office",
+        "web": "Web store",
+        "pos": "POS",
+        "cambios": "Changes and cancellations",
+        "cambiosDescripcion": "Until when a ticket can be changed for free or cancelled with a refund, and how much is refunded.",
+        "cambioSinCosto": "Free change",
+        "anulacion": "Cancellation",
+        "reembolso": "Refund",
+        "minAntes": "min before",
+        "hAntes": "h before",
+        "liberar": "Release the seat when the hold expires",
+        "liberarDescripcion": "If off, the ticket office releases it by hand from Tickets.",
+        "nota": "Selling with a seat map and hold arrives with the Tickets phase; these values are kept for it."
+      },
+      "liquidacion": {
+        "titulo": "Settlement",
+        "descripcion": "How drivers and the owners of affiliated vehicles are paid.",
+        "conductores": "Drivers and crew",
+        "conductoresDescripcion": "Paid through payroll, with the trips and incidents of the period.",
+        "irRrhh": "Human resources",
+        "propietarios": "Affiliated owners",
+        "propietariosDescripcion": "Paid through accounts payable, with each vehicle's revenue.",
+        "irFinanzas": "Finance",
+        "administracion": "Fee on affiliates",
+        "administracionDescripcion": "Share of the revenue the company keeps, per contract."
+      },
+      "rndc": {
+        "titulo": "RNDC · electronic cargo manifest",
+        "descripcion": "The credentials for the Ministry of Transport web service (tax ID, license code, environment, user and password) are stored in Integrations › Connections, shown in plain text with «View» like payment gateways. The RNDC connection arrives with the Cargo phase.",
+        "accion": "Go to Connections"
+      },
+      "tipos": {
+        "titulo": "Vehicle types",
+        "descripcion": "Boat and yacht join the list: if at least one vessel is active, Trips and Tickets show Vessels. Motorcycle, van, tractor-trailer and other also exist.",
+        "agregar": "Add type",
+        "tipo": "Type",
+        "codigo": "Code",
+        "uso": "Usual use",
+        "activo": "Active",
+        "activoDe": "{tipo} active",
+        "nuevo": "New",
+        "usos": {
+          "transporte": "Transport",
+          "logistica": "Logistics",
+          "ambos": "Transport and Logistics"
+        }
+      },
+      "motivos": {
+        "titulo": "Incident reasons",
+        "descripcion": "One list for the driver app, Trips › Incidents and the report dialog. The order here is the order they are offered in.",
+        "agregar": "Add reason",
+        "nuevo": "Name of the new reason",
+        "placeholder": "E.g.: Flat tire",
+        "anadir": "Add",
+        "cancelar": "Cancel",
+        "nombreDe": "Name of reason {n}",
+        "gravedadDe": "Severity of {motivo}",
+        "bloquea": "Blocks the vehicle",
+        "inactivo": "Inactive",
+        "subir": "Move up",
+        "bajar": "Move down",
+        "desactivar": "Deactivate",
+        "activar": "Activate",
+        "quitar": "Remove",
+        "ultimoActivo": "At least one reason must stay active",
+        "gravedades": {
+          "leve": "Minor",
+          "moderada": "Moderate",
+          "grave": "Serious"
+        }
+      },
+      "excepciones": {
+        "titulo": "Dispatch block exceptions",
+        "descripcion": "A trip with expired documents does not leave. Each exception is valid for one trip only, needs a reason and is recorded on the dispatch sheet and the trip log.",
+        "quien": "Who can authorize",
+        "quienDescripcion": "Whoever has the «Authorize dispatch exception» permission (the «Dispatch supervisor» position includes it). It is resolved on the server; the permission is granted in Team and roles.",
+        "irRoles": "Team and roles",
+        "vehiculo": "For vehicle documents",
+        "vehiculoDescripcion": "Mandatory insurance (SOAT), technical inspection, policy and operating card.",
+        "conductor": "For driver documents",
+        "conductorDescripcion": "License and medical exam.",
+        "manifiesto": "For a missing cargo manifest",
+        "manifiestoDescripcion": "The trip leaves and the manifest is issued within the next 2 hours. Applies once the electronic manifest arrives (Cargo phase).",
+        "pin": "Ask for the supervisor's PIN",
+        "pinDescripcion": "It is the Human resources PIN (the same as the time clock kiosk). It is verified on the server; it is never stored on the device."
       }
     }
   }

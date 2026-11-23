@@ -40559,7 +40559,8 @@
       "gym": "Abonnements",
       "notificaciones": "Notifications",
       "datos-offline": "Données hors ligne",
-      "logistica": "Logistique"
+      "logistica": "Logistique",
+      "transporte": "Transport"
     },
     "secciones": {
       "generalGeneral": {
@@ -40736,6 +40737,11 @@
         "titulo": "Logistique",
         "descripcion": "Sans mouvement, livraison gratuite, poids par défaut et avis de livraison",
         "palabras": "logistique, livraison, envois, sans mouvement, livraison gratuite, poids, dimensions, paiement à la livraison, code de livraison, frais de livraison, zones"
+      },
+      "transporteGeneral": {
+        "titulo": "Transport",
+        "descripcion": "Réservation du siège, modifications et annulations, liquidation, types de véhicule, motifs d’incident et exceptions de départ",
+        "palabras": "transport, billets, réservation, siège, modifications, annulation, remboursement, liquidation, affiliés, propriétaires, RNDC, manifeste, types de véhicule, bateau, yacht, motifs d’incident, incidents, exception, départ, PIN, superviseur"
       }
     },
     "ajustes": {
@@ -40774,6 +40780,34 @@
       "logisticaAvisos": {
         "titulo": "Avis de livraison au client",
         "palabras": "avis, en route, livré, incident, e-mail, WhatsApp"
+      },
+      "transporteRetencion": {
+        "titulo": "Réservation du siège",
+        "palabras": "réservation, siège, guichet, boutique en ligne, POS, minutes"
+      },
+      "transporteCambios": {
+        "titulo": "Modifications et annulations de billets",
+        "palabras": "modification, annulation, remboursement, billet"
+      },
+      "transporteLiquidacion": {
+        "titulo": "Liquidation des conducteurs et affiliés",
+        "palabras": "liquidation, paie, conducteurs, propriétaires, affiliés, frais"
+      },
+      "transporteRndc": {
+        "titulo": "RNDC · manifeste électronique",
+        "palabras": "RNDC, manifeste, lettre de voiture, ministère des Transports, identifiants"
+      },
+      "transporteTiposVehiculo": {
+        "titulo": "Types de véhicule",
+        "palabras": "types de véhicule, bus, minibus, camion, bateau, yacht, embarcation"
+      },
+      "transporteMotivos": {
+        "titulo": "Motifs d’incident",
+        "palabras": "motifs, incidents, panne, accident, retard"
+      },
+      "transporteExcepciones": {
+        "titulo": "Exceptions au blocage du départ",
+        "palabras": "exception, départ, blocage, assurance, permis, PIN, superviseur"
       }
     },
     "telefonia": {
@@ -53682,7 +53716,8 @@
       "integraciones": "Intégrations",
       "timeline": "Chronologie",
       "datos-offline": "Données hors ligne",
-      "logistica": "Logistique"
+      "logistica": "Logistique",
+      "transporte": "Transport"
     },
     "pestanas": {
       "chatGeneral": "Étiquettes et réponses rapides",
@@ -65456,6 +65491,136 @@
         "minutos": "{desde}–{hasta} min",
         "horas": "{desde}–{hasta} heures",
         "dias": "{desde}–{hasta} jours"
+      }
+    }
+  },
+  "transporte": {
+    "tiposVehiculo": {
+      "bus": "Bus",
+      "minibus": "Minibus",
+      "truck": "Camion",
+      "car": "Voiture",
+      "van": "Fourgonnette",
+      "motorcycle": "Moto",
+      "trailer": "Semi-remorque",
+      "boat": "Bateau",
+      "yacht": "Yacht",
+      "other": "Autre"
+    },
+    "motivos": {
+      "retraso": "Retard",
+      "falla_mecanica": "Panne mécanique",
+      "accidente": "Accident de la route",
+      "control_transito": "Contrôle routier",
+      "pasajero": "Passager (santé ou comportement)",
+      "carga": "Marchandise (manquante ou endommagée)",
+      "objeto_olvidado": "Objet oublié",
+      "clima": "Météo ou état de la mer"
+    },
+    "ajustes": {
+      "cargando": "Chargement…",
+      "errorCargar": "Impossible de lire les paramètres de transport",
+      "guardado": "Paramètres de transport enregistrés",
+      "errorGuardar": "Enregistrement impossible. Vérifiez vos autorisations.",
+      "soloLectura": "Lecture seule : modifier ces paramètres exige l’autorisation « Gérer le transport ».",
+      "errores": {
+        "retencion_invalida": "La réservation va de 1 à 120 minutes par canal.",
+        "plazos_invalidos": "Vérifiez les délais de modification et d’annulation.",
+        "porcentaje_invalido": "Les pourcentages vont de 0 à 100.",
+        "tipos_invalidos": "Vérifiez les types de véhicule.",
+        "motivos_invalidos": "Chaque motif a besoin d’un nom et au moins un doit rester actif.",
+        "booleano_invalido": "Un interrupteur n’a pas de valeur.",
+        "SIN_PERMISO": "Il vous manque l’autorisation « Gérer le transport »."
+      },
+      "pasajes": {
+        "titulo": "Vente de billets et réservation",
+        "retencion": "Réservation du siège",
+        "retencionDescripcion": "Combien de temps un siège reste réservé pendant le paiement, selon le canal de vente.",
+        "taquilla": "Guichet",
+        "web": "Boutique en ligne",
+        "pos": "POS",
+        "cambios": "Modifications et annulations",
+        "cambiosDescripcion": "Jusqu’à quand un billet se modifie sans frais ou s’annule avec remboursement, et combien est remboursé.",
+        "cambioSinCosto": "Modification gratuite",
+        "anulacion": "Annulation",
+        "reembolso": "Remboursement",
+        "minAntes": "min avant",
+        "hAntes": "h avant",
+        "liberar": "Libérer le siège à la fin de la réservation",
+        "liberarDescripcion": "Si désactivé, le guichet le libère à la main depuis Billets.",
+        "nota": "La vente avec plan des sièges et réservation arrive avec la phase Billets ; ces valeurs sont conservées pour elle."
+      },
+      "liquidacion": {
+        "titulo": "Liquidation",
+        "descripcion": "Comment sont payés les conducteurs et les propriétaires des véhicules affiliés.",
+        "conductores": "Conducteurs et équipage",
+        "conductoresDescripcion": "Payés par la paie, avec les trajets et incidents de la période.",
+        "irRrhh": "Ressources humaines",
+        "propietarios": "Propriétaires affiliés",
+        "propietariosDescripcion": "Payés par les comptes fournisseurs, avec la recette de chaque véhicule.",
+        "irFinanzas": "Finances",
+        "administracion": "Frais sur les affiliés",
+        "administracionDescripcion": "Part de la recette que garde l’entreprise, selon le contrat."
+      },
+      "rndc": {
+        "titulo": "RNDC · manifeste électronique de fret",
+        "descripcion": "Les identifiants du service web du ministère des Transports (NIT, code d’habilitation, environnement, utilisateur et mot de passe) sont enregistrés dans Intégrations › Connexions, affichés en clair avec « Voir » comme les passerelles de paiement. La connexion au RNDC arrive avec la phase Fret.",
+        "accion": "Aller aux Connexions"
+      },
+      "tipos": {
+        "titulo": "Types de véhicule",
+        "descripcion": "Bateau et yacht rejoignent la liste : s’il y a au moins une embarcation active, Trajets et Billets affichent Embarcations. Moto, fourgonnette, semi-remorque et autre existent aussi.",
+        "agregar": "Ajouter un type",
+        "tipo": "Type",
+        "codigo": "Code",
+        "uso": "Usage habituel",
+        "activo": "Actif",
+        "activoDe": "{tipo} actif",
+        "nuevo": "Nouveau",
+        "usos": {
+          "transporte": "Transport",
+          "logistica": "Logistique",
+          "ambos": "Transport et Logistique"
+        }
+      },
+      "motivos": {
+        "titulo": "Motifs d’incident",
+        "descripcion": "Une seule liste pour l’app du conducteur, Trajets › Incidents et la fenêtre de signalement. L’ordre ici est celui dans lequel ils sont proposés.",
+        "agregar": "Ajouter un motif",
+        "nuevo": "Nom du nouveau motif",
+        "placeholder": "Ex. : Crevaison",
+        "anadir": "Ajouter",
+        "cancelar": "Annuler",
+        "nombreDe": "Nom du motif {n}",
+        "gravedadDe": "Gravité de {motivo}",
+        "bloquea": "Bloque le véhicule",
+        "inactivo": "Inactif",
+        "subir": "Monter",
+        "bajar": "Descendre",
+        "desactivar": "Désactiver",
+        "activar": "Activer",
+        "quitar": "Retirer",
+        "ultimoActivo": "Au moins un motif doit rester actif",
+        "gravedades": {
+          "leve": "Légère",
+          "moderada": "Modérée",
+          "grave": "Grave"
+        }
+      },
+      "excepciones": {
+        "titulo": "Exceptions au blocage du départ",
+        "descripcion": "Un trajet avec des documents expirés ne part pas. Chaque exception vaut pour un seul trajet, exige un motif et figure sur la feuille de départ et dans le journal du trajet.",
+        "quien": "Qui peut autoriser",
+        "quienDescripcion": "Quiconque a l’autorisation « Autoriser une exception de départ » (le poste « Superviseur des départs » l’inclut). Elle est vérifiée sur le serveur ; l’autorisation se donne dans Équipe et rôles.",
+        "irRoles": "Équipe et rôles",
+        "vehiculo": "Pour les documents du véhicule",
+        "vehiculoDescripcion": "Assurance obligatoire (SOAT), contrôle technique, police et carte d’exploitation.",
+        "conductor": "Pour les documents du conducteur",
+        "conductorDescripcion": "Permis et examen médical.",
+        "manifiesto": "Pour un manifeste de fret manquant",
+        "manifiestoDescripcion": "Le trajet part et le manifeste est émis dans les 2 heures suivantes. S’applique à l’arrivée du manifeste électronique (phase Fret).",
+        "pin": "Demander le PIN du superviseur",
+        "pinDescripcion": "C’est le PIN des Ressources humaines (le même que la borne de pointage). Il est vérifié sur le serveur ; il n’est jamais enregistré sur l’appareil."
       }
     }
   }

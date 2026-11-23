@@ -34960,6 +34960,109 @@
               "trial": "Free trial",
               "page": "Site page",
               "url": "External link"
+            },
+            "variante": "Style",
+            "varianteOpcion": {
+              "icons": "Icons only",
+              "split": "Island + separate button"
+            },
+            "marca": "Active marker",
+            "marcaAyuda": "\"Slide\": a soft pill moves to the button you tap. Respects the phone's \"reduce motion\".",
+            "marcaOpcion": {
+              "none": "None",
+              "fill": "Fill",
+              "dot": "Dot",
+              "line": "Line",
+              "slide": "Slide"
+            },
+            "formaCentro": "Highlighted button shape",
+            "formaCentroOpcion": {
+              "circle": "Circle",
+              "notch": "Notch"
+            },
+            "aparte": "Separate button",
+            "aparteAyuda": "Shown in its own circle to the right of the island. Cart by default.",
+            "colores": "Colors",
+            "coloresOpcion": {
+              "header": "Header",
+              "light": "Light",
+              "custom": "Custom"
+            },
+            "coloresAyuda": "\"Header\" uses its background and mode (light or dark). \"Light\" uses the site background. \"Custom\" opens background, active and inactive.",
+            "contador": {
+              "titulo": "Badge on the icon",
+              "cart": "Cart",
+              "favorites": "Favorites",
+              "opcion": {
+                "number": "Number",
+                "dot": "Dot",
+                "hidden": "Hidden"
+              },
+              "ayuda": "The same badge as the header. If the icon is also at the top, both show the same."
+            },
+            "contadorBoton": "Badge",
+            "alBajar": "When scrolling down",
+            "alBajarOpcion": {
+              "always": "Always visible",
+              "hide": "Hides"
+            },
+            "alBajarAyuda": "It comes back when scrolling up, at the end of the page and on short pages. The chat bubble moves with the menu.",
+            "paginas": {
+              "titulo": "Special pages",
+              "ficha": "Product page",
+              "fichaOpcion": {
+                "hide": "Hide",
+                "stack": "Stack"
+              },
+              "fichaAyuda": "While the buy bar is visible: the menu hides, or stays compact below it.",
+              "checkout": "Checkout and cart",
+              "checkoutValor": "Always hidden",
+              "chat": "Chat bubble",
+              "chatValor": "Adjusts itself"
+            },
+            "noRepetir": "Do not repeat in the header (optional)",
+            "noRepetirAyuda": "Off by default: Cart and Account show at the top and bottom, as today. When on, the top keeps the logo and what is not in the menu.",
+            "arrastrar": "Drag the handle to change the order. The eye hides without deleting.",
+            "efectos": {
+              "titulo": "Effects",
+              "vistaPrevia": "Live preview",
+              "reproducir": "Play",
+              "tocaIcono": "or tap an icon to try it",
+              "activo": "Active effect",
+              "activoOpcion": {
+                "color": "Color",
+                "pill": "Pill",
+                "underline": "Underline",
+                "dot": "Dot",
+                "slide": "Slide",
+                "fill": "Fill",
+                "bounce": "Bounce",
+                "glow": "Glow",
+                "label": "Label"
+              },
+              "toque": "On tap",
+              "toqueOpcion": {
+                "none": "None",
+                "darken": "Darken background",
+                "scale": "Scale",
+                "bounce": "Bounce",
+                "ripple": "Ripple",
+                "tilt": "Tilt"
+              },
+              "velocidad": "Speed",
+              "velocidadOpcion": {
+                "fast": "Fast",
+                "normal": "Normal",
+                "slow": "Gentle"
+              },
+              "ayuda": "With the phone's \"reduce motion\", only the color changes, with no animation."
+            },
+            "iconoOpcion": {
+              "store": "Store",
+              "list": "List",
+              "basket": "Basket",
+              "user-circle": "In a circle",
+              "gift": "Gift"
             }
           }
         }

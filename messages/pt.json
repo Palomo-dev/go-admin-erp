@@ -34970,6 +34970,109 @@
               "trial": "Teste grátis",
               "page": "Página do site",
               "url": "Link externo"
+            },
+            "variante": "Estilo",
+            "varianteOpcion": {
+              "icons": "Só ícones",
+              "split": "Ilha + botão à parte"
+            },
+            "marca": "Marca do ativo",
+            "marcaAyuda": "«Desliza»: uma pílula suave vai até o botão tocado. Respeita «reduzir movimento» do celular.",
+            "marcaOpcion": {
+              "none": "Nenhuma",
+              "fill": "Preenchimento",
+              "dot": "Ponto",
+              "line": "Linha",
+              "slide": "Desliza"
+            },
+            "formaCentro": "Forma do destaque",
+            "formaCentroOpcion": {
+              "circle": "Círculo",
+              "notch": "Recorte"
+            },
+            "aparte": "Botão à parte",
+            "aparteAyuda": "Aparece no próprio círculo à direita da ilha. Por padrão, o Carrinho.",
+            "colores": "Cores",
+            "coloresOpcion": {
+              "header": "Cabeçalho",
+              "light": "Claro",
+              "custom": "Próprio"
+            },
+            "coloresAyuda": "«Cabeçalho» usa o fundo e o modo dele (claro ou escuro). «Claro» usa o fundo do site. «Próprio» abre fundo, ativo e inativo.",
+            "contador": {
+              "titulo": "Contador no ícone",
+              "cart": "Carrinho",
+              "favorites": "Favoritos",
+              "opcion": {
+                "number": "Número",
+                "dot": "Ponto",
+                "hidden": "Oculto"
+              },
+              "ayuda": "O mesmo contador do cabeçalho. Se o ícone também está em cima, os dois mostram o mesmo."
+            },
+            "contadorBoton": "Contador",
+            "alBajar": "Ao rolar a página",
+            "alBajarOpcion": {
+              "always": "Sempre visível",
+              "hide": "Esconde"
+            },
+            "alBajarAyuda": "Volta ao subir, no fim da página e em páginas curtas. A bolha do chat acompanha o menu.",
+            "paginas": {
+              "titulo": "Páginas especiais",
+              "ficha": "Página do produto",
+              "fichaOpcion": {
+                "hide": "Ocultar",
+                "stack": "Empilhar"
+              },
+              "fichaAyuda": "Enquanto a barra de compra aparece: o menu se oculta, ou fica compacto embaixo dela.",
+              "checkout": "Checkout e carrinho",
+              "checkoutValor": "Sempre oculto",
+              "chat": "Bolha do chat",
+              "chatValor": "Ajusta-se sozinha"
+            },
+            "noRepetir": "Não repetir no cabeçalho (opcional)",
+            "noRepetirAyuda": "Desligado por padrão: Carrinho e Conta aparecem em cima e embaixo, como hoje. Ligado, em cima ficam o logo e o que não está no menu.",
+            "arrastrar": "Arraste a alça para mudar a ordem. O olho oculta sem apagar.",
+            "efectos": {
+              "titulo": "Efeitos",
+              "vistaPrevia": "Prévia ao vivo",
+              "reproducir": "Reproduzir",
+              "tocaIcono": "ou toque um ícone para testar",
+              "activo": "Efeito do ativo",
+              "activoOpcion": {
+                "color": "Cor",
+                "pill": "Pílula",
+                "underline": "Sublinhado",
+                "dot": "Ponto",
+                "slide": "Desliza",
+                "fill": "Preenchido",
+                "bounce": "Salto",
+                "glow": "Halo",
+                "label": "Etiqueta"
+              },
+              "toque": "Ao tocar",
+              "toqueOpcion": {
+                "none": "Nenhum",
+                "darken": "Escurecer fundo",
+                "scale": "Escala",
+                "bounce": "Salto",
+                "ripple": "Onda",
+                "tilt": "Inclinação"
+              },
+              "velocidad": "Velocidade",
+              "velocidadOpcion": {
+                "fast": "Rápida",
+                "normal": "Normal",
+                "slow": "Suave"
+              },
+              "ayuda": "Com «reduzir movimento» do celular, só muda a cor, sem animação."
+            },
+            "iconoOpcion": {
+              "store": "Loja",
+              "list": "Lista",
+              "basket": "Cesta",
+              "user-circle": "Em círculo",
+              "gift": "Presente"
             }
           }
         }

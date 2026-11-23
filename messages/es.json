@@ -34958,6 +34958,109 @@
           "mi": {
             "accion": {
               "favorites": "Favoritos"
+            },
+            "variante": "Estilo",
+            "varianteOpcion": {
+              "icons": "Solo íconos",
+              "split": "Isla + botón aparte"
+            },
+            "marca": "Marca del activo",
+            "marcaAyuda": "«Desliza»: una píldora suave se mueve al botón que tocas. Respeta «menos movimiento» del teléfono.",
+            "marcaOpcion": {
+              "none": "Ninguna",
+              "fill": "Relleno",
+              "dot": "Punto",
+              "line": "Línea",
+              "slide": "Desliza"
+            },
+            "formaCentro": "Forma del destacado",
+            "formaCentroOpcion": {
+              "circle": "Círculo",
+              "notch": "Muesca"
+            },
+            "aparte": "Botón aparte",
+            "aparteAyuda": "Sale en su propio círculo a la derecha de la isla. Por defecto, el Carrito.",
+            "colores": "Colores",
+            "coloresOpcion": {
+              "header": "Encabezado",
+              "light": "Claro",
+              "custom": "Propio"
+            },
+            "coloresAyuda": "«Encabezado» usa su fondo y su modo (claro u oscuro). «Claro» usa el fondo del sitio. «Propio» abre fondo, activo e inactivo.",
+            "contador": {
+              "titulo": "Contador en el ícono",
+              "cart": "Carrito",
+              "favorites": "Favoritos",
+              "opcion": {
+                "number": "Número",
+                "dot": "Punto",
+                "hidden": "Oculto"
+              },
+              "ayuda": "El mismo contador de la cabecera. Si el ícono también está arriba, los dos muestran lo mismo."
+            },
+            "contadorBoton": "Contador",
+            "alBajar": "Al bajar la página",
+            "alBajarOpcion": {
+              "always": "Siempre visible",
+              "hide": "Se esconde"
+            },
+            "alBajarAyuda": "Vuelve al subir, al final de la página y en páginas cortas. La burbuja del chat se mueve con el menú.",
+            "paginas": {
+              "titulo": "Páginas especiales",
+              "ficha": "Ficha de producto",
+              "fichaOpcion": {
+                "hide": "Ocultar",
+                "stack": "Apilar"
+              },
+              "fichaAyuda": "Mientras se ve la barra de compra: el menú se oculta, o queda compacto debajo de ella.",
+              "checkout": "Checkout y carrito",
+              "checkoutValor": "Siempre oculto",
+              "chat": "Burbuja del chat",
+              "chatValor": "Se acomoda sola"
+            },
+            "noRepetir": "No repetir en la cabecera (opcional)",
+            "noRepetirAyuda": "Apagado por defecto: Carrito y Cuenta salen arriba y abajo, como hoy. Al encenderlo, arriba quedan el logo y lo que no está en el menú.",
+            "arrastrar": "Arrastra el tirador para cambiar el orden. El ojo oculta sin borrar.",
+            "efectos": {
+              "titulo": "Efectos",
+              "vistaPrevia": "Vista previa en vivo",
+              "reproducir": "Reproducir",
+              "tocaIcono": "o toca un ícono para probar",
+              "activo": "Efecto del activo",
+              "activoOpcion": {
+                "color": "Color",
+                "pill": "Píldora",
+                "underline": "Subrayado",
+                "dot": "Punto",
+                "slide": "Desliza",
+                "fill": "Relleno",
+                "bounce": "Rebote",
+                "glow": "Halo",
+                "label": "Etiqueta"
+              },
+              "toque": "Al tocar",
+              "toqueOpcion": {
+                "none": "Ninguno",
+                "darken": "Oscurecer fondo",
+                "scale": "Escala",
+                "bounce": "Rebote",
+                "ripple": "Onda",
+                "tilt": "Inclinación"
+              },
+              "velocidad": "Velocidad",
+              "velocidadOpcion": {
+                "fast": "Rápida",
+                "normal": "Normal",
+                "slow": "Suave"
+              },
+              "ayuda": "Con «menos movimiento» del teléfono solo cambia el color, sin animación."
+            },
+            "iconoOpcion": {
+              "store": "Tienda",
+              "list": "Lista",
+              "basket": "Canasta",
+              "user-circle": "En círculo",
+              "gift": "Regalo"
             }
           }
         }

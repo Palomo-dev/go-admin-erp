@@ -16,24 +16,69 @@ export const ACCIONES_MENU = [
 ] as const
 export type AccionMenu = (typeof ACCIONES_MENU)[number]
 
+/**
+ * `store`, `list`, `basket`, `user-circle` y `gift` (2026-11-23, Figma 2843:70263 «Ítems
+ * configurables»): otros dibujos para los mismos accesos (Tienda, Lista, Canasta, En círculo, Regalo).
+ */
 export const ICONOS_MENU = [
   'home', 'grid', 'search', 'bag', 'cart', 'user', 'menu', 'phone', 'whatsapp', 'map-pin',
   'calendar', 'calendar-check', 'package', 'truck', 'tag', 'percent', 'star', 'heart', 'sparkles', 'link',
+  'store', 'list', 'basket', 'user-circle', 'gift',
 ] as const
 export type IconoMenu = (typeof ICONOS_MENU)[number]
 
 /**
  * `floating` (2026-11-07, Figma «Editor · Encabezado píldora…» P4): píldora flotante de pestañas
  * separada del borde, con vidrio opcional. Las dos primeras son las barras fijas de siempre.
+ * `icons` y `split` (2026-11-23, Figma 2840:69984 N2 y N4): solo íconos con el texto del activo en
+ * una píldora, e isla flotante con un botón aparte en su propio círculo (`style.splitId`).
  */
-export const VARIANTES_MENU = ['tabs', 'actions', 'floating'] as const
+export const VARIANTES_MENU = ['tabs', 'actions', 'floating', 'icons', 'split'] as const
 export type VarianteMenu = (typeof VARIANTES_MENU)[number]
 export const TEXTOS_MENU = ['always', 'never'] as const
 
-export const MAX_BOTONES: Record<VarianteMenu, number> = { tabs: 5, actions: 4, floating: 5 }
+/** En `split`, 4 en la isla + 1 aparte. */
+export const MAX_BOTONES: Record<VarianteMenu, number> = { tabs: 5, actions: 4, floating: 5, icons: 5, split: 5 }
 /** Píldora flotante: ancho del contenido o casi todo el ancho; marca del activo. */
 export const ANCHOS_FLOTANTE = ['content', 'full'] as const
 export const INDICADORES_FLOTANTE = ['fill', 'dot', 'line'] as const
+/**
+ * Marca del activo (Figma E1 «Marca del activo»): las de la píldora flotante más `none` (sin marca,
+ * lo de Pestañas hoy) y `slide` (N1: una píldora suave que se desliza al activo). Vale en
+ * Pestañas, Píldora flotante e Isla. Sin la clave: Pestañas `none`, Píldora e Isla `fill`.
+ */
+export const INDICADORES_MENU = ['none', 'fill', 'dot', 'line', 'slide'] as const
+export type IndicadorMenu = (typeof INDICADORES_MENU)[number]
+/** Forma del botón destacado de Pestañas (N3): el círculo de hoy o uno más grande con muesca. */
+export const FORMAS_CENTRO = ['circle', 'notch'] as const
+/**
+ * Colores (Figma E1): `header` el fondo y los íconos del encabezado (Pestañas y Solo íconos hoy),
+ * `light` el fondo y el texto del tema del sitio (Acciones, Píldora e Isla hoy), `custom` los
+ * colores propios (`background`, `active`, `inactive`). Sin la clave, el de cada estilo.
+ */
+export const TEMAS_MENU = ['header', 'light', 'custom'] as const
+export type TemaMenu = (typeof TEMAS_MENU)[number]
+/** Contador de Carrito y Favoritos (Figma 2841:70098): número, punto u oculto. */
+export const CONTADORES_MENU = ['number', 'dot', 'hidden'] as const
+export type ContadorMenu = (typeof CONTADORES_MENU)[number]
+/** Al bajar la página (Figma 2841:70360): siempre visible (hoy) o se esconde y vuelve al subir. */
+export const SCROLL_MENU = ['always', 'hide'] as const
+/** Ficha de producto con la barra fija de compra a la vista (Figma 2844:70510 F1/F2). */
+export const PAGINA_FICHA_MENU = ['hide', 'stack'] as const
+/**
+ * Efecto del activo (Figma 2860:71598 «10a»). Sin la clave, el de la marca del activo
+ * (`indicator`): `fill` → `pill`, `dot` → `dot`, `line` → `underline`, `slide` → `slide`; Solo íconos
+ * usa `label`.
+ */
+export const EFECTOS_ACTIVO = ['color', 'pill', 'underline', 'dot', 'slide', 'fill', 'bounce', 'glow', 'label'] as const
+export type EfectoActivo = (typeof EFECTOS_ACTIVO)[number]
+/** Al tocar (Figma «10b»). Sin la clave, `none` (lo de hoy). */
+export const EFECTOS_TOQUE = ['none', 'darken', 'scale', 'bounce', 'ripple', 'tilt'] as const
+export type EfectoToque = (typeof EFECTOS_TOQUE)[number]
+export const VELOCIDADES_EFECTO = ['fast', 'normal', 'slow'] as const
+export type VelocidadEfecto = (typeof VELOCIDADES_EFECTO)[number]
+/** Duración de cada velocidad, en ms. */
+export const MS_VELOCIDAD: Record<VelocidadEfecto, number> = { fast: 150, normal: 240, slow: 360 }
 export const MAX_TEXTO = 24
 
 export interface BotonMenu {
@@ -63,8 +108,25 @@ export interface EstiloMenu {
   offset?: number
   /** Píldora flotante: ancho. Sin la clave, `content`. */
   width?: (typeof ANCHOS_FLOTANTE)[number]
-  /** Píldora flotante: marca del botón activo. Sin la clave, `fill`. */
-  indicator?: (typeof INDICADORES_FLOTANTE)[number]
+  /** Marca del botón activo (Pestañas, Píldora flotante, Isla). Sin la clave, ver INDICADORES_MENU. */
+  indicator?: IndicadorMenu
+  /** Pestañas: forma del botón destacado. Sin la clave, `circle` (el de hoy). */
+  centerShape?: (typeof FORMAS_CENTRO)[number]
+  /** Isla: el botón que sale aparte, en su propio círculo. Sin la clave, el Carrito (o el último). */
+  splitId?: string
+  /** Colores del menú. Sin la clave, los de cada estilo (ver TEMAS_MENU). */
+  theme?: TemaMenu
+  /** Contadores. Sin la clave: carrito con número (Acciones, sin contador, como hoy) y favoritos con punto. */
+  badges?: { cart?: ContadorMenu; favorites?: ContadorMenu }
+  /** Al bajar la página. Sin la clave, `always`. */
+  scroll?: (typeof SCROLL_MENU)[number]
+  /** Páginas especiales. Sin la clave, en la ficha el menú se oculta mientras se ve la barra fija. */
+  pages?: { product?: (typeof PAGINA_FICHA_MENU)[number] }
+  /** La cabecera del celular no repite lo que ya está en el menú. Solo `true`; sin la clave, se repite. */
+  dedupeHeader?: true
+  activeEffect?: EfectoActivo
+  pressEffect?: EfectoToque
+  fxSpeed?: VelocidadEfecto
 }
 
 export interface MenuInferior {
@@ -154,8 +216,38 @@ function leerEstilo(v: unknown, ids: string[]): EstiloMenu {
     ...(typeof o.glass === 'boolean' ? { glass: o.glass } : {}),
     ...(typeof o.offset === 'number' && Number.isInteger(o.offset) && o.offset >= 0 && o.offset <= 32 ? { offset: o.offset } : {}),
     ...(enLista(ANCHOS_FLOTANTE, o.width) ? { width: enLista(ANCHOS_FLOTANTE, o.width)! } : {}),
-    ...(enLista(INDICADORES_FLOTANTE, o.indicator) ? { indicator: enLista(INDICADORES_FLOTANTE, o.indicator)! } : {}),
+    ...(enLista(INDICADORES_MENU, o.indicator) ? { indicator: enLista(INDICADORES_MENU, o.indicator)! } : {}),
+    ...leerEstiloNuevo(o, ids),
   }
+}
+
+/** Claves de 2026-11-23 (Figma 2847:17). Todas opcionales: sin ellas, lo de hoy. */
+function leerEstiloNuevo(o: Record<string, unknown>, ids: string[]): Partial<EstiloMenu> {
+  const r: Partial<EstiloMenu> = {}
+  const forma = enLista(FORMAS_CENTRO, o.centerShape)
+  if (forma) r.centerShape = forma
+  const aparte = texto(o.splitId, 40)
+  if (aparte && ids.includes(aparte)) r.splitId = aparte
+  const tema = enLista(TEMAS_MENU, o.theme)
+  if (tema) r.theme = tema
+  const b = objeto(o.badges)
+  if (b) {
+    const cart = enLista(CONTADORES_MENU, b.cart)
+    const favorites = enLista(CONTADORES_MENU, b.favorites)
+    if (cart || favorites) r.badges = { ...(cart ? { cart } : {}), ...(favorites ? { favorites } : {}) }
+  }
+  const scroll = enLista(SCROLL_MENU, o.scroll)
+  if (scroll) r.scroll = scroll
+  const product = enLista(PAGINA_FICHA_MENU, objeto(o.pages)?.product)
+  if (product) r.pages = { product }
+  if (o.dedupeHeader === true) r.dedupeHeader = true
+  const activo = enLista(EFECTOS_ACTIVO, o.activeEffect)
+  if (activo) r.activeEffect = activo
+  const toque = enLista(EFECTOS_TOQUE, o.pressEffect)
+  if (toque) r.pressEffect = toque
+  const vel = enLista(VELOCIDADES_EFECTO, o.fxSpeed)
+  if (vel) r.fxSpeed = vel
+  return r
 }
 
 /** Menú inferior guardado en la versión 2, o null (la tienda sigue con lo de siempre). */
@@ -293,7 +385,9 @@ export function aGuardar(m: MenuInferior): Record<string, unknown> {
   if (typeof m.style.glass === 'boolean') st.glass = m.style.glass
   if (typeof m.style.offset === 'number' && Number.isInteger(m.style.offset) && m.style.offset >= 0 && m.style.offset <= 32) st.offset = m.style.offset
   if (m.style.width && (ANCHOS_FLOTANTE as readonly string[]).includes(m.style.width)) st.width = m.style.width
-  if (m.style.indicator && (INDICADORES_FLOTANTE as readonly string[]).includes(m.style.indicator)) st.indicator = m.style.indicator
+  if (m.style.indicator && (INDICADORES_MENU as readonly string[]).includes(m.style.indicator)) st.indicator = m.style.indicator
+  // Las claves nuevas pasan por el mismo lector: lo que no vale no se escribe.
+  Object.assign(st, leerEstiloNuevo(m.style as unknown as Record<string, unknown>, ids))
   return { v: 2, enabled: m.enabled, variant: m.variant, items, style: st }
 }
 
@@ -396,4 +490,100 @@ export function botonesVisibles(m: MenuInferior, d: DestinosTienda): { boton: Bo
     .map((b) => ({ boton: b, destino: destinoBoton(b, d) }))
     .filter((x): x is { boton: BotonMenu; destino: DestinoBoton } => !!x.destino)
     .slice(0, MAX_BOTONES[m.variant])
+}
+
+// ─── Valores efectivos (2026-11-23, Figma 2836:69391 «Menú inferior: propuestas de mejora») ─────────
+
+/** Marca del activo sin la clave: Pestañas sin marca (hoy); Píldora e Isla, relleno (hoy). */
+export function indicadorMenu(m: MenuInferior): IndicadorMenu {
+  return m.style.indicator ?? (m.variant === 'tabs' ? 'none' : 'fill')
+}
+
+const EFECTO_DE_INDICADOR: Record<IndicadorMenu, EfectoActivo | null> = { none: null, fill: 'pill', dot: 'dot', line: 'underline', slide: 'slide' }
+
+/**
+ * Efecto del activo que se pinta, o null (Pestañas sin marca: lo de hoy, el color `active` si lo
+ * hay). Solo íconos marca con su píldora con texto (`label`) salvo que se elija otro efecto.
+ */
+export function efectoActivoMenu(m: MenuInferior): EfectoActivo | null {
+  if (m.variant === 'actions') return null
+  if (m.style.activeEffect) return m.style.activeEffect
+  if (m.variant === 'icons') return 'label'
+  return EFECTO_DE_INDICADOR[indicadorMenu(m)]
+}
+
+/** Colores sin la clave: Pestañas y Solo íconos, los del encabezado; los demás, los del tema. */
+export function temaMenu(m: MenuInferior): TemaMenu {
+  if (m.style.theme) return m.style.theme
+  return m.variant === 'tabs' || m.variant === 'icons' ? 'header' : 'light'
+}
+
+/**
+ * Contador del botón Carrito o Favoritos. Sin la clave: el carrito con número (en Acciones, sin
+ * contador: los botones de acción nunca lo pintaron) y Favoritos con punto.
+ */
+export function contadorMenu(m: MenuInferior, cual: 'cart' | 'favorites'): ContadorMenu {
+  const guardado = m.style.badges?.[cual]
+  if (guardado) return guardado
+  if (cual === 'favorites') return 'dot'
+  return m.variant === 'actions' ? 'hidden' : 'number'
+}
+
+/** Lo que pinta un contador: el número (con «99+»), un punto o nada. Sin unidades, nada. */
+export function pintaContador(cantidad: number, c: ContadorMenu): { tipo: 'numero'; texto: string } | { tipo: 'punto' } | null {
+  if (!(cantidad > 0) || c === 'hidden') return null
+  if (c === 'dot') return { tipo: 'punto' }
+  return { tipo: 'numero', texto: cantidad > 99 ? '99+' : String(Math.floor(cantidad)) }
+}
+
+/** Isla: el botón aparte (por defecto el Carrito; si no hay, el último) entre los que se pintan. */
+export function idBotonAparte(m: MenuInferior, ids: readonly string[]): string | null {
+  if (m.variant !== 'split' || ids.length < 2) return null
+  if (m.style.splitId && ids.includes(m.style.splitId)) return m.style.splitId
+  const carrito = m.items.find((b) => b.action === 'cart' && ids.includes(b.id))
+  return carrito ? carrito.id : ids[ids.length - 1]
+}
+
+// ─── Páginas especiales (Figma 2844:70510, para TODAS las tiendas) ──────────────────────────────
+
+/**
+ * Qué hace el menú de abajo en cada ruta (sin el prefijo de sede):
+ * - `sin-menu`: checkout, carrito completo y confirmación del pedido. Nunca hay menú (F3).
+ * - `ficha`: ficha de producto. El menú se oculta mientras se ve la barra fija de compra (F1), o
+ *   se apila bajo ella con `style.pages.product = 'stack'` (F2).
+ * - `normal`: el resto.
+ */
+export type PaginaMenu = 'sin-menu' | 'ficha' | 'normal'
+const RUTAS_SIN_MENU = ['/checkout', '/carrito', '/pedido']
+
+export function paginaMenu(ruta: string): PaginaMenu {
+  const r = ruta.split(/[?#]/)[0] || '/'
+  if (RUTAS_SIN_MENU.some((x) => r === x || r.startsWith(`${x}/`))) return 'sin-menu'
+  if (r.startsWith('/productos/')) return 'ficha'
+  return 'normal'
+}
+
+/** En la ficha, con la barra a la vista: `hide` (por defecto) o `stack`. */
+export function fichaMenu(m: MenuInferior | null): 'hide' | 'stack' {
+  return m?.style.pages?.product ?? 'hide'
+}
+
+/** Lo que la cabecera del celular puede dejar de repetir. */
+export type AccesoRepetido = 'cart' | 'account' | 'search' | 'favorites'
+
+/**
+ * «No repetir arriba» (Figma 2843:70716, opcional y apagado por defecto): lo que la cabecera del
+ * celular deja de pintar porque ya está en el menú. Vacío sin la opción, con el menú apagado o en
+ * las rutas donde el menú no está siempre (checkout, carrito, ficha): ahí la cabecera lo conserva.
+ */
+export function repetidosArriba(m: MenuInferior | null, ruta: string): ReadonlySet<AccesoRepetido> {
+  const s = new Set<AccesoRepetido>()
+  if (!m || !m.enabled || m.style.dedupeHeader !== true || paginaMenu(ruta) !== 'normal') return s
+  // Los botones de acción no salen en la cuenta ni al iniciar sesión (rutas con barra propia).
+  if (m.variant === 'actions' && /^\/(mi-cuenta|auth)(\/|$)/.test(ruta)) return s
+  for (const b of m.items.slice(0, MAX_BOTONES[m.variant])) {
+    if (!b.visible) continue
+    if (b.action === 'cart' || b.action === 'account' || b.action === 'search' || b.action === 'favorites') s.add(b.action)
+  }
+  return s
 }

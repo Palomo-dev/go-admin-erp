@@ -10,15 +10,28 @@ import {
   ACCIONES_MENU,
   ANCHOS_FLOTANTE,
   DEFECTO_ACCION,
-  INDICADORES_FLOTANTE,
+  EFECTOS_ACTIVO,
+  EFECTOS_TOQUE,
+  INDICADORES_MENU,
   MAX_BOTONES,
+  VELOCIDADES_EFECTO,
   aGuardar,
   barraGuardada,
+  contadorMenu,
+  efectoActivoMenu,
+  indicadorMenu,
   menuInicial,
+  temaMenu,
   type AccionMenu,
   type BotonMenu,
+  type ContadorMenu,
+  type EfectoActivo,
+  type EfectoToque,
+  type EstiloMenu,
   type FuenteMenu,
+  type IndicadorMenu,
   type MenuInferior,
+  type TemaMenu,
   type VarianteMenu,
 } from '@/lib/website/menuInferior';
 
@@ -92,9 +105,22 @@ export function mover<T>(lista: readonly T[], i: number, d: -1 | 1): T[] {
   return l;
 }
 
-/** El botón destacado de pestañas y de la píldora flotante es `centerId`; el de acciones, `primaryId`. */
+/**
+ * El botón destacado de pestañas y de la píldora flotante es `centerId`; el de acciones,
+ * `primaryId`. Solo íconos no tiene destacado y la Isla tiene su botón aparte (`splitId`).
+ */
 export function usaCentro(variant: VarianteMenu): boolean {
-  return variant !== 'actions';
+  return variant === 'tabs' || variant === 'floating';
+}
+
+/** Estilos con marca del activo (`indicator`): Pestañas, Píldora flotante e Isla. */
+export function usaMarca(variant: VarianteMenu): boolean {
+  return variant === 'tabs' || variant === 'floating' || variant === 'split';
+}
+
+/** Píldora flotante e Isla comparten vidrio, separación y ancho. */
+export function esFlotante(variant: VarianteMenu): boolean {
+  return variant === 'floating' || variant === 'split';
 }
 
 /**
@@ -108,8 +134,16 @@ export function conVariante(m: MenuInferior, variant: VarianteMenu): MenuInferio
   const style = { ...m.style };
   if (style.centerId && (!usaCentro(variant) || !ids.includes(style.centerId))) delete style.centerId;
   if (style.primaryId && (variant !== 'actions' || !ids.includes(style.primaryId))) delete style.primaryId;
-  if (variant !== 'floating') for (const k of CLAVES_FLOTANTE) delete style[k];
-  return { ...m, variant, items, style };
+  if (!esFlotante(variant)) for (const k of ['glass', 'offset', 'width'] as const) delete style[k];
+  if (!usaMarca(variant)) delete style.indicator;
+  // La marca de hoy de cada estilo (Pestañas sin marca, Píldora con relleno) no se escribe.
+  if (style.indicator && style.indicator === indicadorMenu({ ...m, variant, style: { ...style, indicator: undefined } })) delete style.indicator;
+  if (variant !== 'tabs') delete style.centerShape;
+  if (variant !== 'split' || (style.splitId && !ids.includes(style.splitId))) delete style.splitId;
+  const resultado = { ...m, variant, items, style };
+  // El tema sin clave cambia con el estilo: si coincide con el nuevo de hoy, no se escribe.
+  if (resultado.style.theme && resultado.style.theme === temaMenu({ ...resultado, style: { ...resultado.style, theme: undefined } })) delete resultado.style.theme;
+  return resultado;
 }
 
 // ─── Píldora flotante (P4) ─────────────────────────────────────────────────────────────────────
@@ -118,7 +152,8 @@ export function conVariante(m: MenuInferior, variant: VarianteMenu): MenuInferio
 export const FLOTANTE_SIN_CLAVE = { glass: true, offset: 16, width: 'content', indicator: 'fill' } as const;
 const CLAVES_FLOTANTE = ['glass', 'offset', 'width', 'indicator'] as const;
 export type AnchoFlotante = (typeof ANCHOS_FLOTANTE)[number];
-export type IndicadorFlotante = (typeof INDICADORES_FLOTANTE)[number];
+/** Desde 2026-11-23 la marca del activo también puede ser «Ninguna» o «Desliza» (INDICADORES_MENU). */
+export type IndicadorFlotante = IndicadorMenu;
 export interface EstiloFlotante { glass: boolean; offset: number; width: AnchoFlotante; indicator: IndicadorFlotante }
 
 /** Valores efectivos de la píldora flotante (los guardados o los de hoy). */
@@ -143,7 +178,7 @@ export function conEstiloFlotante(m: MenuInferior, cambios: Partial<EstiloFlotan
     if (k === 'offset') v = typeof v === 'number' && Number.isFinite(v) ? Math.min(32, Math.max(0, Math.round(v))) : undefined;
     if (k === 'glass' && typeof v !== 'boolean') v = undefined;
     if (k === 'width' && !(ANCHOS_FLOTANTE as readonly unknown[]).includes(v)) v = undefined;
-    if (k === 'indicator' && !(INDICADORES_FLOTANTE as readonly unknown[]).includes(v)) v = undefined;
+    if (k === 'indicator' && !(INDICADORES_MENU as readonly unknown[]).includes(v)) v = undefined;
     if (v === undefined || v === FLOTANTE_SIN_CLAVE[k]) delete style[k];
     else (style as Record<string, unknown>)[k] = v;
   }
@@ -172,4 +207,110 @@ export function campoDestino(action: AccionMenu): CampoDestino {
     case 'booking': case 'order': case 'account': return 'rutaOpcional';
     default: return null;
   }
+}
+
+// ─── Propuestas de mejora (2026-11-23, Figma 2836:69391, E1/E2 y efectos 2861:71749) ───────────
+
+/** Marca del activo efectiva y su cambio: la de hoy de cada estilo quita la clave. */
+export function conIndicador(m: MenuInferior, v: IndicadorMenu): MenuInferior {
+  if (!(INDICADORES_MENU as readonly string[]).includes(v)) return m;
+  const style = { ...m.style };
+  delete style.indicator;
+  if (v !== indicadorMenu({ ...m, style })) style.indicator = v;
+  return { ...m, style };
+}
+
+/** Colores en el editor: la clave, o «Propio» si hay colores fijados, o el de cada estilo. */
+export function temaEditor(m: MenuInferior): TemaMenu {
+  if (m.style.theme) return m.style.theme;
+  if (m.style.background || m.style.active || m.style.inactive) return 'custom';
+  return temaMenu(m);
+}
+
+/**
+ * Elegir colores: «Encabezado» o «Claro» quitan los colores propios; «Propio» los conserva y los
+ * abre. El de hoy del estilo (sin colores propios) no escribe la clave.
+ */
+export function conTema(m: MenuInferior, tema: TemaMenu): MenuInferior {
+  const style: EstiloMenu = { ...m.style };
+  delete style.theme;
+  if (tema !== 'custom') {
+    delete style.background;
+    delete style.active;
+    delete style.inactive;
+    if (tema !== temaMenu({ ...m, style })) style.theme = tema;
+  } else {
+    style.theme = 'custom';
+  }
+  return { ...m, style };
+}
+
+/** Contador de Carrito o Favoritos: el de hoy de cada uno quita la clave. */
+export function conContador(m: MenuInferior, cual: 'cart' | 'favorites', v: ContadorMenu): MenuInferior {
+  const badges = { ...(m.style.badges ?? {}) };
+  delete badges[cual];
+  const sin = { ...m, style: { ...m.style, badges } };
+  if (v !== contadorMenu(sin, cual)) badges[cual] = v;
+  const style = { ...m.style };
+  if (Object.keys(badges).length) style.badges = badges;
+  else delete style.badges;
+  return { ...m, style };
+}
+
+/** «Al bajar»: `always` (hoy) quita la clave. */
+export function conAlBajar(m: MenuInferior, v: 'always' | 'hide'): MenuInferior {
+  const style = { ...m.style };
+  if (v === 'hide') style.scroll = 'hide';
+  else delete style.scroll;
+  return { ...m, style };
+}
+
+/** Ficha de producto: `hide` (por defecto) quita la clave. */
+export function conFicha(m: MenuInferior, v: 'hide' | 'stack'): MenuInferior {
+  const style = { ...m.style };
+  if (v === 'stack') style.pages = { product: 'stack' };
+  else delete style.pages;
+  return { ...m, style };
+}
+
+/** «No repetir en la cabecera»: solo se guarda encendido. */
+export function conNoRepetir(m: MenuInferior, v: boolean): MenuInferior {
+  const style = { ...m.style };
+  if (v) style.dedupeHeader = true;
+  else delete style.dedupeHeader;
+  return { ...m, style };
+}
+
+/** Efecto del activo: el que ya daba la marca (o la etiqueta de Solo íconos) quita la clave. */
+export function conEfectoActivo(m: MenuInferior, v: EfectoActivo): MenuInferior {
+  if (!(EFECTOS_ACTIVO as readonly string[]).includes(v)) return m;
+  const style = { ...m.style };
+  delete style.activeEffect;
+  if (v !== efectoActivoMenu({ ...m, style })) style.activeEffect = v;
+  return { ...m, style };
+}
+
+/** Al tocar: `none` (hoy) quita la clave. */
+export function conEfectoToque(m: MenuInferior, v: EfectoToque): MenuInferior {
+  const style = { ...m.style };
+  if (v !== 'none' && (EFECTOS_TOQUE as readonly string[]).includes(v)) style.pressEffect = v;
+  else delete style.pressEffect;
+  return { ...m, style };
+}
+
+/** Velocidad de los efectos: `normal` quita la clave. */
+export function conVelocidad(m: MenuInferior, v: (typeof VELOCIDADES_EFECTO)[number]): MenuInferior {
+  const style = { ...m.style };
+  if (v !== 'normal' && (VELOCIDADES_EFECTO as readonly string[]).includes(v)) style.fxSpeed = v;
+  else delete style.fxSpeed;
+  return { ...m, style };
+}
+
+/** Mueve el botón `desde` al lugar de `hasta` (arrastre del kit). */
+export function moverA<T>(lista: readonly T[], desde: number, hasta: number): T[] {
+  if (desde === hasta || desde < 0 || hasta < 0 || desde >= lista.length || hasta >= lista.length) return [...lista];
+  const l = [...lista];
+  const [x] = l.splice(desde, 1);
+  l.splice(hasta, 0, x);
+  return l;
 }

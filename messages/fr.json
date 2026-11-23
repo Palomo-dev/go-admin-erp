@@ -34960,6 +34960,109 @@
               "trial": "Essai gratuit",
               "page": "Page du site",
               "url": "Lien externe"
+            },
+            "variante": "Style",
+            "varianteOpcion": {
+              "icons": "Icônes seules",
+              "split": "Îlot + bouton à part"
+            },
+            "marca": "Repère de l’élément actif",
+            "marcaAyuda": "« Glisse » : une pastille douce se déplace vers le bouton touché. Respecte « réduire les animations » du téléphone.",
+            "marcaOpcion": {
+              "none": "Aucun",
+              "fill": "Remplissage",
+              "dot": "Point",
+              "line": "Ligne",
+              "slide": "Glisse"
+            },
+            "formaCentro": "Forme du bouton mis en avant",
+            "formaCentroOpcion": {
+              "circle": "Cercle",
+              "notch": "Encoche"
+            },
+            "aparte": "Bouton à part",
+            "aparteAyuda": "Affiché dans son propre cercle à droite de l’îlot. Par défaut, le panier.",
+            "colores": "Couleurs",
+            "coloresOpcion": {
+              "header": "En-tête",
+              "light": "Clair",
+              "custom": "Personnalisé"
+            },
+            "coloresAyuda": "« En-tête » utilise son fond et son mode (clair ou sombre). « Clair » utilise le fond du site. « Personnalisé » ouvre fond, actif et inactif.",
+            "contador": {
+              "titulo": "Compteur sur l’icône",
+              "cart": "Panier",
+              "favorites": "Favoris",
+              "opcion": {
+                "number": "Nombre",
+                "dot": "Point",
+                "hidden": "Masqué"
+              },
+              "ayuda": "Le même compteur que l’en-tête. Si l’icône est aussi en haut, les deux affichent la même chose."
+            },
+            "contadorBoton": "Compteur",
+            "alBajar": "En faisant défiler la page",
+            "alBajarOpcion": {
+              "always": "Toujours visible",
+              "hide": "Se masque"
+            },
+            "alBajarAyuda": "Il revient en remontant, en bas de page et sur les pages courtes. La bulle du chat suit le menu.",
+            "paginas": {
+              "titulo": "Pages spéciales",
+              "ficha": "Fiche produit",
+              "fichaOpcion": {
+                "hide": "Masquer",
+                "stack": "Empiler"
+              },
+              "fichaAyuda": "Pendant que la barre d’achat est visible : le menu se masque, ou reste compact en dessous.",
+              "checkout": "Paiement et panier",
+              "checkoutValor": "Toujours masqué",
+              "chat": "Bulle du chat",
+              "chatValor": "S’ajuste seule"
+            },
+            "noRepetir": "Ne pas répéter dans l’en-tête (facultatif)",
+            "noRepetirAyuda": "Désactivé par défaut : Panier et Compte apparaissent en haut et en bas, comme aujourd’hui. Activé, le haut garde le logo et ce qui n’est pas dans le menu.",
+            "arrastrar": "Faites glisser la poignée pour changer l’ordre. L’œil masque sans supprimer.",
+            "efectos": {
+              "titulo": "Effets",
+              "vistaPrevia": "Aperçu en direct",
+              "reproducir": "Lire",
+              "tocaIcono": "ou touchez une icône pour essayer",
+              "activo": "Effet de l’élément actif",
+              "activoOpcion": {
+                "color": "Couleur",
+                "pill": "Pastille",
+                "underline": "Soulignement",
+                "dot": "Point",
+                "slide": "Glisse",
+                "fill": "Remplissage",
+                "bounce": "Rebond",
+                "glow": "Halo",
+                "label": "Libellé"
+              },
+              "toque": "Au toucher",
+              "toqueOpcion": {
+                "none": "Aucun",
+                "darken": "Assombrir le fond",
+                "scale": "Échelle",
+                "bounce": "Rebond",
+                "ripple": "Onde",
+                "tilt": "Inclinaison"
+              },
+              "velocidad": "Vitesse",
+              "velocidadOpcion": {
+                "fast": "Rapide",
+                "normal": "Normale",
+                "slow": "Douce"
+              },
+              "ayuda": "Avec « réduire les animations » du téléphone, seule la couleur change, sans animation."
+            },
+            "iconoOpcion": {
+              "store": "Boutique",
+              "list": "Liste",
+              "basket": "Panier à provisions",
+              "user-circle": "Dans un cercle",
+              "gift": "Cadeau"
             }
           }
         }

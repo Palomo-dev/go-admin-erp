@@ -133,10 +133,14 @@ export async function cargarCheckoutConfig(supabase: ClienteDatos, organizationI
   try {
     const [wsResult, pmResult] = await Promise.all([
       supabase.from('website_settings').select('enable_shipping, available_delivery_types, shipping_flat_rate, shipping_flat_rate_title, free_shipping_threshold, tax_rate, tax_name, tax_included').eq('organization_id', organizationId).single(),
-      supabase.from('organization_payment_methods').select('payment_method_code, website_display_name').eq('organization_id', organizationId).eq('is_active', true).eq('show_on_website', true),
+      // Mismos medios y mismo nombre que muestra el checkout de la tienda
+      // (`getWebsitePaymentMethods` en goadmin-websites): nombre web, si no el del
+      // catálogo y, al final, el código. Antes caía directo al código y el chat
+      // ofrecía «cash» o «transfer» (2026-11-24: 40 tiendas sin nombre web).
+      supabase.from('organization_payment_methods').select('payment_method_code, website_display_name, payment_methods (name)').eq('organization_id', organizationId).eq('is_active', true).eq('show_on_website', true),
     ]);
     const ws = wsResult.data as any || {};
-    const methods = (pmResult.data || []).map((m: any) => ({ code: m.payment_method_code, name: m.website_display_name || m.payment_method_code }));
+    const methods = (pmResult.data || []).map((m: any) => ({ code: m.payment_method_code, name: m.website_display_name || m.payment_methods?.name || m.payment_method_code }));
     let taxRate = Number(ws.tax_rate || 0);
     if (taxRate === 0) {
       const { data: defaultTax } = await supabase.from('organization_taxes').select('rate, name').eq('organization_id', organizationId).eq('is_active', true).eq('is_default', true).maybeSingle();

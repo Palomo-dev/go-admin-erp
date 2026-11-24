@@ -420,6 +420,12 @@ function numeroONull(v: unknown): number | null {
  * las notas internas, y de `metadata` solo salen las tarjetas de producto y el
  * botón de pedido que arma `ai-auto-response` (con la URL del checkout del
  * sitio y el carrito en el formato que lee `CheckoutWizard`: `?cart=&customer=`).
+ * Los parámetros que ya trae `checkoutUrl` se conservan: así viaja `metodo=<código>`
+ * con el medio de pago elegido en la conversación (lo pone `ai-auto-response`).
+ *
+ * OJO: `customer` lleva nombre, teléfono, correo, dirección y ciudad en la URL
+ * (queda en el historial y en los registros del servidor de la tienda antes de
+ * que el checkout la limpie). Pendiente moverlo a un traspaso por token.
  */
 export function mensajeParaVisitante(m: FilaMensaje): MensajePublico | null {
   const autor = AUTOR[m.role];

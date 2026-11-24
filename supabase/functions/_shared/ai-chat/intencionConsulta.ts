@@ -87,7 +87,7 @@ export function normalizar(texto: string): string {
     .normalize('NFD')
     // Marcas diacriticas combinantes, escritas como escapes para que sean
     // visibles: si se dejan como caracteres literales, no se ven al leer.
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     // Apostrofo recto y tipografico: "Men's" -> "mens", como en el catalogo.
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')

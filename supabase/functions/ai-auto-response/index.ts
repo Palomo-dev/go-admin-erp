@@ -13,6 +13,7 @@ import { MAXIMO_PEDIDOS_MOSTRADOS, correoParaBuscar, decidirCorreoDelChat, escap
 // para que la prueba responda exactamente como esta funcion. Extraidos literal el 2026-11-13.
 import { cargarCheckoutConfig, cargarInfoOrganizacion, cargarVertical, construirContextoDinamico, construirPromptEstable, mensajesDeSistema, type ConfigCheckout, type InfoOrganizacion } from "../_shared/ai-chat/promptAtencion.ts";
 import { generarSegunProveedor, usaResponsesApi, type RespuestaLlm } from "../_shared/ai-chat/generacionLlm.ts";
+import { armarCarritoDelResumen, metodoPagoDelChat, subtotalDelCarrito, subtotalDelResumen } from "../_shared/ai-chat/pedidoDelChat.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1190,10 +1191,11 @@ Deno.serve(async (req: Request) => {
         responseContent = responseContent.replace(clienteMatch[0], '').trim();
       }
 
-      // Only match against the CURRENT response (the one with PEDIDO_LISTO that has the order summary)
-      // Do NOT include previous AI messages as they contain full product listings that cause false matches
-      const responseLower = responseContent.toLowerCase();
-      const cartItems: any[] = [];
+      // Productos del pedido: los que el chat MOSTRO (tarjetas de la conversacion)
+      // cruzados con el resumen que la IA acaba de confirmar, linea por linea y
+      // con el nombre mas largo primero (ver `armarCarritoDelResumen`). Antes se
+      // buscaba cada nombre en todo el texto y un nombre que era el comienzo de
+      // otro se colaba al carrito: el checkout cobraba un producto de mas.
       const seenIds = new Set();
       const allProducts: any[] = [];
       for (const msg of recentMessages) {
@@ -1206,35 +1208,23 @@ Deno.serve(async (req: Request) => {
           }
         }
       }
-      // Match by word overlap: require 60%+ of significant words from product name in response
-      for (const p of allProducts) {
-        // Skip products with no stock
-        if (p.stock !== null && p.stock !== undefined && Number(p.stock) <= 0) continue;
-        // Skip if product is mentioned as "no disponible" in context
-        const pNameLower = p.name.toLowerCase();
-        const nameIdx = responseLower.indexOf(pNameLower);
-        if (nameIdx >= 0) {
-          const afterName = responseLower.substring(nameIdx + pNameLower.length, nameIdx + pNameLower.length + 50);
-          if (afterName.includes('no disponible') || afterName.includes('agotad')) continue;
-        }
-        // Use words > 3 chars to avoid generic short words like "256", "GB", "5G" shared across similar products
-        const nameWords = pNameLower.split(/[\s\-\/\(\)\+]+/).filter((w: string) => w.length > 3);
-        const matchCount = nameWords.filter((w: string) => responseLower.includes(w)).length;
-        const matchRatio = nameWords.length > 0 ? matchCount / nameWords.length : 0;
-        if (responseLower.includes(pNameLower) || matchRatio >= 0.9) {
-          cartItems.push({ productId: p.id, name: p.name, price: p.price, comparePrice: p.comparePrice, imageUrl: p.imageUrl, quantity: 1 });
-        }
+      const cartItems = armarCarritoDelResumen(responseContent, allProducts);
+      // Si lo que viaja al checkout no suma lo que el cliente acepto, se deja
+      // rastro (sin datos del cliente) para encontrar el siguiente caso.
+      const subtotalResumen = subtotalDelResumen(responseContent);
+      const subtotalCarrito = subtotalDelCarrito(cartItems);
+      if (subtotalResumen !== null && subtotalResumen !== subtotalCarrito) {
+        console.warn(
+          `Pedido del chat: el carrito suma ${subtotalCarrito} y el resumen dice ${subtotalResumen} (conversacion ${conversationId}, ${cartItems.length} productos).`
+        );
       }
-      // Fallback: if no products matched by name, match by price mentioned in response
-      if (cartItems.length === 0) {
-        const priceMatches = responseLower.match(/\$[\d.,]+/g) || [];
-        const mentionedPrices = priceMatches.map(p => Number(p.replace(/[$.,]/g, ''))).filter(n => n > 0);
-        for (const p of allProducts) {
-          if (p.price && mentionedPrices.includes(Number(p.price))) {
-            cartItems.push({ productId: p.id, name: p.name, price: p.price, comparePrice: p.comparePrice, imageUrl: p.imageUrl, quantity: 1 });
-          }
-        }
-      }
+      // Medio de pago elegido en la conversacion, mapeado a un codigo REAL de
+      // los medios activos de la tienda (checkoutConfig.paymentMethods). Sin uno
+      // claro, no viaja nada y el checkout queda como siempre.
+      const anteriores = [...recentMessages].reverse()
+        .filter((m: any) => typeof m.content === 'string' && m.content && (m.role === 'customer' || m.direction === 'outbound'))
+        .map((m: any) => ({ autor: m.role === 'customer' ? 'cliente' as const : 'ia' as const, texto: m.content }));
+      const paymentMethodCode = metodoPagoDelChat(responseContent, anteriores, checkoutConfig.paymentMethods);
       // Update customer + merge with real customer if email matches
       if (conv.customer_id && (customerInfo.firstName || customerInfo.phone || customerInfo.address)) {
         const upd: any = {};
@@ -1264,11 +1254,18 @@ Deno.serve(async (req: Request) => {
       }
 
       const checkoutDomain = orgInfo.domain ? `https://${orgInfo.domain}` : null;
+      // Contrato con el checkout de la tienda: `/checkout?metodo=<codigo>` con el
+      // codigo del medio de pago (organization_payment_methods.payment_method_code).
+      // El widget conserva este parametro y le agrega `cart` y `customer`.
+      const checkoutUrl = checkoutDomain
+        ? `${checkoutDomain}/checkout${paymentMethodCode ? `?metodo=${encodeURIComponent(paymentMethodCode)}` : ''}`
+        : null;
       orderAction = {
         type: 'checkout_redirect',
-        checkoutUrl: checkoutDomain ? `${checkoutDomain}/checkout` : null,
+        checkoutUrl,
         cartItems,
         customerData: customerInfo,
+        paymentMethodCode,
         subdomain: orgInfo.subdomain || '',
         label: 'Completar Pedido',
       };

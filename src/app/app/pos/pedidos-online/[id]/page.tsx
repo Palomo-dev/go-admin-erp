@@ -36,6 +36,7 @@ import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-o
 import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/ValoracionVisitaCard';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { AvisoAnticipoPendiente, TarjetaContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
+import { seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
@@ -286,7 +287,8 @@ export default function WebOrderDetailPage() {
         isDelivery={esDomicilio(order?.delivery_type)}
         onConfirm={handleConfirmOrder}
         markAsPaid={markAsPaid}
-        onMarkAsPaidChange={setMarkAsPaid}
+        // Contraentrega con anticipo: el resto se cobra al entregar, no al confirmar (sin casilla).
+        onMarkAsPaidChange={seCobraAlEntregar(order) ? undefined : setMarkAsPaid}
         isLoading={actionLoading}
         yaPagado={order.payment_status === 'paid'}
         avisoTiempos={avisoTiempos}

@@ -15,6 +15,9 @@ import {
   type ResultadoConfirmacionCompleta,
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { confirmacionPorAnticipo } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { getOrganizationTimezone } from './organizationTimezoneService';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { tiemposAutoConfirmacion } from './webOrders/tiemposPedidosServer';
 import { resolveLineTaxWith } from './taxResolverCore';
 import { resolveOrgCurrency } from './monedaOrganizacion';
@@ -106,13 +109,18 @@ export async function activarMembresiasVentaWeb(
   supabase: Pick<SupabaseClient, 'rpc'>,
   saleId: string,
   referenciaPedido?: string | null,
+  /**
+   * `true` (pagado en línea, lo de siempre) o `null` (contraentrega con anticipo: aún falta lo de
+   * la puerta), el mismo valor que pasa la confirmación manual (`/api/web-orders/[id]/membresias`).
+   */
+  pagado: true | null = true,
 ): Promise<{ membresias: MembresiaVendida[]; error: string | null }> {
   try {
     const { data, error } = await supabase.rpc('fn_membresias_activar_venta', {
       p_sale_id: saleId,
       p_invoice_id: null,
       p_source: 'web',
-      p_pagado: true,
+      p_pagado: pagado,
     });
     if (error) {
       const codigo = esErrorMembresiaSinCliente(error) ? ERROR_MEMBRESIA_SIN_CLIENTE : 'error_activacion';
@@ -370,12 +378,144 @@ export const webOrderServerConfirmation = {
       // Sin venta, o confirmación completa activa: se confirma (idempotente).
     }
 
-    // 3. Verificar que esté pagado
+    // 3. Verificar que esté pagado. Excepción (2026-11-24): contraentrega con el anticipo pagado
+    //    (`partial`): se confirma como lo haría el botón «Confirmar pedido», sin factura ni pago
+    //    nuevos (el resto se cobra en la puerta con fn_cobrar_pedido_web_en_caja).
     if (order.payment_status !== 'paid') {
-      throw new Error(`El pedido ${order.order_number} no está pagado (status: ${order.payment_status})`);
+      const decision = confirmacionPorAnticipo(order);
+      if (decision === 'confirmar') {
+        return this.confirmarContraentregaConAnticipo(supabase, order);
+      } else if (decision === 'ya_confirmado') {
+        // Reintento, o ya lo confirmó una persona: nada que hacer.
+        return { saleId: order.sale_id ?? '', stockErrors: [] };
+      } else {
+        throw new Error(`El pedido ${order.order_number} no está pagado (status: ${order.payment_status})`);
+      }
     }
 
     return this.confirmOrder(supabase, order);
+  },
+
+  /**
+   * Confirma SOLO un pedido contraentrega cuyo anticipo acaba de pagarse en línea, con la misma
+   * regla que el botón «Confirmar pedido» de Pedidos online para ese pedido
+   * (`webOrderConfirmationService.confirmarCompleto` con `markAsPaid=false`):
+   *
+   * 1. `fn_confirmar_pedido_web_completo` con `p_pagado=false` y `p_marcar_confirmado=true`: venta
+   *    pendiente (balance = total), líneas, stock (descuenta y libera la reserva UNA vez: la RPC es
+   *    idempotente) y comanda, y el pedido queda «Confirmado» con `payment_status='partial'`. Todo
+   *    en una transacción: si algo falla, el pedido sigue «Pendiente» con el anticipo pagado.
+   * 2. Membresías (`p_pagado=null`, como la ruta del botón), cupón y envío (cod = total − anticipo,
+   *    `contraentregaDePedidoWeb`): los mismos servicios compartidos, idempotentes.
+   *
+   * NO crea factura, pago ni cartera: el anticipo sigue como pago `web_order` (concepto
+   * `anticipo_contraentrega`) y pasa a la factura cuando se cobra el resto en la puerta
+   * (`fn_cobrar_pedido_web_en_caja`). Así no hay pagos duplicados ni dos facturas.
+   *
+   * Sin el interruptor de la confirmación completa (o sin la función en la base) no confirma: el
+   * pedido queda «Pendiente» como hoy y se deja la nota para confirmarlo a mano.
+   */
+  async confirmarContraentregaConAnticipo(
+    supabase: SupabaseClient,
+    order: WebOrder & { items?: WebOrder['items'] },
+  ): Promise<ServerConfirmResult> {
+    try {
+      if (!confirmacionCompletaActiva()) {
+        throw new Error('CONFIRMACION_COMPLETA_INACTIVA');
+      } else {
+        // Interruptor encendido (producción): sigue abajo.
+      }
+      const userId = await this.resolveUserId(supabase, order);
+      const customerId = order.customer_id ?? null;
+      const tiempos = await this.tiemposEstimados(supabase, order);
+      const ahora = Date.now();
+      const listo = Date.parse(tiempos.estimatedReadyAt);
+      const entrega = tiempos.estimatedDeliveryAt ? Date.parse(tiempos.estimatedDeliveryAt) : null;
+      const prepMin = Math.max(0, Math.round((listo - ahora) / 60000));
+      const transitMin = entrega !== null && esDomicilio(order.delivery_type)
+        ? Math.max(0, Math.round((entrega - listo) / 60000))
+        : null;
+      const reparto = repartirTotalesPedidoWeb(order);
+      avisarSiNoCuadra(reparto, order);
+
+      const r = await confirmarPedidoWebCompleto(supabase, order, {
+        prepMin,
+        transitMin,
+        pagado: false,
+        customerId,
+        userId,
+        marcarConfirmado: true,
+        reparto,
+      });
+      if (!r) throw new Error('FUNCION_AUSENTE: fn_confirmar_pedido_web_completo');
+      if (!r.sale_id) throw new Error(`El pedido ${order.order_number} no devolvió venta`);
+      const saleId = r.sale_id;
+      const stockErrors = erroresDeStock(r.stock);
+      if (r.ya_completo) return { saleId, stockErrors };
+
+      const membresias = r.items_creados > 0
+        ? await activarMembresiasVentaWeb(supabase, saleId, order.order_number, null)
+        : { membresias: [], error: null };
+      if (order.coupon_code) {
+        await redimirCuponPedidoWeb(supabase, order, saleId);
+      }
+
+      let shipmentId: string | undefined;
+      if (esDomicilio(order.delivery_type)) {
+        try {
+          const { deliveryIntegrationService } = await import('./deliveryIntegrationService');
+          const shipment = await deliveryIntegrationService.createShipmentFromWebOrder(order, {
+            client: supabase,
+            customerId,
+          });
+          shipmentId = shipment.id;
+        } catch (shipError) {
+          // Como el botón: el envío nunca tumba la confirmación (queda recuperable).
+          console.error('[webOrderServerConfirmation] Envío del pedido contraentrega sin crear:', shipError);
+        }
+      }
+
+      if (stockErrors.length > 0) {
+        await this.anotarPedido(supabase, order, 'CONFIRMADO SOLO CON AVISOS DE STOCK', stockErrors.join('; '));
+      } else {
+        // Sin avisos: nada que anotar.
+      }
+      // Membresías sin activar: la venta ya es del pedido y la base es idempotente; quedan en el log
+      // (no se devuelven: la tienda solo avisa membresías pagadas).
+      if (membresias.error) {
+        console.error(`[webOrderServerConfirmation] Pedido ${order.order_number}: membresía sin activar (${membresias.error})`);
+      }
+      return { saleId, shipmentId, stockErrors };
+    } catch (err) {
+      const motivo = err instanceof Error ? err.message : String(err);
+      await this.anotarPedido(supabase, order, 'CONFIRMACIÓN AUTOMÁTICA FALLIDA', `${motivo}. El anticipo sigue pagado: confirma el pedido a mano`);
+      throw err;
+    }
+  },
+
+  /**
+   * Deja constancia en `internal_notes` (la nota del equipo que se ve en el detalle del pedido),
+   * como las marcas del anticipo de la base, con la hora en la zona de la organización. No lanza.
+   */
+  async anotarPedido(
+    supabase: SupabaseClient,
+    order: Pick<WebOrder, 'id' | 'order_number' | 'organization_id'>,
+    titulo: string,
+    detalle: string,
+  ): Promise<void> {
+    try {
+      const { data } = await supabase.from('web_orders').select('internal_notes').eq('id', order.id).maybeSingle();
+      const previas = ((data as { internal_notes?: string | null } | null)?.internal_notes ?? '').trim();
+      const zona = await getOrganizationTimezone(order.organization_id, supabase);
+      const linea = `[${titulo} ${formatDateTimeInTz(new Date(), zona)}] ${detalle}`.slice(0, 1000);
+      const { error } = await supabase
+        .from('web_orders')
+        .update({ internal_notes: previas ? `${previas}\n${linea}` : linea })
+        .eq('id', order.id);
+      if (error) console.error('[webOrderServerConfirmation] No se pudo anotar el pedido', { pedido: order.order_number, code: error.code });
+    } catch (err) {
+      console.error('[webOrderServerConfirmation] No se pudo anotar el pedido', { pedido: order.order_number, err });
+    }
   },
 
   /**
@@ -435,6 +575,98 @@ export const webOrderServerConfirmation = {
       .eq('id', order.organization_id)
       .maybeSingle();
     return (data?.type_id ?? 3) === 1 ? 30 : 24 * 60;
+  },
+
+  /**
+   * Hora estimada de «listo» y de entrega de un pedido que se confirma solo (paso 9).
+   * Dependen del tipo de organización:
+   * - Restaurant (type_id=1): 30 min listo, 60 min entrega (mismo ciudad)
+   * - Retail (type_id=3): 1 día empacado, N días entrega (según shipping_rates)
+   * - Otros: defaults razonables
+   * Si el negocio encendió «Usar estos tiempos al confirmarse solo»
+   * (Configuración › Punto de venta › Pedidos online), mandan sus tiempos
+   * por sede y tipo de entrega (`tiemposPedidos.ts`); si no, lo de siempre.
+   * Una sola regla para el pago en línea y para la contraentrega con anticipo pagado.
+   */
+  async tiemposEstimados(
+    supabase: SupabaseClient,
+    order: WebOrder,
+  ): Promise<{ estimatedReadyAt: string; estimatedDeliveryAt: string | null }> {
+    const configurados = await tiemposAutoConfirmacion(supabase, order);
+    const { data: orgForType } = configurados
+      ? { data: null }
+      : await supabase
+          .from('organizations')
+          .select('type_id')
+          .eq('id', order.organization_id)
+          .maybeSingle();
+    const orgTypeId = orgForType?.type_id ?? 3;
+
+    let estimatedReadyAt: string;
+    let estimatedDeliveryAt: string | null = null;
+
+    if (configurados) {
+      estimatedReadyAt = configurados.estimatedReadyAt.toISOString();
+      if (esDomicilio(order.delivery_type) && configurados.estimatedDeliveryAt) {
+        estimatedDeliveryAt = configurados.estimatedDeliveryAt.toISOString();
+      }
+    } else if (orgTypeId === 1) {
+      // Restaurante: minutos
+      estimatedReadyAt = new Date(Date.now() + 30 * 60000).toISOString();
+      if (esDomicilio(order.delivery_type)) {
+        estimatedDeliveryAt = new Date(Date.now() + 60 * 60000).toISOString();
+      }
+    } else {
+      // Retail y otros: días
+      // Empacado: 1 día por defecto
+      estimatedReadyAt = new Date(Date.now() + 24 * 60 * 60000).toISOString();
+
+      if (esDomicilio(order.delivery_type)) {
+        // Buscar tarifa de envío con estimated_transit_days
+        let transitDays = 5; // default Colombia nacional
+        try {
+          const addr = (order.delivery_address || {}) as Record<string, unknown>;
+          const destCity = (addr.city || '') as string;
+
+          // Intentar match por destination_city primero
+          const rateQuery = supabase
+            .from('shipping_rates')
+            .select('estimated_transit_days')
+            .eq('organization_id', order.organization_id)
+            .eq('is_active', true)
+            .not('estimated_transit_days', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (destCity) {
+            const { data: cityRate } = await rateQuery
+              .eq('destination_city', destCity)
+              .maybeSingle();
+
+            if (cityRate?.estimated_transit_days) {
+              transitDays = cityRate.estimated_transit_days;
+            } else {
+              // Fallback: cualquier tarifa activa con días configurados
+              const { data: anyRate } = await rateQuery.maybeSingle();
+              if (anyRate?.estimated_transit_days) {
+                transitDays = anyRate.estimated_transit_days;
+              }
+            }
+          } else {
+            const { data: anyRate } = await rateQuery.maybeSingle();
+            if (anyRate?.estimated_transit_days) {
+              transitDays = anyRate.estimated_transit_days;
+            }
+          }
+        } catch (rateErr) {
+          console.warn('[webOrderServerConfirmation] No se pudo obtener transit days de shipping_rates:', rateErr);
+        }
+
+        estimatedDeliveryAt = new Date(Date.now() + transitDays * 24 * 60 * 60000).toISOString();
+      }
+    }
+
+    return { estimatedReadyAt, estimatedDeliveryAt };
   },
 
   /**
@@ -901,86 +1133,7 @@ export const webOrderServerConfirmation = {
     }
 
     // ── 9. Actualizar web_orders ──
-    // Tiempos estimados dependen del tipo de organización:
-    // - Restaurant (type_id=1): 30 min listo, 60 min entrega (mismo ciudad)
-    // - Retail (type_id=3): 1 día empacado, N días entrega (según shipping_rates)
-    // - Otros: defaults razonables
-    // Si el negocio encendió «Usar estos tiempos al confirmarse solo»
-    // (Configuración › Punto de venta › Pedidos online), mandan sus tiempos
-    // por sede y tipo de entrega (`tiemposPedidos.ts`); si no, lo de siempre.
-    const configurados = await tiemposAutoConfirmacion(supabase, order);
-    const { data: orgForType } = configurados
-      ? { data: null }
-      : await supabase
-          .from('organizations')
-          .select('type_id')
-          .eq('id', order.organization_id)
-          .maybeSingle();
-    const orgTypeId = orgForType?.type_id ?? 3;
-
-    let estimatedReadyAt: string;
-    let estimatedDeliveryAt: string | null = null;
-
-    if (configurados) {
-      estimatedReadyAt = configurados.estimatedReadyAt.toISOString();
-      if (esDomicilio(order.delivery_type) && configurados.estimatedDeliveryAt) {
-        estimatedDeliveryAt = configurados.estimatedDeliveryAt.toISOString();
-      }
-    } else if (orgTypeId === 1) {
-      // Restaurante: minutos
-      estimatedReadyAt = new Date(Date.now() + 30 * 60000).toISOString();
-      if (esDomicilio(order.delivery_type)) {
-        estimatedDeliveryAt = new Date(Date.now() + 60 * 60000).toISOString();
-      }
-    } else {
-      // Retail y otros: días
-      // Empacado: 1 día por defecto
-      estimatedReadyAt = new Date(Date.now() + 24 * 60 * 60000).toISOString();
-
-      if (esDomicilio(order.delivery_type)) {
-        // Buscar tarifa de envío con estimated_transit_days
-        let transitDays = 5; // default Colombia nacional
-        try {
-          const addr = (order.delivery_address || {}) as Record<string, unknown>;
-          const destCity = (addr.city || '') as string;
-
-          // Intentar match por destination_city primero
-          const rateQuery = supabase
-            .from('shipping_rates')
-            .select('estimated_transit_days')
-            .eq('organization_id', order.organization_id)
-            .eq('is_active', true)
-            .not('estimated_transit_days', 'is', null)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (destCity) {
-            const { data: cityRate } = await rateQuery
-              .eq('destination_city', destCity)
-              .maybeSingle();
-
-            if (cityRate?.estimated_transit_days) {
-              transitDays = cityRate.estimated_transit_days;
-            } else {
-              // Fallback: cualquier tarifa activa con días configurados
-              const { data: anyRate } = await rateQuery.maybeSingle();
-              if (anyRate?.estimated_transit_days) {
-                transitDays = anyRate.estimated_transit_days;
-              }
-            }
-          } else {
-            const { data: anyRate } = await rateQuery.maybeSingle();
-            if (anyRate?.estimated_transit_days) {
-              transitDays = anyRate.estimated_transit_days;
-            }
-          }
-        } catch (rateErr) {
-          console.warn('[webOrderServerConfirmation] No se pudo obtener transit days de shipping_rates:', rateErr);
-        }
-
-        estimatedDeliveryAt = new Date(Date.now() + transitDays * 24 * 60 * 60000).toISOString();
-      }
-    }
+    const { estimatedReadyAt, estimatedDeliveryAt } = await this.tiemposEstimados(supabase, order);
 
     if (completo) {
       // Confirmación completa (E2): el estado y los tiempos van por separado.

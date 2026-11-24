@@ -448,6 +448,16 @@ ${boton}
 }
 
 /**
+ * ¿El pedido quedó confirmado por un pago en línea? Pagado completo, o contraentrega con el
+ * anticipo pagado (el resto se cobra en la puerta). Puro.
+ */
+export function confirmadoPorPagoEnLinea(p: { status?: string | null; payment_status?: string | null; advance_status?: string | null }): boolean {
+  if (p.status !== 'confirmed') return false;
+  if (p.payment_status === 'paid') return true;
+  return p.payment_status === 'partial' && p.advance_status === 'paid';
+}
+
+/**
  * Aviso «novedad» de un pedido web (logística Fase 1): lo llama quien registró la novedad
  * (`logistica_registrar_novedad` devuelve `aviso: 'novedad'`). Organización de la sesión o del
  * pedido, nunca de un body. Devuelve si salió el correo. Nunca lanza.
@@ -461,15 +471,18 @@ ${boton}
  * `pedido_pagado`); aquí salen los demás canales (WhatsApp, según los ajustes de avisos).
  * Una sola vez por pedido (los webhooks se reintentan): si ya hay un aviso «confirmado» registrado,
  * no se manda otro. La organización sale del propio pedido. Nunca lanza.
+ *
+ * 2026-11-24: también el pedido contraentrega que se confirmó solo al pagarse su anticipo
+ * (`partial` + `advance_status='paid'`); el correo «Pagaste hoy…» ya lo manda la tienda.
  */
 export async function avisarPagoConfirmadoPasarela(db: SupabaseClient, orderId: string): Promise<void> {
   try {
     const { data: pedido } = await db
       .from('web_orders')
-      .select('id, organization_id, status, payment_status')
+      .select('id, organization_id, status, payment_status, advance_status')
       .eq('id', orderId)
       .maybeSingle();
-    if (!pedido?.organization_id || pedido.payment_status !== 'paid' || pedido.status !== 'confirmed') return;
+    if (!pedido?.organization_id || !confirmadoPorPagoEnLinea(pedido)) return;
     const organizationId = Number(pedido.organization_id);
     const { data: previos } = await db
       .from('web_order_notices')

@@ -85,6 +85,38 @@ export function bloqueoConfirmarPorAnticipo(o: PedidoContraentrega): 'FALTA_ANTI
   return estadoAnticipo(o) === 'pendiente' && o.status === 'pending' ? 'FALTA_ANTICIPO' : null;
 }
 
+/**
+ * ¿El saldo se cobra al ENTREGAR? Contraentrega con anticipo (las condiciones de la sede lo
+ * pidieron, pagado o no): lo cobra el domiciliario o la transportadora (Cuadres), o «Cobrar» si el
+ * cliente paga en la tienda. Confirmar el pedido nunca lo cobra en caja. Un pedido en efectivo sin
+ * anticipo sigue como siempre (su «Marcar como pagado» al confirmar cobra en la caja).
+ */
+export function seCobraAlEntregar(o: PedidoContraentrega): boolean {
+  return esPedidoContraentrega(o) && (tieneAnticipo(o) || (o.advance_status ?? null) !== null);
+}
+
+/**
+ * Confirmación automática por anticipo pagado (pedido del dueño, 2026-11-24): «cuando el anticipo
+ * aparezca pagado, se pone confirmado el pedido». La llama `/api/web-orders/[id]/auto-confirm`
+ * cuando la tienda ve la transición del anticipo a pagado.
+ *
+ * - `confirmar`: contraentrega con el anticipo pagado, pago parcial (falta lo de la puerta) y aún
+ *   «Pendiente» → se confirma con la misma regla que el botón «Confirmar pedido».
+ * - `ya_confirmado`: el mismo pedido ya avanzó (lo confirmó una persona, o un reintento): nada.
+ * - `no_aplica`: cualquier otro pedido (sin anticipo, anticipo sin pagar, de pasarela, cerrado…).
+ */
+export type DecisionConfirmacionAnticipo = 'confirmar' | 'ya_confirmado' | 'no_aplica';
+
+const AVANZADOS: ReadonlySet<string> = new Set(['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered']);
+
+export function confirmacionPorAnticipo(o: PedidoContraentrega): DecisionConfirmacionAnticipo {
+  if (!esPedidoContraentrega(o) || estadoAnticipo(o) !== 'pagado' || o.payment_status !== 'partial') {
+    return 'no_aplica';
+  }
+  if (o.status === 'pending') return 'confirmar';
+  return AVANZADOS.has(o.status ?? '') ? 'ya_confirmado' : 'no_aplica';
+}
+
 /** Anticipo de un pedido en el cuadre del domiciliario (Figma 3014:194407 › 07). */
 export interface AnticipoEnCuadre {
   numero: string;

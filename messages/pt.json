@@ -66843,7 +66843,130 @@
       "actualizar": "Atualizar",
       "importar": "Importar",
       "limpiarTodo": "Limpar tudo",
-      "cancelar": "Cancelar"
+      "cancelar": "Cancelar",
+      "ficha": {
+        "pestanas": {
+          "etiqueta": "Seções da ficha",
+          "resumen": "Resumo",
+          "documentos": "Documentos",
+          "viajes": "Viagens",
+          "envios": "Envios",
+          "novedades": "Ocorrências"
+        },
+        "errorCarga": "Não foi possível carregar a ficha",
+        "reintentar": "Tentar novamente",
+        "verTodos": "Ver os {n}",
+        "si": "Sim",
+        "no": "Não",
+        "enCurso": "Hoje: {codigo} · {estado}",
+        "documentos": {
+          "titulo": "Documentos",
+          "descripcion": "O despacho é bloqueado se algum vencer",
+          "subir": "Enviar documento",
+          "columnas": {
+            "documento": "Documento",
+            "numero": "Número",
+            "numeroEntidad": "Número ou entidade",
+            "vence": "Vence",
+            "estado": "Status"
+          },
+          "conArchivo": "com arquivo",
+          "sinArchivo": "sem arquivo",
+          "sinVence": "Sem vencimento",
+          "noBloquea": "não bloqueia o despacho",
+          "diasVencido": "{count, plural, one {venceu há # dia} other {venceu há # dias}}",
+          "diasFaltan": "{count, plural, =0 {vence hoje} one {falta # dia} other {faltam # dias}}",
+          "vacio": {
+            "titulo": "Sem documentos registrados",
+            "descripcion": "Envie os documentos com número, vencimento e arquivo para que o despacho os acompanhe."
+          }
+        },
+        "viajes": {
+          "titulo": "Histórico de viagens",
+          "delMes": "{count, plural, =0 {Sem viagens neste mês} one {# viagem neste mês} other {# viagens neste mês}}",
+          "ultimos": "As últimas {n}",
+          "columnas": {
+            "fecha": "Data",
+            "viaje": "Viagem",
+            "vehiculo": "Veículo",
+            "conductor": "Motorista",
+            "pasajeros": "Passageiros",
+            "llegada": "Chegada"
+          },
+          "estados": {
+            "scheduled": "Programada",
+            "boarding": "Embarcando",
+            "in_transit": "Em rota",
+            "arrived": "Chegou",
+            "completed": "Concluída",
+            "cancelled": "Cancelada",
+            "delayed": "Atrasada"
+          },
+          "aTiempo": "No horário",
+          "retraso": "+{n} min",
+          "ocupacion": "{vendidos} de {total}",
+          "sinRuta": "Sem rota",
+          "ver": "Ver viagem",
+          "reportarNovedad": "Relatar ocorrência",
+          "vacio": {
+            "titulo": "Sem viagens registradas",
+            "descripcion": "Aqui aparecem as viagens programadas e realizadas."
+          }
+        },
+        "envios": {
+          "titulo": "Envios",
+          "total": "{count, plural, one {# envio no total} other {# envios no total}}",
+          "columnas": {
+            "fecha": "Data",
+            "envio": "Envio",
+            "destino": "Destino",
+            "estado": "Status"
+          },
+          "sinNumero": "Sem número",
+          "ver": "Ver envio",
+          "vacio": {
+            "titulo": "Sem envios registrados",
+            "descripcion": "Aqui aparecem os envios atribuídos para entrega."
+          }
+        },
+        "novedades": {
+          "titulo": "Ocorrências e incidentes",
+          "abiertas": "{count, plural, one {# aberta} other {# abertas}}",
+          "columnas": {
+            "fecha": "Data",
+            "novedad": "Ocorrência",
+            "costo": "Custo",
+            "estado": "Status"
+          },
+          "estados": {
+            "open": "Aberta",
+            "investigating": "Em análise",
+            "in_progress": "Em andamento",
+            "resolved": "Resolvida",
+            "closed": "Encerrada",
+            "cancelled": "Cancelada"
+          },
+          "tipos": {
+            "delay": "Atraso",
+            "accident": "Acidente",
+            "damage": "Dano",
+            "lost": "Perda",
+            "theft": "Roubo",
+            "customer_complaint": "Reclamação do cliente",
+            "vehicle_breakdown": "Pane do veículo",
+            "route_blocked": "Via bloqueada",
+            "driver_issue": "Ocorrência do motorista",
+            "weather": "Clima",
+            "documentation": "Documentação",
+            "other": "Outra"
+          },
+          "ver": "Ver ocorrência",
+          "vacio": {
+            "titulo": "Sem ocorrências",
+            "descripcion": "As ocorrências são relatadas em cada viagem."
+          }
+        }
+      }
     },
     "vehiculos": {
       "titulo": "Veículos",
@@ -67067,6 +67190,457 @@
         "titulo": "Excluir {nombre}?",
         "descripcion": "A habilitação e os dados de motorista são excluídos. O vínculo em Recursos humanos não muda. Esta ação não pode ser desfeita.",
         "confirmar": "Excluir"
+      }
+    },
+    "detalleVehiculo": {
+      "cargando": "Carregando veículo…",
+      "modelo": "Modelo {anio}",
+      "conductor": "motorista {nombre}",
+      "docs": {
+        "vencido": "Documento vencido",
+        "por_vencer": "Documento a vencer",
+        "vigente": "Documentos em dia",
+        "sin_fecha": "Sem documentos"
+      },
+      "noEncontrado": {
+        "titulo": "Não encontramos este veículo",
+        "descripcion": "Pode ter sido excluído ou não pertencer a esta organização.",
+        "volver": "Voltar para Veículos"
+      },
+      "ficha": {
+        "titulo": "Ficha",
+        "placa": "Placa",
+        "tipo": "Tipo",
+        "marcaModelo": "Marca e modelo",
+        "anio": "Ano",
+        "color": "Cor",
+        "vin": "Chassi (VIN)",
+        "capacidad": "Capacidade",
+        "plano": "Mapa de assentos",
+        "planoDetalle": "{nombre} · {filas} × {columnas}",
+        "conductor": "Motorista atribuído",
+        "transportadora": "Transportadora",
+        "sede": "Filial"
+      },
+      "novedadesDescripcion": "Do veículo e de suas viagens",
+      "enviosDescripcion": "Envios que saíram neste veículo",
+      "operacion": {
+        "titulo": "Manutenção e combustível",
+        "vacioTitulo": "Ainda não há manutenções nem abastecimentos registrados",
+        "vacioDescripcion": "O plano de manutenção, os abastecimentos e os custos do veículo ainda não são controlados no GO Admin."
+      }
+    },
+    "detallePersona": {
+      "cargando": "Carregando pessoa…",
+      "vinculadoDesde": "conosco desde {fecha}",
+      "licencia": {
+        "vence": "CNH vence em {fecha}",
+        "vencio": "CNH venceu em {fecha}",
+        "sin": "Sem habilitação registrada"
+      },
+      "noEncontrado": {
+        "titulo": "Não encontramos esta pessoa",
+        "descripcion": "Pode ter sido excluída ou não pertencer a esta organização.",
+        "volver": "Voltar para Motoristas e entregadores"
+      },
+      "documentos": {
+        "titulo": "Habilitações e exames",
+        "descripcion": "O que o despacho confere antes de cada saída"
+      },
+      "aviso": {
+        "porVencerTitulo": "{documento} vence em {count, plural, one {# dia} other {# dias}}",
+        "porVencerDescripcion": "Depois de {fecha}, {nombre} não poderá ser despachado até que o documento renovado seja enviado.",
+        "vencidoTitulo": "{documento} está vencido",
+        "vencidoDescripcion": "Venceu em {fecha}: {nombre} não pode ser despachado até que o documento renovado seja enviado."
+      },
+      "datos": {
+        "titulo": "Dados",
+        "documento": "Documento",
+        "telefono": "Telefone",
+        "sangre": "Tipo sanguíneo",
+        "emergencia": "Contato de emergência",
+        "pasajeros": "Certificado para passageiros",
+        "peligrosas": "Cargas perigosas",
+        "cargo": "Cargo em Recursos humanos",
+        "categoria": "Categoria da habilitação",
+        "restricciones": "Restrições da habilitação",
+        "tipoVehiculo": "Veículo com que trabalha",
+        "sede": "Filial",
+        "todasLasSedes": "Todas as filiais"
+      },
+      "vehiculo": {
+        "titulo": "Veículo atribuído",
+        "vehiculo": "Veículo",
+        "capacidad": "Capacidade",
+        "documentos": "Documentos do veículo",
+        "estado": "Status",
+        "vacioTitulo": "Sem veículo atribuído",
+        "vacioDescripcion": "O veículo é atribuído em Veículos, com «Atribuir motorista».",
+        "irVehiculos": "Ir para Veículos"
+      },
+      "viajesSinUsuario": "As viagens ficam registradas no usuário da pessoa no GO Admin; sem usuário não há viagens para mostrar.",
+      "enviosDescripcion": "Envios atribuídos para entrega",
+      "novedadesDescripcion": "Das suas viagens e dos seus envios"
+    },
+    "dialogos": {
+      "historial": {
+        "titulo": "Histórico de {nombre}",
+        "subtitulo": "O que mudou e quando. Não pode ser apagado.",
+        "error": "Não foi possível carregar o histórico",
+        "vacio": "Ainda não há movimentos",
+        "nota": "Registra as mudanças de status e de motorista feitas em Veículos, os documentos, os despachos e as ocorrências.",
+        "estado": "Status: {de} → {a}",
+        "conductorAsignado": "Motorista atribuído: {nombre}",
+        "conductorQuitado": "Motorista removido",
+        "antes": "Antes: {nombre}",
+        "antesNinguno": "Antes: sem motorista",
+        "documentoSubido": "Enviou {documento}",
+        "documentoArchivado": "{documento} substituído por um novo",
+        "vence": "Vence em {fecha}",
+        "despacho": "Despachado na viagem {codigo}",
+        "novedad": "Ocorrência: {titulo}",
+        "altaVehiculo": "Veículo cadastrado",
+        "altaPersona": "Pessoa cadastrada"
+      },
+      "asignar": {
+        "titulo": "Atribuir motorista a {placa}",
+        "descripcion": "Somente pessoas com usuário e habilitação válida para {tipo} ({categorias}).",
+        "descripcionSinLicencia": "Somente pessoas ativas com usuário no GO Admin.",
+        "asignar": "Atribuir",
+        "eligeUno": "Escolha outra pessoa",
+        "quitar": "Remover motorista",
+        "buscar": "Buscar por nome, documento ou habilitação",
+        "sinResultados": "Ninguém corresponde à busca",
+        "sinPersonas": "Ainda não há motoristas nem entregadores",
+        "sinLicencia": "sem habilitação",
+        "licenciaVenceEn": "{categoria} vence em {count, plural, one {# dia} other {# dias}}",
+        "licenciaVence": "{categoria} vence em {fecha}",
+        "actual": "Atual",
+        "porVencer": "Habilitação a vencer",
+        "motivos": {
+          "sinUsuario": "Sem usuário no GO Admin",
+          "inactivo": "Inativa",
+          "sinLicencia": "Sem habilitação",
+          "vencida": "Habilitação vencida",
+          "categoria": "Não pode dirigir este tipo"
+        },
+        "actualDesconocido": "O motorista atual não está no catálogo: você pode trocá-lo ou removê-lo."
+      },
+      "estado": {
+        "titulo": "Alterar status de {placa}",
+        "hoy": "Hoje: {estado}.",
+        "cambiar": "Alterar status",
+        "mismoEstado": "Escolha um status diferente",
+        "explicacion": {
+          "available": "Pode ser atribuído a viagens e envios.",
+          "in_use": "O sistema define ao despachar; aqui, só para corrigir.",
+          "maintenance": "Não aparece para atribuir. Se tiver viagens programadas, mostramos para reatribuí-las.",
+          "inactive": "Fora de serviço. Mantém seu histórico."
+        },
+        "aviso": "Tem {count, plural, one {# viagem programada} other {# viagens programadas}} ({codigos}).",
+        "avisoDescripcion": "Continuam com este veículo: reatribua-as em Despachos.",
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Ex.: troca de freios"
+      },
+      "importar": {
+        "titulo": {
+          "vehiculos": "Importar veículos",
+          "conductores": "Importar motoristas e entregadores"
+        },
+        "descripcion": "Do Excel ou CSV, com o modelo. Revisamos tudo antes de salvar.",
+        "listo": "Pronto",
+        "importarN": {
+          "vehiculos": "Importar {count, plural, one {# veículo} other {# veículos}}",
+          "conductores": "Importar {count, plural, one {# pessoa} other {# pessoas}}"
+        },
+        "nadaQueImportar": "Não há linhas prontas para importar",
+        "elegirArchivo": "Escolher arquivo",
+        "pasos": {
+          "etiqueta": "Etapas da importação",
+          "plantilla": "Modelo",
+          "archivo": "Enviar arquivo",
+          "revisar": "Revisar",
+          "importar": "Importar",
+          "movil": "Etapa {n} de {total}: {etiqueta}"
+        },
+        "resultado": {
+          "vehiculos": "{count, plural, =0 {Nenhum veículo importado} one {# veículo importado} other {# veículos importados}}",
+          "conductores": "{count, plural, =0 {Nenhuma pessoa importada} one {# pessoa importada} other {# pessoas importadas}}"
+        },
+        "filas": "{count, plural, one {# linha} other {# linhas}}",
+        "cambiar": "Trocar",
+        "listos": "{count, plural, one {# pronto} other {# prontos}}",
+        "existen": "{count, plural, one {# já existe (será atualizado)} other {# já existem (serão atualizados)}}",
+        "conError": "{count, plural, one {# com erro} other {# com erro}}",
+        "filaError": "Linha {fila} · {mensaje}",
+        "descargarPlantilla": "Baixar o modelo",
+        "paso1": "1. Baixe o modelo",
+        "paso2": "2. Envie o arquivo preenchido",
+        "formatos": "Excel (.xlsx, .xls) ou CSV.",
+        "columnas": {
+          "vehiculos": "Placa e tipo são obrigatórios; também marca, modelo, ano, capacidades, chassi, vencimentos, status e ativo.",
+          "conductores": "Vínculo de Recursos humanos ou nome (externo); habilitação com número, categoria e vencimento; exame médico, tipo sanguíneo, certificados e contato de emergência."
+        },
+        "errores": {
+          "extension": "Somente arquivos .csv, .xlsx ou .xls.",
+          "columnas": "Faltam colunas no arquivo: {columnas}",
+          "vacio": "O arquivo não tem linhas com dados.",
+          "lectura": "Não foi possível ler o arquivo."
+        },
+        "codigos": {
+          "placaVacia": "placa vazia. Essa linha não será importada; corrija-a no arquivo e envie de novo.",
+          "tipoInvalido": "tipo de veículo inválido ({valor})",
+          "estadoInvalido": "status inválido ({valor})",
+          "numeroInvalido": "número inválido em {campo} ({valor})",
+          "fechaInvalida": "data inválida em {campo} ({valor}); use AAAA-MM-DD",
+          "placaRepetida": "a placa {valor} está repetida no arquivo",
+          "identidadFaltante": "falta o vínculo ou o nome da pessoa",
+          "licenciaIncompleta": "a habilitação precisa de número, categoria e vencimento",
+          "categoriaInvalida": "categoria de habilitação inválida ({valor})",
+          "sangreInvalida": "tipo sanguíneo inválido ({valor})",
+          "empleoRepetido": "o vínculo {valor} está repetido no arquivo"
+        }
+      }
+    },
+    "formVehiculo": {
+      "tituloNuevo": "Novo veículo",
+      "tituloEditar": "Editar {placa}",
+      "migaNuevo": "Novo",
+      "migaEditar": "Editar",
+      "subtitulo": "Catálogo comum: usado por Logística e Transporte",
+      "noEncontrado": "Não encontramos este veículo",
+      "volver": "Voltar para Veículos",
+      "guardar": "Salvar veículo",
+      "guardarCorto": "Salvar",
+      "guardarYOtro": "Salvar e adicionar outro",
+      "licenciaVigente": "habilitação {categoria} válida",
+      "licenciaPorVencer": "habilitação {categoria} a vencer",
+      "licenciaNoSirve": "habilitação {categoria} não serve para este tipo",
+      "planoPuestos": "{nombre} · {count, plural, one {# assento} other {# assentos}}",
+      "sinPlano": "Sem mapa",
+      "todasLasSedes": "Todas as filiais",
+      "propio": "Próprio",
+      "venceEl": "Vence em {fecha}",
+      "sinFechaNiArchivo": "Sem data nem arquivo",
+      "venceEn": "Vence em {count, plural, one {# dia} other {# dias}}",
+      "cambiar": "Trocar",
+      "agregar": "Adicionar",
+      "vence": "Vence",
+      "archivoDespues": "O número e o arquivo de cada documento são enviados ao editar o veículo, depois de salvo.",
+      "toast": {
+        "revisa": "{count, plural, one {Revise # campo} other {Revise # campos}}"
+      },
+      "errores": {
+        "plate": {
+          "requerido": "Digite a placa",
+          "duplicada": "Já existe um veículo com esta placa"
+        },
+        "vehicle_type": {
+          "requerido": "Escolha o tipo"
+        },
+        "year": {
+          "invalido": "Ano inválido"
+        },
+        "capacity_kg": {
+          "invalido": "Número inválido"
+        },
+        "capacity_m3": {
+          "invalido": "Número inválido"
+        },
+        "passenger_capacity": {
+          "invalido": "Número inteiro inválido"
+        },
+        "soat_expiry": {
+          "invalido": "Data inválida"
+        },
+        "techno_expiry": {
+          "invalido": "Data inválida"
+        },
+        "insurance_expiry": {
+          "invalido": "Data inválida"
+        },
+        "operating_card_expiry": {
+          "invalido": "Data inválida"
+        },
+        "status": {
+          "requerido": "Escolha o status"
+        }
+      },
+      "secciones": {
+        "identificacion": {
+          "titulo": "1 · Identificação",
+          "descripcion": "O que diz o documento do veículo."
+        },
+        "capacidad": {
+          "titulo": "2 · Capacidade",
+          "descripcion": "Para não carregar nem vender mais do que cabe."
+        },
+        "operacion": {
+          "titulo": "3 · Operação",
+          "descripcion": "Onde trabalha, quem dirige e se pode ser usado."
+        },
+        "documentos": {
+          "titulo": "4 · Documentos e vencimentos",
+          "descripcion": "Avisamos com 30, 15 e 7 dias. Com um documento vencido não é possível despachar."
+        }
+      },
+      "campos": {
+        "plate": "Placa",
+        "vehicle_type": "Tipo",
+        "brand": "Marca",
+        "model": "Modelo",
+        "year": "Ano",
+        "color": "Cor",
+        "vin": "Chassi (VIN)",
+        "capacity_kg": "Carga máxima (kg)",
+        "capacity_m3": "Volume (m³)",
+        "passenger_capacity": "Passageiros",
+        "seat_map_id": "Mapa de assentos",
+        "branch_id": "Filial",
+        "carrier_id": "Próprio ou de uma transportadora",
+        "current_driver_id": "Motorista atribuído",
+        "status": "Status",
+        "is_active": "Veículo ativo"
+      },
+      "ayudas": {
+        "plate": "Única na organização. Lanchas: inscrição.",
+        "vehicle_type": "Moto, carro, van, caminhão, micro-ônibus, ônibus, reboque, lancha ou iate.",
+        "passenger_capacity": "Só se transportar pessoas.",
+        "seat_map_id": "Usado pela bilheteria, pela loja online e pelo PDV para vender passagens.",
+        "sinPlanos": "Ainda não há mapas: são montados em Transporte › Passagens.",
+        "carrier_id": "Se for de terceiros, escolha a transportadora.",
+        "current_driver_id": "Somente pessoas com usuário e habilitação válida para este tipo.",
+        "status": "Disponível, em uso, em manutenção ou inativo.",
+        "is_active": "Desligado: não aparece para viagens nem envios, mas mantém seu histórico."
+      },
+      "resumen": {
+        "titulo": "Resumo",
+        "conductor": "Motorista",
+        "docs": {
+          "vigente": "{count, plural, one {# válido} other {# válidos}}",
+          "por_vencer": "{count} a vencer",
+          "vencido": "{count, plural, one {# vencido} other {# vencidos}}",
+          "sin_fecha": "{count} sem data"
+        },
+        "vencido": "{documento} está vencido",
+        "porVencer": "{documento} vence em {count, plural, one {# dia} other {# dias}}",
+        "avisoDescripcion": "Você pode salvar mesmo assim; o despacho é bloqueado no dia do vencimento."
+      }
+    },
+    "formPersona": {
+      "tituloNuevo": "Novo motorista ou entregador",
+      "tituloEditar": "Editar {nombre}",
+      "migaNuevo": "Novo",
+      "migaEditar": "Editar",
+      "subtitulo": "O que pode fazer vem do cargo em Recursos humanos, não de uma função",
+      "noEncontrado": "Não encontramos esta pessoa",
+      "volver": "Voltar para Motoristas e entregadores",
+      "guardar": "Salvar",
+      "guardarYOtro": "Salvar e adicionar outro",
+      "tiposVehiculo": {
+        "motorcycle": "Moto",
+        "bicycle": "Bicicleta",
+        "car": "Carro",
+        "van": "Van",
+        "on_foot": "A pé",
+        "other": "Outro"
+      },
+      "errores": {
+        "requerido": "Este dado é obrigatório",
+        "duplicada": "Já está cadastrado",
+        "invalido": "Valor inválido",
+        "incompleta": "Preencha número, categoria e vencimento"
+      },
+      "toast": {
+        "revisa": "{count, plural, one {Revise # campo} other {Revise # campos}}",
+        "duplicado": "Essa pessoa já está cadastrada (mesmo vínculo, usuário ou documento)",
+        "sinPermiso": "Você não tem permissão para gerenciar motoristas e entregadores"
+      },
+      "elegirEmpleado": "Escolha um funcionário",
+      "sinCargo": "Sem cargo",
+      "todasLasSedes": "Todas as filiais",
+      "elegirSede": "Escolha a filial",
+      "accesoEmpleado": "Acesso ao app: entra com seu usuário do GO Admin em «Meus envios» ou «Minhas viagens».",
+      "sinAcceso": "Sem acesso ao app",
+      "sinLicencia": "Sem habilitação",
+      "elegirCategoria": "Escolha a categoria",
+      "fotoLicencia": "Foto da habilitação (frente e verso)",
+      "subir": "Enviar",
+      "fotoDespues": "É enviada ao editar, depois que a pessoa estiver salva.",
+      "sinDato": "Sem dado",
+      "secciones": {
+        "persona": {
+          "titulo": "1 · Pessoa",
+          "descripcion": "Trabalha na empresa ou é externo (por exemplo, um entregador por diária)?"
+        },
+        "licencia": {
+          "titulo": "2 · Habilitação",
+          "descripcion": "Obrigatória para dirigir. Avisamos 30, 15 e 7 dias antes de vencer.",
+          "descripcionOpcional": "Se dirige um veículo a motor. Avisamos 30, 15 e 7 dias antes de vencer."
+        },
+        "salud": {
+          "titulo": "3 · Saúde e certificados",
+          "descripcion": "O que a lei exige para transportar passageiros ou carga."
+        },
+        "contacto": {
+          "titulo": "4 · Contato de emergência e veículo",
+          "descripcion": "Para quem ligar se algo acontecer, e com o que trabalha."
+        }
+      },
+      "modo": {
+        "empleado": "Funcionário da empresa",
+        "empleadoDescripcion": "Já está em Recursos humanos: nome, documento e cargo vêm de lá.",
+        "externo": "Externo, sem contrato",
+        "externoDescripcion": "É cadastrado aqui com nome, documento e telefone."
+      },
+      "campos": {
+        "employment_id": "Funcionário",
+        "position_id": "Cargo",
+        "full_name": "Nome completo",
+        "document_type": "Tipo de documento",
+        "document_number": "Documento",
+        "phone": "Celular",
+        "branch_id": "Filial",
+        "user_id": "Acesso ao app",
+        "cobra_contraentrega": "Recebe na entrega",
+        "license_number": "Número da habilitação",
+        "license_category": "Categoria",
+        "license_expiry": "Vence",
+        "license_restrictions": "Restrições",
+        "medical_certificate_expiry": "Exame médico vence",
+        "blood_type": "Tipo sanguíneo",
+        "passenger_certified": "Certificado para passageiros",
+        "hazmat_certified": "Certificado de cargas perigosas",
+        "certificaciones": "Outros certificados",
+        "emergency_contact_name": "Contato de emergência",
+        "emergency_contact_phone": "Telefone",
+        "vehicle_type": "Tipo de veículo que usa",
+        "vehiculo_id": "Veículo atribuído",
+        "is_active": "Ativo"
+      },
+      "ayudas": {
+        "employment_id": "Busque em Recursos humanos › Pessoas.",
+        "sinEmpleados": "Não há funcionários ativos sem cadastro.",
+        "position_id": "Motorista, Entregador, Despachante ou Tripulante. As permissões e o menu vêm do cargo.",
+        "user_id": "Um membro da organização com conta, para entrar em «Meus envios».",
+        "cobra_contraentrega": "Pode receber o pagamento do pedido na entrega.",
+        "license_category": "A1–A2 moto, B1–B3 particular, C1–C3 serviço público.",
+        "certificaciones": "Separados por vírgulas.",
+        "vehicle_type": "Para os externos: moto, bicicleta ou carro próprio.",
+        "vehiculo_id": "Também pode ser trocado em Veículos › Atribuir motorista.",
+        "vehiculoSinUsuario": "Para atribuir um veículo, precisa de acesso ao app.",
+        "is_active": "Desligado: não aparece para viagens nem envios, mas mantém seu histórico."
+      },
+      "resumen": {
+        "titulo": "Resumo",
+        "persona": "Pessoa",
+        "empleado": "funcionário",
+        "externo": "externo",
+        "cargo": "Cargo",
+        "vehiculo": "Veículo",
+        "licencia": "Habilitação: {estado}",
+        "examen": "Exame: {estado}",
+        "sinRol": "Nenhuma função nova é criada: o que pode fazer em Logística ou Transporte vem do cargo."
       }
     }
   }

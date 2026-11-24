@@ -25,6 +25,11 @@ export const RUTAS_CATALOGO: Record<Modulo, { inicio: string; vehiculos: string;
   transporte: { inicio: '/app/transporte/viajes', vehiculos: '/app/transporte/vehiculos', conductores: '/app/transporte/conductores' },
 };
 
+/** Ficha de un vehículo o de una persona, bajo la misma ruta desde la que se abrió la lista. */
+export function rutaFicha(modulo: Modulo, de: 'vehiculo' | 'persona', id: string): string {
+  return `${de === 'vehiculo' ? RUTAS_CATALOGO[modulo].vehiculos : RUTAS_CATALOGO[modulo].conductores}/${encodeURIComponent(id)}`;
+}
+
 // ── Documentos ─────────────────────────────────────────────────────────────
 
 export type EstadoDocs = EstadoDocumento | 'sin_fecha';

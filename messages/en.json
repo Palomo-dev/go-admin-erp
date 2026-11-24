@@ -66833,7 +66833,130 @@
       "actualizar": "Refresh",
       "importar": "Import",
       "limpiarTodo": "Clear all",
-      "cancelar": "Cancel"
+      "cancelar": "Cancel",
+      "ficha": {
+        "pestanas": {
+          "etiqueta": "Profile sections",
+          "resumen": "Summary",
+          "documentos": "Documents",
+          "viajes": "Trips",
+          "envios": "Shipments",
+          "novedades": "Incidents"
+        },
+        "errorCarga": "Could not load the profile",
+        "reintentar": "Try again",
+        "verTodos": "See all {n}",
+        "si": "Yes",
+        "no": "No",
+        "enCurso": "Today: {codigo} · {estado}",
+        "documentos": {
+          "titulo": "Documents",
+          "descripcion": "Dispatch is blocked if any of them expires",
+          "subir": "Upload document",
+          "columnas": {
+            "documento": "Document",
+            "numero": "Number",
+            "numeroEntidad": "Number or issuer",
+            "vence": "Expires",
+            "estado": "Status"
+          },
+          "conArchivo": "file attached",
+          "sinArchivo": "no file",
+          "sinVence": "No expiry date",
+          "noBloquea": "does not block dispatch",
+          "diasVencido": "{count, plural, one {expired # day ago} other {expired # days ago}}",
+          "diasFaltan": "{count, plural, =0 {expires today} one {# day left} other {# days left}}",
+          "vacio": {
+            "titulo": "No documents on file",
+            "descripcion": "Upload documents with their number, expiry date and file so dispatch can check them."
+          }
+        },
+        "viajes": {
+          "titulo": "Trip history",
+          "delMes": "{count, plural, =0 {No trips this month} one {# trip this month} other {# trips this month}}",
+          "ultimos": "The latest {n}",
+          "columnas": {
+            "fecha": "Date",
+            "viaje": "Trip",
+            "vehiculo": "Vehicle",
+            "conductor": "Driver",
+            "pasajeros": "Passengers",
+            "llegada": "Arrival"
+          },
+          "estados": {
+            "scheduled": "Scheduled",
+            "boarding": "Boarding",
+            "in_transit": "On the road",
+            "arrived": "Arrived",
+            "completed": "Completed",
+            "cancelled": "Cancelled",
+            "delayed": "Delayed"
+          },
+          "aTiempo": "On time",
+          "retraso": "+{n} min",
+          "ocupacion": "{vendidos} of {total}",
+          "sinRuta": "No route",
+          "ver": "View trip",
+          "reportarNovedad": "Report incident",
+          "vacio": {
+            "titulo": "No trips on record",
+            "descripcion": "Scheduled and completed trips show up here."
+          }
+        },
+        "envios": {
+          "titulo": "Shipments",
+          "total": "{count, plural, one {# shipment in total} other {# shipments in total}}",
+          "columnas": {
+            "fecha": "Date",
+            "envio": "Shipment",
+            "destino": "Destination",
+            "estado": "Status"
+          },
+          "sinNumero": "No number",
+          "ver": "View shipment",
+          "vacio": {
+            "titulo": "No shipments on record",
+            "descripcion": "Shipments assigned for delivery show up here."
+          }
+        },
+        "novedades": {
+          "titulo": "Incidents",
+          "abiertas": "{count, plural, one {# open} other {# open}}",
+          "columnas": {
+            "fecha": "Date",
+            "novedad": "Incident",
+            "costo": "Cost",
+            "estado": "Status"
+          },
+          "estados": {
+            "open": "Open",
+            "investigating": "Under review",
+            "in_progress": "In progress",
+            "resolved": "Resolved",
+            "closed": "Closed",
+            "cancelled": "Cancelled"
+          },
+          "tipos": {
+            "delay": "Delay",
+            "accident": "Accident",
+            "damage": "Damage",
+            "lost": "Loss",
+            "theft": "Theft",
+            "customer_complaint": "Customer complaint",
+            "vehicle_breakdown": "Vehicle breakdown",
+            "route_blocked": "Road closed",
+            "driver_issue": "Driver issue",
+            "weather": "Weather",
+            "documentation": "Documentation",
+            "other": "Other"
+          },
+          "ver": "View incident",
+          "vacio": {
+            "titulo": "No incidents",
+            "descripcion": "Incidents are reported from each trip."
+          }
+        }
+      }
     },
     "vehiculos": {
       "titulo": "Vehicles",
@@ -67057,6 +67180,457 @@
         "titulo": "Delete {nombre}?",
         "descripcion": "Their license and driver data are deleted. Their job in Human resources does not change. This action cannot be undone.",
         "confirmar": "Delete"
+      }
+    },
+    "detalleVehiculo": {
+      "cargando": "Loading vehicle…",
+      "modelo": "Model {anio}",
+      "conductor": "driver {nombre}",
+      "docs": {
+        "vencido": "Expired document",
+        "por_vencer": "Document expiring soon",
+        "vigente": "Documents up to date",
+        "sin_fecha": "No documents"
+      },
+      "noEncontrado": {
+        "titulo": "We could not find this vehicle",
+        "descripcion": "It may have been deleted or it does not belong to this organization.",
+        "volver": "Back to Vehicles"
+      },
+      "ficha": {
+        "titulo": "Details",
+        "placa": "Plate",
+        "tipo": "Type",
+        "marcaModelo": "Make and model",
+        "anio": "Year",
+        "color": "Color",
+        "vin": "VIN",
+        "capacidad": "Capacity",
+        "plano": "Seat map",
+        "planoDetalle": "{nombre} · {filas} × {columnas}",
+        "conductor": "Assigned driver",
+        "transportadora": "Carrier",
+        "sede": "Branch"
+      },
+      "novedadesDescripcion": "Of the vehicle and its trips",
+      "enviosDescripcion": "Shipments that went out in this vehicle",
+      "operacion": {
+        "titulo": "Maintenance and fuel",
+        "vacioTitulo": "No maintenance or refueling recorded yet",
+        "vacioDescripcion": "The maintenance plan, refueling and vehicle costs are not tracked in GO Admin yet."
+      }
+    },
+    "detallePersona": {
+      "cargando": "Loading person…",
+      "vinculadoDesde": "with us since {fecha}",
+      "licencia": {
+        "vence": "License expires on {fecha}",
+        "vencio": "License expired on {fecha}",
+        "sin": "No license on file"
+      },
+      "noEncontrado": {
+        "titulo": "We could not find this person",
+        "descripcion": "They may have been deleted or they do not belong to this organization.",
+        "volver": "Back to Drivers and couriers"
+      },
+      "documentos": {
+        "titulo": "Licenses and exams",
+        "descripcion": "What dispatch checks before every departure"
+      },
+      "aviso": {
+        "porVencerTitulo": "{documento} expires in {count, plural, one {# day} other {# days}}",
+        "porVencerDescripcion": "After {fecha}, {nombre} cannot be dispatched until the renewed document is uploaded.",
+        "vencidoTitulo": "{documento} has expired",
+        "vencidoDescripcion": "It expired on {fecha}: {nombre} cannot be dispatched until the renewed document is uploaded."
+      },
+      "datos": {
+        "titulo": "Information",
+        "documento": "ID",
+        "telefono": "Phone",
+        "sangre": "Blood type",
+        "emergencia": "Emergency contact",
+        "pasajeros": "Passenger certificate",
+        "peligrosas": "Hazardous materials",
+        "cargo": "Job position in Human resources",
+        "categoria": "License category",
+        "restricciones": "License restrictions",
+        "tipoVehiculo": "Vehicle they work with",
+        "sede": "Branch",
+        "todasLasSedes": "All branches"
+      },
+      "vehiculo": {
+        "titulo": "Assigned vehicle",
+        "vehiculo": "Vehicle",
+        "capacidad": "Capacity",
+        "documentos": "Vehicle documents",
+        "estado": "Status",
+        "vacioTitulo": "No vehicle assigned",
+        "vacioDescripcion": "Vehicles are assigned from Vehicles, with “Assign driver”.",
+        "irVehiculos": "Go to Vehicles"
+      },
+      "viajesSinUsuario": "Trips are recorded under the person’s GO Admin user; without a user there are no trips to show.",
+      "enviosDescripcion": "Shipments assigned for delivery",
+      "novedadesDescripcion": "From their trips and shipments"
+    },
+    "dialogos": {
+      "historial": {
+        "titulo": "{nombre} history",
+        "subtitulo": "What changed and when. It cannot be deleted.",
+        "error": "Could not load the history",
+        "vacio": "No activity yet",
+        "nota": "It records status and driver changes made from Vehicles, documents, dispatches and incidents.",
+        "estado": "Status: {de} → {a}",
+        "conductorAsignado": "Driver assigned: {nombre}",
+        "conductorQuitado": "Driver removed",
+        "antes": "Before: {nombre}",
+        "antesNinguno": "Before: no driver",
+        "documentoSubido": "Uploaded {documento}",
+        "documentoArchivado": "{documento} replaced by a new one",
+        "vence": "Expires on {fecha}",
+        "despacho": "Dispatched on trip {codigo}",
+        "novedad": "Incident: {titulo}",
+        "altaVehiculo": "Vehicle registered",
+        "altaPersona": "Person registered"
+      },
+      "asignar": {
+        "titulo": "Assign a driver to {placa}",
+        "descripcion": "Only people with a user and a valid license for {tipo} ({categorias}).",
+        "descripcionSinLicencia": "Only active people with a GO Admin user.",
+        "asignar": "Assign",
+        "eligeUno": "Choose someone else",
+        "quitar": "Remove driver",
+        "buscar": "Search by name, ID or license",
+        "sinResultados": "Nobody matches the search",
+        "sinPersonas": "No drivers or couriers yet",
+        "sinLicencia": "no license",
+        "licenciaVenceEn": "{categoria} expires in {count, plural, one {# day} other {# days}}",
+        "licenciaVence": "{categoria} expires {fecha}",
+        "actual": "Current",
+        "porVencer": "License expiring soon",
+        "motivos": {
+          "sinUsuario": "No GO Admin user",
+          "inactivo": "Inactive",
+          "sinLicencia": "No license",
+          "vencida": "Expired license",
+          "categoria": "Cannot drive this type"
+        },
+        "actualDesconocido": "The current driver is not in the catalog: you can change or remove them."
+      },
+      "estado": {
+        "titulo": "Change status of {placa}",
+        "hoy": "Today: {estado}.",
+        "cambiar": "Change status",
+        "mismoEstado": "Choose a different status",
+        "explicacion": {
+          "available": "Can be assigned to trips and shipments.",
+          "in_use": "The system sets it when dispatching; here, only to correct it.",
+          "maintenance": "Not available to assign. If it has scheduled trips, we show them so you can reassign them.",
+          "inactive": "Out of service. Keeps its history."
+        },
+        "aviso": "It has {count, plural, one {# scheduled trip} other {# scheduled trips}} ({codigos}).",
+        "avisoDescripcion": "They still use this vehicle: reassign them in Dispatches.",
+        "motivo": "Reason",
+        "motivoPlaceholder": "E.g.: brake replacement"
+      },
+      "importar": {
+        "titulo": {
+          "vehiculos": "Import vehicles",
+          "conductores": "Import drivers and couriers"
+        },
+        "descripcion": "From Excel or CSV, using the template. We check everything before saving.",
+        "listo": "Done",
+        "importarN": {
+          "vehiculos": "Import {count, plural, one {# vehicle} other {# vehicles}}",
+          "conductores": "Import {count, plural, one {# person} other {# people}}"
+        },
+        "nadaQueImportar": "There are no rows ready to import",
+        "elegirArchivo": "Choose file",
+        "pasos": {
+          "etiqueta": "Import steps",
+          "plantilla": "Template",
+          "archivo": "Upload file",
+          "revisar": "Review",
+          "importar": "Import",
+          "movil": "Step {n} of {total}: {etiqueta}"
+        },
+        "resultado": {
+          "vehiculos": "{count, plural, =0 {No vehicles were imported} one {# vehicle imported} other {# vehicles imported}}",
+          "conductores": "{count, plural, =0 {No people were imported} one {# person imported} other {# people imported}}"
+        },
+        "filas": "{count, plural, one {# row} other {# rows}}",
+        "cambiar": "Change",
+        "listos": "{count} ready",
+        "existen": "{count, plural, one {# already exists (will be updated)} other {# already exist (will be updated)}}",
+        "conError": "{count, plural, one {# with an error} other {# with errors}}",
+        "filaError": "Row {fila} · {mensaje}",
+        "descargarPlantilla": "Download the template",
+        "paso1": "1. Download the template",
+        "paso2": "2. Upload the filled-in file",
+        "formatos": "Excel (.xlsx, .xls) or CSV.",
+        "columnas": {
+          "vehiculos": "Plate and type are required; also make, model, year, capacities, VIN, expiry dates, status and active.",
+          "conductores": "Human resources employment or name (external); license with number, category and expiry date; medical exam, blood type, certificates and emergency contact."
+        },
+        "errores": {
+          "extension": "Only .csv, .xlsx or .xls files.",
+          "columnas": "Columns missing from the file: {columnas}",
+          "vacio": "The file has no rows with data.",
+          "lectura": "Could not read the file."
+        },
+        "codigos": {
+          "placaVacia": "empty plate. That row will not be imported; fix it in the file and upload it again.",
+          "tipoInvalido": "invalid vehicle type ({valor})",
+          "estadoInvalido": "invalid status ({valor})",
+          "numeroInvalido": "invalid number in {campo} ({valor})",
+          "fechaInvalida": "invalid date in {campo} ({valor}); use YYYY-MM-DD",
+          "placaRepetida": "plate {valor} is repeated in the file",
+          "identidadFaltante": "the employment or the person’s name is missing",
+          "licenciaIncompleta": "the license needs a number, category and expiry date",
+          "categoriaInvalida": "invalid license category ({valor})",
+          "sangreInvalida": "invalid blood type ({valor})",
+          "empleoRepetido": "employment {valor} is repeated in the file"
+        }
+      }
+    },
+    "formVehiculo": {
+      "tituloNuevo": "New vehicle",
+      "tituloEditar": "Edit {placa}",
+      "migaNuevo": "New",
+      "migaEditar": "Edit",
+      "subtitulo": "Shared catalog: used by Logistics and Transport",
+      "noEncontrado": "We could not find this vehicle",
+      "volver": "Back to Vehicles",
+      "guardar": "Save vehicle",
+      "guardarCorto": "Save",
+      "guardarYOtro": "Save and add another",
+      "licenciaVigente": "{categoria} license valid",
+      "licenciaPorVencer": "{categoria} license expiring soon",
+      "licenciaNoSirve": "{categoria} license not valid for this type",
+      "planoPuestos": "{nombre} · {count, plural, one {# seat} other {# seats}}",
+      "sinPlano": "No seat map",
+      "todasLasSedes": "All branches",
+      "propio": "Own fleet",
+      "venceEl": "Expires on {fecha}",
+      "sinFechaNiArchivo": "No date or file",
+      "venceEn": "Expires in {count, plural, one {# day} other {# days}}",
+      "cambiar": "Change",
+      "agregar": "Add",
+      "vence": "Expires",
+      "archivoDespues": "The number and file of each document are uploaded when editing the vehicle, once it is saved.",
+      "toast": {
+        "revisa": "{count, plural, one {Check # field} other {Check # fields}}"
+      },
+      "errores": {
+        "plate": {
+          "requerido": "Enter the plate",
+          "duplicada": "There is already a vehicle with this plate"
+        },
+        "vehicle_type": {
+          "requerido": "Choose the type"
+        },
+        "year": {
+          "invalido": "Invalid year"
+        },
+        "capacity_kg": {
+          "invalido": "Invalid number"
+        },
+        "capacity_m3": {
+          "invalido": "Invalid number"
+        },
+        "passenger_capacity": {
+          "invalido": "Invalid whole number"
+        },
+        "soat_expiry": {
+          "invalido": "Invalid date"
+        },
+        "techno_expiry": {
+          "invalido": "Invalid date"
+        },
+        "insurance_expiry": {
+          "invalido": "Invalid date"
+        },
+        "operating_card_expiry": {
+          "invalido": "Invalid date"
+        },
+        "status": {
+          "requerido": "Choose the status"
+        }
+      },
+      "secciones": {
+        "identificacion": {
+          "titulo": "1 · Identification",
+          "descripcion": "What the registration card says."
+        },
+        "capacidad": {
+          "titulo": "2 · Capacity",
+          "descripcion": "So you never load or sell more than fits."
+        },
+        "operacion": {
+          "titulo": "3 · Operation",
+          "descripcion": "Where it works, who drives it and whether it can be used."
+        },
+        "documentos": {
+          "titulo": "4 · Documents and expiry dates",
+          "descripcion": "We warn 30, 15 and 7 days ahead. With an expired document it cannot be dispatched."
+        }
+      },
+      "campos": {
+        "plate": "Plate",
+        "vehicle_type": "Type",
+        "brand": "Make",
+        "model": "Model",
+        "year": "Year",
+        "color": "Color",
+        "vin": "VIN / chassis",
+        "capacity_kg": "Maximum load (kg)",
+        "capacity_m3": "Volume (m³)",
+        "passenger_capacity": "Passengers",
+        "seat_map_id": "Seat map",
+        "branch_id": "Branch",
+        "carrier_id": "Own fleet or a carrier",
+        "current_driver_id": "Assigned driver",
+        "status": "Status",
+        "is_active": "Active vehicle"
+      },
+      "ayudas": {
+        "plate": "Unique in the organization. Boats: registration number.",
+        "vehicle_type": "Motorcycle, car, van, truck, minibus, bus, trailer, boat or yacht.",
+        "passenger_capacity": "Only if it carries people.",
+        "seat_map_id": "Used by the ticket office, the online store and the POS to sell tickets.",
+        "sinPlanos": "No seat maps yet: they are set up in Transport › Tickets.",
+        "carrier_id": "If it belongs to a third party, choose the carrier.",
+        "current_driver_id": "Only people with a user and a valid license for this type.",
+        "status": "Available, in use, under maintenance or inactive.",
+        "is_active": "Off: it is not offered for trips or shipments, but keeps its history."
+      },
+      "resumen": {
+        "titulo": "Summary",
+        "conductor": "Driver",
+        "docs": {
+          "vigente": "{count} valid",
+          "por_vencer": "{count} expiring soon",
+          "vencido": "{count} expired",
+          "sin_fecha": "{count} without a date"
+        },
+        "vencido": "{documento} has expired",
+        "porVencer": "{documento} expires in {count, plural, one {# day} other {# days}}",
+        "avisoDescripcion": "You can still save; dispatch is blocked on the day it expires."
+      }
+    },
+    "formPersona": {
+      "tituloNuevo": "New driver or courier",
+      "tituloEditar": "Edit {nombre}",
+      "migaNuevo": "New",
+      "migaEditar": "Edit",
+      "subtitulo": "What they can do comes from their job position in Human resources, not from a role",
+      "noEncontrado": "We could not find this person",
+      "volver": "Back to Drivers and couriers",
+      "guardar": "Save",
+      "guardarYOtro": "Save and add another",
+      "tiposVehiculo": {
+        "motorcycle": "Motorcycle",
+        "bicycle": "Bicycle",
+        "car": "Car",
+        "van": "Van",
+        "on_foot": "On foot",
+        "other": "Other"
+      },
+      "errores": {
+        "requerido": "This field is required",
+        "duplicada": "Already registered",
+        "invalido": "Invalid value",
+        "incompleta": "Fill in number, category and expiry date"
+      },
+      "toast": {
+        "revisa": "{count, plural, one {Check # field} other {Check # fields}}",
+        "duplicado": "That person is already registered (same employment, user or ID)",
+        "sinPermiso": "You do not have permission to manage drivers and couriers"
+      },
+      "elegirEmpleado": "Choose an employee",
+      "sinCargo": "No job position",
+      "todasLasSedes": "All branches",
+      "elegirSede": "Choose the branch",
+      "accesoEmpleado": "App access: they sign in with their GO Admin user to “My shipments” or “My trips”.",
+      "sinAcceso": "No app access",
+      "sinLicencia": "No license",
+      "elegirCategoria": "Choose the category",
+      "fotoLicencia": "License photo (front and back)",
+      "subir": "Upload",
+      "fotoDespues": "It is uploaded when editing, once the person is saved.",
+      "sinDato": "Not set",
+      "secciones": {
+        "persona": {
+          "titulo": "1 · Person",
+          "descripcion": "Do they work for the company or are they external (for example, a courier by the day)?"
+        },
+        "licencia": {
+          "titulo": "2 · Driver’s license",
+          "descripcion": "Required to drive. We warn 30, 15 and 7 days before it expires.",
+          "descripcionOpcional": "If they drive a motor vehicle. We warn 30, 15 and 7 days before it expires."
+        },
+        "salud": {
+          "titulo": "3 · Health and certificates",
+          "descripcion": "What the law requires to carry passengers or cargo."
+        },
+        "contacto": {
+          "titulo": "4 · Emergency contact and vehicle",
+          "descripcion": "Who to call if something happens, and what they work with."
+        }
+      },
+      "modo": {
+        "empleado": "Company employee",
+        "empleadoDescripcion": "Already in Human resources: name, ID and job position are taken from there.",
+        "externo": "External, no contract",
+        "externoDescripcion": "Registered here with their name, ID and phone."
+      },
+      "campos": {
+        "employment_id": "Employee",
+        "position_id": "Job position",
+        "full_name": "Full name",
+        "document_type": "ID type",
+        "document_number": "ID number",
+        "phone": "Mobile",
+        "branch_id": "Branch",
+        "user_id": "App access",
+        "cobra_contraentrega": "Collects cash on delivery",
+        "license_number": "License number",
+        "license_category": "Category",
+        "license_expiry": "Expires",
+        "license_restrictions": "Restrictions",
+        "medical_certificate_expiry": "Medical exam expires",
+        "blood_type": "Blood type",
+        "passenger_certified": "Passenger certificate",
+        "hazmat_certified": "Hazardous materials certificate",
+        "certificaciones": "Other certificates",
+        "emergency_contact_name": "Emergency contact",
+        "emergency_contact_phone": "Phone",
+        "vehicle_type": "Vehicle type they use",
+        "vehiculo_id": "Assigned vehicle",
+        "is_active": "Active"
+      },
+      "ayudas": {
+        "employment_id": "Search in Human resources › People.",
+        "sinEmpleados": "There are no unregistered active employees.",
+        "position_id": "Driver, Courier, Dispatcher or Crew member. Permissions and menu come from the job position.",
+        "user_id": "An organization member with an account, to sign in to “My shipments”.",
+        "cobra_contraentrega": "Can collect payment for the order on delivery.",
+        "license_category": "A1–A2 motorcycle, B1–B3 private, C1–C3 public service.",
+        "certificaciones": "Separated by commas.",
+        "vehicle_type": "For externals: their own motorcycle, bicycle or car.",
+        "vehiculo_id": "It can also be changed from Vehicles › Assign driver.",
+        "vehiculoSinUsuario": "To assign a vehicle they need app access.",
+        "is_active": "Off: they are not offered for trips or shipments, but keep their history."
+      },
+      "resumen": {
+        "titulo": "Summary",
+        "persona": "Person",
+        "empleado": "employee",
+        "externo": "external",
+        "cargo": "Job position",
+        "vehiculo": "Vehicle",
+        "licencia": "License: {estado}",
+        "examen": "Exam: {estado}",
+        "sinRol": "No new role is created: what they can do in Logistics or Transport comes from the job position."
       }
     }
   }

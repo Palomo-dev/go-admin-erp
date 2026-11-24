@@ -170,6 +170,7 @@ const META: Record<string, MetaReporte> = {
   'cierre-caja': { grupo: 'ventas', filtros: 'c s f' },
   'ventas-periodo': { grupo: 'ventas', filtros: 'c s f p m x' },
   'ventas-hora': { grupo: 'ventas', filtros: 'c s f' },
+  'ventas-canal-sede': { grupo: 'ventas', filtros: 'c s f', nuevo: true },
   'ventas-vendedor': { grupo: 'ventas', filtros: 'c s f p m x' },
   'devoluciones-descuentos': { grupo: 'ventas', filtros: 'c s f p m x' },
   'pedidos-online': { grupo: 'ventas', filtros: 'c s f' },

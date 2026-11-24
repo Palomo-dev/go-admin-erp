@@ -21253,7 +21253,9 @@
         "vencidasDetalle": "{count, plural, one {{n} overdue account} other {{n} overdue accounts}}",
         "promedioCobro": "Average collection",
         "dias": "{dias} days",
-        "promedioDetalle": "Accounts paid in the last 90 days"
+        "promedioDetalle": "Accounts paid in the last 90 days",
+        "porCobrarAl": "Receivable as of {fecha}",
+        "corteDetalle": "Balances at the close of that day"
       },
       "buscar": {
         "placeholder": "Search by customer, ID or invoice",
@@ -21277,7 +21279,9 @@
         "sinRecordatorioChip": "No reminder in {dias} d",
         "clienteChip": "One customer",
         "cliente": "Customer",
-        "clienteChipNombre": "Customer: {nombre}"
+        "clienteChipNombre": "Customer: {nombre}",
+        "corte": "Cutoff date",
+        "corteChip": "Balances as of {fecha}"
       },
       "columnas": {
         "cliente": "Customer",

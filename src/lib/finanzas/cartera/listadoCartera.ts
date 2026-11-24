@@ -5,7 +5,21 @@
  */
 import { TRAMOS_ANTIGUEDAD, type TramoAntiguedad } from './antiguedad';
 
-export const FILTROS_CARTERA = ['estado', 'tramo', 'cliente', 'sin_recordatorio_dias'] as const;
+/**
+ * `corte` (YYYY-MM-DD, día de la organización): saldos al cierre de ese día
+ * (`fn_cxc_listado`, migración 20261124130000). Sin él, los saldos de hoy.
+ */
+export const FILTROS_CARTERA = ['estado', 'tramo', 'cliente', 'sin_recordatorio_dias', 'corte'] as const;
+
+const DIA_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Día calendario válido `YYYY-MM-DD` (rechaza 2026-02-30). */
+export function esDiaCorte(valor: string | null | undefined): valor is string {
+  if (!valor || !DIA_RE.test(valor)) return false;
+  const [a, m, d] = valor.split('-').map(Number);
+  const f = new Date(Date.UTC(a, m - 1, d));
+  return f.getUTCFullYear() === a && f.getUTCMonth() === m - 1 && f.getUTCDate() === d;
+}
 export const CAMPOS_ORDEN_CARTERA = ['vencimiento', 'saldo', 'antiguedad', 'cliente', 'creada'] as const;
 
 /**
@@ -57,6 +71,8 @@ export function consultaCarteraDesde(params: URLSearchParams): ConsultaCartera {
   if (UUID_RE.test(cliente)) filtros.cliente = cliente;
   const sinRec = Number(params.get('sin_recordatorio_dias'));
   if (Number.isInteger(sinRec) && sinRec > 0 && sinRec <= 365) filtros.sin_recordatorio_dias = sinRec;
+  const corte = params.get('corte');
+  if (esDiaCorte(corte)) filtros.corte = corte;
   const sucursal = Number(params.get('sucursal'));
   if (Number.isInteger(sucursal) && sucursal > 0) filtros.sucursal = sucursal;
   const origen = params.get('origen') === 'pos' ? 'pos' : 'todos';
@@ -92,6 +108,8 @@ export interface FilaCartera {
 }
 
 export interface ResumenCartera {
+  /** Día de corte aplicado (`YYYY-MM-DD`) o `null` = saldos de hoy (un corte de hoy o futuro no aplica). */
+  corte: string | null;
   monedas: string[];
   por_cobrar: number;
   al_dia: number;

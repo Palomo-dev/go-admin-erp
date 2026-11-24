@@ -94,6 +94,7 @@ const RPC_NUEVAS: Record<string, string> = {
   fn_reporte_mas_vendido: '20261122075104_reportes_ventas_ampliados',
   fn_reporte_items_vendidos: '20261122075104_reportes_ventas_ampliados',
   fn_reporte_despachos: '20261122075104_reportes_ventas_ampliados',
+  fn_reporte_ventas_canal_sede: '20261124120000_reportes_impuestos_netos_y_ventas_canal_sede',
 };
 
 /**
@@ -129,7 +130,7 @@ const RPCS_FRONTEND = rpcsConBranchId();
 const RPCS = RPCS_FRONTEND.filter((rpc) => !(rpc in RPC_NUEVAS));
 
 describe('reportes — el frontend y la migración de p_branch_id cuadran', () => {
-  it('el frontend sigue llamando con p_branch_id a las 22 RPC conocidas', () => {
+  it('el frontend sigue llamando con p_branch_id a las 23 RPC conocidas', () => {
     // Si este test falla porque la lista creció, NO lo relajes: añade la función
     // nueva a la migración (o a una nueva, registrada en RPC_NUEVAS) antes de
     // tocar el frontend. La décima, fn_reporte_retenciones_practicadas, es la
@@ -139,6 +140,8 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
     // órdenes de compra), en `20260930233000_reportes_v2_consultas_nuevas`.
     // Las cuatro de ventas ampliadas y despachos (personas, más vendido,
     // ítems y despachos) son de `20261122075104_reportes_ventas_ampliados`.
+    // La de ventas por canal y por sede (2026-11-24) es de
+    // `20261124120000_reportes_impuestos_netos_y_ventas_canal_sede`.
     expect(RPCS_FRONTEND).toEqual([
       'fn_reporte_bancos_conciliacion',
       'fn_reporte_caja_bancos_diario',
@@ -159,6 +162,7 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
       'fn_reporte_retenciones_practicadas',
       'fn_reporte_rotacion_inventario',
       'fn_reporte_stock_critico_detalle',
+      'fn_reporte_ventas_canal_sede',
       'fn_reporte_ventas_personas',
       'fn_reporte_ventas_por_hora',
       'fn_reporte_ventas_resumen',

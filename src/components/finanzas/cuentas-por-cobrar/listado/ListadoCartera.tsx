@@ -14,6 +14,7 @@ import {
   AccionRapida,
   BranchBadgeActiva,
   BulkActionBar,
+  CampoFecha,
   ChipDocumento,
   CustomerPicker,
   DataTable,
@@ -53,6 +54,7 @@ import {
   ESTADOS_CARTERA,
   FILTROS_CARTERA,
   TAMANOS_PAGINA_CARTERA,
+  esDiaCorte,
   ordenCarteraRpc,
   type FilaCartera,
   type RespuestaListadoCartera,
@@ -95,7 +97,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
   const moneda = useMonedaOrganizacion();
   const { organization } = useOrganization();
   const { branchFilter, branches } = useBranch();
-  const { formatDate, getToday } = useFormatDate();
+  const { formatDate, formatPlain, getToday } = useFormatDate();
   const rutas = rutasCartera(origen);
   const enPos = origen === 'pos';
   const puedeCobrar = enPos ? permisos.posCrear || permisos.crear : permisos.crear;
@@ -155,6 +157,10 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
   const fmtFila = useCallback((f: FilaCartera, v: number) => crearFormateadorMoneda(moneda.paraDocumento(f.moneda))(v), [moneda]);
   const sustantivo = { singular: t('listado.sustantivo.singular'), plural: t('listado.sustantivo.plural') };
   const tramoActivo = (TRAMOS_ANTIGUEDAD as readonly string[]).includes(l.filtros.tramo ?? '') ? (l.filtros.tramo as TramoAntiguedad) : null;
+  // Fecha de corte: la cartera es un saldo a un día y la etiqueta lo dice. El
+  // corte que de verdad aplicó la base viene en `resumen.corte` (hoy o futuro = sin corte).
+  const corteFiltro = esDiaCorte(l.filtros.corte) ? l.filtros.corte : null;
+  const corteAplicado = resumen?.corte ?? null;
 
   const badge = (f: FilaCartera) => {
     if (f.estado === 'overdue' || f.dias > 0) return <StatusBadge estado="overdue" etiqueta={t('estados.vencidaDias', { dias: f.dias })} />;
@@ -273,6 +279,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
     l.filtros.estado && l.filtros.estado !== 'abiertas' ? { clave: 'estado', etiqueta: t(`listado.filtros.estados.${l.filtros.estado}` as never) } : null,
     tramoActivo ? { clave: 'tramo', etiqueta: t(`antiguedad.tramos.${tramoActivo}`) } : null,
     l.filtros.sin_recordatorio_dias ? { clave: 'sin_recordatorio_dias', etiqueta: t('listado.filtros.sinRecordatorioChip', { dias: l.filtros.sin_recordatorio_dias }) } : null,
+    corteFiltro ? { clave: 'corte', etiqueta: t('listado.filtros.corteChip', { fecha: formatPlain(corteFiltro) }) } : null,
     l.filtros.cliente
       ? { clave: 'cliente', etiqueta: nombreClienteFiltro ? t('listado.filtros.clienteChipNombre', { nombre: nombreClienteFiltro }) : t('listado.filtros.clienteChip') }
       : null,
@@ -383,7 +390,14 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
       />
 
       <KpiStrip etiqueta={t('listado.kpis.etiqueta')}>
-        <StatCard etiqueta={t('listado.kpis.porCobrar')} icono={WalletCards} cargando={!datos} valor={fmt(resumen?.por_cobrar ?? 0)} onClick={() => l.setFiltro('estado', null)} />
+        <StatCard
+          etiqueta={corteAplicado ? t('listado.kpis.porCobrarAl', { fecha: formatPlain(corteAplicado) }) : t('listado.kpis.porCobrar')}
+          icono={WalletCards}
+          cargando={!datos}
+          valor={fmt(resumen?.por_cobrar ?? 0)}
+          detalle={corteAplicado ? t('listado.kpis.corteDetalle') : undefined}
+          onClick={() => l.setFiltro('estado', null)}
+        />
         <StatCard etiqueta={t('listado.kpis.alDia')} icono={Clock} cargando={!datos} valor={fmt(resumen?.al_dia ?? 0)} onClick={() => l.setFiltro('tramo', 'al_dia')} />
         <StatCard
           etiqueta={t('listado.kpis.vencida')}
@@ -431,6 +445,19 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+            </FormField>
+            <FormField etiqueta={t('listado.filtros.corte')}>
+              {(c) => (
+                <CampoFecha
+                  id={c.id}
+                  aria-labelledby={c.idEtiqueta}
+                  valor={corteFiltro ?? ''}
+                  max={getToday()}
+                  hoy={getToday()}
+                  limpiable
+                  onValorChange={(v) => l.setFiltro('corte', v || null)}
+                />
               )}
             </FormField>
             <FormField etiqueta={t('listado.filtros.recordatorio')}>

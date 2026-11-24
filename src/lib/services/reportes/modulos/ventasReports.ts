@@ -2,7 +2,8 @@
 // Reportes de Ventas (POS)
 // Llama a las RPCs: fn_reporte_cierre_caja, fn_reporte_ventas_resumen,
 // fn_reporte_ventas_por_hora, fn_reporte_ventas_personas,
-// fn_reporte_mas_vendido y fn_reporte_items_vendidos.
+// fn_reporte_mas_vendido, fn_reporte_items_vendidos y
+// fn_reporte_ventas_canal_sede (ventas netas por canal y por sede).
 // El armado de KPI, tabla y pestañas de los reportes ampliados (Figma
 // «14 Reportes», 2733:51399) es puro y vive en `ventasVistas.ts`.
 // ============================================================
@@ -37,6 +38,7 @@ import {
   type RespuestaVentasPorHora,
   type RespuestaVentasResumen,
 } from './ventasVistas';
+import { aRespuestaCanalSede, armarCanalSede } from './canalSedeVista';
 
 function buildReportData(
   id: string,
@@ -295,6 +297,30 @@ export const ventasReports: DefinicionModulo[] = [
       const masVendido = (masVendidoRes.data ?? {}) as RespuestaMasVendido;
       const nombres = await resolverNombres(db, orgId, { ...idsDeVentas(d), metodos: false });
       return conArmado('ventas-hora', 'Ventas por hora', periodo, armarVentasPorHora(d, masVendido, nombres));
+    },
+  },
+  {
+    // Figma «24 Ventas» sección 7 (2026-11-24): la regla única de ventas netas
+    // (`fn_ventas_netas_cifras`, la del Inicio y de Todas las ventas) por canal y
+    // por sede. Las dos sumas dan el total (`canalSedeVista.ts`).
+    id: 'ventas-canal-sede',
+    modulo: 'pos',
+    titulo: 'Ventas por canal y por sede',
+    descripcion: 'Ventas netas (sin IVA ni INC, menos devoluciones, sin propinas) por canal y por sede; las dos suman el total',
+    categoria: 'comercial',
+    alcance: 'sucursal',
+    periodosSugeridos: ['semanal', 'mensual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_ventas_canal_sede', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
+      return conArmado('ventas-canal-sede', 'Ventas por canal y por sede', periodo, armarCanalSede(aRespuestaCanalSede(data)));
     },
   },
   {

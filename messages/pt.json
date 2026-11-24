@@ -16606,7 +16606,9 @@
         "vencidasDetalle": "{count, plural, one {{n} conta vencida} other {{n} contas vencidas}}",
         "promedioCobro": "Prazo médio de recebimento",
         "dias": "{dias} dias",
-        "promedioDetalle": "Contas pagas nos últimos 90 dias"
+        "promedioDetalle": "Contas pagas nos últimos 90 dias",
+        "porCobrarAl": "A receber em {fecha}",
+        "corteDetalle": "Saldos no fechamento desse dia"
       },
       "buscar": {
         "placeholder": "Buscar por cliente, documento ou fatura",
@@ -16630,7 +16632,9 @@
         "sinRecordatorioChip": "Sem lembrete {dias} d",
         "clienteChip": "Um cliente",
         "cliente": "Cliente",
-        "clienteChipNombre": "Cliente: {nombre}"
+        "clienteChipNombre": "Cliente: {nombre}",
+        "corte": "Data de corte",
+        "corteChip": "Saldos em {fecha}"
       },
       "columnas": {
         "cliente": "Cliente",

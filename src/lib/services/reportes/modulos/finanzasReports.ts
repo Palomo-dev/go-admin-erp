@@ -17,6 +17,7 @@ import type { DefinicionModulo, ReportData, PeriodoCierre, VistaReporte } from '
 import { rangoDelPeriodo } from '../rangoPeriodo';
 import { normalizarCartera, porcentajeVencido, type Banda, type CarteraEdades } from '@/lib/finanzas/reportes/carteraEdades';
 import { vistaRentabilidadProducto } from './rentabilidadProducto';
+import { aRespuestaImpuestos, armarReporteImpuestos } from './impuestosVista';
 
 function buildReportData(
   id: string,
@@ -362,7 +363,7 @@ export const finanzasReports: DefinicionModulo[] = [
     id: 'impuestos',
     modulo: 'finance',
     titulo: 'Impuestos (IVA, INC y retenciones)',
-    descripcion: 'Impuestos generados en ventas (IVA + INC), impuestos de compras y saldo del periodo, sin separar IVA de INC',
+    descripcion: 'IVA e INC netos de devoluciones, por tarifa; IVA de las compras y retenciones que nos practicaron. Informativo',
     categoria: 'financiero',
     alcance: 'sucursal',
     periodosSugeridos: ['mensual'],
@@ -377,24 +378,15 @@ export const finanzasReports: DefinicionModulo[] = [
       });
       if (error) throw error;
 
-      const d = data ?? {};
-
-      return buildReportData(
-        'impuestos', 'Impuestos (IVA, INC y retenciones)', 'finance', periodo,
-        [
-          { titulo: 'Impuestos generados (IVA + INC)', valor: d.iva_generado ?? 0, formato: 'moneda' },
-          { titulo: 'Impuestos en compras', valor: d.iva_descontable ?? 0, formato: 'moneda' },
-          { titulo: 'Saldo de impuestos', valor: d.iva_neto ?? 0, formato: 'moneda' },
-          { titulo: 'Total Facturado', valor: d.total_facturado ?? 0, formato: 'moneda' },
-        ],
-        [
-          { key: 'codigo', titulo: 'Código', tipo: 'texto' },
-          { key: 'tasa', titulo: 'Tasa %', tipo: 'porcentaje', alinear: 'right' },
-          { key: 'base', titulo: 'Base Gravable', tipo: 'moneda', alinear: 'right' },
-          { key: 'monto', titulo: 'Monto', tipo: 'moneda', alinear: 'right' },
-        ],
-        d.por_codigo ?? [],
-      );
+      // Figma «24 Ventas» sección 7: IVA e INC netos por tarifa y, aparte, las
+      // retenciones que nos practicaron (`impuestosVista.ts`).
+      const a = armarReporteImpuestos(aRespuestaImpuestos(data));
+      return {
+        ...buildReportData('impuestos', 'Impuestos (IVA, INC y retenciones)', 'finance', periodo, a.kpis, a.columnas, a.filas, a.totales),
+        vistaPrincipal: a.vistaPrincipal,
+        vistas: a.vistas,
+        lectura: a.lectura,
+      };
     },
   },
   {

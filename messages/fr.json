@@ -16605,7 +16605,9 @@
         "vencidasDetalle": "{count, plural, one {{n} compte en retard} other {{n} comptes en retard}}",
         "promedioCobro": "Délai moyen d'encaissement",
         "dias": "{dias} jours",
-        "promedioDetalle": "Comptes payés ces 90 derniers jours"
+        "promedioDetalle": "Comptes payés ces 90 derniers jours",
+        "porCobrarAl": "À recevoir au {fecha}",
+        "corteDetalle": "Soldes à la clôture de ce jour"
       },
       "buscar": {
         "placeholder": "Rechercher par client, identifiant ou facture",
@@ -16629,7 +16631,9 @@
         "sinRecordatorioChip": "Sans relance {dias} j",
         "clienteChip": "Un client",
         "cliente": "Client",
-        "clienteChipNombre": "Client : {nombre}"
+        "clienteChipNombre": "Client : {nombre}",
+        "corte": "Date d'arrêté",
+        "corteChip": "Soldes au {fecha}"
       },
       "columnas": {
         "cliente": "Client",

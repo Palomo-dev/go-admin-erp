@@ -36,11 +36,12 @@ async function pedir<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 /**
- * Avisa al cliente del pedido web tras una RPC que devolvió `aviso` (en camino, entregado,
+ * Avisa al cliente del pedido web tras una RPC que devolvió `aviso` (listo, en camino, entregado,
  * novedad). Usa la ruta de siempre (`/api/web-orders/[id]/aviso-estado`): mismos canales, ajustes y
  * registro que «Pedidos online». Nunca lanza: un aviso que no sale no deshace la entrega.
  *
- * - `en_camino` / `entregado`: `{ estado }` (la ruta solo avisa si el pedido está en ese estado).
+ * - `listo` / `en_camino` / `entregado`: `{ estado }` (la ruta solo avisa si el pedido está en ese
+ *   estado y no repite un momento que ya salió por ese canal, p. ej. si Pedidos online lo avisó).
  * - `novedad` (intento fallido): `{ momento: 'novedad' }`; la ruta arma el texto con el motivo
  *   GUARDADO en el envío (`shipments.exception_reason`), nunca con uno del navegador.
  */

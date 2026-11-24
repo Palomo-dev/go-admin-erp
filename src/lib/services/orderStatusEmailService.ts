@@ -331,13 +331,14 @@ export async function enviarAvisoEstado(
  * (para logs). `organizationId` sale de la sesión o del propio pedido, nunca
  * de un body. Qué canales salen lo deciden los ajustes de la organización
  * (`avisosClienteService`); sin esos ajustes (migración pendiente), el correo
- * de siempre en cada estado con aviso.
+ * de siempre en cada estado con aviso. `unaVez` (aviso automático de un cambio
+ * de estado): no repite un momento que ya salió por ese canal.
  */
 export async function enviarCorreoEstadoPedido(
   db: SupabaseClient,
   organizationId: number,
   orderId: string,
-  opciones: { actor?: string | null; soloCanal?: CanalAviso | null } = {},
+  opciones: { actor?: string | null; soloCanal?: CanalAviso | null; unaVez?: boolean } = {},
 ): Promise<boolean> {
   try {
     const { data: pedido, error } = await db
@@ -362,6 +363,7 @@ export async function enviarCorreoEstadoPedido(
       url,
       actor: opciones.actor ?? null,
       soloCanal: opciones.soloCanal ?? null,
+      unaVez: opciones.unaVez ?? false,
       estadoConAvisoLegado: (e) => esEstadoConAviso(e),
       datosEnvio: (momento) => datosEnvioParaAviso(db, organizationId, orderId, momento),
       enviarCorreo: async (extra) => {

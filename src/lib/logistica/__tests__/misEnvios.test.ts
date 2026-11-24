@@ -134,6 +134,7 @@ describe('siguiente paso del domiciliario', () => {
   });
 
   test('el aviso de la RPC se traduce al estado del pedido web', () => {
+    expect(estadoPedidoDelAviso('listo')).toBe('ready');
     expect(estadoPedidoDelAviso('en_camino')).toBe('in_delivery');
     expect(estadoPedidoDelAviso('entregado')).toBe('delivered');
     expect(estadoPedidoDelAviso('novedad')).toBeNull();

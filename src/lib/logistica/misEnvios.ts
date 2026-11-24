@@ -188,8 +188,13 @@ export function puedeReportarNovedad(estado: string | null | undefined): boolean
   return ['picked', 'dispatched', 'in_transit', 'out_for_delivery', 'failed_attempt'].includes(String(estado));
 }
 
-/** Estado del pedido web que confirma el aviso al cliente tras cada RPC (`aviso` de la base). */
-export function estadoPedidoDelAviso(aviso: string | null | undefined): 'in_delivery' | 'delivered' | null {
+/**
+ * Estado del pedido web que confirma el aviso al cliente tras cada RPC (`aviso` de la base).
+ * `listo`: `logistica_cambiar_estado` lo devuelve solo cuando «Listo para salir» llevó el pedido a
+ * «listo» (sincronización envío ↔ pedido, migración 20261124233000).
+ */
+export function estadoPedidoDelAviso(aviso: string | null | undefined): 'ready' | 'in_delivery' | 'delivered' | null {
+  if (aviso === 'listo') return 'ready';
   if (aviso === 'en_camino') return 'in_delivery';
   if (aviso === 'entregado') return 'delivered';
   return null;

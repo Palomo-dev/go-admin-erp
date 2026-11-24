@@ -76,7 +76,8 @@ async function cambiarVarios(
     try {
       const r = await deliveryIntegrationService.changeStatus(e.id, estado, { nota: nota ?? undefined });
       ok += 1;
-      if (avisar && r.aviso && e.sourceType && e.sourceId) void avisarCliente({ source_type: e.sourceType, source_id: e.sourceId }, r.aviso);
+      // «listo» sale siempre (como en Pedidos online); «en camino», según la casilla del diálogo.
+      if ((avisar || r.aviso === 'listo') && r.aviso && e.sourceType && e.sourceId) void avisarCliente({ source_type: e.sourceType, source_id: e.sourceId }, r.aviso);
     } catch (err) {
       primerError ??= err instanceof EnvioError ? err.codigo : 'ERROR';
     }

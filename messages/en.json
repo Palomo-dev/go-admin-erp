@@ -36569,7 +36569,7 @@
           "ayudaDescripcion": "Turn it off to keep only the title",
           "espacio": "Space between items",
           "lista": "Benefits ({n} of {max})",
-          "ayudaLista": "Drag to reorder. Open one to edit it: each has its own icon.",
+          "ayudaLista": "Tap a benefit to change its icon, title, description and color. Drag to reorder. The background, shape and size of all icons are in the Style tab.",
           "sinTitulo": "Untitled",
           "nuevo": "New benefit",
           "anadir": "Add benefit",
@@ -36618,7 +36618,12 @@
           "tarjeta": "Card of each item",
           "ayudaTarjeta": "Only in «Cards» and «Badges».",
           "fondoTarjeta": "Card background",
-          "avisoSolido": "If the color is very light, the icon on a solid background switches to black or white so it stays readable (like buttons)."
+          "avisoSolido": "If the color is very light, the icon on a solid background switches to black or white so it stays readable (like buttons).",
+          "ayudaColumnasCelular": "Shows in the canvas «Mobile» view; on desktop the desktop columns apply.",
+          "ayudaEstiloIconos": "For the icons of all benefits: color, background, shape and size. Each benefit’s icon and color are chosen in Content.",
+          "formaSinFondo": "With «None» the shape is not visible: choose «Soft» or «Solid».",
+          "colorItemSinEfecto": "All icons now use «{modo}» (Style tab › Icon color). To give each benefit its own color, use «Multicolor».",
+          "usarMulticolor": "Use «Multicolor»"
         },
         "resenas": {
           "estilos": {
@@ -36676,7 +36681,8 @@
           "resumen": "Rating summary",
           "avatar": "Avatar with initial",
           "ayudaAvatar": "Uses the store color",
-          "tamanoTitulo": "Title size"
+          "tamanoTitulo": "Title size",
+          "ayudaTituloCompacta": "In «Compact» the title only shows while the product has no reviews."
         },
         "relacionados": {
           "estilos": {
@@ -36774,7 +36780,8 @@
           "todoAncho": "Full width",
           "tamanoTexto": "Text size",
           "normal": "Normal"
-        }
+        },
+        "ocultasPorEstilo": "Not used with «{estilo}»: {opciones}. Change the style to see them."
       },
       "etiquetasFicha": {
         "titulo": "Labels",
@@ -38791,11 +38798,13 @@
       "enLaMesa": "Added to the table bill · Ticket sent to the kitchen",
       "completada": "Confirmation completed",
       "stockFallido": "{n, plural, one {# line without stock deducted} other {# lines without stock deducted}}: check the recipe or reject with a reason",
+      "stockFallidoTienda": "{n, plural, one {# line without stock deducted} other {# lines without stock deducted}}: check the inventory or reject with a reason",
       "yaConfirmado": "The order was already confirmed",
       "yaConfirmadoDetalle": "The sale was created when the payment arrived; no other sale was created.",
       "listo": "Ready: {tiempo}",
       "ventaCreada": "Sale created",
       "comandaEnviada": "Ticket sent to the kitchen",
+      "comandaEnviadaTienda": "Packing order sent",
       "entrega": "Delivery: {tiempo}",
       "marcadoPagado": "Marked as paid",
       "cuponRedimido": "Coupon redeemed",
@@ -38888,12 +38897,16 @@
         "whatsapp": "WhatsApp",
         "phone": "Phone"
       },
-      "avisoStock": "Order confirmed, but the recipe stock fell short: {detalle}. The kitchen ticket was sent; adjust inventory or let the customer know."
+      "avisoStock": "Order confirmed, but the recipe stock fell short: {detalle}. The kitchen ticket was sent; adjust inventory or let the customer know.",
+      "avisoStockTienda": "Order confirmed, but the stock fell short: {detalle}. The packing order was sent; adjust inventory or let the customer know."
     },
     "notas": {
       "notaCocina": "Kitchen note: {nota}",
+      "notaCocinaTienda": "Packing note: {nota}",
       "paraCocina": "For the kitchen",
-      "paraCocinaComanda": "For the kitchen · printed on kitchen ticket #{comanda}"
+      "paraCocinaTienda": "For packing",
+      "paraCocinaComanda": "For the kitchen · printed on kitchen ticket #{comanda}",
+      "paraCocinaComandaTienda": "For packing · printed on packing order #{comanda}"
     },
     "pagos": {
       "titulo": "Payments",
@@ -38914,11 +38927,13 @@
       "venta": "Sale",
       "factura": "Sales invoice",
       "comanda": "Kitchen ticket",
+      "comandaTienda": "Packing order",
       "origen": "Source",
       "caja": "Register",
       "seCreaAlConfirmar": "created on confirmation",
       "seEmiteAlCobrar": "issued when charged",
       "sinComanda": "no kitchen ticket",
+      "sinComandaTienda": "no packing order",
       "origenValor": "{canal} · {numero}",
       "comandaValor": "#{id}",
       "cajaValor": "Register {caja} · {sede} · open",
@@ -38934,9 +38949,13 @@
       "hoyFecha": "today, {fecha}",
       "programadoPara": "For: {fecha}",
       "imprimirComanda": "Print kitchen ticket",
+      "imprimirComandaTienda": "Print packing order",
       "imprimirError": "The kitchen ticket couldn't be printed",
+      "imprimirErrorTienda": "The packing order couldn't be printed",
       "imprimirEnviado": "Kitchen ticket #{id} sent to print",
+      "imprimirEnviadoTienda": "Packing order #{id} sent to print",
       "imprimirSinImpresora": "No printer for the ticket's station",
+      "imprimirSinImpresoraTienda": "No printer for the packing order's station",
       "avisoReenviado": "Customer notification resent",
       "notas": "Notes",
       "notaCliente": "Customer note",
@@ -38970,6 +38989,7 @@
         "pending": "Pending",
         "confirmed": "Confirmed",
         "preparing": "In progress",
+        "preparingTienda": "Packing",
         "ready": "Ready",
         "in_delivery": "On its way",
         "delivered": "Delivered",
@@ -38988,7 +39008,9 @@
       "nota": "Note:",
       "confirmar": "Confirm",
       "iniciarPreparacion": "Start preparation",
+      "iniciarPreparacionTienda": "Start packing",
       "preparar": "Prepare",
+      "prepararTienda": "Pack",
       "marcarListo": "Mark ready",
       "enviarDomicilio": "Send for delivery",
       "enviar": "Send",
@@ -39082,6 +39104,7 @@
       "confirmarPedido": "Confirm order",
       "rechazar": "Reject",
       "iniciarPreparacion": "Start preparation",
+      "iniciarPreparacionTienda": "Start packing",
       "marcarComoListo": "Mark as ready",
       "enviarDomicilio": "Send for delivery",
       "marcarComoPagado": "Mark as paid",
@@ -39094,6 +39117,7 @@
       "estados": {
         "pending": "Pending",
         "preparing": "Preparing",
+        "preparingTienda": "Packing",
         "ready": "Ready",
         "cancelled": "Cancelled"
       }
@@ -39105,6 +39129,7 @@
         "scheduled": "Scheduled for",
         "confirmed": "Confirmed",
         "preparing": "In preparation",
+        "preparingTienda": "Packing",
         "ready": "Ready",
         "in_delivery": "On the way",
         "delivered": "Delivered",
@@ -39132,6 +39157,7 @@
       "confirmarPedido": "Confirm order",
       "indicaTiemposEstimadosNotificar": "Enter the estimated times to notify the customer.",
       "tiempoPreparacionListoAprox": "Preparation time (ready approx.)",
+      "tiempoPreparacionListoAproxTienda": "Packing time (ready approx.)",
       "minutos": "Minutes",
       "horas": "Hours",
       "dias": "Days",
@@ -39167,6 +39193,7 @@
       "noPudoCargarPedido": "The order could not be loaded",
       "pedidoRechazado": "Order rejected",
       "pedidoPreparacion": "Order in preparation",
+      "pedidoPreparacionTienda": "Packing the order",
       "pedidoListoEntrega": "Order ready for delivery",
       "pedidoCamino": "Order on the way",
       "pedidoEntregado": "Order delivered",
@@ -40497,6 +40524,7 @@
       "pending": "Pending",
       "confirmed": "Confirmed",
       "preparing": "Preparing",
+      "preparingTienda": "Packing",
       "ready": "Ready",
       "in_delivery": "On the way",
       "delivered": "Delivered",
@@ -40508,6 +40536,7 @@
       "pending": "Pending",
       "confirmed": "Confirmed",
       "preparing": "Preparing",
+      "preparingTienda": "Packing",
       "ready": "Ready",
       "in_delivery": "On the way",
       "delivered": "Delivered",
@@ -40567,6 +40596,7 @@
       "ver": "View details",
       "confirmar": "Confirm",
       "preparar": "Start preparing",
+      "prepararTienda": "Start packing",
       "listo": "Mark ready",
       "enviar": "Send out for delivery",
       "entregado": "Mark delivered",
@@ -40579,6 +40609,7 @@
       "cobrar": "Charge at register",
       "imprimir": "Print",
       "preparar": "Move to preparing",
+      "prepararTienda": "Move to packing",
       "listos": "Mark ready",
       "entregados": "Mark delivered",
       "exportar": "Export CSV",
@@ -40603,7 +40634,9 @@
     "confirmar": {
       "titulo": "Confirm order",
       "descripcion": "Say how long it takes to be ready. The sale is created and the ticket goes to the kitchen.",
+      "descripcionTienda": "Say how long it takes to be ready. The sale and the packing order are created.",
       "preparacion": "Preparation time (approx. ready)",
+      "preparacionTienda": "Packing time (approx. ready)",
       "traslado": "Travel time (approx. delivery)",
       "trasladoAyuda": "From ready until it reaches the customer. Use 0 for pickup or dine in.",
       "minutos": "Minutes",
@@ -40616,6 +40649,7 @@
     "confirmarLote": {
       "titulo": "Confirm {n} pending orders",
       "descripcion": "The same times apply to all. Each order creates its own sale and kitchen ticket.",
+      "descripcionTienda": "The same times apply to all. Each order creates its own sale and packing order.",
       "accion": "Confirm {n} orders",
       "resultado": "{ok, plural, one {# order confirmed} other {# orders confirmed}}",
       "fallidos": "{n, plural, one {# order couldn't be confirmed} other {# orders couldn't be confirmed}}: {pedidos}",

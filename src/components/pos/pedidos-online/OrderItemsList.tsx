@@ -6,6 +6,8 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { enlaceLineaProducto, type ProductoDeLinea } from '@/lib/inventario/enlaceProducto';
 import { EnlaceFichaProducto } from '@/components/inventario/productos/EnlaceFichaProducto';
 import type { WebOrderItem } from '@/lib/services/webOrdersService';
+import { claveEstadoPedido, claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from './rubroPedidosUi';
 
 /** Producto de una línea: estado y padre (para el enlace) y la miniatura ya resuelta. */
 export type ProductoLineaConImagen = ProductoDeLinea & { imagenUrl?: string | null };
@@ -50,6 +52,8 @@ export function OrderItemsList({
   productos,
 }: OrderItemsListProps) {
   const t = useTranslations('pedidoWeb');
+  // Una tienda no tiene cocina: «Alistando» y «Nota para alistar».
+  const rubro = useRubroPedidos();
   const { formatear } = useMonedaOrganizacion();
   const displayItems = maxItems ? items.slice(0, maxItems) : items;
   const remainingCount = maxItems && items.length > maxItems ? items.length - maxItems : 0;
@@ -116,7 +120,7 @@ export function OrderItemsList({
               )}
               {showStatus && (
                 <span className="rounded-full bg-subtle px-2 text-[11px] font-medium leading-5 text-fg-secondary">
-                  {t(`orderItemsList.estados.${item.status}`)}
+                  {t(`orderItemsList.estados.${claveEstadoPedido(item.status, rubro)}`)}
                 </span>
               )}
             </div>
@@ -127,7 +131,7 @@ export function OrderItemsList({
               </p>
             )}
             {/* Nota de cocina bajo la línea, en texto normal (Figma 1981:175699) */}
-            {item.notes && <p className="mt-0.5 text-[11px] text-fg">{t('notas.notaCocina', { nota: item.notes })}</p>}
+            {item.notes && <p className="mt-0.5 text-[11px] text-fg">{t(claveRubro('notas.notaCocina', rubro), { nota: item.notes })}</p>}
             {item.promo_excluded && <p className="mt-0.5 text-[11px] font-medium text-fg-secondary">{t('promocionLinea.sinPromocion')}</p>}
             {puedeQuitarPromocion && (item.promo_excluded ? (
               <button type="button" className="mt-1 text-[12px] font-medium text-brand hover:underline" onClick={() => onRestaurarPromocion?.(item.id)}>

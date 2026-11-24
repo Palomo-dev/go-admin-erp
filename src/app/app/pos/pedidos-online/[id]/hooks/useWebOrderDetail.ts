@@ -15,6 +15,8 @@ import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
 import { useTiemposPedidos } from '@/components/pos/pedidos-online/tiempos/useTiemposPedidos';
 import { aTiempoDialogo, resolverTiempos, verticalDeTipo } from '@/lib/pos/pedidosWeb/tiemposPedidos';
+import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 
 /** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
 function mensajeDeError(error: unknown): string | undefined {
@@ -86,6 +88,8 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
   const { organization } = useOrganization();
   const orgTypeId = organization?.type_id ?? 3;
   const isRetail = orgTypeId === 3;
+  // Textos: restaurante «prepara» y manda la comanda a cocina; una tienda «alista».
+  const rubro = useRubroPedidos();
   const [puedeMarcarPagado, setPuedeMarcarPagado] = useState(false);
   useEffect(() => {
     let vivo = true;
@@ -229,7 +233,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
       const listo = t('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime, t) });
       const parts = result.tableSessionId
         ? [t('confirmacion.enLaMesa'), listo]
-        : [t('confirmacion.ventaCreada'), t('confirmacion.comandaEnviada'), listo];
+        : [t('confirmacion.ventaCreada'), t(claveRubro('confirmacion.comandaEnviada', rubro)), listo];
       if (isDelivery && transitMs > 0) parts.push(t('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime, t) }));
       if (result.cobro) parts.push(t('cobro.hecho'));
       else if (markAsPaid && !result.cobroPendiente) parts.push(t('confirmacion.marcadoPagado'));
@@ -286,7 +290,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     setActionLoading(true);
     try {
       await updateOrderStatus('preparing');
-      toast({ title: t('useWebOrderDetail.pedidoPreparacion') });
+      toast({ title: t(claveRubro('useWebOrderDetail.pedidoPreparacion', rubro)) });
       loadOrder();
     } catch {
       toast({ title: t('useWebOrderDetail.error'), variant: 'destructive' });

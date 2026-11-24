@@ -36569,7 +36569,7 @@
           "ayudaDescripcion": "Désactivez-la pour ne garder que le titre",
           "espacio": "Espace entre les éléments",
           "lista": "Avantages ({n} sur {max})",
-          "ayudaLista": "Glissez pour réordonner. Ouvrez-en un pour le modifier : chacun a sa propre icône.",
+          "ayudaLista": "Touchez un avantage pour changer son icône, son titre, sa description et sa couleur. Glissez pour réordonner. Le fond, la forme et la taille de toutes les icônes sont dans l’onglet Style.",
           "sinTitulo": "Sans titre",
           "nuevo": "Nouvel avantage",
           "anadir": "Ajouter un avantage",
@@ -36618,7 +36618,12 @@
           "tarjeta": "Carte de chaque élément",
           "ayudaTarjeta": "Seulement en « Cartes » et « Badges ».",
           "fondoTarjeta": "Fond de la carte",
-          "avisoSolido": "Si la couleur est très claire, l’icône sur fond plein passe en noir ou blanc pour rester lisible (comme les boutons)."
+          "avisoSolido": "Si la couleur est très claire, l’icône sur fond plein passe en noir ou blanc pour rester lisible (comme les boutons).",
+          "ayudaColumnasCelular": "Visible dans la vue « Mobile » du canevas ; sur ordinateur, ce sont les colonnes ordinateur qui s’appliquent.",
+          "ayudaEstiloIconos": "Pour les icônes de tous les avantages : couleur, fond, forme et taille. L’icône et la couleur de chaque avantage se choisissent dans Contenu.",
+          "formaSinFondo": "Avec « Aucun », la forme ne se voit pas : choisissez « Doux » ou « Plein ».",
+          "colorItemSinEfecto": "Toutes les icônes utilisent maintenant « {modo} » (onglet Style › Couleur des icônes). Pour donner sa couleur à chaque avantage, utilisez « Multicolore ».",
+          "usarMulticolor": "Utiliser « Multicolore »"
         },
         "resenas": {
           "estilos": {
@@ -36676,7 +36681,8 @@
           "resumen": "Résumé de la note",
           "avatar": "Avatar avec l’initiale",
           "ayudaAvatar": "Prend la couleur de la boutique",
-          "tamanoTitulo": "Taille du titre"
+          "tamanoTitulo": "Taille du titre",
+          "ayudaTituloCompacta": "En « Compacte », le titre n’apparaît que tant que le produit n’a pas d’avis."
         },
         "relacionados": {
           "estilos": {
@@ -36774,7 +36780,8 @@
           "todoAncho": "Pleine largeur",
           "tamanoTexto": "Taille du texte",
           "normal": "Normal"
-        }
+        },
+        "ocultasPorEstilo": "Non utilisées avec « {estilo} » : {opciones}. Changez de style pour les voir."
       },
       "etiquetasFicha": {
         "titulo": "Étiquettes",
@@ -38791,11 +38798,13 @@
       "enLaMesa": "Ajouté à l’addition de la table · Bon envoyé en cuisine",
       "completada": "Confirmation terminée",
       "stockFallido": "{n, plural, one {# ligne sans déduction de stock} other {# lignes sans déduction de stock}} : vérifiez la recette ou refusez avec un motif",
+      "stockFallidoTienda": "{n, plural, one {# ligne sans déduction de stock} other {# lignes sans déduction de stock}} : vérifiez l'inventaire ou refusez avec un motif",
       "yaConfirmado": "La commande était déjà confirmée",
       "yaConfirmadoDetalle": "La vente a été créée à l’arrivée du paiement ; aucune autre n’a été créée.",
       "listo": "Prêt : {tiempo}",
       "ventaCreada": "Vente créée",
       "comandaEnviada": "Bon envoyé en cuisine",
+      "comandaEnviadaTienda": "Bon de préparation envoyé",
       "entrega": "Livraison : {tiempo}",
       "marcadoPagado": "Marquée comme payée",
       "cuponRedimido": "Coupon utilisé",
@@ -38888,12 +38897,16 @@
         "whatsapp": "WhatsApp",
         "phone": "Téléphone"
       },
-      "avisoStock": "Commande confirmée, mais le stock de la recette n'a pas suffi : {detalle}. Le ticket cuisine est parti ; ajustez l'inventaire ou prévenez le client."
+      "avisoStock": "Commande confirmée, mais le stock de la recette n'a pas suffi : {detalle}. Le ticket cuisine est parti ; ajustez l'inventaire ou prévenez le client.",
+      "avisoStockTienda": "Commande confirmée, mais le stock n'a pas suffi : {detalle}. Le bon de préparation est parti ; ajustez l'inventaire ou prévenez le client."
     },
     "notas": {
       "notaCocina": "Note pour la cuisine : {nota}",
+      "notaCocinaTienda": "Note de préparation : {nota}",
       "paraCocina": "Pour la cuisine",
-      "paraCocinaComanda": "Pour la cuisine · imprimé sur le ticket cuisine #{comanda}"
+      "paraCocinaTienda": "Pour la préparation",
+      "paraCocinaComanda": "Pour la cuisine · imprimé sur le ticket cuisine #{comanda}",
+      "paraCocinaComandaTienda": "Pour la préparation · imprimé sur le bon de préparation #{comanda}"
     },
     "pagos": {
       "titulo": "Paiements",
@@ -38914,11 +38927,13 @@
       "venta": "Vente",
       "factura": "Facture de vente",
       "comanda": "Ticket cuisine",
+      "comandaTienda": "Bon de préparation",
       "origen": "Origine",
       "caja": "Caisse",
       "seCreaAlConfirmar": "créée à la confirmation",
       "seEmiteAlCobrar": "émise à l'encaissement",
       "sinComanda": "sans ticket cuisine",
+      "sinComandaTienda": "sans bon de préparation",
       "origenValor": "{canal} · {numero}",
       "comandaValor": "#{id}",
       "cajaValor": "Caisse {caja} · {sede} · ouverte",
@@ -38934,9 +38949,13 @@
       "hoyFecha": "aujourd'hui, {fecha}",
       "programadoPara": "Pour : {fecha}",
       "imprimirComanda": "Imprimer le bon",
+      "imprimirComandaTienda": "Imprimer le bon de préparation",
       "imprimirError": "Impossible d'imprimer le bon",
+      "imprimirErrorTienda": "Impossible d'imprimer le bon de préparation",
       "imprimirEnviado": "Bon #{id} envoyé à l'impression",
+      "imprimirEnviadoTienda": "Bon de préparation #{id} envoyé à l'impression",
       "imprimirSinImpresora": "Aucune imprimante pour le poste du bon",
+      "imprimirSinImpresoraTienda": "Aucune imprimante pour le poste du bon de préparation",
       "avisoReenviado": "Notification client renvoyée",
       "notas": "Notes",
       "notaCliente": "Note du client",
@@ -38970,6 +38989,7 @@
         "pending": "En attente",
         "confirmed": "Confirmée",
         "preparing": "En préparation",
+        "preparingTienda": "En préparation",
         "ready": "Prête",
         "in_delivery": "En route",
         "delivered": "Livrée",
@@ -38988,7 +39008,9 @@
       "nota": "Note :",
       "confirmar": "Confirmer",
       "iniciarPreparacion": "Lancer la préparation",
+      "iniciarPreparacionTienda": "Commencer la préparation",
       "preparar": "Préparer",
+      "prepararTienda": "Préparer",
       "marcarListo": "Marquer prête",
       "enviarDomicilio": "Envoyer en livraison",
       "enviar": "Envoyer",
@@ -39082,6 +39104,7 @@
       "confirmarPedido": "Confirmer la commande",
       "rechazar": "Refuser",
       "iniciarPreparacion": "Lancer la préparation",
+      "iniciarPreparacionTienda": "Commencer la préparation",
       "marcarComoListo": "Marquer comme prête",
       "enviarDomicilio": "Envoyer en livraison",
       "marcarComoPagado": "Marquer comme payée",
@@ -39094,6 +39117,7 @@
       "estados": {
         "pending": "En attente",
         "preparing": "En préparation",
+        "preparingTienda": "En préparation",
         "ready": "Prêt",
         "cancelled": "Annulé"
       }
@@ -39105,6 +39129,7 @@
         "scheduled": "Programmée pour",
         "confirmed": "Confirmée",
         "preparing": "En préparation",
+        "preparingTienda": "En préparation",
         "ready": "Prête",
         "in_delivery": "En route",
         "delivered": "Livrée",
@@ -39132,6 +39157,7 @@
       "confirmarPedido": "Confirmer la commande",
       "indicaTiemposEstimadosNotificar": "Indiquez les délais estimés pour prévenir le client.",
       "tiempoPreparacionListoAprox": "Temps de préparation (prête env.)",
+      "tiempoPreparacionListoAproxTienda": "Délai de préparation de commande (prête env.)",
       "minutos": "Minutes",
       "horas": "Heures",
       "dias": "Jours",
@@ -39167,6 +39193,7 @@
       "noPudoCargarPedido": "Impossible de charger la commande",
       "pedidoRechazado": "Commande refusée",
       "pedidoPreparacion": "Commande en préparation",
+      "pedidoPreparacionTienda": "Commande en préparation",
       "pedidoListoEntrega": "Commande prête à livrer",
       "pedidoCamino": "Commande en route",
       "pedidoEntregado": "Commande livrée",
@@ -40497,6 +40524,7 @@
       "pending": "En attente",
       "confirmed": "Confirmée",
       "preparing": "En préparation",
+      "preparingTienda": "En préparation",
       "ready": "Prête",
       "in_delivery": "En route",
       "delivered": "Livrée",
@@ -40508,6 +40536,7 @@
       "pending": "En attente",
       "confirmed": "Confirmées",
       "preparing": "En préparation",
+      "preparingTienda": "En préparation",
       "ready": "Prêtes",
       "in_delivery": "En route",
       "delivered": "Livrées",
@@ -40567,6 +40596,7 @@
       "ver": "Voir le détail",
       "confirmar": "Confirmer",
       "preparar": "Lancer la préparation",
+      "prepararTienda": "Commencer la préparation",
       "listo": "Marquer prête",
       "enviar": "Envoyer en livraison",
       "entregado": "Marquer livrée",
@@ -40579,6 +40609,7 @@
       "cobrar": "Encaisser",
       "imprimir": "Imprimer",
       "preparar": "Passer en préparation",
+      "prepararTienda": "Passer en préparation de commande",
       "listos": "Marquer prêtes",
       "entregados": "Marquer livrées",
       "exportar": "Exporter en CSV",
@@ -40603,7 +40634,9 @@
     "confirmar": {
       "titulo": "Confirmer la commande",
       "descripcion": "Indiquez le délai de préparation. La vente est créée et le bon part en cuisine.",
+      "descripcionTienda": "Indiquez le délai de préparation. La vente et le bon de préparation sont créés.",
       "preparacion": "Temps de préparation (prête vers)",
+      "preparacionTienda": "Délai de préparation de commande (prête vers)",
       "traslado": "Temps de trajet (livraison vers)",
       "trasladoAyuda": "De « prête » jusqu'à l'arrivée chez le client. Mettez 0 pour un retrait ou sur place.",
       "minutos": "Minutes",
@@ -40616,6 +40649,7 @@
     "confirmarLote": {
       "titulo": "Confirmer {n} commandes en attente",
       "descripcion": "Les mêmes délais s'appliquent à toutes. Chaque commande crée sa vente et son bon de cuisine.",
+      "descripcionTienda": "Les mêmes délais s'appliquent à toutes. Chaque commande crée sa vente et son bon de préparation.",
       "accion": "Confirmer {n} commandes",
       "resultado": "{ok, plural, one {# commande confirmée} other {# commandes confirmées}}",
       "fallidos": "{n, plural, one {# commande n'a pas pu être confirmée} other {# commandes n'ont pas pu être confirmées}} : {pedidos}",

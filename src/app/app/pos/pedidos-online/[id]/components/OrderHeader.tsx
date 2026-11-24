@@ -16,6 +16,8 @@ import { mesaCortaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/po
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
 import { ChipContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
+import { claveEstadoPedido, claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 
 interface OrderHeaderProps {
   order: WebOrder;
@@ -53,6 +55,9 @@ export function OrderHeader({
 }: OrderHeaderProps) {
   const router = useRouter();
   const t = useTranslations('pedidoWeb');
+  // Restaurante: comanda y receta; tienda: orden de alistamiento e inventario.
+  const rubro = useRubroPedidos();
+  const estadoFicha = claveEstadoPedido(order.status, rubro);
   const migaVentas = useMigaVentas();
   const locale = useLocaleIntl();
   const { timezone } = useFormatDate(order.branch_id);
@@ -125,7 +130,7 @@ export function OrderHeader({
             {onImprimirComanda && (
               <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={onImprimirComanda}>
                 <Printer className="size-4" aria-hidden="true" strokeWidth={1.5} />
-                {t('ficha.imprimirComanda')}
+                {t(claveRubro('ficha.imprimirComanda', rubro))}
               </button>
             )}
             {onCobrarYEntregar && (
@@ -143,7 +148,7 @@ export function OrderHeader({
           </>
         }
         movil={{
-          subtitulo: [t.has(`ficha.estados.${order.status}`) ? t(`ficha.estados.${order.status}`) : order.status, formatear(order.total)].join(' · '),
+          subtitulo: [t.has(`ficha.estados.${estadoFicha}`) ? t(`ficha.estados.${estadoFicha}`) : order.status, formatear(order.total)].join(' · '),
           accion: menu.length > 0 ? <RowActionsMenu orientacion="vertical" tamano="md" titulo={order.order_number} acciones={menu} /> : undefined,
         }}
       />
@@ -189,7 +194,7 @@ export function OrderHeader({
           tono="advertencia"
           rol="alert"
           compacto
-          titulo={t('detalle.avisoStock', { detalle: avisoStock.slice(0, 3).join(' · ') })}
+          titulo={t(claveRubro('detalle.avisoStock', rubro), { detalle: avisoStock.slice(0, 3).join(' · ') })}
         />
       )}
     </div>

@@ -22,6 +22,8 @@ import {
 import { Loader2 } from 'lucide-react';
 import { AvisoTonal } from '@/components/kit';
 import { useTranslations } from 'next-intl';
+import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 
 export type TimeUnit = 'minutes' | 'hours' | 'days';
 
@@ -86,6 +88,8 @@ export function ConfirmOrderDialog({
   avisoTiempos = null,
 }: ConfirmOrderDialogProps) {
   const t = useTranslations('pedidoWeb');
+  // «Tiempo de preparación» en restaurante; «de alistamiento» en una tienda.
+  const rubro = useRubroPedidos();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -104,7 +108,7 @@ export function ConfirmOrderDialog({
           {/* Tiempo de preparación */}
           <div>
             <Label htmlFor="prep-time" className="dark:text-gray-200">
-              {t('confirmOrderDialog.tiempoPreparacionListoAprox')}
+              {t(claveRubro('confirmOrderDialog.tiempoPreparacionListoAprox', rubro))}
             </Label>
             <div className="flex gap-2 mt-2">
               <Input

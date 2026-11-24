@@ -4,7 +4,6 @@ import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { 
   Clock, 
   CheckCircle, 
-  ChefHat, 
   Package, 
   Truck, 
   XCircle,
@@ -15,6 +14,8 @@ import type { WebOrder } from '@/lib/services/webOrdersService';
 import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz, toPlainDate } from '@/lib/utils/dateCore';
 import { useTranslations } from 'next-intl';
+import { claveEstadoPedido } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { ICONO_PREPARAR, useRubroPedidos } from './rubroPedidosUi';
 
 interface AvisoDeLinea {
   moment: string;
@@ -42,6 +43,9 @@ interface TimelineStep {
 
 export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, variant = 'vertical', timezone, avisos, renderAvisos }: OrderTimelineProps<A>) {
   const t = useTranslations('pedidoWeb');
+  // «En preparación» con gorro de chef solo en restaurante; en una tienda, «Alistando».
+  const rubro = useRubroPedidos();
+  const IconoPreparar = ICONO_PREPARAR[rubro];
   const formatTime = (date?: string) => (date ? formatTimeInTz(date, timezone) : null);
   const formatDateTime = (date?: string) => (date ? formatDateTimeInTz(date, timezone) : null);
   const esHoy = (date: string) => toPlainDate(new Date(date), timezone) === todayInTz(timezone);
@@ -77,8 +81,8 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
       },
       {
         key: 'preparing',
-        label: t('orderTimeline.pasos.preparing'),
-        icon: <ChefHat className="h-4 w-4" />,
+        label: t(`orderTimeline.pasos.${claveEstadoPedido('preparing', rubro)}`),
+        icon: <IconoPreparar className="h-4 w-4" />,
         timestamp: order.status === 'preparing' ? undefined : undefined,
         isCompleted: ['preparing', 'ready', 'in_delivery', 'delivered'].includes(order.status),
         isCurrent: order.status === 'preparing',

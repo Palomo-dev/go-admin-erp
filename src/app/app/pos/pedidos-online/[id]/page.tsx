@@ -37,6 +37,8 @@ import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/Valorac
 import { usePermissionContext } from '@/hooks/usePermissionContext';
 import { AvisoAnticipoPendiente, TarjetaContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
 import { seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
@@ -89,6 +91,8 @@ export default function WebOrderDetailPage() {
   const { checker, context: permisoCtx } = usePermissionContext();
   const puedeQuitarPromocion = checker.can('pos.promotions.remove') || permisoCtx?.roleId === 1 || permisoCtx?.roleId === 2;
   const tCocina = useTranslations('posCocina');
+  // En una tienda la comanda es la «orden de alistamiento» (solo el texto).
+  const rubro = useRubroPedidos();
   const { toast } = useToast();
   const trazabilidad = useTrazabilidadPedido(order);
   const cambios = useCambiosPedido(orderId, organizationId);
@@ -123,14 +127,14 @@ export default function WebOrderDetailPage() {
     if (!trazabilidad.comandaId || !organizationId) return;
     const c = await KitchenService.getTicket(organizationId, trazabilidad.comandaId);
     if (!c) {
-      toast({ title: t('ficha.imprimirError'), variant: 'destructive' });
+      toast({ title: t(claveRubro('ficha.imprimirError', rubro)), variant: 'destructive' });
       return;
     }
     try {
       const r = await imprimirComanda(c, textosImpresionDe((k, v) => tCocina(k, v)));
-      toast(r.enqueued > 0 ? { title: t('ficha.imprimirEnviado', { id: c.id }) } : { title: t('ficha.imprimirSinImpresora'), variant: 'destructive' });
+      toast(r.enqueued > 0 ? { title: t(claveRubro('ficha.imprimirEnviado', rubro), { id: c.id }) } : { title: t(claveRubro('ficha.imprimirSinImpresora', rubro)), variant: 'destructive' });
     } catch {
-      toast({ title: t('ficha.imprimirError'), variant: 'destructive' });
+      toast({ title: t(claveRubro('ficha.imprimirError', rubro)), variant: 'destructive' });
     }
   };
   const reenviarAviso = async () => {

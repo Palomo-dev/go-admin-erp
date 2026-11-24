@@ -8,6 +8,8 @@ import { clasesBoton } from '@/components/kit';
 import { notasInternasVisibles } from '@/components/pos/pedidos-online/notasPedido';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { IconoCabecera } from './IconoCabecera';
+import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 
 interface OrderNotesCardProps {
   order: WebOrder;
@@ -19,6 +21,8 @@ interface OrderNotesCardProps {
 
 export function OrderNotesCard({ order, comandaId = null, onGuardarNotaInterna }: OrderNotesCardProps) {
   const t = useTranslations('pedidoWeb');
+  // «Para cocina» en restaurante; «Para alistar» en una tienda.
+  const rubro = useRubroPedidos();
   const notasInternas = notasInternasVisibles(order.internal_notes);
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState(notasInternas);
@@ -57,7 +61,7 @@ export function OrderNotesCard({ order, comandaId = null, onGuardarNotaInterna }
         )}
         {paraCocina.length > 0 && (
           <p className="rounded-lg bg-subtle px-3 py-2.5 text-[13px] text-fg">
-            {comandaId ? t('notas.paraCocinaComanda', { comanda: comandaId }) : t('notas.paraCocina')}: {paraCocina.join(' · ')}.
+            {comandaId ? t(claveRubro('notas.paraCocinaComanda', rubro), { comanda: comandaId }) : t(claveRubro('notas.paraCocina', rubro))}: {paraCocina.join(' · ')}.
           </p>
         )}
         {(notasInternas || onGuardarNotaInterna) && (

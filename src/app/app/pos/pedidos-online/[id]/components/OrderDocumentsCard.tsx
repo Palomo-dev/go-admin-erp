@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FilaDato, ListaDatos } from '@/components/kit';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { IconoCabecera } from './IconoCabecera';
+import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 
 interface OrderDocumentsCardProps {
   order: WebOrder;
@@ -23,6 +25,8 @@ interface OrderDocumentsCardProps {
  */
 export function OrderDocumentsCard({ order, factura, comandaId, cajaEtiqueta }: OrderDocumentsCardProps) {
   const t = useTranslations('pedidoWeb');
+  // En una tienda la comanda se llama «orden de alistamiento».
+  const rubro = useRubroPedidos();
   const canal = t.has(`detalle.canales.${order.source}`) ? t(`detalle.canales.${order.source}`) : order.source;
   const pendiente = 'text-fg-muted';
 
@@ -53,8 +57,8 @@ export function OrderDocumentsCard({ order, factura, comandaId, cajaEtiqueta }: 
             valor={factura?.numero ? factura.numero : <span className={pendiente}>{t('documentos.seEmiteAlCobrar')}</span>}
           />
           <FilaDato
-            etiqueta={t('documentos.comanda')}
-            valor={comandaId ? t('documentos.comandaValor', { id: comandaId }) : <span className={pendiente}>{t('documentos.sinComanda')}</span>}
+            etiqueta={t(claveRubro('documentos.comanda', rubro))}
+            valor={comandaId ? t('documentos.comandaValor', { id: comandaId }) : <span className={pendiente}>{t(claveRubro('documentos.sinComanda', rubro))}</span>}
           />
           <FilaDato etiqueta={t('documentos.origen')} valor={t('documentos.origenValor', { canal, numero: order.order_number })} />
           <FilaDato etiqueta={t('documentos.caja')} valor={cajaEtiqueta ?? t('documentos.sinCaja')} />

@@ -36567,7 +36567,7 @@
           "ayudaDescripcion": "Apágala para dejar solo el título",
           "espacio": "Espacio entre ítems",
           "lista": "Beneficios ({n} de {max})",
-          "ayudaLista": "Arrastra para ordenar. Abre uno para editarlo: cada uno tiene su propio ícono.",
+          "ayudaLista": "Toca un beneficio para cambiar su ícono, su título, su descripción y su color. Arrastra para ordenar. El fondo, la forma y el tamaño de todos los íconos están en la pestaña Estilo.",
           "sinTitulo": "Sin título",
           "nuevo": "Nuevo beneficio",
           "anadir": "Añadir beneficio",
@@ -36616,7 +36616,12 @@
           "tarjeta": "Tarjeta de cada ítem",
           "ayudaTarjeta": "Solo en «Tarjetas» e «Insignias».",
           "fondoTarjeta": "Fondo de la tarjeta",
-          "avisoSolido": "Si el color es muy claro, el ícono sobre fondo sólido pasa solo a negro o blanco para que se lea (igual que los botones)."
+          "avisoSolido": "Si el color es muy claro, el ícono sobre fondo sólido pasa solo a negro o blanco para que se lea (igual que los botones).",
+          "ayudaColumnasCelular": "Se ve en la vista «Celular» del lienzo; en computador mandan las columnas en escritorio.",
+          "ayudaEstiloIconos": "Para los íconos de todos los beneficios: color, fondo, forma y tamaño. El ícono y el color de cada beneficio se eligen en Contenido.",
+          "formaSinFondo": "Con «Sin fondo» la forma no se ve: elige «Suave» o «Sólido».",
+          "colorItemSinEfecto": "Ahora todos los íconos usan «{modo}» (pestaña Estilo › Color de los íconos). Para que cada beneficio tenga su color, usa «Multicolor».",
+          "usarMulticolor": "Usar «Multicolor»"
         },
         "resenas": {
           "estilos": {
@@ -36674,7 +36679,8 @@
           "resumen": "Resumen de calificación",
           "avatar": "Avatar con la inicial",
           "ayudaAvatar": "Toma el color de la tienda",
-          "tamanoTitulo": "Tamaño del título"
+          "tamanoTitulo": "Tamaño del título",
+          "ayudaTituloCompacta": "En «Compacta» el título solo sale mientras el producto no tiene opiniones."
         },
         "relacionados": {
           "estilos": {
@@ -36772,7 +36778,8 @@
           "todoAncho": "Todo el ancho",
           "tamanoTexto": "Tamaño del texto",
           "normal": "Normal"
-        }
+        },
+        "ocultasPorEstilo": "Con «{estilo}» no se usan: {opciones}. Cambia de estilo para verlas."
       },
       "etiquetasFicha": {
         "titulo": "Etiquetas",
@@ -38789,11 +38796,13 @@
       "enLaMesa": "Agregado a la cuenta de la mesa · Comanda enviada a cocina",
       "completada": "Confirmación completada",
       "stockFallido": "{n, plural, one {# línea sin descontar stock} other {# líneas sin descontar stock}}: revisa la receta o rechaza con motivo",
+      "stockFallidoTienda": "{n, plural, one {# línea sin descontar stock} other {# líneas sin descontar stock}}: revisa el inventario o rechaza con motivo",
       "yaConfirmado": "El pedido ya estaba confirmado",
       "yaConfirmadoDetalle": "La venta se creó cuando llegó el pago; no se creó otra.",
       "listo": "Listo: {tiempo}",
       "ventaCreada": "Venta creada",
       "comandaEnviada": "Comanda enviada a cocina",
+      "comandaEnviadaTienda": "Orden de alistamiento enviada",
       "entrega": "Entrega: {tiempo}",
       "marcadoPagado": "Marcado como pagado",
       "cuponRedimido": "Cupón redimido",
@@ -38886,12 +38895,16 @@
         "whatsapp": "WhatsApp",
         "phone": "Teléfono"
       },
-      "avisoStock": "Pedido confirmado, pero no alcanzó la receta: {detalle}. La comanda salió; ajusta el inventario o avisa al cliente."
+      "avisoStock": "Pedido confirmado, pero no alcanzó la receta: {detalle}. La comanda salió; ajusta el inventario o avisa al cliente.",
+      "avisoStockTienda": "Pedido confirmado, pero no alcanzó el inventario: {detalle}. La orden de alistamiento salió; ajusta el inventario o avisa al cliente."
     },
     "notas": {
       "notaCocina": "Nota para cocina: {nota}",
+      "notaCocinaTienda": "Nota para alistar: {nota}",
       "paraCocina": "Para cocina",
-      "paraCocinaComanda": "Para cocina · sale impresa en la comanda #{comanda}"
+      "paraCocinaTienda": "Para alistar",
+      "paraCocinaComanda": "Para cocina · sale impresa en la comanda #{comanda}",
+      "paraCocinaComandaTienda": "Para alistar · sale impresa en la orden de alistamiento #{comanda}"
     },
     "pagos": {
       "titulo": "Pagos",
@@ -38912,11 +38925,13 @@
       "venta": "Venta",
       "factura": "Factura de venta",
       "comanda": "Comanda de cocina",
+      "comandaTienda": "Orden de alistamiento",
       "origen": "Origen",
       "caja": "Caja",
       "seCreaAlConfirmar": "se crea al confirmar",
       "seEmiteAlCobrar": "se emite al cobrar",
       "sinComanda": "sin comanda",
+      "sinComandaTienda": "sin orden de alistamiento",
       "origenValor": "{canal} · {numero}",
       "comandaValor": "#{id}",
       "cajaValor": "Caja {caja} · {sede} · abierta",
@@ -38932,9 +38947,13 @@
       "hoyFecha": "hoy, {fecha}",
       "programadoPara": "Para: {fecha}",
       "imprimirComanda": "Imprimir comanda",
+      "imprimirComandaTienda": "Imprimir orden de alistamiento",
       "imprimirError": "No se pudo imprimir la comanda",
+      "imprimirErrorTienda": "No se pudo imprimir la orden de alistamiento",
       "imprimirEnviado": "Comanda #{id} enviada a impresión",
+      "imprimirEnviadoTienda": "Orden de alistamiento #{id} enviada a impresión",
       "imprimirSinImpresora": "No hay impresora para la estación de la comanda",
+      "imprimirSinImpresoraTienda": "No hay impresora para la estación de la orden de alistamiento",
       "avisoReenviado": "Aviso al cliente reenviado",
       "notas": "Notas",
       "notaCliente": "Nota del cliente",
@@ -38968,6 +38987,7 @@
         "pending": "Pendiente",
         "confirmed": "Confirmado",
         "preparing": "En preparación",
+        "preparingTienda": "Alistando",
         "ready": "Listo",
         "in_delivery": "En camino",
         "delivered": "Entregado",
@@ -38986,7 +39006,9 @@
       "nota": "Nota:",
       "confirmar": "Confirmar",
       "iniciarPreparacion": "Iniciar preparación",
+      "iniciarPreparacionTienda": "Empezar a alistar",
       "preparar": "Preparar",
+      "prepararTienda": "Alistar",
       "marcarListo": "Marcar listo",
       "enviarDomicilio": "Enviar a domicilio",
       "enviar": "Enviar",
@@ -39080,6 +39102,7 @@
       "confirmarPedido": "Confirmar pedido",
       "rechazar": "Rechazar",
       "iniciarPreparacion": "Iniciar preparación",
+      "iniciarPreparacionTienda": "Empezar a alistar",
       "marcarComoListo": "Marcar como listo",
       "enviarDomicilio": "Enviar a domicilio",
       "marcarComoPagado": "Marcar como pagado",
@@ -39092,6 +39115,7 @@
       "estados": {
         "pending": "Pendiente",
         "preparing": "Preparando",
+        "preparingTienda": "Alistando",
         "ready": "Listo",
         "cancelled": "Cancelado"
       }
@@ -39103,6 +39127,7 @@
         "scheduled": "Programado para",
         "confirmed": "Confirmado",
         "preparing": "En preparación",
+        "preparingTienda": "Alistando",
         "ready": "Listo",
         "in_delivery": "En camino",
         "delivered": "Entregado",
@@ -39130,6 +39155,7 @@
       "confirmarPedido": "Confirmar pedido",
       "indicaTiemposEstimadosNotificar": "Indica los tiempos estimados para notificar al cliente.",
       "tiempoPreparacionListoAprox": "Tiempo de preparación (Listo aprox)",
+      "tiempoPreparacionListoAproxTienda": "Tiempo de alistamiento (Listo aprox)",
       "minutos": "Minutos",
       "horas": "Horas",
       "dias": "Días",
@@ -39165,6 +39191,7 @@
       "noPudoCargarPedido": "No se pudo cargar el pedido",
       "pedidoRechazado": "Pedido rechazado",
       "pedidoPreparacion": "Pedido en preparación",
+      "pedidoPreparacionTienda": "Alistando el pedido",
       "pedidoListoEntrega": "Pedido listo para entrega",
       "pedidoCamino": "Pedido en camino",
       "pedidoEntregado": "Pedido entregado",
@@ -40495,6 +40522,7 @@
       "pending": "Pendiente",
       "confirmed": "Confirmado",
       "preparing": "Preparando",
+      "preparingTienda": "Alistando",
       "ready": "Listo",
       "in_delivery": "En camino",
       "delivered": "Entregado",
@@ -40506,6 +40534,7 @@
       "pending": "Pendientes",
       "confirmed": "Confirmados",
       "preparing": "En preparación",
+      "preparingTienda": "Alistando",
       "ready": "Listos",
       "in_delivery": "En camino",
       "delivered": "Entregados",
@@ -40565,6 +40594,7 @@
       "ver": "Ver detalle",
       "confirmar": "Confirmar",
       "preparar": "Iniciar preparación",
+      "prepararTienda": "Empezar a alistar",
       "listo": "Marcar listo",
       "enviar": "Enviar a domicilio",
       "entregado": "Marcar entregado",
@@ -40577,6 +40607,7 @@
       "cobrar": "Cobrar en caja",
       "imprimir": "Imprimir",
       "preparar": "Pasar a preparación",
+      "prepararTienda": "Pasar a alistamiento",
       "listos": "Marcar listos",
       "entregados": "Marcar entregados",
       "exportar": "Exportar CSV",
@@ -40601,7 +40632,9 @@
     "confirmar": {
       "titulo": "Confirmar pedido",
       "descripcion": "Indica cuánto tarda en estar listo. Se crea la venta y la comanda va a cocina.",
+      "descripcionTienda": "Indica cuánto tarda en estar listo. Se crea la venta y la orden de alistamiento.",
       "preparacion": "Tiempo de preparación (listo aprox.)",
+      "preparacionTienda": "Tiempo de alistamiento (listo aprox.)",
       "traslado": "Tiempo de traslado (entrega aprox.)",
       "trasladoAyuda": "Desde que está listo hasta que llega al cliente. Pon 0 si lo recogen o lo comen en el local.",
       "minutos": "Minutos",
@@ -40614,6 +40647,7 @@
     "confirmarLote": {
       "titulo": "Confirmar {n} pedidos pendientes",
       "descripcion": "Se usan los mismos tiempos para todos. Cada pedido crea su venta y su comanda.",
+      "descripcionTienda": "Se usan los mismos tiempos para todos. Cada pedido crea su venta y su orden de alistamiento.",
       "accion": "Confirmar {n} pedidos",
       "resultado": "{ok, plural, one {# pedido confirmado} other {# pedidos confirmados}}",
       "fallidos": "{n, plural, one {# pedido no se pudo confirmar} other {# pedidos no se pudieron confirmar}}: {pedidos}",

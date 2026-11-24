@@ -41,17 +41,24 @@ import {
   LINEAS_VER_MAS,
   MAX_BENEFICIOS,
   PARTES_DESCRIPCION,
+  SOLO_EN_ESTILOS_BENEFICIOS,
+  SOLO_EN_ESTILOS_DESCRIPCION,
+  SOLO_EN_ESTILOS_RELACIONADOS,
+  SOLO_EN_ESTILOS_RESENAS,
   TITULOS_PARTES_POR_DEFECTO,
   TITULO_RELACIONADOS_POR_DEFECTO,
   TONOS_MULTICOLOR,
   conClave,
+  espacioBeneficios,
   leerItemsBeneficios,
   leerOpcionesBeneficios,
   leerOpcionesDescripcion,
   leerOpcionesRelacionados,
   leerOpcionesResenas,
+  seUsaEnEstilo,
   sinClaves,
   type BeneficioFichaItem,
+  type OpcionesBeneficios,
   type FiltroResenas,
   type ParteDescripcion,
 } from '@/lib/website/v2/seccionesFicha';
@@ -102,6 +109,32 @@ type Cambiar = (contenido: Record<string, unknown>) => void;
 export type PestanaPanelFicha = 'diseno' | 'contenido' | 'estilo';
 
 const Ayuda = ({ children }: { children: ReactNode }) => <p className="text-[11px] leading-[14px] text-fg-muted">{children}</p>;
+
+/**
+ * Opciones que el estilo elegido no usa: el panel las oculta y lo dice aquí, en vez de dejar un
+ * control sin efecto (`SOLO_EN_ESTILOS_*` del contrato, el mismo que sigue la tienda).
+ */
+function NoSeUsan({ estilo, etiquetas }: { estilo: string; etiquetas: readonly string[] }) {
+  const t = useT();
+  if (etiquetas.length === 0) return null;
+  return (
+    <p className="flex items-start gap-1.5 text-[11px] leading-[14px] text-fg-muted" data-no-se-usan="">
+      <Info aria-hidden="true" className="mt-px size-3 shrink-0" strokeWidth={1.5} />
+      {t('ocultasPorEstilo', { estilo, opciones: etiquetas.join(', ') })}
+    </p>
+  );
+}
+
+/** `usa(opcion, etiqueta)` dice si el estilo la usa y junta las que no, para `NoSeUsan`. */
+function soloEnEstilo<E extends string>(mapa: Readonly<Record<string, readonly E[]>>, estilo: E) {
+  const ocultas: string[] = [];
+  const usa = (opcion: string, etiqueta: string) => {
+    const si = seUsaEnEstilo(mapa, opcion, estilo);
+    if (!si) ocultas.push(etiqueta);
+    return si;
+  };
+  return { usa, ocultas };
+}
 
 /** Grupo «etiqueta (+ Nuevo) · control segmentado a todo el ancho». */
 function Segmento<V extends string>({
@@ -257,24 +290,32 @@ function PanelBeneficios({ pestana, contenido, onCambiar }: { pestana: PestanaPa
   // La primera opción nueva fija el estilo de hoy (Lista): la tienda pasa al pintado con opciones.
   const ponerNueva = (clave: string, v: unknown) => onCambiar(conClave({ ...contenido, [k.estilo]: contenido[k.estilo] ?? o.estilo }, clave, v));
 
+  const { usa, ocultas } = soloEnEstilo(SOLO_EN_ESTILOS_BENEFICIOS, o.estilo);
+  const nombreEstilo = t(`beneficios.estilos.${o.estilo}`);
+
   if (pestana === 'diseno') {
     return (
       <>
         <EstilosTarjetas estilos={['lista', 'tarjetas', 'franja', 'insignias'] as const} valor={o.estilo} onElegir={(v) => poner(k.estilo, v)} etiqueta={(v) => t(`beneficios.estilos.${v}`)} />
-        <Segmento
-          etiqueta={t('beneficios.columnasEscritorio')}
-          opciones={['1', '2', '3', '4'].map((v) => ({ valor: v, etiqueta: v }))}
-          valor={String(o.columnas)}
-          onCambiar={(v) => ponerNueva('columns', Number(v))}
-          ayuda={t('beneficios.ayudaColumnas')}
-        />
-        <Segmento
-          etiqueta={t('beneficios.columnasCelular')}
-          nuevo
-          opciones={[{ valor: 'igual', etiqueta: t('beneficios.comoEscritorio') }, { valor: '1', etiqueta: t('beneficios.unaColumna') }, { valor: '2', etiqueta: t('beneficios.dosColumnas') }]}
-          valor={o.columnasCelular === null ? 'igual' : String(o.columnasCelular)}
-          onCambiar={(v) => ponerNueva(k.columnasCelular, v === 'igual' ? undefined : Number(v))}
-        />
+        {usa('columnas', t('beneficios.columnasEscritorio')) && (
+          <Segmento
+            etiqueta={t('beneficios.columnasEscritorio')}
+            opciones={['1', '2', '3', '4'].map((v) => ({ valor: v, etiqueta: v }))}
+            valor={String(o.columnas)}
+            onCambiar={(v) => ponerNueva('columns', Number(v))}
+            ayuda={t('beneficios.ayudaColumnas')}
+          />
+        )}
+        {usa('columnasCelular', t('beneficios.columnasCelular')) && (
+          <Segmento
+            etiqueta={t('beneficios.columnasCelular')}
+            nuevo
+            opciones={[{ valor: 'igual', etiqueta: t('beneficios.comoEscritorio') }, { valor: '1', etiqueta: t('beneficios.unaColumna') }, { valor: '2', etiqueta: t('beneficios.dosColumnas') }]}
+            valor={o.columnasCelular === null ? 'igual' : String(o.columnasCelular)}
+            onCambiar={(v) => ponerNueva(k.columnasCelular, v === 'igual' ? undefined : Number(v))}
+            ayuda={t('beneficios.ayudaColumnasCelular')}
+          />
+        )}
         <Segmento
           etiqueta={t('alineacion')}
           nuevo
@@ -282,24 +323,32 @@ function PanelBeneficios({ pestana, contenido, onCambiar }: { pestana: PestanaPa
           valor={o.alineacion}
           onCambiar={(v) => ponerNueva(k.alineacion, v)}
         />
-        <FilaInterruptor titulo={t('beneficios.lineas')} ayuda={t('beneficios.ayudaLineas')} valor={o.lineas} onCambiar={(v) => ponerNueva(k.lineas, v)} />
-        <FilaInterruptor titulo={t('beneficios.descripcion')} ayuda={t('beneficios.ayudaDescripcion')} valor={o.mostrarDescripcion} onCambiar={(v) => ponerNueva(k.mostrarDescripcion, v)} />
+        {usa('lineas', t('beneficios.lineas')) && (
+          <FilaInterruptor titulo={t('beneficios.lineas')} ayuda={t('beneficios.ayudaLineas')} valor={o.lineas} onCambiar={(v) => ponerNueva(k.lineas, v)} />
+        )}
+        {usa('mostrarDescripcion', t('beneficios.descripcion')) && (
+          <FilaInterruptor titulo={t('beneficios.descripcion')} ayuda={t('beneficios.ayudaDescripcion')} valor={o.mostrarDescripcion} onCambiar={(v) => ponerNueva(k.mostrarDescripcion, v)} />
+        )}
         <Segmento
           etiqueta={t('beneficios.espacio')}
           opciones={['8', '12', '16', '24', '32'].map((v) => ({ valor: v, etiqueta: `${v} px` }))}
-          valor={String(o.gap ?? 16)}
+          valor={String(espacioBeneficios(o))}
           onCambiar={(v) => ponerNueva('gap', Number(v))}
         />
+        <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
         <Restablecer tipo="product_benefits" contenido={contenido} onCambiar={onCambiar} />
       </>
     );
   }
-  if (pestana === 'contenido') return <ListaBeneficios contenido={contenido} onCambiar={onCambiar} />;
+  if (pestana === 'contenido') return <ListaBeneficios contenido={contenido} onCambiar={onCambiar} o={o} />;
 
-  // Estilo
-  const colorEjemplo = (i: number) => (o.modoColor === 'propio' ? o.colorPropio : o.modoColor === 'marca' ? 'var(--brand-action, #4361ee)' : TONOS_MULTICOLOR[i % 4]);
+  // Estilo: lo que vale para los íconos de TODOS los beneficios. La vista previa usa los íconos y
+  // los colores de los beneficios de la sección (los de Contenido), no unos de ejemplo.
+  const guardadosEstilo = leerItemsBeneficios(contenido);
+  const muestras: BeneficioFichaItem[] = (guardadosEstilo.length > 0 ? guardadosEstilo : BENEFICIOS_POR_DEFECTO.map((b) => ({ ...b, color: null }))).slice(0, 6);
   return (
     <>
+      <Ayuda>{t('beneficios.ayudaEstiloIconos')}</Ayuda>
       <Segmento
         etiqueta={t('beneficios.colorIconos')}
         nuevo
@@ -335,6 +384,7 @@ function PanelBeneficios({ pestana, contenido, onCambiar }: { pestana: PestanaPa
         opciones={[{ valor: 'circulo', etiqueta: t('circulo') }, { valor: 'cuadrado', etiqueta: t('beneficios.cuadrado') }]}
         valor={o.forma}
         onCambiar={(v) => ponerNueva(k.forma, v)}
+        ayuda={o.fondo === 'ninguno' ? t('beneficios.formaSinFondo') : undefined}
       />
       <Segmento
         etiqueta={t('beneficios.tamano')}
@@ -345,13 +395,15 @@ function PanelBeneficios({ pestana, contenido, onCambiar }: { pestana: PestanaPa
       />
       <div className="flex flex-col gap-2 rounded-lg bg-subtle p-3" aria-hidden="true">
         <span className="text-[11px] text-fg-secondary">{t('beneficios.vistaPrevia')}</span>
-        <span className="flex gap-2">
-          {[Truck, ShieldCheck, Wrench, RefreshCw].map((Icono, i) => {
-            const color = colorEjemplo(i);
+        <span className="flex flex-wrap gap-2">
+          {muestras.map((b, i) => {
+            const Icono = ICONOS_LUCIDE_BENEFICIO[b.icon] ?? Star;
+            const color = colorIconoItem(b, i, o);
             const solido = o.fondo === 'solido';
             return (
               <span
                 key={i}
+                title={b.title}
                 className={cn('flex size-9 items-center justify-center', o.forma === 'circulo' ? 'rounded-full' : 'rounded-lg')}
                 style={{ backgroundColor: o.fondo === 'ninguno' ? undefined : solido ? color : `color-mix(in srgb, ${color} 14%, transparent)` }}
               >
@@ -361,29 +413,66 @@ function PanelBeneficios({ pestana, contenido, onCambiar }: { pestana: PestanaPa
           })}
         </span>
       </div>
-      <Segmento
-        etiqueta={t('beneficios.tarjeta')}
-        opciones={[{ valor: 'ninguno', etiqueta: t('sinBorde') }, { valor: 'linea', etiqueta: t('lineaFina') }, { valor: 'sombra', etiqueta: t('sombra') }]}
-        valor={o.borde}
-        onCambiar={(v) => ponerNueva(k.borde, v)}
-        ayuda={t('beneficios.ayudaTarjeta')}
-      />
-      <ColorField etiqueta={t('beneficios.fondoTarjeta')} valor={o.fondoItem ?? '#FFFFFF'} onCambiar={(hex) => ponerNueva(k.fondoItem, hex)} />
+      {usa('borde', t('beneficios.tarjeta')) && (
+        <Segmento
+          etiqueta={t('beneficios.tarjeta')}
+          opciones={[{ valor: 'ninguno', etiqueta: t('sinBorde') }, { valor: 'linea', etiqueta: t('lineaFina') }, { valor: 'sombra', etiqueta: t('sombra') }]}
+          valor={o.borde}
+          onCambiar={(v) => ponerNueva(k.borde, v)}
+          ayuda={t('beneficios.ayudaTarjeta')}
+        />
+      )}
+      {usa('fondoItem', t('beneficios.fondoTarjeta')) && (
+        <ColorField etiqueta={t('beneficios.fondoTarjeta')} valor={o.fondoItem ?? '#FFFFFF'} onCambiar={(hex) => ponerNueva(k.fondoItem, hex)} />
+      )}
+      <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
       <AvisoTonal tono="informacion" compacto icono={Info} titulo={t('beneficios.avisoSolido')} />
     </>
   );
 }
 
-function ListaBeneficios({ contenido, onCambiar }: { contenido: Record<string, unknown>; onCambiar: Cambiar }) {
+/** Ítem del panel: el beneficio y el `id` que ya traía (lo pone el repetidor genérico). */
+type ItemPanel = BeneficioFichaItem & { idGuardado?: string };
+
+/** Color con que la tienda pinta el ícono de un beneficio (`ProductBenefits`, `colorDeItem`). */
+function colorIconoItem(b: BeneficioFichaItem, i: number, o: OpcionesBeneficios): string {
+  if (o.modoColor === 'propio') return o.colorPropio;
+  if (o.modoColor === 'marca') return 'var(--brand-action, #4361ee)';
+  return b.color ?? TONOS_MULTICOLOR[i % TONOS_MULTICOLOR.length];
+}
+
+function ListaBeneficios({ contenido, onCambiar, o }: { contenido: Record<string, unknown>; onCambiar: Cambiar; o: OpcionesBeneficios }) {
   const t = useT();
   const guardados = leerItemsBeneficios(contenido);
-  const items: BeneficioFichaItem[] = guardados.length > 0 ? guardados : BENEFICIOS_POR_DEFECTO.map((b) => ({ ...b, color: null }));
+  const crudos = Array.isArray(contenido.items) ? (contenido.items as unknown[]) : [];
+  const items: ItemPanel[] = guardados.length > 0
+    ? guardados.map((b, i) => {
+        const id = (crudos[i] as { id?: unknown } | null | undefined)?.id;
+        return typeof id === 'string' ? { ...b, idGuardado: id } : b;
+      })
+    : BENEFICIOS_POR_DEFECTO.map((b) => ({ ...b, color: null }));
   const [abierto, setAbierto] = useState<number | null>(null);
   const ids = items.map((_, i) => `b${i}`);
-  const guardar = (lista: BeneficioFichaItem[]) =>
-    onCambiar({ ...contenido, items: lista.map((b) => ({ icon: b.icon, title: b.title, description: b.description, ...(b.color ? { color: b.color } : {}) })) });
+  // Un color propio por beneficio no existía antes: guardarlo fija también el estilo (como la
+  // primera opción nueva) para que la tienda lo pinte con opciones. El `id` de cada ítem se conserva.
+  const guardar = (lista: ItemPanel[]) => {
+    const conColor = lista.some((b) => b.color);
+    const estiloFijo = conColor && contenido[CLAVES_BENEFICIOS.estilo] === undefined ? { [CLAVES_BENEFICIOS.estilo]: o.estilo } : {};
+    onCambiar({
+      ...contenido,
+      ...estiloFijo,
+      items: lista.map((b) => ({
+        ...(b.idGuardado ? { id: b.idGuardado } : {}),
+        icon: b.icon,
+        title: b.title,
+        description: b.description,
+        ...(b.color ? { color: b.color } : {}),
+      })),
+    });
+  };
   const cambiar = (i: number, cambio: Partial<BeneficioFichaItem>) => guardar(items.map((b, j) => (j === i ? { ...b, ...cambio } : b)));
   const nombre = (id: string) => items[Number(id.slice(1))]?.title || t('beneficios.sinTitulo');
+  const colorPorItem = o.modoColor === 'multicolor';
 
   return (
     <section className="flex flex-col gap-2">
@@ -408,14 +497,25 @@ function ListaBeneficios({ contenido, onCambiar }: { contenido: Record<string, u
           {items.map((b, i) => {
             const Icono = ICONOS_LUCIDE_BENEFICIO[b.icon] ?? Star;
             const abiertoAqui = abierto === i;
+            const color = colorIconoItem(b, i, o);
             return (
               <Ordenable key={ids[i]} id={ids[i]}>
                 {(fila) => (
                   <div ref={fila.ref} style={fila.estilo} className={cn('rounded-lg border bg-surface', abiertoAqui ? 'border-brand' : 'border-line', fila.arrastrando && CLASES_HUECO)}>
                     <div className="flex items-center gap-1 py-1 pl-1 pr-1.5">
                       <AsaArrastre asa={fila.asa} nombre={nombre(ids[i])} />
-                      <Icono aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
-                      <span className="ml-1 min-w-0 flex-1 truncate text-[13px] font-medium text-fg">{b.title || t('beneficios.sinTitulo')}</span>
+                      {/* El ícono con su color (como lo pinta la tienda) y el título también abren el beneficio. */}
+                      <button
+                        type="button"
+                        onClick={() => setAbierto(abiertoAqui ? null : i)}
+                        aria-expanded={abiertoAqui}
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md py-0.5 pl-0.5 text-left hover:bg-hover"
+                      >
+                        <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${color} 14%, transparent)` }}>
+                          <Icono className="size-4" style={{ color }} strokeWidth={1.75} />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-fg">{b.title || t('beneficios.sinTitulo')}</span>
+                      </button>
                       <button type="button" onClick={() => guardar(items.filter((_, j) => j !== i))} disabled={items.length <= 1} aria-label={t('beneficios.quitar', { nombre: nombre(ids[i]) })} className={cn(clasesBoton({ variante: 'fantasma', tamano: 'sm' }), 'w-8 px-0 disabled:opacity-40')}>
                         <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                       </button>
@@ -436,7 +536,22 @@ function ListaBeneficios({ contenido, onCambiar }: { contenido: Record<string, u
                             onValorChange={(v) => cambiar(i, { color: v === 'auto' ? null : TONOS_MULTICOLOR[i % 4] })}
                           />
                           {b.color && <ColorField etiqueta={t('beneficios.colorItem')} valor={b.color} onCambiar={(hex) => cambiar(i, { color: hex })} />}
-                          <Ayuda>{t('beneficios.ayudaColorItem')}</Ayuda>
+                          {colorPorItem ? (
+                            <Ayuda>{t('beneficios.ayudaColorItem')}</Ayuda>
+                          ) : (
+                            // Con «De la marca» o «Uno propio» todos los íconos llevan el mismo color: se
+                            // dice y se ofrece pasar a «Multicolor», en vez de dejar el color sin efecto.
+                            <div className="flex flex-col items-start gap-1.5 rounded-md bg-subtle p-2" data-color-item-sin-efecto="">
+                              <Ayuda>{t('beneficios.colorItemSinEfecto', { modo: o.modoColor === 'marca' ? t('beneficios.deLaMarca') : t('beneficios.unoPropio') })}</Ayuda>
+                              <button
+                                type="button"
+                                onClick={() => onCambiar(conClave({ ...contenido, [CLAVES_BENEFICIOS.estilo]: contenido[CLAVES_BENEFICIOS.estilo] ?? o.estilo }, CLAVES_BENEFICIOS.modoColor, 'multicolor'))}
+                                className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+                              >
+                                {t('beneficios.usarMulticolor')}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -502,6 +617,9 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
   const k = CLAVES_RESENAS;
   const poner = (clave: string, v: unknown) => onCambiar(conClave(contenido, clave, v));
   const ponerNueva = (clave: string, v: unknown) => onCambiar(conClave({ ...contenido, [k.estilo]: contenido[k.estilo] ?? o.estilo }, clave, v));
+  const { usa, ocultas } = soloEnEstilo(SOLO_EN_ESTILOS_RESENAS, o.estilo);
+  const nombreEstilo = t(`resenas.estilos.${o.estilo}`);
+  const ayudaTitulo = o.estilo === 'compacta' ? t('resenas.ayudaTituloCompacta') : undefined;
 
   if (pestana === 'diseno') {
     return (
@@ -515,17 +633,20 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
           valor={o.orden}
           onCambiar={(v) => ponerNueva(k.orden, v)}
         />
-        <ChipsMultiples<FiltroResenas>
-          etiqueta={t('resenas.filtros')}
-          nuevo
-          opciones={(['estrellas', 'fotos', 'verificada'] as const).map((v) => ({ valor: v, etiqueta: t(`resenas.filtrosOpciones.${v}`) }))}
-          valores={o.filtros}
-          onCambiar={(v) => ponerNueva(k.filtros, v)}
-        />
+        {usa('filtros', t('resenas.filtros')) && (
+          <ChipsMultiples<FiltroResenas>
+            etiqueta={t('resenas.filtros')}
+            nuevo
+            opciones={(['estrellas', 'fotos', 'verificada'] as const).map((v) => ({ valor: v, etiqueta: t(`resenas.filtrosOpciones.${v}`) }))}
+            valores={o.filtros}
+            onCambiar={(v) => ponerNueva(k.filtros, v)}
+          />
+        )}
         <FilaInterruptor titulo={t('resenas.fotos')} ayuda={t('resenas.ayudaFotos')} valor={o.fotos} onCambiar={(v) => ponerNueva(k.fotos, v)} />
         <FilaInterruptor titulo={t('resenas.respuesta')} ayuda={t('resenas.ayudaRespuesta')} valor={o.respuesta} onCambiar={(v) => ponerNueva(k.respuesta, v)} />
         <FilaInterruptor titulo={t('resenas.util')} valor={o.util} onCambiar={(v) => ponerNueva(k.util, v)} />
         <FilaInterruptor titulo={t('resenas.ciudad')} valor={o.ciudad} onCambiar={(v) => ponerNueva(k.ciudad, v)} />
+        <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
         <Restablecer tipo="product_reviews" contenido={contenido} onCambiar={onCambiar} />
       </>
     );
@@ -548,6 +669,7 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
           ayuda={t('resenas.ayudaFuente')}
         />
         <CampoTextoFicha etiqueta={t('resenas.titulo')} valor={typeof contenido[k.titulo] === 'string' ? (contenido[k.titulo] as string) : ''} placeholder={o.titulo} onCambiar={(v) => ponerNueva(k.titulo, v)} />
+        {ayudaTitulo && <Ayuda>{ayudaTitulo}</Ayuda>}
         <CampoTextoFicha etiqueta={t('resenas.textoBoton')} valor={typeof contenido[k.textoBoton] === 'string' ? (contenido[k.textoBoton] as string) : ''} placeholder={o.textoBoton} max={60} onCambiar={(v) => ponerNueva(k.textoBoton, v)} />
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <TituloBloque>{t('resenas.vacio')}</TituloBloque>
@@ -572,12 +694,17 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
   return (
     <>
       <Segmento etiqueta={t('resenas.colorEstrellas')} nuevo opciones={[{ valor: 'amarillo', etiqueta: t('resenas.amarillo') }, { valor: 'tienda', etiqueta: t('colorTienda') }]} valor={o.colorEstrellas} onCambiar={(v) => ponerNueva(k.colorEstrellas, v)} />
-      <Segmento etiqueta={t('resenas.colorBarras')} nuevo opciones={[{ valor: 'tienda', etiqueta: t('colorTienda') }, { valor: 'gris', etiqueta: t('resenas.grisOscuro') }]} valor={o.colorBarras} onCambiar={(v) => ponerNueva(k.colorBarras, v)} />
+      {usa('colorBarras', t('resenas.colorBarras')) && (
+        <Segmento etiqueta={t('resenas.colorBarras')} nuevo opciones={[{ valor: 'tienda', etiqueta: t('colorTienda') }, { valor: 'gris', etiqueta: t('resenas.grisOscuro') }]} valor={o.colorBarras} onCambiar={(v) => ponerNueva(k.colorBarras, v)} />
+      )}
       <Segmento etiqueta={t('resenas.boton')} nuevo opciones={[{ valor: 'relleno', etiqueta: t('relleno') }, { valor: 'borde', etiqueta: t('conBorde') }, { valor: 'enlace', etiqueta: t('enlace') }]} valor={o.boton} onCambiar={(v) => ponerNueva(k.boton, v)} />
       <Segmento etiqueta={t('resenas.tarjeta')} nuevo opciones={[{ valor: 'borde', etiqueta: t('conBorde') }, { valor: 'sin_borde', etiqueta: t('sinBorde') }, { valor: 'suave', etiqueta: t('fondoSuave') }]} valor={o.tarjeta} onCambiar={(v) => ponerNueva(k.tarjeta, v)} />
-      <Segmento etiqueta={t('resenas.resumen')} nuevo opciones={[{ valor: 'suave', etiqueta: t('fondoSuave') }, { valor: 'ninguno', etiqueta: t('sinFondo') }]} valor={o.resumen} onCambiar={(v) => ponerNueva(k.resumen, v)} />
+      {usa('resumen', t('resenas.resumen')) && (
+        <Segmento etiqueta={t('resenas.resumen')} nuevo opciones={[{ valor: 'suave', etiqueta: t('fondoSuave') }, { valor: 'ninguno', etiqueta: t('sinFondo') }]} valor={o.resumen} onCambiar={(v) => ponerNueva(k.resumen, v)} />
+      )}
       <FilaInterruptor titulo={t('resenas.avatar')} ayuda={t('resenas.ayudaAvatar')} valor={o.avatar} onCambiar={(v) => ponerNueva(k.avatar, v)} />
-      <Segmento etiqueta={t('resenas.tamanoTitulo')} opciones={[{ valor: 'sm', etiqueta: t('pequeno') }, { valor: 'md', etiqueta: t('mediano') }, { valor: 'lg', etiqueta: t('grande') }]} valor={o.tamanoTitulo} onCambiar={(v) => ponerNueva(k.tamanoTitulo, v)} />
+      <Segmento etiqueta={t('resenas.tamanoTitulo')} opciones={[{ valor: 'sm', etiqueta: t('pequeno') }, { valor: 'md', etiqueta: t('mediano') }, { valor: 'lg', etiqueta: t('grande') }]} valor={o.tamanoTitulo} onCambiar={(v) => ponerNueva(k.tamanoTitulo, v)} ayuda={ayudaTitulo} />
+      <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
     </>
   );
 }
@@ -590,6 +717,8 @@ function PanelRelacionados({ pestana, contenido, onCambiar }: { pestana: Pestana
   const k = CLAVES_RELACIONADOS;
   const poner = (clave: string, v: unknown) => onCambiar(conClave(contenido, clave, v));
   const ponerNueva = (clave: string, v: unknown) => onCambiar(conClave({ ...contenido, [k.estilo]: contenido[k.estilo] ?? o.estilo }, clave, v));
+  const { usa, ocultas } = soloEnEstilo(SOLO_EN_ESTILOS_RELACIONADOS, o.estilo);
+  const nombreEstilo = t(`relacionados.estilos.${o.estilo}`);
 
   if (pestana === 'diseno') {
     return (
@@ -602,12 +731,25 @@ function PanelRelacionados({ pestana, contenido, onCambiar }: { pestana: Pestana
           insignia={(v) => (v === 'juntos' ? <span className="px-1"><InsigniaNuevo /></span> : null)}
         />
         <Ayuda>{t('relacionados.ayudaTarjeta')}</Ayuda>
-        <Segmento etiqueta={t('relacionados.columnas')} opciones={['3', '4', '5', '6'].map((v) => ({ valor: v, etiqueta: v }))} valor={String(o.columnas)} onCambiar={(v) => ponerNueva('columns', Number(v))} />
-        <Segmento etiqueta={t('relacionados.celular')} nuevo opciones={[{ valor: 'deslizable', etiqueta: t('relacionados.deslizable') }, { valor: 'dos', etiqueta: t('beneficios.dosColumnas') }]} valor={o.celular} onCambiar={(v) => ponerNueva(k.celular, v)} />
-        <Segmento etiqueta={t('relacionados.cantidad')} opciones={['4', '6', '8', '12'].map((v) => ({ valor: v, etiqueta: v }))} valor={String(o.cantidad)} onCambiar={(v) => ponerNueva('max_items', Number(v))} />
-        <FilaInterruptor titulo={t('relacionados.flechas')} ayuda={t('relacionados.soloCarrusel')} valor={o.flechas} onCambiar={(v) => ponerNueva('show_arrows', v)} />
-        <FilaInterruptor titulo={t('relacionados.puntos')} ayuda={t('relacionados.soloCarrusel')} valor={o.puntos} onCambiar={(v) => ponerNueva('show_dots', v)} />
-        <FilaInterruptor titulo={t('relacionados.verTodos')} ayuda={t('relacionados.ayudaVerTodos')} valor={o.verTodos} onCambiar={(v) => ponerNueva(k.verTodos, v)} />
+        {usa('columnas', t('relacionados.columnas')) && (
+          <Segmento etiqueta={t('relacionados.columnas')} opciones={['3', '4', '5', '6'].map((v) => ({ valor: v, etiqueta: v }))} valor={String(o.columnas)} onCambiar={(v) => ponerNueva('columns', Number(v))} />
+        )}
+        {usa('celular', t('relacionados.celular')) && (
+          <Segmento etiqueta={t('relacionados.celular')} nuevo opciones={[{ valor: 'deslizable', etiqueta: t('relacionados.deslizable') }, { valor: 'dos', etiqueta: t('beneficios.dosColumnas') }]} valor={o.celular} onCambiar={(v) => ponerNueva(k.celular, v)} />
+        )}
+        {usa('cantidad', t('relacionados.cantidad')) && (
+          <Segmento etiqueta={t('relacionados.cantidad')} opciones={['4', '6', '8', '12'].map((v) => ({ valor: v, etiqueta: v }))} valor={String(o.cantidad)} onCambiar={(v) => ponerNueva('max_items', Number(v))} />
+        )}
+        {usa('flechas', t('relacionados.flechas')) && (
+          <FilaInterruptor titulo={t('relacionados.flechas')} ayuda={t('relacionados.soloCarrusel')} valor={o.flechas} onCambiar={(v) => ponerNueva('show_arrows', v)} />
+        )}
+        {usa('puntos', t('relacionados.puntos')) && (
+          <FilaInterruptor titulo={t('relacionados.puntos')} ayuda={t('relacionados.soloCarrusel')} valor={o.puntos} onCambiar={(v) => ponerNueva('show_dots', v)} />
+        )}
+        {usa('verTodos', t('relacionados.verTodos')) && (
+          <FilaInterruptor titulo={t('relacionados.verTodos')} ayuda={t('relacionados.ayudaVerTodos')} valor={o.verTodos} onCambiar={(v) => ponerNueva(k.verTodos, v)} />
+        )}
+        <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
         <Restablecer tipo="related_products" contenido={contenido} onCambiar={onCambiar} />
       </>
     );
@@ -655,8 +797,13 @@ function PanelRelacionados({ pestana, contenido, onCambiar }: { pestana: Pestana
     <>
       <AvisoTonal tono="informacion" compacto icono={Info} titulo={t('relacionados.estiloTarjeta')} />
       <Segmento etiqueta={t('relacionados.alineacionTitulo')} nuevo opciones={[{ valor: 'izquierda', etiqueta: t('izquierda') }, { valor: 'centro', etiqueta: t('centrado') }]} valor={o.alineacionTitulo} onCambiar={(v) => ponerNueva(k.alineacionTitulo, v)} />
-      <Segmento etiqueta={t('relacionados.formaFlechas')} nuevo opciones={[{ valor: 'circulo', etiqueta: t('circulo') }, { valor: 'cuadrado', etiqueta: t('cuadrado') }]} valor={o.formaFlechas} onCambiar={(v) => ponerNueva(k.formaFlechas, v)} />
-      <Segmento etiqueta={t('relacionados.cajaTotal')} nuevo opciones={[{ valor: 'suave', etiqueta: t('fondoSuave') }, { valor: 'borde', etiqueta: t('conBorde') }]} valor={o.cajaTotal} onCambiar={(v) => ponerNueva(k.cajaTotal, v)} />
+      {usa('formaFlechas', t('relacionados.formaFlechas')) && (
+        <Segmento etiqueta={t('relacionados.formaFlechas')} nuevo opciones={[{ valor: 'circulo', etiqueta: t('circulo') }, { valor: 'cuadrado', etiqueta: t('cuadrado') }]} valor={o.formaFlechas} onCambiar={(v) => ponerNueva(k.formaFlechas, v)} />
+      )}
+      {usa('cajaTotal', t('relacionados.cajaTotal')) && (
+        <Segmento etiqueta={t('relacionados.cajaTotal')} nuevo opciones={[{ valor: 'suave', etiqueta: t('fondoSuave') }, { valor: 'borde', etiqueta: t('conBorde') }]} valor={o.cajaTotal} onCambiar={(v) => ponerNueva(k.cajaTotal, v)} />
+      )}
+      <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
     </>
   );
 }
@@ -670,6 +817,8 @@ function PanelDescripcion({ pestana, contenido, onCambiar }: { pestana: PestanaP
   const poner = (clave: string, v: unknown) => onCambiar(conClave(contenido, clave, v));
   const ponerNueva = (clave: string, v: unknown) => onCambiar(conClave({ ...contenido, [k.estilo]: contenido[k.estilo] ?? o.estilo }, clave, v));
   const nombreParte = (p: ParteDescripcion) => t(`descripcion.partes.${p}`);
+  const { usa, ocultas } = soloEnEstilo(SOLO_EN_ESTILOS_DESCRIPCION, o.estilo);
+  const nombreEstilo = t(`descripcion.estilos.${o.estilo}`);
 
   if (pestana === 'diseno') {
     return (
@@ -683,18 +832,26 @@ function PanelDescripcion({ pestana, contenido, onCambiar }: { pestana: PestanaP
           onCambiar={(v) => ponerNueva(k.partes, v.length ? v : ['descripcion'])}
           ayuda={t('descripcion.ayudaPartes')}
         />
-        {(o.estilo === 'pestanas' || o.estilo === 'acordeon') && (
+        {usa('abierta', t('descripcion.abierta')) && (
           <Segmento etiqueta={t('descripcion.abierta')} nuevo opciones={o.partes.map((p) => ({ valor: p, etiqueta: nombreParte(p) }))} valor={o.abierta} onCambiar={(v) => ponerNueva(k.abierta, v)} />
         )}
-        <Segmento
-          etiqueta={t('descripcion.lineas')}
-          opciones={[{ valor: 'letras', etiqueta: t('descripcion.porLetras') }, ...LINEAS_VER_MAS.map((n) => ({ valor: String(n), etiqueta: String(n) }))]}
-          valor={o.lineas === null ? 'letras' : String(o.lineas)}
-          onCambiar={(v) => ponerNueva(k.lineas, v === 'letras' ? undefined : Number(v))}
-          ayuda={t('descripcion.ayudaLineas', { letras: o.letras })}
-        />
-        <Segmento etiqueta={t('descripcion.celular')} nuevo opciones={[{ valor: 'igual', etiqueta: t('descripcion.igual') }, { valor: 'acordeon', etiqueta: t('descripcion.estilos.acordeon') }]} valor={o.celular} onCambiar={(v) => ponerNueva(k.celular, v)} />
-        <FilaInterruptor titulo={t('descripcion.variasAbiertas')} ayuda={t('descripcion.soloAcordeon')} valor={o.variasAbiertas} onCambiar={(v) => ponerNueva(k.variasAbiertas, v)} />
+        {usa('lineas', t('descripcion.lineas')) && (
+          <Segmento
+            etiqueta={t('descripcion.lineas')}
+            opciones={[{ valor: 'letras', etiqueta: t('descripcion.porLetras') }, ...LINEAS_VER_MAS.map((n) => ({ valor: String(n), etiqueta: String(n) }))]}
+            valor={o.lineas === null ? 'letras' : String(o.lineas)}
+            onCambiar={(v) => ponerNueva(k.lineas, v === 'letras' ? undefined : Number(v))}
+            ayuda={t('descripcion.ayudaLineas', { letras: o.letras })}
+          />
+        )}
+        {usa('celular', t('descripcion.celular')) && (
+          <Segmento etiqueta={t('descripcion.celular')} nuevo opciones={[{ valor: 'igual', etiqueta: t('descripcion.igual') }, { valor: 'acordeon', etiqueta: t('descripcion.estilos.acordeon') }]} valor={o.celular} onCambiar={(v) => ponerNueva(k.celular, v)} />
+        )}
+        {/* «Varias abiertas»: en «Acordeón» y en «Pestañas» que en el celular pasan a acordeón. */}
+        {(o.estilo === 'pestanas' && o.celular === 'acordeon') || usa('variasAbiertas', t('descripcion.variasAbiertas')) ? (
+          <FilaInterruptor titulo={t('descripcion.variasAbiertas')} ayuda={t('descripcion.soloAcordeon')} valor={o.variasAbiertas} onCambiar={(v) => ponerNueva(k.variasAbiertas, v)} />
+        ) : null}
+        <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
         <Restablecer tipo="product_description" contenido={contenido} onCambiar={onCambiar} />
       </>
     );
@@ -727,11 +884,16 @@ function PanelDescripcion({ pestana, contenido, onCambiar }: { pestana: PestanaP
   }
   return (
     <>
-      <Segmento etiqueta={t('descripcion.pestanaActiva')} nuevo opciones={[{ valor: 'tienda', etiqueta: t('colorTienda') }, { valor: 'texto', etiqueta: t('descripcion.textoSitio') }]} valor={o.colorPestana} onCambiar={(v) => ponerNueva(k.colorPestana, v)} />
+      {usa('colorPestana', t('descripcion.pestanaActiva')) && (
+        <Segmento etiqueta={t('descripcion.pestanaActiva')} nuevo opciones={[{ valor: 'tienda', etiqueta: t('colorTienda') }, { valor: 'texto', etiqueta: t('descripcion.textoSitio') }]} valor={o.colorPestana} onCambiar={(v) => ponerNueva(k.colorPestana, v)} />
+      )}
       <Segmento etiqueta={t('descripcion.vinetas')} nuevo opciones={[{ valor: 'punto', etiqueta: t('descripcion.punto') }, { valor: 'check', etiqueta: t('descripcion.check') }, { valor: 'numero', etiqueta: t('descripcion.numero') }]} valor={o.vinetas} onCambiar={(v) => ponerNueva(k.vinetas, v)} />
       <Segmento etiqueta={t('descripcion.tabla')} nuevo opciones={[{ valor: 'rayada', etiqueta: t('descripcion.rayada') }, { valor: 'lineas', etiqueta: t('descripcion.conLineas') }, { valor: 'sin', etiqueta: t('descripcion.sinLineas') }]} valor={o.tabla} onCambiar={(v) => ponerNueva(k.tabla, v)} />
-      <Segmento etiqueta={t('descripcion.ancho')} nuevo opciones={[{ valor: 'comodo', etiqueta: t('descripcion.comodo') }, { valor: 'completo', etiqueta: t('descripcion.todoAncho') }]} valor={o.ancho} onCambiar={(v) => ponerNueva(k.ancho, v)} />
+      {usa('ancho', t('descripcion.ancho')) && (
+        <Segmento etiqueta={t('descripcion.ancho')} nuevo opciones={[{ valor: 'comodo', etiqueta: t('descripcion.comodo') }, { valor: 'completo', etiqueta: t('descripcion.todoAncho') }]} valor={o.ancho} onCambiar={(v) => ponerNueva(k.ancho, v)} />
+      )}
       <Segmento etiqueta={t('descripcion.tamanoTexto')} opciones={[{ valor: 'sm', etiqueta: t('pequeno') }, { valor: 'md', etiqueta: t('descripcion.normal') }, { valor: 'lg', etiqueta: t('grande') }]} valor={o.tamanoTexto} onCambiar={(v) => ponerNueva(k.tamanoTexto, v)} />
+      <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
     </>
   );
 }

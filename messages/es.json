@@ -35253,7 +35253,9 @@
           },
           "sinOpciones": "Aún no hay registros activos para la vista: el lienzo muestra el listado de la tienda.",
           "publicada": "El lienzo muestra la versión publicada de esta plantilla: tus cambios se ven aquí después de publicar.",
-          "borrador": "Se ve con tu borrador: cada vez que se guarda, la vista se actualiza con los cambios."
+          "borrador": "Se ve con tu borrador: cada vez que se guarda, la vista se actualiza con los cambios.",
+          "buscar": "Buscar producto, SKU o código…",
+          "sinResultados": "Ningún resultado"
         }
       },
       "inspector": {

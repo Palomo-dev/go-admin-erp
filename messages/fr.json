@@ -35255,7 +35255,9 @@
           },
           "sinOpciones": "Aucun enregistrement actif pour l'aperçu : le canevas affiche la liste de la boutique.",
           "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication.",
-          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour."
+          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour.",
+          "buscar": "Rechercher un produit, SKU ou code…",
+          "sinResultados": "Aucun résultat"
         }
       },
       "inspector": {

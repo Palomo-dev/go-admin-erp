@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 /**
  * Banda del lienzo en una plantilla de detalle (ficha de producto, página de categoría, ficha de
  * espacio): con qué registro REAL de la organización se ve —el primero, o el que elija la
@@ -10,7 +12,7 @@
  * las demás páginas: el lienzo solo se recarga al guardar un bloque que la tienda no puede pintar
  * en vivo (`recargaLienzoDetalle.ts`). La ficha de espacio sigue con la publicada.
  */
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchSelect } from '@/components/ui/search-select';
 import { useTextosEditor } from './textos';
 
 /** Plantillas con registro de ejemplo (`getPreviewEntities`). */
@@ -33,23 +35,24 @@ export interface MuestraPlantilla {
 export function MuestraPlantillaLienzo({ muestra }: { muestra: MuestraPlantilla }) {
   const t = useTextosEditor();
   const etiqueta = t(`lienzo.muestra.etiqueta.${muestra.tipo}`);
+  const idSelector = useId();
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-surface px-4 py-2">
       {muestra.opciones.length > 0 ? (
         <div className="flex min-w-0 items-center gap-2 text-sm text-fg-secondary">
-          <span aria-hidden="true" className="shrink-0">{etiqueta}</span>
-          <Select value={muestra.valor ?? undefined} onValueChange={muestra.onCambiar}>
-            <SelectTrigger aria-label={etiqueta} className="h-9 w-[260px] min-w-0 rounded-lg border-line-strong bg-surface text-sm text-fg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {muestra.opciones.map((o) => (
-                <SelectItem key={o.id} value={o.id}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label htmlFor={idSelector} className="shrink-0">{etiqueta}</label>
+          {/* Con cientos de productos, buscar (nombre, SKU o código) en vez de una lista larga. */}
+          <div className="w-[320px] min-w-0">
+            <SearchSelect
+              id={idSelector}
+              options={muestra.opciones.map((o) => ({ value: o.id, label: o.label }))}
+              value={muestra.valor ?? ''}
+              onValueChange={muestra.onCambiar}
+              searchPlaceholder={t('lienzo.muestra.buscar')}
+              emptyText={t('lienzo.muestra.sinResultados')}
+              className="h-9 rounded-lg border-line-strong bg-surface text-sm text-fg"
+            />
+          </div>
         </div>
       ) : (
         <p className="text-sm text-fg-secondary">{t('lienzo.muestra.sinOpciones')}</p>

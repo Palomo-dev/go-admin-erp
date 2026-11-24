@@ -35255,7 +35255,9 @@
           },
           "sinOpciones": "There are no active records to preview yet: the canvas shows the store listing.",
           "publicada": "The canvas shows the published version of this template: your changes appear here after you publish.",
-          "borrador": "Showing your draft: each time it saves, the preview updates with your changes."
+          "borrador": "Showing your draft: each time it saves, the preview updates with your changes.",
+          "buscar": "Search product, SKU or code…",
+          "sinResultados": "No results"
         }
       },
       "inspector": {

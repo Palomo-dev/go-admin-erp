@@ -37,7 +37,7 @@ export function FinJornadaPantalla() {
 
   if (estado === 'sin_domiciliario' || estado === 'error') {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
         <PageHeader titulo={t('titulo')} variante="form" volverA={RUTA_MIS_ENVIOS} />
         <EmptyState
           variante={estado === 'error' ? 'error' : 'forbidden'}
@@ -51,7 +51,7 @@ export function FinJornadaPantalla() {
   }
   if (estado === 'cargando') {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-3" aria-busy="true">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3" aria-busy="true">
         <PageHeader titulo={t('titulo')} variante="form" volverA={RUTA_MIS_ENVIOS} cargando />
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-40 w-full rounded-xl" />
@@ -75,7 +75,7 @@ export function FinJornadaPantalla() {
     e.expected_delivery_date && e.expected_delivery_date > hoy ? t('reprogramadoPara', { fecha: formatPlainDate(e.expected_delivery_date) }) : t('reprogramadoHoy');
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3">
       <PageHeader titulo={t('titulo')} subtitulo={subtitulo} variante="form" volverA={RUTA_MIS_ENVIOS} />
 
       <section aria-label={t('cifras')} className="grid grid-cols-3 gap-2 rounded-xl border border-line bg-surface p-4">

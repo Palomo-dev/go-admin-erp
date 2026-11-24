@@ -21254,7 +21254,9 @@
         "vencidasDetalle": "{count, plural, one {{n} cuenta vencida} other {{n} cuentas vencidas}}",
         "promedioCobro": "Promedio de cobro",
         "dias": "{dias} días",
-        "promedioDetalle": "Cuentas pagadas en los últimos 90 días"
+        "promedioDetalle": "Cuentas pagadas en los últimos 90 días",
+        "porCobrarAl": "Por cobrar al {fecha}",
+        "corteDetalle": "Saldos al cierre de ese día"
       },
       "buscar": {
         "placeholder": "Buscar por cliente, documento o factura",
@@ -21278,7 +21280,9 @@
         "sinRecordatorioChip": "Sin recordatorio en {dias} d",
         "clienteChip": "Un cliente",
         "cliente": "Cliente",
-        "clienteChipNombre": "Cliente: {nombre}"
+        "clienteChipNombre": "Cliente: {nombre}",
+        "corte": "Fecha de corte",
+        "corteChip": "Saldos al {fecha}"
       },
       "columnas": {
         "cliente": "Cliente",
@@ -66368,6 +66372,250 @@
       },
       "alDia": "Nada que atender: ningún despacho bloqueado ni documentos vencidos.",
       "notaReportes": "El detalle de costos y rendimiento está en Reportes."
+    }
+  },
+  "catalogoComun": {
+    "comun": {
+      "migas": {
+        "logistica": "Logística",
+        "transporte": "Transporte"
+      },
+      "docs": {
+        "vencido": "Vencido",
+        "por_vencer": "Por vencer",
+        "vigente": "Vigente",
+        "sin_fecha": "Sin fecha"
+      },
+      "externo": "Externo",
+      "todos": "Todos",
+      "actualizar": "Actualizar",
+      "importar": "Importar",
+      "limpiarTodo": "Limpiar todo",
+      "cancelar": "Cancelar"
+    },
+    "vehiculos": {
+      "titulo": "Vehículos",
+      "subtitulo": "Catálogo común · {n} vehículos",
+      "subtituloVacio": "Aún no hay vehículos registrados",
+      "nuevo": "Nuevo vehículo",
+      "tabla": "Vehículos",
+      "capacidad": {
+        "kg": "{n} kg",
+        "m3": "{n} m³",
+        "pasajeros": "{count, plural, one {# pasajero} other {# pasajeros}}",
+        "o": "o {carga}"
+      },
+      "toast": {
+        "errorHistorial": "No se pudo cargar el historial",
+        "actualizado": "Vehículo actualizado",
+        "creado": "Vehículo creado",
+        "errorGuardar": "No se pudo guardar el vehículo",
+        "estado": "Estado actualizado",
+        "errorEstado": "No se pudo cambiar el estado",
+        "conductorAsignado": "Conductor asignado",
+        "conductorQuitado": "Conductor quitado",
+        "errorConductor": "No se pudo asignar el conductor",
+        "eliminado": "Se eliminó el vehículo {placa}",
+        "errorEliminar": "No se pudo eliminar el vehículo",
+        "sinOrganizacion": "No hay organización activa"
+      },
+      "columnas": {
+        "vehiculo": "Vehículo",
+        "marcaModelo": "Marca y modelo",
+        "tipo": "Tipo",
+        "capacidad": "Capacidad",
+        "conductor": "Conductor",
+        "documentos": "Documentos",
+        "estado": "Estado",
+        "transportadora": "Transportadora",
+        "sede": "Sede"
+      },
+      "estados": {
+        "available": "Disponible",
+        "in_use": "En uso",
+        "maintenance": "Mantenimiento",
+        "inactive": "Inactivo"
+      },
+      "acciones": {
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "cambiarEstado": "Cambiar estado",
+        "cambiarConductor": "Cambiar conductor",
+        "asignarConductor": "Asignar conductor",
+        "subirDocumento": "Subir documento",
+        "historial": "Ver historial de viajes",
+        "eliminar": "Eliminar"
+      },
+      "conductorDesconocido": "Asignado (sin ficha de conductor)",
+      "sinAsignar": "Sin asignar",
+      "filtros": {
+        "tipo": "Tipo",
+        "estado": "Estado",
+        "transportadora": "Transportadora",
+        "documentos": "Documentos",
+        "chipTipo": "Tipo: {tipo}",
+        "chipEstado": "Estado: {estado}",
+        "chipTransportadora": "Transportadora: {nombre}",
+        "chipDocumentos": "Documentos: {estado}",
+        "verN": "{count, plural, one {Ver # vehículo} other {Ver # vehículos}}"
+      },
+      "exportarTodo": "Exportar la lista",
+      "sinFilas": "No hay vehículos en la lista",
+      "irDocumentos": "Documentos y vencimientos",
+      "irConductores": "Conductores y domiciliarios",
+      "sustantivo": {
+        "singular": "vehículo",
+        "plural": "vehículos"
+      },
+      "vacio": {
+        "titulo": "Aún no hay vehículos",
+        "descripcion": "Registra tu primera moto, carro, camión, bus o lancha para asignar conductores, programar viajes y despachos y vigilar sus documentos.",
+        "importar": "Importar desde Excel"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de vehículos",
+        "vehiculos": "Vehículos",
+        "vehiculosDetalle": "Todos activos",
+        "vehiculosInactivos": "{n} inactivos",
+        "disponibles": "Disponibles",
+        "disponiblesDetalle": "Listos para salir",
+        "disponiblesBloqueados": "{n} con documentos vencidos: no salen",
+        "enUso": "En uso",
+        "enUsoDetalle": "En ruta o en entrega",
+        "mantenimiento": "En mantenimiento",
+        "mantenimientoVacio": "Ninguno en el taller"
+      },
+      "buscar": {
+        "placeholder": "Buscar por placa, marca o conductor…",
+        "etiqueta": "Buscar vehículos"
+      },
+      "sinResultados": "Ningún vehículo coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar los vehículos",
+      "masivo": {
+        "exportar": "Exportar"
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar el vehículo {placa}?",
+        "descripcion": "Se borra del catálogo de Logística y Transporte. Esta acción no se puede deshacer.",
+        "confirmar": "Eliminar vehículo"
+      }
+    },
+    "conductores": {
+      "titulo": "Conductores y domiciliarios",
+      "subtitulo": "Catálogo común · {n} personas",
+      "subtituloVacio": "Aún no hay personas registradas",
+      "nuevo": "Nueva persona",
+      "tabla": "Conductores y domiciliarios",
+      "sinNombre": "Sin nombre",
+      "sinCargo": "Sin cargo",
+      "sinVehiculo": "Sin asignar",
+      "licenciaVence": "Licencia vence el {fecha}",
+      "categorias": {
+        "A1": "motos hasta 125 cc",
+        "A2": "motos de más de 125 cc",
+        "B1": "carros y camperos",
+        "B2": "camiones rígidos y buses",
+        "B3": "vehículos articulados",
+        "C1": "carros de servicio público",
+        "C2": "camiones y buses de servicio público",
+        "C3": "articulados de servicio público"
+      },
+      "toast": {
+        "errorHistorial": "No se pudo cargar el historial",
+        "actualizado": "Persona actualizada",
+        "creado": "Persona creada",
+        "errorGuardar": "No se pudo guardar la persona",
+        "activado": "Persona activada",
+        "desactivado": "Persona desactivada",
+        "errorEstado": "No se pudo cambiar el estado",
+        "eliminado": "Se eliminó a {nombre}",
+        "errorEliminar": "No se pudo eliminar a la persona",
+        "sinOrganizacion": "No hay organización activa"
+      },
+      "columnas": {
+        "persona": "Persona",
+        "documento": "Documento",
+        "cargo": "Cargo",
+        "licencia": "Licencia",
+        "vence": "Vence",
+        "examen": "Examen médico",
+        "vehiculo": "Vehículo asignado",
+        "estado": "Estado"
+      },
+      "estados": {
+        "activo": "Activo",
+        "inactivo": "Inactivo"
+      },
+      "acciones": {
+        "editar": "Editar",
+        "editarEnDomiciliarios": "Editar en Domiciliarios",
+        "duplicar": "Duplicar",
+        "desactivar": "Desactivar",
+        "activar": "Activar",
+        "subirDocumento": "Subir documento",
+        "historial": "Ver historial de viajes",
+        "eliminar": "Eliminar"
+      },
+      "filtros": {
+        "cargo": "Cargo",
+        "estado": "Estado",
+        "categoria": "Categoría de licencia",
+        "documentos": "Documentos",
+        "vehiculo": "Vehículo",
+        "chipCargo": "Cargo: {cargo}",
+        "chipCategoria": "Licencia {categoria}",
+        "chipDocumentos": "Documentos: {estado}",
+        "vehiculo_con": "Con vehículo asignado",
+        "vehiculo_sin": "Sin vehículo asignado",
+        "verN": "{count, plural, one {Ver # persona} other {Ver # personas}}"
+      },
+      "exportarTodo": "Exportar la lista",
+      "sinFilas": "No hay personas en la lista",
+      "irDocumentos": "Documentos y vencimientos",
+      "irVehiculos": "Vehículos",
+      "irDomiciliarios": "Domiciliarios",
+      "sustantivo": {
+        "singular": "persona",
+        "plural": "personas"
+      },
+      "vacio": {
+        "titulo": "Aún no hay conductores ni domiciliarios",
+        "descripcion": "Registra a las personas que manejan los vehículos o hacen los domicilios para asignarles vehículos, viajes y envíos y vigilar su licencia.",
+        "domiciliario": "Registrar domiciliario",
+        "importar": "Importar desde Excel"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de personas",
+        "personas": "Personas",
+        "activas": "{n} activas",
+        "externas": "{n} externas",
+        "documentos": "Documentos personales",
+        "documentosDetalle": "{vencidos} vencidos · {porVencer} por vencer",
+        "documentosVacio": "Licencias y exámenes al día",
+        "conVehiculo": "Con vehículo asignado",
+        "sinVehiculo": "{n} activas sin vehículo",
+        "sinLicencia": "Sin licencia registrada",
+        "sinLicenciaDetalle": "No se pueden despachar",
+        "sinLicenciaVacio": "Todas tienen licencia"
+      },
+      "buscar": {
+        "placeholder": "Buscar por nombre, documento o vehículo…",
+        "etiqueta": "Buscar personas"
+      },
+      "sinResultados": "Ninguna persona coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar los conductores y domiciliarios",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a esta lista",
+        "descripcion": "Pide a un administrador el permiso de Transporte o de Logística."
+      },
+      "masivo": {
+        "exportar": "Exportar"
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar a {nombre}?",
+        "descripcion": "Se borran su licencia y sus datos de conductor. Su empleo en Recursos humanos no cambia. Esta acción no se puede deshacer.",
+        "confirmar": "Eliminar"
+      }
     }
   }
 }

@@ -47,6 +47,7 @@ export async function listadoCartera(ctx: Ctx, consulta: ConsultaCartera): Promi
       cuotas_pendientes: num(f.cuotas_pendientes),
     })),
     resumen: {
+      corte: typeof res?.corte === 'string' ? res.corte : null,
       monedas: res?.monedas ?? [],
       por_cobrar: num(res?.por_cobrar),
       al_dia: num(res?.al_dia),

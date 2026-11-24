@@ -158,7 +158,7 @@ const TRANSPORTE: CrudoTransporteInicio = {
     ['5', bloqueo('5')],
   ]),
   vehiculos: { total: 15, disponibles: 9, enUso: 4, mantenimiento: 0, placasMantenimiento: [] },
-  documentos: { vencidos: 2, porVencer: 5, vigentes: 20, total: 27, sinFecha: 0, primero: '2026-11-30', vencidosEjemplo: [{ nombre: 'WNP104', tipo: 'soat' }] },
+  documentos: { vencidos: 2, porVencer: 5, vigentes: 20, total: 27, sinFecha: 0, sinArchivo: 0, primero: '2026-11-30', vencidosEjemplo: [{ nombre: 'WNP104', tipo: 'soat' }] },
 };
 
 describe('Transporte: resumen compartido, comparación y enlaces filtrados', () => {

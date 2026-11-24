@@ -16605,7 +16605,9 @@
         "vencidasDetalle": "{count, plural, one {{n} compte en retard} other {{n} comptes en retard}}",
         "promedioCobro": "Délai moyen d'encaissement",
         "dias": "{dias} jours",
-        "promedioDetalle": "Comptes payés ces 90 derniers jours"
+        "promedioDetalle": "Comptes payés ces 90 derniers jours",
+        "porCobrarAl": "À recevoir au {fecha}",
+        "corteDetalle": "Soldes à la clôture de ce jour"
       },
       "buscar": {
         "placeholder": "Rechercher par client, identifiant ou facture",
@@ -16629,7 +16631,9 @@
         "sinRecordatorioChip": "Sans relance {dias} j",
         "clienteChip": "Un client",
         "cliente": "Client",
-        "clienteChipNombre": "Client : {nombre}"
+        "clienteChipNombre": "Client : {nombre}",
+        "corte": "Date d'arrêté",
+        "corteChip": "Soldes au {fecha}"
       },
       "columnas": {
         "cliente": "Client",
@@ -66370,6 +66374,250 @@
       },
       "alDia": "Rien à traiter : aucun départ bloqué ni document expiré.",
       "notaReportes": "Le détail des coûts et du rendement se trouve dans Rapports."
+    }
+  },
+  "catalogoComun": {
+    "comun": {
+      "migas": {
+        "logistica": "Logistique",
+        "transporte": "Transport"
+      },
+      "docs": {
+        "vencido": "Expiré",
+        "por_vencer": "Bientôt expiré",
+        "vigente": "Valide",
+        "sin_fecha": "Sans date"
+      },
+      "externo": "Externe",
+      "todos": "Tous",
+      "actualizar": "Actualiser",
+      "importar": "Importer",
+      "limpiarTodo": "Tout effacer",
+      "cancelar": "Annuler"
+    },
+    "vehiculos": {
+      "titulo": "Véhicules",
+      "subtitulo": "Catalogue commun · {n} véhicules",
+      "subtituloVacio": "Aucun véhicule enregistré pour le moment",
+      "nuevo": "Nouveau véhicule",
+      "tabla": "Véhicules",
+      "capacidad": {
+        "kg": "{n} kg",
+        "m3": "{n} m³",
+        "pasajeros": "{count, plural, one {# passager} other {# passagers}}",
+        "o": "ou {carga}"
+      },
+      "toast": {
+        "errorHistorial": "L'historique n'a pas pu être chargé",
+        "actualizado": "Véhicule mis à jour",
+        "creado": "Véhicule créé",
+        "errorGuardar": "Le véhicule n'a pas pu être enregistré",
+        "estado": "Statut mis à jour",
+        "errorEstado": "Le statut n'a pas pu être modifié",
+        "conductorAsignado": "Conducteur assigné",
+        "conductorQuitado": "Conducteur retiré",
+        "errorConductor": "Le conducteur n'a pas pu être assigné",
+        "eliminado": "Le véhicule {placa} a été supprimé",
+        "errorEliminar": "Le véhicule n'a pas pu être supprimé",
+        "sinOrganizacion": "Aucune organisation active"
+      },
+      "columnas": {
+        "vehiculo": "Véhicule",
+        "marcaModelo": "Marque et modèle",
+        "tipo": "Type",
+        "capacidad": "Capacité",
+        "conductor": "Conducteur",
+        "documentos": "Documents",
+        "estado": "Statut",
+        "transportadora": "Transporteur",
+        "sede": "Site"
+      },
+      "estados": {
+        "available": "Disponible",
+        "in_use": "En service",
+        "maintenance": "Maintenance",
+        "inactive": "Inactif"
+      },
+      "acciones": {
+        "editar": "Modifier",
+        "duplicar": "Dupliquer",
+        "cambiarEstado": "Changer le statut",
+        "cambiarConductor": "Changer de conducteur",
+        "asignarConductor": "Assigner un conducteur",
+        "subirDocumento": "Téléverser un document",
+        "historial": "Voir l'historique des trajets",
+        "eliminar": "Supprimer"
+      },
+      "conductorDesconocido": "Assigné (sans fiche conducteur)",
+      "sinAsignar": "Non assigné",
+      "filtros": {
+        "tipo": "Type",
+        "estado": "Statut",
+        "transportadora": "Transporteur",
+        "documentos": "Documents",
+        "chipTipo": "Type : {tipo}",
+        "chipEstado": "Statut : {estado}",
+        "chipTransportadora": "Transporteur : {nombre}",
+        "chipDocumentos": "Documents : {estado}",
+        "verN": "{count, plural, one {Voir # véhicule} other {Voir # véhicules}}"
+      },
+      "exportarTodo": "Exporter la liste",
+      "sinFilas": "Il n'y a aucun véhicule dans la liste",
+      "irDocumentos": "Documents et échéances",
+      "irConductores": "Conducteurs et livreurs",
+      "sustantivo": {
+        "singular": "véhicule",
+        "plural": "véhicules"
+      },
+      "vacio": {
+        "titulo": "Pas encore de véhicules",
+        "descripcion": "Enregistrez votre première moto, voiture, camion, bus ou bateau pour assigner des conducteurs, planifier trajets et expéditions et suivre ses documents.",
+        "importar": "Importer depuis Excel"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des véhicules",
+        "vehiculos": "Véhicules",
+        "vehiculosDetalle": "Tous actifs",
+        "vehiculosInactivos": "{n} inactifs",
+        "disponibles": "Disponibles",
+        "disponiblesDetalle": "Prêts à partir",
+        "disponiblesBloqueados": "{n} avec des documents expirés : ils ne partent pas",
+        "enUso": "En service",
+        "enUsoDetalle": "En route ou en livraison",
+        "mantenimiento": "En maintenance",
+        "mantenimientoVacio": "Aucun à l'atelier"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par plaque, marque ou conducteur…",
+        "etiqueta": "Rechercher des véhicules"
+      },
+      "sinResultados": "Aucun véhicule ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Les véhicules n'ont pas pu être chargés",
+      "masivo": {
+        "exportar": "Exporter"
+      },
+      "eliminar": {
+        "titulo": "Supprimer le véhicule {placa} ?",
+        "descripcion": "Il est retiré du catalogue de Logistique et de Transport. Cette action est irréversible.",
+        "confirmar": "Supprimer le véhicule"
+      }
+    },
+    "conductores": {
+      "titulo": "Conducteurs et livreurs",
+      "subtitulo": "Catalogue commun · {n} personnes",
+      "subtituloVacio": "Aucune personne enregistrée pour le moment",
+      "nuevo": "Nouvelle personne",
+      "tabla": "Conducteurs et livreurs",
+      "sinNombre": "Sans nom",
+      "sinCargo": "Sans poste",
+      "sinVehiculo": "Non assigné",
+      "licenciaVence": "Le permis expire le {fecha}",
+      "categorias": {
+        "A1": "motos jusqu'à 125 cm³",
+        "A2": "motos de plus de 125 cm³",
+        "B1": "voitures et 4x4",
+        "B2": "camions porteurs et bus",
+        "B3": "véhicules articulés",
+        "C1": "voitures de service public",
+        "C2": "camions et bus de service public",
+        "C3": "véhicules articulés de service public"
+      },
+      "toast": {
+        "errorHistorial": "L'historique n'a pas pu être chargé",
+        "actualizado": "Personne mise à jour",
+        "creado": "Personne créée",
+        "errorGuardar": "La personne n'a pas pu être enregistrée",
+        "activado": "Personne activée",
+        "desactivado": "Personne désactivée",
+        "errorEstado": "Le statut n'a pas pu être modifié",
+        "eliminado": "{nombre} a été supprimé(e)",
+        "errorEliminar": "La personne n'a pas pu être supprimée",
+        "sinOrganizacion": "Aucune organisation active"
+      },
+      "columnas": {
+        "persona": "Personne",
+        "documento": "Pièce d'identité",
+        "cargo": "Poste",
+        "licencia": "Permis",
+        "vence": "Expire",
+        "examen": "Examen médical",
+        "vehiculo": "Véhicule assigné",
+        "estado": "Statut"
+      },
+      "estados": {
+        "activo": "Actif",
+        "inactivo": "Inactif"
+      },
+      "acciones": {
+        "editar": "Modifier",
+        "editarEnDomiciliarios": "Modifier dans Livreurs",
+        "duplicar": "Dupliquer",
+        "desactivar": "Désactiver",
+        "activar": "Activer",
+        "subirDocumento": "Téléverser un document",
+        "historial": "Voir l'historique des trajets",
+        "eliminar": "Supprimer"
+      },
+      "filtros": {
+        "cargo": "Poste",
+        "estado": "Statut",
+        "categoria": "Catégorie de permis",
+        "documentos": "Documents",
+        "vehiculo": "Véhicule",
+        "chipCargo": "Poste : {cargo}",
+        "chipCategoria": "Permis {categoria}",
+        "chipDocumentos": "Documents : {estado}",
+        "vehiculo_con": "Avec véhicule assigné",
+        "vehiculo_sin": "Sans véhicule assigné",
+        "verN": "{count, plural, one {Voir # personne} other {Voir # personnes}}"
+      },
+      "exportarTodo": "Exporter la liste",
+      "sinFilas": "Il n'y a aucune personne dans la liste",
+      "irDocumentos": "Documents et échéances",
+      "irVehiculos": "Véhicules",
+      "irDomiciliarios": "Livreurs",
+      "sustantivo": {
+        "singular": "personne",
+        "plural": "personnes"
+      },
+      "vacio": {
+        "titulo": "Pas encore de conducteurs ni de livreurs",
+        "descripcion": "Enregistrez les personnes qui conduisent les véhicules ou font les livraisons pour leur assigner véhicules, trajets et expéditions et suivre leur permis.",
+        "domiciliario": "Enregistrer un livreur",
+        "importar": "Importer depuis Excel"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des personnes",
+        "personas": "Personnes",
+        "activas": "{n} actives",
+        "externas": "{n} externes",
+        "documentos": "Documents personnels",
+        "documentosDetalle": "{vencidos} expirés · {porVencer} bientôt expirés",
+        "documentosVacio": "Permis et examens à jour",
+        "conVehiculo": "Avec véhicule assigné",
+        "sinVehiculo": "{n} actives sans véhicule",
+        "sinLicencia": "Sans permis enregistré",
+        "sinLicenciaDetalle": "Elles ne peuvent pas être affectées",
+        "sinLicenciaVacio": "Tout le monde a un permis"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par nom, pièce ou véhicule…",
+        "etiqueta": "Rechercher des personnes"
+      },
+      "sinResultados": "Aucune personne ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Les conducteurs et livreurs n'ont pas pu être chargés",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès à cette liste",
+        "descripcion": "Demandez à un administrateur l'autorisation Transport ou Logistique."
+      },
+      "masivo": {
+        "exportar": "Exporter"
+      },
+      "eliminar": {
+        "titulo": "Supprimer {nombre} ?",
+        "descripcion": "Son permis et ses données de conducteur sont supprimés. Son emploi dans Ressources humaines ne change pas. Cette action est irréversible.",
+        "confirmar": "Supprimer"
+      }
     }
   }
 }

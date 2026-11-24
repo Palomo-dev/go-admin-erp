@@ -95,6 +95,7 @@ const CASOS: Array<{ reporte: DefinicionModulo; rpc: string; claves: string[] }>
   { reporte: buscar(ventasReports, 'fn_reporte_cierre_caja'), rpc: 'fn_reporte_cierre_caja', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(ventasReports, 'fn_reporte_ventas_resumen'), rpc: 'fn_reporte_ventas_resumen', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(ventasReports, 'fn_reporte_ventas_por_hora'), rpc: 'fn_reporte_ventas_por_hora', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  { reporte: buscar(ventasReports, 'fn_reporte_ventas_canal_sede'), rpc: 'fn_reporte_ventas_canal_sede', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(finanzasReports, 'fn_reporte_cxc_aging'), rpc: 'fn_reporte_cxc_aging', claves: ['p_organization_id', 'p_as_of', 'p_branch_id'] },
   { reporte: buscar(finanzasReports, 'fn_reporte_cxp_aging'), rpc: 'fn_reporte_cxp_aging', claves: ['p_organization_id', 'p_as_of', 'p_branch_id'] },
   { reporte: buscar(finanzasReports, 'fn_reporte_flujo_efectivo'), rpc: 'fn_reporte_flujo_efectivo', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },

@@ -230,7 +230,7 @@ const TRANSPORTE: CrudoTransporteInicio = {
   viajes: [viaje('1', 'completed'), viaje('2', 'in_transit'), viaje('3', 'scheduled'), viaje('4', 'scheduled'), viaje('5', 'cancelled')],
   cumplimiento: new Map([['4', bloqueo]]),
   vehiculos: { total: 15, disponibles: 9, enUso: 4, mantenimiento: 2, placasMantenimiento: ['WNP105', 'TKL203'] },
-  documentos: { vencidos: 2, porVencer: 5, vigentes: 20, total: 27, sinFecha: 0, primero: '2026-11-30', vencidosEjemplo: [{ nombre: 'WNP104', tipo: 'soat' }] },
+  documentos: { vencidos: 2, porVencer: 5, vigentes: 20, total: 27, sinFecha: 0, sinArchivo: 0, primero: '2026-11-30', vencidosEjemplo: [{ nombre: 'WNP104', tipo: 'soat' }] },
 };
 
 describe('armarTransporte', () => {

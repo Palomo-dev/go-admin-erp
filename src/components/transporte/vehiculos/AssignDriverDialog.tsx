@@ -14,6 +14,18 @@ import { Input } from '@/components/ui/input';
 import { Vehicle, DriverCredential } from '@/lib/services/transportService';
 import { Search, User, Phone, Mail, Loader2, UserX, CheckCircle2 } from 'lucide-react';
 
+/**
+ * `vehicles.current_driver_id` apunta a `auth.users` (FK verificada con el MCP, 2026-11-24): se
+ * asigna el USUARIO de la persona, no el id de su empleo ni de su credencial. Quien no tiene usuario
+ * (domiciliario externo sin cuenta) no se puede asignar y no se lista.
+ */
+type ConductorConUsuario = DriverCredential & { user_id?: string | null };
+
+function usuarioDe(driver: DriverCredential): string | null {
+  const miembro = driver.employments?.organization_members as { user_id?: string | null } | undefined;
+  return (driver as ConductorConUsuario).user_id ?? miembro?.user_id ?? null;
+}
+
 interface AssignDriverDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +55,7 @@ export function AssignDriverDialog({
   if (!vehicle) return null;
 
   const filteredDrivers = drivers.filter((driver) => {
+    if (!usuarioDe(driver)) return false;
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     const profile = driver.employments?.organization_members?.profiles;
@@ -51,7 +64,7 @@ export function AssignDriverDialog({
       : '';
     return (
       fullName.includes(term) ||
-      driver.license_number.toLowerCase().includes(term) ||
+      (driver.license_number ?? '').toLowerCase().includes(term) ||
       (profile?.phone && profile.phone.includes(term))
     );
   });
@@ -121,13 +134,14 @@ export function AssignDriverDialog({
             ) : (
               filteredDrivers.map((driver) => {
                 const profile = driver.employments?.organization_members?.profiles;
-                const isSelected = selectedDriverId === driver.employment_id;
-                const isCurrent = vehicle.current_driver_id === driver.employment_id;
+                const usuario = usuarioDe(driver);
+                const isSelected = selectedDriverId === usuario;
+                const isCurrent = vehicle.current_driver_id === usuario;
 
                 return (
                   <button
                     key={driver.id}
-                    onClick={() => setSelectedDriverId(driver.employment_id)}
+                    onClick={() => setSelectedDriverId(usuario)}
                     disabled={isUpdating}
                     className={`w-full p-3 rounded-lg border text-left transition-all ${
                       isSelected
@@ -150,7 +164,7 @@ export function AssignDriverDialog({
                             )}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Licencia: {driver.license_number} ({driver.license_category})
+                            Licencia: {driver.license_number || '—'} ({driver.license_category || '—'})
                           </p>
                           <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                             {profile?.phone && (

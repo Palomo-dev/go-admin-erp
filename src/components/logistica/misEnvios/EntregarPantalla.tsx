@@ -82,7 +82,7 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
 
   if (estado === 'cargando') {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-3" aria-busy="true">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3" aria-busy="true">
         <PageHeader titulo={t('titulo', { numero: '' })} variante="form" volverA={RUTA_MIS_ENVIOS} cargando />
         <Skeleton className="h-64 w-full rounded-xl" />
         <Skeleton className="h-48 w-full rounded-xl" />
@@ -91,7 +91,7 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
   }
   if (!envio || !orgId || !puedeEntregarse(String(envio.status))) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
         <PageHeader titulo={tm('titulo')} variante="form" volverA={RUTA_MIS_ENVIOS} />
         <EmptyState
           variante="empty"
@@ -176,7 +176,7 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
   const mostrarError = (campo: string) => intentado && faltante === campo;
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3">
       <PageHeader
         titulo={t('titulo', { numero: envio.shipment_number })}
         subtitulo={[envio.delivery_contact_name, envio.delivery_address].filter(Boolean).join(' · ')}

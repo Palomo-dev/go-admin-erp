@@ -62,7 +62,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
 
   if (estado === 'cargando') {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-3" aria-busy="true">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3" aria-busy="true">
         <PageHeader titulo={t('parada.cargando')} variante="form" volverA={RUTA_MIS_ENVIOS} cargando />
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-40 w-full rounded-xl" />
@@ -72,7 +72,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   }
   if (!envio) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
         <PageHeader titulo={t('titulo')} variante="form" volverA={RUTA_MIS_ENVIOS} />
         <EmptyState
           variante={estado === 'error' ? 'error' : 'empty'}
@@ -123,7 +123,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   const actual = pasos.findIndex((p) => !p.hecho);
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-3">
+    <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3">
       <PageHeader
         titulo={t('parada.titulo', { numero: envio.shipment_number })}
         subtitulo={`${origen} · ${nombre}`}

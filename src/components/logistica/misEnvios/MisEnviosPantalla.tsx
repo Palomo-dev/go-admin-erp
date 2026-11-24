@@ -52,7 +52,7 @@ export function MisEnviosPantalla() {
 
   if (estado === 'sin_domiciliario') {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
         <PageHeader titulo={t('titulo')} icono={Route} />
         <EmptyState variante="forbidden" compacto icono={Bike} titulo={t('sinDomiciliario.titulo')} descripcion={t('sinDomiciliario.descripcion')} />
       </div>
@@ -60,7 +60,7 @@ export function MisEnviosPantalla() {
   }
   if (estado === 'error') {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
         <PageHeader titulo={t('titulo')} icono={Route} />
         <EmptyState variante="error" compacto titulo={t('error.titulo')} descripcion={t('error.descripcion')} onReintentar={recargar} />
       </div>
@@ -68,7 +68,7 @@ export function MisEnviosPantalla() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
       <PageHeader
         titulo={t('titulo')}
         subtitulo={subtitulo}

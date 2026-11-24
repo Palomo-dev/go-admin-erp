@@ -1,5 +1,4 @@
-export * from './VehiclesHeader';
-export * from './VehiclesList';
+export * from './VehiculosPage';
 export * from './VehicleDialog';
 export * from './VehicleStatusDialog';
 export * from './AssignDriverDialog';

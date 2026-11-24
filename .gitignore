@@ -71,3 +71,6 @@ tsconfig.*.tmp.json
 
 # Sesiones de WhatsApp (credenciales): nunca al repositorio público
 .whatsapp-qr-sessions/
+
+# Capturas exportadas de Figma para revisar con el dueño: no se suben (decisión del dueño, 2026-11-24).
+docs/disenos-*/

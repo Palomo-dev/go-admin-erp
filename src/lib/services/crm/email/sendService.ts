@@ -201,7 +201,9 @@ export async function sendEmail(orgId: number, actor: SendEmailActor, req: SendE
   const id = messageId();
   const opportunityId = req.related_type === 'opportunity' && isUuid(req.related_id) ? req.related_id : null;
   const ctx = await buildContext(orgId, { customerId, opportunityId, userId, custom: req.content.variables ?? {} }, supabase);
-  ctx.sender_notice = sender.notice;
+  // El aviso del remitente de respaldo es para el usuario del ERP (warnings), no para el cliente:
+  // el correo nunca nombra la plataforma (regla del dueño 2026-11-24).
+  ctx.sender_notice = null;
   const unsubToken = kind === 'marketing' || kind === 'sequence' ? signUnsubscribeToken(id, customerId) : null;
   if (unsubToken) ctx.unsubscribe_url = unsubscribeUrl(unsubToken);
 

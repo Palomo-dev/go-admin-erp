@@ -35,6 +35,7 @@ import {
   type LineaPedida,
 } from './cotizarCambio';
 import { correoCambio } from './plantillaCambio';
+import { remitenteComprador } from '@/lib/services/remitenteCompradores';
 
 export const PERMISO_CAMBIO = 'pos.web_order.change';
 export const PERMISO_REEMBOLSO = 'pos.refund';
@@ -603,7 +604,8 @@ export async function remitenteCambio(db: SupabaseClient, organizationId: number
   }
   return {
     cliente: getMasterResend() as unknown as RemitenteCambio['cliente'],
-    from: `${limpiarNombre(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`,
+    // Nombre del negocio y dirección de respaldo para compradores: nunca «GO Admin» (regla 2026-11-24).
+    from: remitenteComprador(negocio),
     replyTo,
     dominio: null,
   };

@@ -16,6 +16,7 @@ import { getMasterResend, getMasterResendKey, getResendClient } from './resendCl
 import { mapProviderStatus } from './domainRules';
 import { getDomainApiKey, getDomainExtras, getEmailOrgSettings, removeDomainExtras, setDomainExtras, storeDomainApiKey, getOrgResendKey } from './domainStore';
 import { DOMAIN_RE, REGIONS, globalDomain, normalizeRecords, withExtras, type CreateDomainInput, type UpdateDomainInput } from './domainsSupport';
+import { correoRespaldoTiendas, remitenteComprador } from '@/lib/services/remitenteCompradores';
 
 // Contratos, normalización de DNS, extras y remitente global: `domainsSupport.ts`
 // (tope de 300 líneas por módulo). Se reexportan los tipos para no romper imports.
@@ -222,6 +223,16 @@ export interface ResolvedSender {
  *    (`block` → 422 NO_SENDER; `global_*` → dominio global con from_name de
  *    la org y reply_to del usuario).
  */
+/** Nombre de la organización para el remitente de respaldo; vacío si no se puede leer. */
+async function nombreOrganizacion(orgId: number, supabase: SupabaseClient): Promise<string> {
+  try {
+    const { data } = await supabase.from('organizations').select('name').eq('id', orgId).maybeSingle();
+    return typeof (data as { name?: unknown } | null)?.name === 'string' ? String((data as { name: string }).name).trim() : '';
+  } catch {
+    return '';
+  }
+}
+
 export async function resolveSender(orgId: number, opts: { domainId?: string | null; userId?: string | null; kind: EmailKind; orgName?: string; userEmail?: string | null }, supabase: SupabaseClient): Promise<ResolvedSender> {
   const domains = await listDomains(orgId, supabase);
   const verified = domains.filter((d) => d.status === 'verified');
@@ -247,10 +258,14 @@ export async function resolveSender(orgId: number, opts: { domainId?: string | n
   // hace que Resend rechace el correo y el PDF no llegue.
   const apiKey = getMasterResendKey() ?? (await getOrgResendKey(orgId));
   if (!g.fromEmail || !apiKey) throw new EmailError('NO_SENDER', 'No hay dominio verificado ni remitente global configurado (EMAIL_GLOBAL_DOMAIN / EMAIL_FROM_ADDRESS)', 422);
-  const orgName = opts.orgName?.trim() || g.fromName;
-  const notice = settings.email_fallback_policy === 'global_silent' ? null : `Enviado vía ${g.fromName} en nombre de ${orgName}`;
+  // Los destinatarios son clientes de la organización: nunca ven la marca ni una dirección de la
+  // plataforma (regla del dueño 2026-11-24). From = nombre del negocio + respaldo para compradores
+  // (lib/services/remitenteCompradores.ts); el aviso queda solo para el usuario del ERP.
+  const orgName = opts.orgName?.trim() || (await nombreOrganizacion(orgId, supabase));
+  const fromEmail = correoRespaldoTiendas(g.fromEmail);
+  const notice = settings.email_fallback_policy === 'global_silent' ? null : `Enviado desde la dirección de respaldo en nombre de ${orgName || 'tu negocio'}`;
   return {
-    mode: 'global', domain: null, fromEmail: g.fromEmail, from: `${orgName} vía ${g.fromName} <${g.fromEmail}>`,
+    mode: 'global', domain: null, fromEmail, from: remitenteComprador(orgName, g.fromEmail),
     replyTo: opts.userEmail ?? null, apiKey, notice, receivingDomain: process.env.EMAIL_GLOBAL_DOMAIN?.trim() || null, tracking: trackingFor(null),
   };
 }

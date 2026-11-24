@@ -96,10 +96,23 @@ describe('resolveSender', () => {
   it('fallback global con aviso usa EMAIL_GLOBAL_DOMAIN y el nombre de la org', async () => {
     process.env.EMAIL_GLOBAL_DOMAIN = 'mail.goadmin.io';
     const s = await resolveSender(5, { kind: 'transactional', orgName: 'ACME', userEmail: 'ana@acme.co' }, dbWith([]));
-    expect(s).toMatchObject({ mode: 'global', fromEmail: 'noreply@mail.goadmin.io', from: 'ACME vía GoAdmin <noreply@mail.goadmin.io>', replyTo: 'ana@acme.co', receivingDomain: 'mail.goadmin.io', apiKey: 're_master' });
+    // Regla 2026-11-24: el cliente ve solo el nombre del negocio, nunca «vía GoAdmin».
+    expect(s).toMatchObject({ mode: 'global', fromEmail: 'noreply@mail.goadmin.io', from: 'ACME <noreply@mail.goadmin.io>', replyTo: 'ana@acme.co', receivingDomain: 'mail.goadmin.io', apiKey: 're_master' });
+    expect(s.from).not.toMatch(/go ?admin <|vía/i);
     expect(s.notice).toContain('en nombre de ACME');
     store.policy = 'global_silent';
     expect((await resolveSender(5, { kind: 'transactional' }, dbWith([]))).notice).toBeNull();
+  });
+
+  it('con CORREO_RESPALDO_TIENDAS, el respaldo sale de esa dirección con el nombre del negocio', async () => {
+    process.env.EMAIL_GLOBAL_DOMAIN = 'mail.goadmin.io';
+    process.env.CORREO_RESPALDO_TIENDAS = 'Avisos <pedidos@correo-neutro.example>';
+    try {
+      const s = await resolveSender(5, { kind: 'transactional', orgName: 'ACME' }, dbWith([]));
+      expect(s).toMatchObject({ mode: 'global', fromEmail: 'pedidos@correo-neutro.example', from: 'ACME <pedidos@correo-neutro.example>' });
+    } finally {
+      delete process.env.CORREO_RESPALDO_TIENDAS;
+    }
   });
 
   it('con key propia y sin dominio verificado, el respaldo global usa la key de la plataforma', async () => {

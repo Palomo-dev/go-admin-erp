@@ -8,6 +8,7 @@ import { asuntoAviso, textoAviso, type MomentoAviso } from '@/lib/pos/pedidosWeb
 import { datosDeAviso, leerAjustesAvisos, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
 import { urlSeguimiento } from '@/lib/services/orderStatusEmailService';
 import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
+import { correoRespaldoTiendas } from '@/lib/services/remitenteCompradores';
 
 export interface VistaPreviaAviso {
   pedido: string;
@@ -58,7 +59,8 @@ export async function armarVistaPrevia(
   if (momento === 'rechazado' && !datos.motivo) datos.motivo = 'Se agotó un producto del pedido';
   return {
     pedido: p.order_number,
-    de: `${negocio} · ${ajustes.responderA || process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}`,
+    // Lo que verá el comprador sin dominio propio: la dirección de respaldo para compradores.
+    de: `${negocio} · ${ajustes.responderA || correoRespaldoTiendas()}`,
     para: [p.customer_name, p.customer_email].filter(Boolean).join(' · '),
     asunto: asuntoAviso(momento, p.order_number),
     texto: textoAviso(momento, datos),

@@ -21,6 +21,7 @@ import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/re
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { correoAvisoReserva, tipoAviso } from '@/lib/services/restaurante/avisoReserva';
 import { enlaceGestionReserva } from '@/lib/services/restaurante/recordatorioReserva';
+import { remitenteComprador } from '@/lib/services/remitenteCompradores';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,7 +86,8 @@ export const POST = withOrg(async (ctx, request, routeParams) => {
     },
   );
 
-  const remitente = `${process.env.EMAIL_FROM_NAME || 'GO Admin'} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
+  // El comprador ve el nombre del restaurante, nunca «GO Admin» (lib/services/remitenteCompradores.ts).
+  const remitente = remitenteComprador((org as { name?: string } | null)?.name ?? '');
   try {
     const { error } = await getMasterResend().emails.send({
       from: remitente,

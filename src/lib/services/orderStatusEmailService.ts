@@ -37,6 +37,7 @@ import { motivoNovedadCliente, rubroDeTipoOrg, type CanalAviso, type DatosAviso 
 import { datosEnvioParaAviso, envioDelPedidoWeb } from '@/lib/services/logistica/avisosEnvioService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
+import { remitenteComprador } from '@/lib/services/remitenteCompradores';
 
 /** Estados que avisan al cliente. `pending` no: ese correo lo manda el sitio al crear el pedido. */
 export const ESTADOS_CON_AVISO = ['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered', 'cancelled', 'rejected'] as const;
@@ -251,12 +252,16 @@ interface RemitenteAviso {
 
 const limpiarNombre = (n: string) => n.replace(/[<>"]/g, '').trim();
 
-/** El remitente de siempre: EMAIL_FROM_ADDRESS con la key maestra. `null` si no hay key maestra. */
+/**
+ * El remitente de siempre con la key maestra, para organizaciones sin dominio propio: el nombre del
+ * negocio y la dirección de respaldo para compradores (`remitenteComprador`): nunca «GO Admin».
+ * `null` si no hay key maestra.
+ */
 function remitenteDeSiempre(negocio: string, responderA: string | null): RemitenteAviso | null {
   if (!getMasterResendKey()) return null;
   return {
     cliente: getMasterResend() as unknown as ClienteCorreo,
-    from: `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`,
+    from: remitenteComprador(negocio),
     replyTo: responderA,
   };
 }

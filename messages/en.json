@@ -65529,6 +65529,446 @@
         "horas": "{desde}–{hasta} hours",
         "dias": "{desde}–{hasta} days"
       }
+    },
+    "envios": {
+      "titulo": "Shipments",
+      "subtitulo": "All shipments from every channel · own couriers, carriers and third parties",
+      "subtituloSede": "All shipments from {sede} · own couriers, carriers and third parties",
+      "migas": {
+        "logistica": "Logistics"
+      },
+      "actualizar": "Refresh",
+      "nuevo": "New shipment",
+      "tabla": "Shipments",
+      "recortada": "Showing the {n} most recent shipments of the period. Narrow the dates to see the rest.",
+      "sinResultados": "No shipment matches the search or filters.",
+      "errorCarga": "Shipments could not be loaded.",
+      "sinPermiso": {
+        "titulo": "You do not have access to shipments",
+        "descripcion": "Ask your organization admin for the Logistics permission."
+      },
+      "sustantivo": {
+        "singular": "shipment",
+        "plural": "shipments"
+      },
+      "peso": "{kg} kg",
+      "canalSede": "{canal} {sede}",
+      "exportar": {
+        "boton": "Export",
+        "todo": "Export what is shown",
+        "sinFilas": "There are no shipments to export",
+        "archivo": "shipments",
+        "columnas": {
+          "envio": "Shipment",
+          "pedido": "Order",
+          "canal": "Channel",
+          "destinatario": "Recipient",
+          "telefono": "Phone",
+          "direccion": "Address",
+          "barrio": "Neighborhood",
+          "ciudad": "City",
+          "quien": "Carried by",
+          "creado": "Created",
+          "promesa": "Promise",
+          "entregado": "Delivered",
+          "valor": "Value",
+          "cobro": "Payment",
+          "contraentrega": "Cash on delivery",
+          "peso": "Weight (kg)",
+          "estado": "Status",
+          "sede": "Branch"
+        }
+      },
+      "ir": {
+        "porDespachar": "Go to To dispatch",
+        "seguimiento": "Go to Tracking",
+        "zonas": "Zones and rates"
+      },
+      "vacio": {
+        "titulo": "No shipments yet",
+        "descripcion": "They are created automatically from delivery orders in the online store, the POS and Online orders. You can also create one by hand.",
+        "zonas": "Set up zones and rates"
+      },
+      "kpis": {
+        "etiqueta": "Figures for the period’s shipments",
+        "periodo": "Shipments in the period",
+        "periodoDetalle": "{rango} · {hoy} today",
+        "entregados": "Delivered",
+        "entregadosDetalle": "{pct} · {primer} on first attempt",
+        "entregadosVacio": "No deliveries in the period yet",
+        "enCamino": "On the way",
+        "enCaminoDetalle": "No open issues",
+        "novedades": "{count, plural, one {# with an issue} other {# with issues}}",
+        "novedadesMotivo": "{count, plural, one {# with an issue: {motivo}} other {# with issues: {motivo}}}",
+        "contraentrega": "Cash on delivery to collect",
+        "contraentregaDetalle": "{count, plural, one {in # shipment} other {in # shipments}} on the street · {domiciliarios, plural, one {# courier} other {# couriers}}",
+        "contraentregaVacio": "Nothing to collect on the street"
+      },
+      "pestanas": {
+        "etiqueta": "Shipments by status",
+        "todos": "All",
+        "por_asignar": "To assign",
+        "en_camino": "On the way",
+        "con_novedad": "With issues",
+        "entregados": "Delivered",
+        "devueltos": "Returned",
+        "cancelados": "Cancelled"
+      },
+      "buscar": {
+        "placeholder": "Search by shipment, order, tracking number, customer, phone or address…",
+        "etiqueta": "Search shipments"
+      },
+      "filtros": {
+        "fechas": "Dates",
+        "canal": "Channel",
+        "cobro": "Payment",
+        "quien": "Carried by",
+        "transportadora": "Carrier",
+        "viaje": "Trip",
+        "zona": "Zone",
+        "todos": "All",
+        "todas": "All",
+        "todosCanales": "All channels",
+        "todosViajes": "All trips",
+        "todasZonas": "All zones",
+        "limpiar": "Clear filters",
+        "verN": "{count, plural, one {See # shipment} other {See # shipments}}",
+        "chipFechas": "Dates: {rango}",
+        "chipCanal": "Channel: {canal}",
+        "chipCobro": "Payment: {cobro}",
+        "chipQuien": "Carried by: {nombre}",
+        "chipTransportadora": "Carrier: {nombre}",
+        "chipViaje": "Trip: {nombre}",
+        "chipZona": "Zone: {nombre}"
+      },
+      "cobro": {
+        "contraentrega": "Cash on delivery",
+        "pagado": "Paid",
+        "pendiente": "Pending",
+        "sin_cobro": "No charge"
+      },
+      "columnas": {
+        "envio": "Shipment",
+        "destinatario": "Recipient",
+        "direccion": "Address and city",
+        "quien": "Carried by",
+        "fechas": "Dates",
+        "valor": "Value and payment",
+        "peso": "Weight",
+        "estado": "Status"
+      },
+      "quien": {
+        "guia": "Tracking {guia}",
+        "domiciliario": "Courier",
+        "domiciliarioCon": "Courier · {vehiculo}",
+        "sinAsignar": "Unassigned"
+      },
+      "fecha": {
+        "hoy": "Today {hora}",
+        "ayer": "Yesterday {hora}",
+        "dia": "{dia} {hora}",
+        "entregado": "delivered {cuando}",
+        "devuelto": "returned {dia}",
+        "anulado": "cancelled {dia}",
+        "reintento": "retry {dia}",
+        "promesa": "promise {cuando}",
+        "llega": "arrives {dia}"
+      },
+      "sub": {
+        "salio": "left {hora}",
+        "recibio": "received by {nombre}",
+        "recibioFoto": "received by {nombre} · photo",
+        "intento": "attempt {n}",
+        "devuelto": "back at the branch",
+        "pedidoAnulado": "order cancelled"
+      },
+      "acciones": {
+        "verDetalle": "View details",
+        "editar": "Edit",
+        "imprimirGuia": "Print label",
+        "duplicar": "Duplicate",
+        "asignar": "Assign or change courier",
+        "asignarCorto": "Assign courier",
+        "cambiarEstado": "Change status",
+        "marcarPagado": "Mark as paid",
+        "devolver": "Mark as returned",
+        "cancelar": "Cancel shipment"
+      },
+      "masivo": {
+        "asignar": "Assign",
+        "guias": "Print labels",
+        "estado": "Change status",
+        "devolver": "Mark as returned",
+        "pagado": "Mark as paid",
+        "exportar": "Export selection",
+        "cancelar": "Cancel shipments",
+        "ningunoPuede": "None of the selected shipments allows it in its status",
+        "soloManuales": "Only unpaid manual shipments: an order’s payment is recorded on the order"
+      },
+      "toast": {
+        "pagados": "{count, plural, one {# shipment marked as paid} other {# shipments marked as paid}}",
+        "errorPagados": "{count, plural, one {# shipment could not be marked} other {# shipments could not be marked}}"
+      },
+      "dialogos": {
+        "lista": {
+          "mas": "{lista} and {n} more",
+          "y": "{lista} and {ultimo}"
+        },
+        "estado": {
+          "titulo": "{count, plural, one {Change status of # shipment} other {Change status of # shipments}}",
+          "tituloUno": "Change status of {numero}",
+          "descripcion": "Only those that can move do, according to the status action table.",
+          "confirmar": "{count, plural, =0 {Change} one {Change # shipment} other {Change # shipments}}",
+          "nadiePuede": "None can move to that status",
+          "cancelar": "Cancel",
+          "nuevoEstado": "New status",
+          "pueden": "{count, plural, one {# can move to “{estado}”: {lista}.} other {# can move to “{estado}”: {lista}.}}",
+          "noPueden": "{count, plural, one {# cannot: {lista}. It stays as is.} other {# cannot: {lista}. They stay as they are.}}",
+          "envioEnEstado": "{numero} is “{estado}”",
+          "nota": "Note (optional)",
+          "avisar": "Notify customers",
+          "avisarAyuda": "WhatsApp and email with the tracking link.",
+          "ok": "{count, plural, one {# shipment moved to “{estado}”} other {# shipments moved to “{estado}”}}",
+          "error": "Some shipments did not change"
+        },
+        "devolver": {
+          "titulo": "{count, plural, one {Return # shipment to the branch} other {Return # shipments to the branch}}",
+          "tituloUno": "Return {numero} to the branch",
+          "descripcion": "It came back undelivered. Decide what happens to the products.",
+          "confirmar": "Record return",
+          "nadiePuede": "None can be returned in its status",
+          "cancelar": "Cancel",
+          "motivo": "Reason",
+          "elegir": "Choose a reason",
+          "faltaMotivo": "Choose the reason for the return",
+          "productos": "What happens to the products?",
+          "reingreso": "Restock into inventory",
+          "reingresoSede": "Restock into {sede} inventory",
+          "reingresoDetalle": "They become available for sale again when the order return is recorded.",
+          "merma": "Write off as shrinkage",
+          "mermaDetalle": "They arrived damaged. It is noted so the shrinkage exit can be recorded in Inventory.",
+          "pagado": "{count, plural, one {Order {pedido} is already paid: the refund is made from the order (credit note), not here.} other {Orders {pedido} are already paid: refunds are made from each order (credit note), not here.}}",
+          "noPueden": "{count, plural, one {# cannot be returned in its status: {lista}.} other {# cannot be returned in their status: {lista}.}}",
+          "nota": "Note (optional)",
+          "notaMotivo": "Reason: {motivo}",
+          "notaDestino": {
+            "reingreso": "Products: restock into inventory",
+            "merma": "Products: shrinkage"
+          },
+          "ok": "{count, plural, one {# shipment returned to the branch} other {# shipments returned to the branch}}",
+          "error": "Some shipments were not returned"
+        },
+        "cancelar": {
+          "titulo": "{count, plural, one {Cancel # shipment?} other {Cancel # shipments?}}",
+          "tituloUno": "Cancel {numero}?",
+          "descripcion": "The shipment does not go out. It stays in the list as “Cancelled” with its reason.",
+          "confirmar": "{count, plural, =0 {Cancel shipments} one {Cancel # shipment} other {Cancel # shipments}}",
+          "confirmarUno": "Cancel shipment",
+          "nadiePuede": "None can be cancelled in its status",
+          "volver": "Back",
+          "motivo": "Reason",
+          "elegir": "Choose a reason",
+          "faltaMotivo": "Choose the reason for the cancellation",
+          "detalle": "Tell us the reason",
+          "faltaDetalle": "Write the reason",
+          "motivos": {
+            "cliente_desiste": "The customer no longer wants it",
+            "pedido_anulado": "The order was cancelled",
+            "direccion_invalida": "Invalid address or out of coverage",
+            "duplicado": "Duplicate shipment",
+            "sin_existencias": "No stock to dispatch",
+            "otro": "Other reason"
+          },
+          "pedidoActivo": "{count, plural, one {Order {pedido} is still active. If it must be cancelled too, do it from the order; if it was already charged, refund it there.} other {Orders {pedido} are still active. If they must be cancelled too, do it from each order; if they were already charged, refund them there.}}",
+          "noPueden": "{count, plural, one {# cannot be cancelled in its status: {lista}.} other {# cannot be cancelled in their status: {lista}.}}",
+          "ok": "{count, plural, one {# shipment cancelled} other {# shipments cancelled}}",
+          "error": "Some shipments were not cancelled"
+        },
+        "guias": {
+          "titulo": "{count, plural, one {Print # label} other {Print # labels}}",
+          "descripcion": "Label to stick on the package, with the shipment barcode.",
+          "confirmar": "{count, plural, one {Print # label} other {Print # labels}}",
+          "cancelar": "Cancel",
+          "pie": "They print on the branch label printer. If there is none, it opens to print or save as PDF.",
+          "formato": "Format",
+          "formatoTermica": "80 mm thermal label",
+          "copias": "Copies per shipment",
+          "vistaPrevia": "Label preview",
+          "para": "TO: {nombre}",
+          "contraentrega": "CASH ON DELIVERY {monto}",
+          "peso": "{kg} kg",
+          "bulto": "1 of 1",
+          "pedirCodigo": "Ask for code"
+        }
+      },
+      "form": {
+        "migas": {
+          "logistica": "Logistics",
+          "envios": "Shipments"
+        },
+        "tituloNuevo": "New shipment",
+        "tituloEditar": "Edit {numero}",
+        "tituloEditarSin": "Edit shipment",
+        "subtituloNuevo": "Own courier, carrier or Transport trip",
+        "loLleva": "carried by {nombre}",
+        "creado": "created {fecha}",
+        "errorCarga": "The shipment could not be loaded.",
+        "noExiste": "This shipment does not exist or you do not have access.",
+        "volver": "Back to Shipments",
+        "cancelar": "Cancel",
+        "crear": "Create shipment",
+        "crearImprimir": "Create and print label",
+        "guardarCambios": "Save changes",
+        "bloqueada": "Section locked by the shipment status",
+        "elegir": "Choose",
+        "revisa": "Check the form",
+        "telefonoInvalido": "A phone number is incomplete.",
+        "okCrear": "Shipment created",
+        "okEditar": "Changes saved",
+        "asignacionFallida": "The shipment was saved, but the courier could not be assigned. Assign it from the details.",
+        "errorGuardar": "The shipment could not be saved",
+        "pedidoNoEncontrado": "The linked order is no longer available.",
+        "faltante": {
+          "sede": "Choose the dispatching branch",
+          "destinatario": "Write who receives it",
+          "telefono": "Write the recipient’s phone",
+          "direccion": "Write the address",
+          "ciudad": "Write the city",
+          "transportadora": "Choose the carrier",
+          "viaje": "Choose the trip",
+          "contraentrega": "Write how much is collected on delivery"
+        },
+        "cotizacion": {
+          "FUERA_DE_COBERTURA": "The address is outside the delivery zones. Use a carrier or ask for permission to change the cost.",
+          "PEDIDO_MINIMO_DOMICILIO": "The value does not reach the zone’s minimum order."
+        },
+        "aviso": {
+          "enCamino": "This shipment is on the way: the recipient, address and package can no longer be changed here. For another address use “Change address” in the details (it notifies the courier); to fix the contents, return it to the branch. You can change the promise, notes, phone and cash on delivery.",
+          "cerrado": "This shipment is finished: only the notes can be changed.",
+          "duplicado": "Copy of another shipment: check the destination and package before creating it."
+        },
+        "origen": {
+          "titulo": "1 · Origin",
+          "descripcion": "Where it leaves from and, if it comes from an order, which one.",
+          "pedido": "Linked order (optional)",
+          "pedidoAyuda": "Choosing it fills in recipient, contents, weight and cash on delivery.",
+          "pedidoPlaceholder": "Search store order",
+          "pedidoBuscar": "Order number",
+          "pedidoVacio": "There are no delivery orders without a shipment",
+          "sinPedido": "No linked order",
+          "sede": "Dispatching branch",
+          "remitente": "Sender",
+          "telefonoRemitente": "Sender phone"
+        },
+        "destinatario": {
+          "titulo": "2 · Recipient",
+          "descripcion": "Search for a customer or type it in. The zone and rate come from the address.",
+          "delPedido": "Comes from the linked order.",
+          "cliente": "Customer",
+          "recibe": "Who receives it",
+          "telefono": "Phone",
+          "direccion": "Address",
+          "barrio": "Neighborhood",
+          "zona": "{zona} · {modo} · {precio}",
+          "ciudad": "City",
+          "indicaciones": "Directions"
+        },
+        "paquete": {
+          "titulo": "3 · Package",
+          "descripcion": "What goes inside, with its weight and value.",
+          "delPedido": "Contents, weight and value come from the linked order.",
+          "contenido": "Contents",
+          "cantidad": "Quantity",
+          "peso": "Weight (kg)",
+          "valor": "Value",
+          "quitar": "Remove",
+          "contenidoN": "Contents of line {n}",
+          "cantidadN": "Quantity of line {n}",
+          "pesoN": "Weight of line {n}",
+          "valorN": "Value of line {n}",
+          "quitarN": "Remove line {n}",
+          "agregar": "Add line",
+          "tipo": "Package type",
+          "tipos": {
+            "envelope": "Envelope",
+            "small_box": "Small box",
+            "medium_box": "Medium box",
+            "large_box": "Large box",
+            "pallet": "Pallet",
+            "other": "Other"
+          },
+          "pesoTotal": "Total weight (kg)",
+          "pesoTotalAyuda": "Sum of the lines; can be corrected when weighed.",
+          "valorDeclarado": "Declared value",
+          "valorDeclaradoAyuda": "Basis for the carrier’s insurance.",
+          "fragil": "Fragile",
+          "fragilAyuda": "Marked on the label",
+          "firma": "Ask for signature",
+          "firmaAyuda": "The recipient signs on delivery",
+          "codigo": "Ask for delivery code",
+          "codigoAyuda": "Required for cash on delivery with own couriers, if enabled in Settings."
+        },
+        "entrega": {
+          "titulo": "4 · Delivery and payment",
+          "descripcion": "How it goes out and what is collected on delivery. The shipping cost is the same calculation as checkout and POS.",
+          "modo": "Delivery mode",
+          "modoAyuda": "Also: carrier (tracking) or Transport trip (stops).",
+          "modos": {
+            "own": "Own courier",
+            "national_carrier": "Carrier",
+            "viaje": "Transport trip"
+          },
+          "transportadora": "Carrier",
+          "sinTransportadoras": "There are no active carriers in Transport.",
+          "domiciliario": "Courier",
+          "domiciliarioAyuda": "You can assign it from To dispatch.",
+          "asignarDespues": "Assign later",
+          "guia": "Tracking number",
+          "guiaAyuda": "The one the carrier gave you; can be added later.",
+          "viaje": "Trip",
+          "sinViajes": "There are no trips from today on.",
+          "paradaOrigen": "Origin stop",
+          "paradaDestino": "Destination stop",
+          "sinParada": "No stop",
+          "promesa": "Delivery promise",
+          "promesaAyuda": "Day the customer expects it.",
+          "costo": "Shipping cost",
+          "seguro": "Insurance",
+          "cobrar": "Collect cash on delivery",
+          "cobrarDelPedido": "Cash on delivery is calculated from the order (what remains unpaid).",
+          "cobrarDetalle": "The courier collects {monto} on delivery (cash, card terminal or transfer).",
+          "cobrarAyuda": "The courier collects on delivery (cash, card terminal or transfer).",
+          "montoCobrar": "Amount to collect",
+          "notas": "Notes for the courier"
+        },
+        "costo": {
+          "delPedido": "Comes from the linked order (same calculation as checkout).",
+          "delPedidoCorto": "From the order",
+          "transportadora": "The carrier or trip freight; enter it if you charge it.",
+          "calculando": "Calculating with Zones and rates…",
+          "zona": "{zona}. Calculated by Zones and rates.",
+          "conPermiso": "You have permission to adjust it.",
+          "libre": "No zones set up: enter the value.",
+          "bajo_minimo": "Does not reach the zone’s minimum order.",
+          "fuera_tarifa_general": "Outside zones: general rate.",
+          "fuera_transportadora": "Outside zones: use a carrier.",
+          "sin_cobertura": "Out of coverage."
+        },
+        "resumen": {
+          "titulo": "Summary",
+          "destino": "Destination",
+          "modo": "Mode",
+          "promesa": "Promise",
+          "peso": "Weight",
+          "pesoValor": "{kg} kg · {n, plural, one {# line} other {# lines}}",
+          "costo": "Shipping cost",
+          "contraentrega": "Cash on delivery",
+          "pagado": "Paid",
+          "sinCobro": "No charge",
+          "notaNuevo": "Once created, the shipment is “Created” in To dispatch; it is assigned and sent from there.",
+          "notaEditar": "Changes are recorded in the shipment history with your name."
+        }
+      }
     }
   },
   "transporte": {
@@ -66393,7 +66833,130 @@
       "actualizar": "Refresh",
       "importar": "Import",
       "limpiarTodo": "Clear all",
-      "cancelar": "Cancel"
+      "cancelar": "Cancel",
+      "ficha": {
+        "pestanas": {
+          "etiqueta": "Profile sections",
+          "resumen": "Summary",
+          "documentos": "Documents",
+          "viajes": "Trips",
+          "envios": "Shipments",
+          "novedades": "Incidents"
+        },
+        "errorCarga": "Could not load the profile",
+        "reintentar": "Try again",
+        "verTodos": "See all {n}",
+        "si": "Yes",
+        "no": "No",
+        "enCurso": "Today: {codigo} · {estado}",
+        "documentos": {
+          "titulo": "Documents",
+          "descripcion": "Dispatch is blocked if any of them expires",
+          "subir": "Upload document",
+          "columnas": {
+            "documento": "Document",
+            "numero": "Number",
+            "numeroEntidad": "Number or issuer",
+            "vence": "Expires",
+            "estado": "Status"
+          },
+          "conArchivo": "file attached",
+          "sinArchivo": "no file",
+          "sinVence": "No expiry date",
+          "noBloquea": "does not block dispatch",
+          "diasVencido": "{count, plural, one {expired # day ago} other {expired # days ago}}",
+          "diasFaltan": "{count, plural, =0 {expires today} one {# day left} other {# days left}}",
+          "vacio": {
+            "titulo": "No documents on file",
+            "descripcion": "Upload documents with their number, expiry date and file so dispatch can check them."
+          }
+        },
+        "viajes": {
+          "titulo": "Trip history",
+          "delMes": "{count, plural, =0 {No trips this month} one {# trip this month} other {# trips this month}}",
+          "ultimos": "The latest {n}",
+          "columnas": {
+            "fecha": "Date",
+            "viaje": "Trip",
+            "vehiculo": "Vehicle",
+            "conductor": "Driver",
+            "pasajeros": "Passengers",
+            "llegada": "Arrival"
+          },
+          "estados": {
+            "scheduled": "Scheduled",
+            "boarding": "Boarding",
+            "in_transit": "On the road",
+            "arrived": "Arrived",
+            "completed": "Completed",
+            "cancelled": "Cancelled",
+            "delayed": "Delayed"
+          },
+          "aTiempo": "On time",
+          "retraso": "+{n} min",
+          "ocupacion": "{vendidos} of {total}",
+          "sinRuta": "No route",
+          "ver": "View trip",
+          "reportarNovedad": "Report incident",
+          "vacio": {
+            "titulo": "No trips on record",
+            "descripcion": "Scheduled and completed trips show up here."
+          }
+        },
+        "envios": {
+          "titulo": "Shipments",
+          "total": "{count, plural, one {# shipment in total} other {# shipments in total}}",
+          "columnas": {
+            "fecha": "Date",
+            "envio": "Shipment",
+            "destino": "Destination",
+            "estado": "Status"
+          },
+          "sinNumero": "No number",
+          "ver": "View shipment",
+          "vacio": {
+            "titulo": "No shipments on record",
+            "descripcion": "Shipments assigned for delivery show up here."
+          }
+        },
+        "novedades": {
+          "titulo": "Incidents",
+          "abiertas": "{count, plural, one {# open} other {# open}}",
+          "columnas": {
+            "fecha": "Date",
+            "novedad": "Incident",
+            "costo": "Cost",
+            "estado": "Status"
+          },
+          "estados": {
+            "open": "Open",
+            "investigating": "Under review",
+            "in_progress": "In progress",
+            "resolved": "Resolved",
+            "closed": "Closed",
+            "cancelled": "Cancelled"
+          },
+          "tipos": {
+            "delay": "Delay",
+            "accident": "Accident",
+            "damage": "Damage",
+            "lost": "Loss",
+            "theft": "Theft",
+            "customer_complaint": "Customer complaint",
+            "vehicle_breakdown": "Vehicle breakdown",
+            "route_blocked": "Road closed",
+            "driver_issue": "Driver issue",
+            "weather": "Weather",
+            "documentation": "Documentation",
+            "other": "Other"
+          },
+          "ver": "View incident",
+          "vacio": {
+            "titulo": "No incidents",
+            "descripcion": "Incidents are reported from each trip."
+          }
+        }
+      }
     },
     "vehiculos": {
       "titulo": "Vehicles",
@@ -66617,6 +67180,457 @@
         "titulo": "Delete {nombre}?",
         "descripcion": "Their license and driver data are deleted. Their job in Human resources does not change. This action cannot be undone.",
         "confirmar": "Delete"
+      }
+    },
+    "detalleVehiculo": {
+      "cargando": "Loading vehicle…",
+      "modelo": "Model {anio}",
+      "conductor": "driver {nombre}",
+      "docs": {
+        "vencido": "Expired document",
+        "por_vencer": "Document expiring soon",
+        "vigente": "Documents up to date",
+        "sin_fecha": "No documents"
+      },
+      "noEncontrado": {
+        "titulo": "We could not find this vehicle",
+        "descripcion": "It may have been deleted or it does not belong to this organization.",
+        "volver": "Back to Vehicles"
+      },
+      "ficha": {
+        "titulo": "Details",
+        "placa": "Plate",
+        "tipo": "Type",
+        "marcaModelo": "Make and model",
+        "anio": "Year",
+        "color": "Color",
+        "vin": "VIN",
+        "capacidad": "Capacity",
+        "plano": "Seat map",
+        "planoDetalle": "{nombre} · {filas} × {columnas}",
+        "conductor": "Assigned driver",
+        "transportadora": "Carrier",
+        "sede": "Branch"
+      },
+      "novedadesDescripcion": "Of the vehicle and its trips",
+      "enviosDescripcion": "Shipments that went out in this vehicle",
+      "operacion": {
+        "titulo": "Maintenance and fuel",
+        "vacioTitulo": "No maintenance or refueling recorded yet",
+        "vacioDescripcion": "The maintenance plan, refueling and vehicle costs are not tracked in GO Admin yet."
+      }
+    },
+    "detallePersona": {
+      "cargando": "Loading person…",
+      "vinculadoDesde": "with us since {fecha}",
+      "licencia": {
+        "vence": "License expires on {fecha}",
+        "vencio": "License expired on {fecha}",
+        "sin": "No license on file"
+      },
+      "noEncontrado": {
+        "titulo": "We could not find this person",
+        "descripcion": "They may have been deleted or they do not belong to this organization.",
+        "volver": "Back to Drivers and couriers"
+      },
+      "documentos": {
+        "titulo": "Licenses and exams",
+        "descripcion": "What dispatch checks before every departure"
+      },
+      "aviso": {
+        "porVencerTitulo": "{documento} expires in {count, plural, one {# day} other {# days}}",
+        "porVencerDescripcion": "After {fecha}, {nombre} cannot be dispatched until the renewed document is uploaded.",
+        "vencidoTitulo": "{documento} has expired",
+        "vencidoDescripcion": "It expired on {fecha}: {nombre} cannot be dispatched until the renewed document is uploaded."
+      },
+      "datos": {
+        "titulo": "Information",
+        "documento": "ID",
+        "telefono": "Phone",
+        "sangre": "Blood type",
+        "emergencia": "Emergency contact",
+        "pasajeros": "Passenger certificate",
+        "peligrosas": "Hazardous materials",
+        "cargo": "Job position in Human resources",
+        "categoria": "License category",
+        "restricciones": "License restrictions",
+        "tipoVehiculo": "Vehicle they work with",
+        "sede": "Branch",
+        "todasLasSedes": "All branches"
+      },
+      "vehiculo": {
+        "titulo": "Assigned vehicle",
+        "vehiculo": "Vehicle",
+        "capacidad": "Capacity",
+        "documentos": "Vehicle documents",
+        "estado": "Status",
+        "vacioTitulo": "No vehicle assigned",
+        "vacioDescripcion": "Vehicles are assigned from Vehicles, with “Assign driver”.",
+        "irVehiculos": "Go to Vehicles"
+      },
+      "viajesSinUsuario": "Trips are recorded under the person’s GO Admin user; without a user there are no trips to show.",
+      "enviosDescripcion": "Shipments assigned for delivery",
+      "novedadesDescripcion": "From their trips and shipments"
+    },
+    "dialogos": {
+      "historial": {
+        "titulo": "{nombre} history",
+        "subtitulo": "What changed and when. It cannot be deleted.",
+        "error": "Could not load the history",
+        "vacio": "No activity yet",
+        "nota": "It records status and driver changes made from Vehicles, documents, dispatches and incidents.",
+        "estado": "Status: {de} → {a}",
+        "conductorAsignado": "Driver assigned: {nombre}",
+        "conductorQuitado": "Driver removed",
+        "antes": "Before: {nombre}",
+        "antesNinguno": "Before: no driver",
+        "documentoSubido": "Uploaded {documento}",
+        "documentoArchivado": "{documento} replaced by a new one",
+        "vence": "Expires on {fecha}",
+        "despacho": "Dispatched on trip {codigo}",
+        "novedad": "Incident: {titulo}",
+        "altaVehiculo": "Vehicle registered",
+        "altaPersona": "Person registered"
+      },
+      "asignar": {
+        "titulo": "Assign a driver to {placa}",
+        "descripcion": "Only people with a user and a valid license for {tipo} ({categorias}).",
+        "descripcionSinLicencia": "Only active people with a GO Admin user.",
+        "asignar": "Assign",
+        "eligeUno": "Choose someone else",
+        "quitar": "Remove driver",
+        "buscar": "Search by name, ID or license",
+        "sinResultados": "Nobody matches the search",
+        "sinPersonas": "No drivers or couriers yet",
+        "sinLicencia": "no license",
+        "licenciaVenceEn": "{categoria} expires in {count, plural, one {# day} other {# days}}",
+        "licenciaVence": "{categoria} expires {fecha}",
+        "actual": "Current",
+        "porVencer": "License expiring soon",
+        "motivos": {
+          "sinUsuario": "No GO Admin user",
+          "inactivo": "Inactive",
+          "sinLicencia": "No license",
+          "vencida": "Expired license",
+          "categoria": "Cannot drive this type"
+        },
+        "actualDesconocido": "The current driver is not in the catalog: you can change or remove them."
+      },
+      "estado": {
+        "titulo": "Change status of {placa}",
+        "hoy": "Today: {estado}.",
+        "cambiar": "Change status",
+        "mismoEstado": "Choose a different status",
+        "explicacion": {
+          "available": "Can be assigned to trips and shipments.",
+          "in_use": "The system sets it when dispatching; here, only to correct it.",
+          "maintenance": "Not available to assign. If it has scheduled trips, we show them so you can reassign them.",
+          "inactive": "Out of service. Keeps its history."
+        },
+        "aviso": "It has {count, plural, one {# scheduled trip} other {# scheduled trips}} ({codigos}).",
+        "avisoDescripcion": "They still use this vehicle: reassign them in Dispatches.",
+        "motivo": "Reason",
+        "motivoPlaceholder": "E.g.: brake replacement"
+      },
+      "importar": {
+        "titulo": {
+          "vehiculos": "Import vehicles",
+          "conductores": "Import drivers and couriers"
+        },
+        "descripcion": "From Excel or CSV, using the template. We check everything before saving.",
+        "listo": "Done",
+        "importarN": {
+          "vehiculos": "Import {count, plural, one {# vehicle} other {# vehicles}}",
+          "conductores": "Import {count, plural, one {# person} other {# people}}"
+        },
+        "nadaQueImportar": "There are no rows ready to import",
+        "elegirArchivo": "Choose file",
+        "pasos": {
+          "etiqueta": "Import steps",
+          "plantilla": "Template",
+          "archivo": "Upload file",
+          "revisar": "Review",
+          "importar": "Import",
+          "movil": "Step {n} of {total}: {etiqueta}"
+        },
+        "resultado": {
+          "vehiculos": "{count, plural, =0 {No vehicles were imported} one {# vehicle imported} other {# vehicles imported}}",
+          "conductores": "{count, plural, =0 {No people were imported} one {# person imported} other {# people imported}}"
+        },
+        "filas": "{count, plural, one {# row} other {# rows}}",
+        "cambiar": "Change",
+        "listos": "{count} ready",
+        "existen": "{count, plural, one {# already exists (will be updated)} other {# already exist (will be updated)}}",
+        "conError": "{count, plural, one {# with an error} other {# with errors}}",
+        "filaError": "Row {fila} · {mensaje}",
+        "descargarPlantilla": "Download the template",
+        "paso1": "1. Download the template",
+        "paso2": "2. Upload the filled-in file",
+        "formatos": "Excel (.xlsx, .xls) or CSV.",
+        "columnas": {
+          "vehiculos": "Plate and type are required; also make, model, year, capacities, VIN, expiry dates, status and active.",
+          "conductores": "Human resources employment or name (external); license with number, category and expiry date; medical exam, blood type, certificates and emergency contact."
+        },
+        "errores": {
+          "extension": "Only .csv, .xlsx or .xls files.",
+          "columnas": "Columns missing from the file: {columnas}",
+          "vacio": "The file has no rows with data.",
+          "lectura": "Could not read the file."
+        },
+        "codigos": {
+          "placaVacia": "empty plate. That row will not be imported; fix it in the file and upload it again.",
+          "tipoInvalido": "invalid vehicle type ({valor})",
+          "estadoInvalido": "invalid status ({valor})",
+          "numeroInvalido": "invalid number in {campo} ({valor})",
+          "fechaInvalida": "invalid date in {campo} ({valor}); use YYYY-MM-DD",
+          "placaRepetida": "plate {valor} is repeated in the file",
+          "identidadFaltante": "the employment or the person’s name is missing",
+          "licenciaIncompleta": "the license needs a number, category and expiry date",
+          "categoriaInvalida": "invalid license category ({valor})",
+          "sangreInvalida": "invalid blood type ({valor})",
+          "empleoRepetido": "employment {valor} is repeated in the file"
+        }
+      }
+    },
+    "formVehiculo": {
+      "tituloNuevo": "New vehicle",
+      "tituloEditar": "Edit {placa}",
+      "migaNuevo": "New",
+      "migaEditar": "Edit",
+      "subtitulo": "Shared catalog: used by Logistics and Transport",
+      "noEncontrado": "We could not find this vehicle",
+      "volver": "Back to Vehicles",
+      "guardar": "Save vehicle",
+      "guardarCorto": "Save",
+      "guardarYOtro": "Save and add another",
+      "licenciaVigente": "{categoria} license valid",
+      "licenciaPorVencer": "{categoria} license expiring soon",
+      "licenciaNoSirve": "{categoria} license not valid for this type",
+      "planoPuestos": "{nombre} · {count, plural, one {# seat} other {# seats}}",
+      "sinPlano": "No seat map",
+      "todasLasSedes": "All branches",
+      "propio": "Own fleet",
+      "venceEl": "Expires on {fecha}",
+      "sinFechaNiArchivo": "No date or file",
+      "venceEn": "Expires in {count, plural, one {# day} other {# days}}",
+      "cambiar": "Change",
+      "agregar": "Add",
+      "vence": "Expires",
+      "archivoDespues": "The number and file of each document are uploaded when editing the vehicle, once it is saved.",
+      "toast": {
+        "revisa": "{count, plural, one {Check # field} other {Check # fields}}"
+      },
+      "errores": {
+        "plate": {
+          "requerido": "Enter the plate",
+          "duplicada": "There is already a vehicle with this plate"
+        },
+        "vehicle_type": {
+          "requerido": "Choose the type"
+        },
+        "year": {
+          "invalido": "Invalid year"
+        },
+        "capacity_kg": {
+          "invalido": "Invalid number"
+        },
+        "capacity_m3": {
+          "invalido": "Invalid number"
+        },
+        "passenger_capacity": {
+          "invalido": "Invalid whole number"
+        },
+        "soat_expiry": {
+          "invalido": "Invalid date"
+        },
+        "techno_expiry": {
+          "invalido": "Invalid date"
+        },
+        "insurance_expiry": {
+          "invalido": "Invalid date"
+        },
+        "operating_card_expiry": {
+          "invalido": "Invalid date"
+        },
+        "status": {
+          "requerido": "Choose the status"
+        }
+      },
+      "secciones": {
+        "identificacion": {
+          "titulo": "1 · Identification",
+          "descripcion": "What the registration card says."
+        },
+        "capacidad": {
+          "titulo": "2 · Capacity",
+          "descripcion": "So you never load or sell more than fits."
+        },
+        "operacion": {
+          "titulo": "3 · Operation",
+          "descripcion": "Where it works, who drives it and whether it can be used."
+        },
+        "documentos": {
+          "titulo": "4 · Documents and expiry dates",
+          "descripcion": "We warn 30, 15 and 7 days ahead. With an expired document it cannot be dispatched."
+        }
+      },
+      "campos": {
+        "plate": "Plate",
+        "vehicle_type": "Type",
+        "brand": "Make",
+        "model": "Model",
+        "year": "Year",
+        "color": "Color",
+        "vin": "VIN / chassis",
+        "capacity_kg": "Maximum load (kg)",
+        "capacity_m3": "Volume (m³)",
+        "passenger_capacity": "Passengers",
+        "seat_map_id": "Seat map",
+        "branch_id": "Branch",
+        "carrier_id": "Own fleet or a carrier",
+        "current_driver_id": "Assigned driver",
+        "status": "Status",
+        "is_active": "Active vehicle"
+      },
+      "ayudas": {
+        "plate": "Unique in the organization. Boats: registration number.",
+        "vehicle_type": "Motorcycle, car, van, truck, minibus, bus, trailer, boat or yacht.",
+        "passenger_capacity": "Only if it carries people.",
+        "seat_map_id": "Used by the ticket office, the online store and the POS to sell tickets.",
+        "sinPlanos": "No seat maps yet: they are set up in Transport › Tickets.",
+        "carrier_id": "If it belongs to a third party, choose the carrier.",
+        "current_driver_id": "Only people with a user and a valid license for this type.",
+        "status": "Available, in use, under maintenance or inactive.",
+        "is_active": "Off: it is not offered for trips or shipments, but keeps its history."
+      },
+      "resumen": {
+        "titulo": "Summary",
+        "conductor": "Driver",
+        "docs": {
+          "vigente": "{count} valid",
+          "por_vencer": "{count} expiring soon",
+          "vencido": "{count} expired",
+          "sin_fecha": "{count} without a date"
+        },
+        "vencido": "{documento} has expired",
+        "porVencer": "{documento} expires in {count, plural, one {# day} other {# days}}",
+        "avisoDescripcion": "You can still save; dispatch is blocked on the day it expires."
+      }
+    },
+    "formPersona": {
+      "tituloNuevo": "New driver or courier",
+      "tituloEditar": "Edit {nombre}",
+      "migaNuevo": "New",
+      "migaEditar": "Edit",
+      "subtitulo": "What they can do comes from their job position in Human resources, not from a role",
+      "noEncontrado": "We could not find this person",
+      "volver": "Back to Drivers and couriers",
+      "guardar": "Save",
+      "guardarYOtro": "Save and add another",
+      "tiposVehiculo": {
+        "motorcycle": "Motorcycle",
+        "bicycle": "Bicycle",
+        "car": "Car",
+        "van": "Van",
+        "on_foot": "On foot",
+        "other": "Other"
+      },
+      "errores": {
+        "requerido": "This field is required",
+        "duplicada": "Already registered",
+        "invalido": "Invalid value",
+        "incompleta": "Fill in number, category and expiry date"
+      },
+      "toast": {
+        "revisa": "{count, plural, one {Check # field} other {Check # fields}}",
+        "duplicado": "That person is already registered (same employment, user or ID)",
+        "sinPermiso": "You do not have permission to manage drivers and couriers"
+      },
+      "elegirEmpleado": "Choose an employee",
+      "sinCargo": "No job position",
+      "todasLasSedes": "All branches",
+      "elegirSede": "Choose the branch",
+      "accesoEmpleado": "App access: they sign in with their GO Admin user to “My shipments” or “My trips”.",
+      "sinAcceso": "No app access",
+      "sinLicencia": "No license",
+      "elegirCategoria": "Choose the category",
+      "fotoLicencia": "License photo (front and back)",
+      "subir": "Upload",
+      "fotoDespues": "It is uploaded when editing, once the person is saved.",
+      "sinDato": "Not set",
+      "secciones": {
+        "persona": {
+          "titulo": "1 · Person",
+          "descripcion": "Do they work for the company or are they external (for example, a courier by the day)?"
+        },
+        "licencia": {
+          "titulo": "2 · Driver’s license",
+          "descripcion": "Required to drive. We warn 30, 15 and 7 days before it expires.",
+          "descripcionOpcional": "If they drive a motor vehicle. We warn 30, 15 and 7 days before it expires."
+        },
+        "salud": {
+          "titulo": "3 · Health and certificates",
+          "descripcion": "What the law requires to carry passengers or cargo."
+        },
+        "contacto": {
+          "titulo": "4 · Emergency contact and vehicle",
+          "descripcion": "Who to call if something happens, and what they work with."
+        }
+      },
+      "modo": {
+        "empleado": "Company employee",
+        "empleadoDescripcion": "Already in Human resources: name, ID and job position are taken from there.",
+        "externo": "External, no contract",
+        "externoDescripcion": "Registered here with their name, ID and phone."
+      },
+      "campos": {
+        "employment_id": "Employee",
+        "position_id": "Job position",
+        "full_name": "Full name",
+        "document_type": "ID type",
+        "document_number": "ID number",
+        "phone": "Mobile",
+        "branch_id": "Branch",
+        "user_id": "App access",
+        "cobra_contraentrega": "Collects cash on delivery",
+        "license_number": "License number",
+        "license_category": "Category",
+        "license_expiry": "Expires",
+        "license_restrictions": "Restrictions",
+        "medical_certificate_expiry": "Medical exam expires",
+        "blood_type": "Blood type",
+        "passenger_certified": "Passenger certificate",
+        "hazmat_certified": "Hazardous materials certificate",
+        "certificaciones": "Other certificates",
+        "emergency_contact_name": "Emergency contact",
+        "emergency_contact_phone": "Phone",
+        "vehicle_type": "Vehicle type they use",
+        "vehiculo_id": "Assigned vehicle",
+        "is_active": "Active"
+      },
+      "ayudas": {
+        "employment_id": "Search in Human resources › People.",
+        "sinEmpleados": "There are no unregistered active employees.",
+        "position_id": "Driver, Courier, Dispatcher or Crew member. Permissions and menu come from the job position.",
+        "user_id": "An organization member with an account, to sign in to “My shipments”.",
+        "cobra_contraentrega": "Can collect payment for the order on delivery.",
+        "license_category": "A1–A2 motorcycle, B1–B3 private, C1–C3 public service.",
+        "certificaciones": "Separated by commas.",
+        "vehicle_type": "For externals: their own motorcycle, bicycle or car.",
+        "vehiculo_id": "It can also be changed from Vehicles › Assign driver.",
+        "vehiculoSinUsuario": "To assign a vehicle they need app access.",
+        "is_active": "Off: they are not offered for trips or shipments, but keep their history."
+      },
+      "resumen": {
+        "titulo": "Summary",
+        "persona": "Person",
+        "empleado": "employee",
+        "externo": "external",
+        "cargo": "Job position",
+        "vehiculo": "Vehicle",
+        "licencia": "License: {estado}",
+        "examen": "Exam: {estado}",
+        "sinRol": "No new role is created: what they can do in Logistics or Transport comes from the job position."
       }
     }
   }

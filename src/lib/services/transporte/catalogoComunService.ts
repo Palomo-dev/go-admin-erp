@@ -43,8 +43,12 @@ interface FilaCruda {
   metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
+  blood_type?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
   employment?: Uno<{
     id: string;
+    hire_date?: string | null;
     position?: Uno<{ name: string | null }>;
     organization_member?: Uno<{ id: number; organization_id: number; user_id: string | null; profiles?: Uno<Perfil> }>;
   }>;
@@ -78,14 +82,22 @@ export interface PersonaCatalogo {
   examenVence: string | null;
   activo: boolean;
   sedeId: number | null;
+  /** Ficha de la persona (columnas de `driver_credentials` y `employments.hire_date`, `date`). */
+  restricciones: string | null;
+  certificadoPasajeros: boolean;
+  mercanciasPeligrosas: boolean;
+  sangre: string | null;
+  emergenciaNombre: string | null;
+  emergenciaTelefono: string | null;
+  vinculadoDesde: string | null;
   credencial: CredencialCatalogo;
 }
 
 const COLUMNAS =
   'id, organization_id, branch_id, user_id, employment_id, full_name, phone, document_type, document_number, is_external, vehicle_type, ' +
   'license_number, license_category, license_expiry, license_restrictions, medical_certificate_expiry, hazmat_certified, passenger_certified, ' +
-  'is_active, metadata, created_at, updated_at, ' +
-  'employment:employments!driver_credentials_employment_id_fkey(id, position:job_positions!employments_position_id_fkey(name), ' +
+  'is_active, metadata, created_at, updated_at, blood_type, emergency_contact_name, emergency_contact_phone, ' +
+  'employment:employments!driver_credentials_employment_id_fkey(id, hire_date, position:job_positions!employments_position_id_fkey(name), ' +
   'organization_member:organization_members(id, organization_id, user_id, profiles(id, first_name, last_name, email, phone)))';
 
 const uno = <T,>(v: Uno<T>): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
@@ -151,6 +163,13 @@ export function aPersona(f: FilaCruda): PersonaCatalogo {
     examenVence: f.medical_certificate_expiry,
     activo: f.is_active !== false,
     sedeId: f.branch_id,
+    restricciones: f.license_restrictions?.trim() || null,
+    certificadoPasajeros: f.passenger_certified === true,
+    mercanciasPeligrosas: f.hazmat_certified === true,
+    sangre: f.blood_type?.trim() || null,
+    emergenciaNombre: f.emergency_contact_name?.trim() || null,
+    emergenciaTelefono: f.emergency_contact_phone?.trim() || null,
+    vinculadoDesde: empleo?.hire_date ?? null,
     credencial,
   };
 }
@@ -165,4 +184,18 @@ export async function listarPersonasCatalogo(db: SupabaseClient, organizationId:
     .limit(2000);
   if (error) throw error;
   return ((data ?? []) as unknown as FilaCruda[]).map(aPersona);
+}
+
+/**
+ * Una persona del catálogo (ficha de detalle). Filtra por la organización de la sesión además de
+ * RLS: un id de otra organización responde `null`, igual que uno que no existe.
+ */
+export async function obtenerPersonaCatalogo(db: SupabaseClient, organizationId: number, id: string): Promise<PersonaCatalogo | null> {
+  const { data, error } = await db.from('driver_credentials').select(COLUMNAS).eq('organization_id', organizationId).eq('id', id).maybeSingle();
+  // 22P02: el id de la URL no es un uuid → no existe.
+  if (error) {
+    if (error.code === '22P02') return null;
+    throw error;
+  }
+  return data ? aPersona(data as unknown as FilaCruda) : null;
 }

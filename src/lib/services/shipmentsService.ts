@@ -197,7 +197,7 @@ class ShipmentsService {
 
       if (driversData && driversData.length > 0) {
         // Step 2: Get employments to find organization_member_ids
-        const employmentIds = driversData.map((d: any) => d.employment_id).filter(Boolean);
+        const employmentIds = driversData.map((d) => d.employment_id).filter(Boolean);
         if (employmentIds.length > 0) {
           const { data: employmentsData } = await supabase
             .from('employments')
@@ -206,7 +206,7 @@ class ShipmentsService {
 
           if (employmentsData && employmentsData.length > 0) {
             // Step 3: Get organization_members to find user_ids
-            const memberIds = employmentsData.map((e: any) => e.organization_member_id).filter(Boolean);
+            const memberIds = employmentsData.map((e) => e.organization_member_id).filter(Boolean);
             if (memberIds.length > 0) {
               const { data: membersData } = await supabase
                 .from('organization_members')
@@ -215,7 +215,7 @@ class ShipmentsService {
 
               if (membersData && membersData.length > 0) {
                 // Step 4: Get profiles by user_ids
-                const userIds = membersData.map((m: any) => m.user_id).filter(Boolean);
+                const userIds = membersData.map((m) => m.user_id).filter(Boolean);
                 if (userIds.length > 0) {
                   const { data: profilesData } = await supabase
                     .from('profiles')
@@ -224,22 +224,22 @@ class ShipmentsService {
 
                   // Build lookup maps
                   const profileMap = new Map<string, string>();
-                  (profilesData || []).forEach((p: any) => {
+                  (profilesData || []).forEach((p) => {
                     profileMap.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim());
                   });
 
                   const memberUserMap = new Map<number, string>();
-                  membersData.forEach((m: any) => {
+                  membersData.forEach((m) => {
                     if (m.user_id) memberUserMap.set(m.id, m.user_id);
                   });
 
                   const employmentMemberMap = new Map<string, number>();
-                  employmentsData.forEach((e: any) => {
+                  employmentsData.forEach((e) => {
                     if (e.organization_member_id) employmentMemberMap.set(e.id, e.organization_member_id);
                   });
 
                   // Map driver_id -> name
-                  driversData.forEach((d: any) => {
+                  driversData.forEach((d) => {
                     const memberId = d.employment_id ? employmentMemberMap.get(d.employment_id) : null;
                     const userId = memberId ? memberUserMap.get(memberId) : null;
                     const name = userId ? profileMap.get(userId) : null;
@@ -492,7 +492,7 @@ class ShipmentsService {
 
     if (error) throw error;
 
-    return (data || []).map((t: any) => ({
+    return (data || []).map((t) => ({
       id: t.id,
       trip_code: t.trip_code,
       transport_routes: Array.isArray(t.transport_routes) ? t.transport_routes[0] : t.transport_routes,
@@ -584,18 +584,19 @@ class ShipmentsService {
     if (error) throw error;
 
     // Consultar modificadores en lote para los productos encontrados
-    const productIds = (data || []).map((p: any) => p.id);
+    const productIds = (data || []).map((p) => p.id);
     const modifiersSet = new Set<number>();
     if (productIds.length > 0) {
       const { data: modData } = await supabase
         .from('product_modifier_groups')
         .select('product_id')
         .in('product_id', productIds);
-      (modData || []).forEach((g: any) => modifiersSet.add(g.product_id));
+      (modData || []).forEach((g) => modifiersSet.add(g.product_id));
     }
 
-    return (data || []).map((p: any) => {
-      const activePrice = p.product_prices?.find((pp: any) =>
+    return (data || []).map((p) => {
+      // La consulta no trae effective_to: se conserva el filtro tal cual estaba (todo precio cuenta como vigente).
+      const activePrice = (p.product_prices as { price: unknown; effective_to?: string | null }[] | null)?.find((pp) =>
         !pp.effective_to || new Date(pp.effective_to) > new Date()
       );
       return {
@@ -692,7 +693,7 @@ class ShipmentsService {
     if (error) throw error;
 
     // Procesar para obtener la imagen desde notes.product_image
-    const processedData = (data || []).map((item: any) => {
+    const processedData = (data || []).map((item) => {
       let productImage: string | null = null;
       if (item.notes) {
         try {
@@ -739,6 +740,8 @@ class ShipmentsService {
     description: string;
     qty: number;
     unit_value: number;
+    weight_kg: number;
+    total_value: number;
     notes: string;
   }>) {
     const { data, error } = await supabase
@@ -769,7 +772,7 @@ class ShipmentsService {
     if (error) throw error;
 
     if (itemData?.shipment_id) {
-      const itemName = (itemData.products as any)?.name || itemData.description || 'item';
+      const itemName = (itemData.products as { name?: string } | null)?.name || itemData.description || 'item';
       const { data: shipment } = await supabase
         .from('shipments')
         .select('organization_id')
@@ -938,7 +941,7 @@ class ShipmentsService {
     if (!driversData || driversData.length === 0) return [];
 
     // Step 2: Get active employments for these drivers
-    const employmentIds = driversData.map((d: any) => d.employment_id).filter(Boolean);
+    const employmentIds = driversData.map((d) => d.employment_id).filter(Boolean);
     if (employmentIds.length === 0) return [];
 
     const { data: employmentsData, error: empError } = await supabase
@@ -950,7 +953,7 @@ class ShipmentsService {
     if (empError || !employmentsData || employmentsData.length === 0) return [];
 
     // Step 3: Get organization_members filtered by org
-    const memberIds = employmentsData.map((e: any) => e.organization_member_id).filter(Boolean);
+    const memberIds = employmentsData.map((e) => e.organization_member_id).filter(Boolean);
     if (memberIds.length === 0) return [];
 
     const { data: membersData, error: memberError } = await supabase
@@ -963,7 +966,7 @@ class ShipmentsService {
     if (memberError || !membersData || membersData.length === 0) return [];
 
     // Step 4: Get profiles for these users
-    const userIds = membersData.map((m: any) => m.user_id).filter(Boolean);
+    const userIds = membersData.map((m) => m.user_id).filter(Boolean);
     if (userIds.length === 0) return [];
 
     const { data: profilesData, error: profileError } = await supabase
@@ -974,22 +977,22 @@ class ShipmentsService {
     if (profileError || !profilesData) return [];
 
     // Build lookup maps
-    const profileMap = new Map<string, any>();
-    profilesData.forEach((p: any) => profileMap.set(p.id, p));
+    const profileMap = new Map<string, { first_name?: string | null; last_name?: string | null; phone?: string | null; email?: string | null; avatar_url?: string | null }>();
+    profilesData.forEach((p) => profileMap.set(p.id, p));
 
     const memberUserMap = new Map<number, string>();
-    membersData.forEach((m: any) => {
+    membersData.forEach((m) => {
       if (m.user_id) memberUserMap.set(m.id, m.user_id);
     });
 
     const employmentMemberMap = new Map<string, number>();
-    employmentsData.forEach((e: any) => {
+    employmentsData.forEach((e) => {
       if (e.organization_member_id) employmentMemberMap.set(e.id, e.organization_member_id);
     });
 
     // Build result
     const result: AvailableDriver[] = [];
-    driversData.forEach((driver: any) => {
+    driversData.forEach((driver) => {
       const memberId = driver.employment_id ? employmentMemberMap.get(driver.employment_id) : null;
       if (!memberId) return;
       const userId = memberUserMap.get(memberId);

@@ -7,8 +7,8 @@
  * La misma pantalla en `/app/transporte/conductores` y `/app/logistica/conductores`: la ruta decide
  * las migas y los enlaces. Lee con `listarPersonasCatalogo` (todas las personas de
  * `driver_credentials`, también los domiciliarios externos que antes no salían) y escribe SOLO con
- * `transportService` y los diálogos de siempre (crear/editar, duplicar, activar, historial,
- * importar), más `DialogoDocumento` de Flota para subir la licencia o el examen.
+ * `transportService` y los diálogos de siempre (activar, importar, historial como hoja lateral;
+ * nuevo, editar y duplicar son páginas; la fila abre la ficha), más `DialogoDocumento` de Flota para subir la licencia o el examen.
  *
  * «Cargo» es el cargo de Recursos humanos (`job_positions`), nunca un rol. Fuera por ahora (la base
  * no lo tiene, MCP 2026-11-24): la columna y el filtro «Uso» y la columna «Hoy» (viajes y envíos
@@ -49,7 +49,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { transportService, type DriverCredential, type Trip, type Vehicle } from '@/lib/services/transportService';
+import { transportService, type DriverCredential, type Vehicle } from '@/lib/services/transportService';
 import { listarPersonasCatalogo, type PersonaCatalogo } from '@/lib/services/transporte/catalogoComunService';
 import { DocumentoError, guardarDocumento, listarDocumentos, type DatosDocumento } from '@/lib/services/transporte/documentosService';
 import { documentosFlota, type DocumentoTabla } from '@/lib/transporte/documentosFlota';
@@ -69,30 +69,18 @@ import {
   kpisConductores,
   moduloDeRuta,
   resumenDocumentos,
+  rutaFicha,
   type FilaConductor,
   type ResumenDocs,
 } from '@/lib/transporte/catalogoComun';
 import { RUTAS_LOGISTICA } from '@/lib/logistica/rutas';
 import { DialogoDocumento, type InicialDocumento } from '@/components/transporte/flota/DialogoDocumento';
-import { DriverDialog } from './DriverDialog';
 import { DriverStatusDialog } from './DriverStatusDialog';
-import { DriverHistoryDialog } from './DriverHistoryDialog';
-import { ImportDriversDialog } from './ImportDriversDialog';
+import { HojaHistorial } from '@/components/transporte/fichas/HojaHistorial';
+import { ImportarCatalogoDialogo, type ResultadoImportacion } from '@/components/transporte/fichas/ImportarCatalogoDialogo';
+import type { FilaImportacion } from '@/lib/transporte/importarCatalogo';
 
 const TAMANOS = [10, 25, 50] as const;
-
-type Empleado = { id: string; name: string; email: string };
-
-/** `getAvailableEmployeesForDriver` devuelve el empleo con su miembro y perfil. */
-function aEmpleado(e: Record<string, unknown>, sinNombre: string): Empleado {
-  const miembro = e.organization_members as { profiles?: { first_name?: string | null; last_name?: string | null; email?: string | null } | null } | undefined;
-  const perfil = miembro?.profiles;
-  return {
-    id: String(e.id),
-    name: `${perfil?.first_name ?? ''} ${perfil?.last_name ?? ''}`.trim() || sinNombre,
-    email: perfil?.email ?? '',
-  };
-}
 
 export function ConductoresPage() {
   const t = useTranslations('catalogoComun.conductores');
@@ -113,16 +101,14 @@ export function ConductoresPage() {
   const [personas, setPersonas] = useState<PersonaCatalogo[]>([]);
   const [vehiculos, setVehiculos] = useState<Vehicle[]>([]);
   const [tabla, setTabla] = useState<DocumentoTabla[]>([]);
-  const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<'sin_permiso' | 'error' | null>(null);
   const [recarga, setRecarga] = useState(0);
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [guardando, setGuardando] = useState(false);
 
-  const [editar, setEditar] = useState<{ credencial: DriverCredential | null } | null>(null);
   const [aEstado, setAEstado] = useState<DriverCredential | null>(null);
-  const [historial, setHistorial] = useState<{ credencial: DriverCredential; viajes: Trip[]; cargando: boolean } | null>(null);
+  const [historial, setHistorial] = useState<PersonaCatalogo | null>(null);
   const [importar, setImportar] = useState(false);
   const [aEliminar, setAEliminar] = useState<FilaConductor | null>(null);
   const [documento, setDocumento] = useState<{ inicial: InicialDocumento | null } | null>(null);
@@ -138,22 +124,18 @@ export function ConductoresPage() {
       listarPersonasCatalogo(supabase, organizationId),
       transportService.getVehicles(organizationId, null),
       listarDocumentos(supabase, organizationId).catch(() => [] as DocumentoTabla[]),
-      transportService.getAvailableEmployeesForDriver(organizationId).catch(() => [] as Record<string, unknown>[]),
     ])
-      .then(([p, v, d, e]) => {
+      .then(([p, v, d]) => {
         if (cancelado) return;
         setPersonas(p);
         setVehiculos(v);
         setTabla(d);
-        setEmpleados((e as Record<string, unknown>[]).map((x) => aEmpleado(x, t('sinNombre'))));
       })
       .catch((e: { code?: string }) => !cancelado && setError(e?.code === '42501' ? 'sin_permiso' : 'error'))
       .finally(() => !cancelado && setCargando(false));
     return () => {
       cancelado = true;
     };
-    // `t` es estable por idioma; leerlo aquí no debe volver a cargar.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId, recarga]);
 
   // La sede activa filtra a las personas de esa sede y a las que no tienen sede (sirven a todas).
@@ -201,36 +183,9 @@ export function ConductoresPage() {
   const tipoTexto = (tipo: string) => (tTipos.has(tipo) ? tTipos(tipo) : tipo);
 
   // ── Acciones ───────────────────────────────────────────────────────────────
-  const verHistorial = async (c: DriverCredential) => {
-    setHistorial({ credencial: c, viajes: [], cargando: true });
-    try {
-      const viajes = await transportService.getDriverTrips(c.id);
-      setHistorial((h) => (h && h.credencial.id === c.id ? { ...h, viajes, cargando: false } : h));
-    } catch {
-      toastError(t('toast.errorHistorial'));
-      setHistorial((h) => (h ? { ...h, cargando: false } : h));
-    }
-  };
-
-  const guardar = async (datos: Partial<DriverCredential>) => {
-    if (!organizationId || !editar) return;
-    setGuardando(true);
-    try {
-      if (editar.credencial?.id) {
-        await transportService.updateDriver(editar.credencial.id, datos);
-        toastSuccess(t('toast.actualizado'));
-      } else {
-        await transportService.createDriver({ ...datos, organization_id: organizationId } as Partial<DriverCredential>);
-        toastSuccess(t('toast.creado'));
-      }
-      setEditar(null);
-      recargar();
-    } catch {
-      toastError(t('toast.errorGuardar'));
-    } finally {
-      setGuardando(false);
-    }
-  };
+  // Nuevo, editar y duplicar son páginas (Figma 2971:21208); la fila abre la ficha.
+  const nuevo = () => router.push(`${rutas.conductores}/nuevo`);
+  const editarPersona = (f: FilaConductor) => router.push(`${rutaFicha(modulo, 'persona', f.id)}/editar`);
 
   const cambiarEstado = async (id: string, activo: boolean) => {
     setGuardando(true);
@@ -257,20 +212,23 @@ export function ConductoresPage() {
     }
   };
 
-  const importarFilas = async (lista: Partial<DriverCredential>[]) => {
-    if (!organizationId) return { success: 0, errors: [t('toast.sinOrganizacion')] };
-    let success = 0;
-    const errors: string[] = [];
-    for (const d of lista) {
+  // Lo que ya existe (mismo empleo) se actualiza; lo nuevo se crea con la organización de la sesión.
+  const existentes = useMemo(() => new Map(personas.filter((p) => p.employmentId).map((p) => [p.employmentId as string, p.id])), [personas]);
+  const importarFilas = async (lista: FilaImportacion[]): Promise<ResultadoImportacion> => {
+    if (!organizationId) return { importados: 0, errores: [{ etiqueta: '—', mensaje: t('toast.sinOrganizacion') }] };
+    let importados = 0;
+    const errores: ResultadoImportacion['errores'] = [];
+    for (const f of lista) {
       try {
-        await transportService.createDriver({ ...d, organization_id: organizationId } as Partial<DriverCredential>);
-        success++;
+        if (f.estado === 'existe' && f.id) await transportService.updateDriver(f.id, f.datos as Partial<DriverCredential>);
+        else await transportService.createDriver({ ...f.datos, organization_id: organizationId } as Partial<DriverCredential>);
+        importados++;
       } catch (e) {
-        errors.push(`${d.license_number}: ${e instanceof Error ? e.message : String(e)}`);
+        errores.push({ etiqueta: f.etiqueta, mensaje: e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e) });
       }
     }
-    if (success > 0) recargar();
-    return { success, errors };
+    if (importados > 0) recargar();
+    return { importados, errores };
   };
 
   const guardarDocumentoPersona = async (datos: DatosDocumento, archivo: File | null) => {
@@ -309,18 +267,18 @@ export function ConductoresPage() {
     URL.revokeObjectURL(url);
   };
 
-  /** La fila abre el formulario de siempre; sin empleo (externo) se edita en Logística › Domiciliarios. */
-  const abrir = (f: FilaConductor) => (f.persona.employmentId ? setEditar({ credencial: f.persona.credencial }) : router.push(RUTAS_LOGISTICA.domiciliarios));
+  /** La fila abre la ficha de la persona. */
+  const abrir = (f: FilaConductor) => router.push(rutaFicha(modulo, 'persona', f.id));
 
   const acciones = (f: FilaConductor): AccionFila[] => {
     const conEmpleo = !!f.persona.employmentId;
     return [
-      { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => setEditar({ credencial: f.persona.credencial }), oculta: !conEmpleo },
+      { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => editarPersona(f) },
       { id: 'editarDomiciliario', etiqueta: t('acciones.editarEnDomiciliarios'), icono: ExternalLink, onSelect: () => router.push(RUTAS_LOGISTICA.domiciliarios), oculta: conEmpleo },
-      { id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => setEditar({ credencial: { ...f.persona.credencial, id: '', license_number: `${f.persona.credencial.license_number}-COPY` } }), oculta: !conEmpleo },
+      { id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => router.push(`${rutas.conductores}/nuevo?duplicar=${encodeURIComponent(f.id)}`), oculta: !conEmpleo },
       { id: 'estado', etiqueta: f.activo ? t('acciones.desactivar') : t('acciones.activar'), icono: Power, onSelect: () => setAEstado(f.persona.credencial), separadorAntes: true },
       { id: 'documento', etiqueta: t('acciones.subirDocumento'), icono: FileUp, onSelect: () => setDocumento({ inicial: { de: 'conductor', duenoId: f.id, tipo: 'licencia' } }) },
-      { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: () => void verHistorial(f.persona.credencial) },
+      { id: 'historial', etiqueta: t('acciones.historial'), icono: History, onSelect: () => setHistorial(f.persona) },
       { id: 'eliminar', etiqueta: t('acciones.eliminar'), icono: Trash2, onSelect: () => setAEliminar(f), destructiva: true },
     ];
   };
@@ -421,7 +379,7 @@ export function ConductoresPage() {
               <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {tc('importar')}
             </button>
-            <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => setEditar({ credencial: null })}>
+            <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={nuevo}>
               <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('nuevo')}
             </button>
@@ -435,7 +393,7 @@ export function ConductoresPage() {
               tamano="md"
               titulo={t('titulo')}
               acciones={[
-                { id: 'nuevo', etiqueta: t('nuevo'), icono: Plus, onSelect: () => setEditar({ credencial: null }) },
+                { id: 'nuevo', etiqueta: t('nuevo'), icono: Plus, onSelect: nuevo },
                 { id: 'importar', etiqueta: tc('importar'), icono: Upload, onSelect: () => setImportar(true) },
                 ...menuCabecera,
               ]}
@@ -449,7 +407,7 @@ export function ConductoresPage() {
           icono={IdCard}
           titulo={t('vacio.titulo')}
           descripcion={t('vacio.descripcion')}
-          accion={{ etiqueta: t('nuevo'), icono: Plus, onClick: () => setEditar({ credencial: null }) }}
+          accion={{ etiqueta: t('nuevo'), icono: Plus, onClick: nuevo }}
           accionSecundaria={
             modulo === 'logistica'
               ? { etiqueta: t('vacio.domiciliario'), icono: UserRound, href: `${RUTAS_LOGISTICA.domiciliarios}?nuevo=1` }
@@ -562,23 +520,14 @@ export function ConductoresPage() {
         acciones={[{ id: 'exportar', etiqueta: t('masivo.exportar'), icono: Download, onClick: () => exportar(seleccionadas) }]}
       />
 
-      <DriverDialog
-        open={editar !== null}
-        onOpenChange={(v) => !v && setEditar(null)}
-        driver={editar?.credencial ?? null}
-        employees={empleados}
-        onSave={guardar}
-        isSaving={guardando}
-      />
       <DriverStatusDialog open={aEstado !== null} onOpenChange={(v) => !v && setAEstado(null)} driver={aEstado} onToggleStatus={cambiarEstado} isUpdating={guardando} />
-      <DriverHistoryDialog
-        open={historial !== null}
-        onOpenChange={(v) => !v && setHistorial(null)}
-        driver={historial?.credencial ?? null}
-        trips={historial?.viajes ?? []}
-        isLoading={historial?.cargando ?? false}
+      <HojaHistorial
+        objetivo={historial ? { de: 'persona', persona: historial } : null}
+        organizationId={organizationId}
+        onCerrar={() => setHistorial(null)}
+        nombreOtro={(v) => (v.vehicle_id ? vehiculos.find((x) => x.id === v.vehicle_id)?.plate ?? null : null)}
       />
-      <ImportDriversDialog open={importar} onOpenChange={setImportar} onImport={importarFilas} />
+      {importar && <ImportarCatalogoDialogo tipo="conductores" abierto existentes={existentes} onCerrar={() => setImportar(false)} onImportar={importarFilas} />}
       {documento && (
         <DialogoDocumento
           vehiculos={vehiculos.map((v) => ({ id: v.id, nombre: v.plate }))}

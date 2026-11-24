@@ -25,7 +25,7 @@ export const MAX_FILAS_BANDEJA = 2000;
 /** Tamaño de los lotes `in (…)` para no pasar el largo de URL de PostgREST. */
 const LOTE_IN = 150;
 
-const COLUMNAS_ENVIO = [
+export const COLUMNAS_ENVIO = [
   'id', 'organization_id', 'branch_id', 'source_type', 'source_id', 'shipment_number', 'tracking_number', 'status',
   'fulfillment_mode', 'created_at', 'updated_at', 'delivery_address', 'delivery_city', 'delivery_department',
   'delivery_contact_name', 'delivery_contact_phone', 'delivery_instructions', 'delivery_latitude', 'delivery_longitude',
@@ -105,9 +105,12 @@ export interface PedidoWebResumen {
   is_scheduled: boolean | null;
   scheduled_at: string | null;
   estimated_delivery_at: string | null;
+  /** Estado de pago y del pedido (Envíos: «Pagado» y «pedido anulado» salen del pedido). */
+  payment_status?: string | null;
+  status?: string | null;
 }
 
-async function enLotes<T>(ids: readonly string[], leer: (lote: string[]) => Promise<T[]>): Promise<T[]> {
+export async function enLotes<T>(ids: readonly string[], leer: (lote: string[]) => Promise<T[]>): Promise<T[]> {
   const unicos = Array.from(new Set(ids.filter(Boolean)));
   const salida: T[] = [];
   for (let i = 0; i < unicos.length; i += LOTE_IN) salida.push(...(await leer(unicos.slice(i, i + LOTE_IN))));
@@ -119,7 +122,7 @@ export async function pedidosWebDe(db: SupabaseClient, organizationId: number, i
   const filas = await enLotes(ids, async (lote) => {
     const { data, error } = await db
       .from('web_orders')
-      .select('id, order_number, source, total, is_scheduled, scheduled_at, estimated_delivery_at')
+      .select('id, order_number, source, total, is_scheduled, scheduled_at, estimated_delivery_at, payment_status, status')
       .eq('organization_id', organizationId)
       .in('id', lote);
     if (error) throw error;
@@ -174,7 +177,8 @@ export function aFilaDespacho(e: EnvioCrudo, pedido: PedidoWebResumen | null): F
     moneda: e.currency ? e.currency.trim() : null,
     contraentrega: num(e.cod_amount),
     codStatus: e.cod_status,
-    pagado: e.payment_status === 'paid',
+    // El pago lo dice el pedido: el envío de la tienda queda en «pending» aunque el pedido esté pagado.
+    pagado: pedido?.payment_status === 'paid' || e.payment_status === 'paid',
     domiciliarioId: e.driver_id,
     domiciliario: texto(driver?.full_name),
     vehiculoId: e.vehicle_id,

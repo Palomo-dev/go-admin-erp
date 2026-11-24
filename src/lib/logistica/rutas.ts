@@ -27,3 +27,16 @@ export const SECCION_CONFIGURACION_LOGISTICA = 'logistica.general';
 export function rutaEnvio(id: string): string {
   return `${RUTAS_LOGISTICA.envios}/${encodeURIComponent(id)}`;
 }
+
+/** Nuevo envío (página, no diálogo: Figma 2963:8719). */
+export const RUTA_NUEVO_ENVIO = `${RUTAS_LOGISTICA.envios}/nuevo`;
+
+/** «Duplicar»: el formulario de nuevo envío ya lleno con los datos de otro. */
+export function rutaDuplicarEnvio(id: string): string {
+  return `${RUTA_NUEVO_ENVIO}?duplicar=${encodeURIComponent(id)}`;
+}
+
+/** Editar un envío (el mismo formulario, con secciones bloqueadas según el estado: 2965:9202). */
+export function rutaEditarEnvio(id: string): string {
+  return `${rutaEnvio(id)}/editar`;
+}

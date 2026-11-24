@@ -39,10 +39,17 @@ export function useImpresionLogistica() {
     : null;
 
   const imprimirGuias = useCallback(
-    async (envios: readonly Pick<FilaDespacho, 'id' | 'branchId'>[], domiciliario?: { nombre: string; telefono?: string | null } | null) => {
+    async (
+      envios: readonly Pick<FilaDespacho, 'id' | 'branchId'>[],
+      domiciliario?: { nombre: string; telefono?: string | null } | null,
+      opciones?: { copias?: number },
+    ) => {
       if (!organization?.id || envios.length === 0) return;
       try {
-        const datos = await enviosParaGuias(supabase, organization.id, envios.map((e) => e.id));
+        const leidos = await enviosParaGuias(supabase, organization.id, envios.map((e) => e.id));
+        // «Copias por envío» (Figma 2965:10078): cada guía se repite seguida, en el mismo lote.
+        const copias = Math.min(Math.max(Math.floor(opciones?.copias ?? 1), 1), 10);
+        const datos = leidos.flatMap((d) => Array.from({ length: copias }, () => d));
         const sede = envios[0].branchId ?? branchFilter ?? selectedBranchId ?? undefined;
         const r = await printShipmentGuidesWithCut(
           datos.map(({ envio, items }) => ({

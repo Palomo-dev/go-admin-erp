@@ -13,6 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
@@ -25,6 +26,7 @@ import {
   CircleCheck,
   CircleX,
   Clock,
+  Copy,
   FileText,
   KeyRound,
   Mail,
@@ -33,6 +35,7 @@ import {
   Package,
   PackageCheck,
   PenLine,
+  Pencil,
   Phone,
   Printer,
   RefreshCw,
@@ -56,7 +59,6 @@ import {
   type AccionFila,
 } from '@/components/kit';
 import { AvisoTonal } from '@/components/kit/AvisoTonal';
-import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -74,7 +76,7 @@ import {
 import { accionesDetalle, documentoOculto, lineaDeTiempo, pasoCobro, type PasoLinea } from '@/lib/logistica/detalleEnvio';
 import { enlaceComoLlegar, enlaceLlamar } from '@/lib/logistica/misEnvios';
 import { MAX_INTENTOS_CODIGO } from '@/lib/logistica/contraentrega';
-import { RUTAS_LOGISTICA } from '@/lib/logistica/rutas';
+import { RUTAS_LOGISTICA, rutaDuplicarEnvio, rutaEditarEnvio } from '@/lib/logistica/rutas';
 import { avisarCliente } from '../logisticaApi';
 import { leerAvisosPedido, reenviarAviso, type AvisoDePedido } from '@/components/pos/pedidos-online/avisos/avisosClienteApi';
 import { EstadoEnvioBadge } from '../EstadoEnvioBadge';
@@ -82,11 +84,14 @@ import { HojaAsignarDomiciliario } from '../asignar/HojaAsignarDomiciliario';
 import { useImpresionLogistica } from '../useImpresionLogistica';
 import { useEvidenciasEnvio, type EvidenciasEnvio } from '../useEvidenciasEnvio';
 import { DialogoDireccion, DialogoEntregar, DialogoNovedad } from './DialogosEnvio';
+import { DialogoCancelar, DialogoDevolver } from '../envios/DialogosEnvios';
 
 type Confirmacion = 'devolver' | 'cancelar' | null;
 
 export function DetalleEnvioPage({ id }: { id: string }) {
   const t = useTranslations('logistica.envio');
+  const tEnvios = useTranslations('logistica.envios.acciones');
+  const router = useRouter();
   const moneda = useMonedaOrganizacion();
   const { formatTime, formatDateTime, formatPlain } = useFormatDate();
   const { imprimirGuias } = useImpresionLogistica();
@@ -140,7 +145,7 @@ export function DetalleEnvioPage({ id }: { id: string }) {
     return t.has(`errores.${c}`) ? t(`errores.${c}`) : t('errores.ERROR');
   };
 
-  const cambiar = async (estadoNuevo: 'ready_for_pickup' | 'picked' | 'out_for_delivery' | 'returned' | 'cancelled', clave: string) => {
+  const cambiar = async (estadoNuevo: 'ready_for_pickup' | 'picked' | 'out_for_delivery', clave: string) => {
     if (!f || !e) return;
     setOcupado(clave);
     try {
@@ -198,6 +203,8 @@ export function DetalleEnvioPage({ id }: { id: string }) {
   const menu: AccionFila[] =
     f && acciones
       ? [
+          { id: 'editar', etiqueta: tEnvios('editar'), icono: Pencil, onSelect: () => router.push(rutaEditarEnvio(f.id)) },
+          { id: 'duplicar', etiqueta: tEnvios('duplicar'), icono: Copy, onSelect: () => router.push(rutaDuplicarEnvio(f.id)) },
           { id: 'avisar', etiqueta: t('acciones.avisar'), icono: Bell, onSelect: () => void avisarAhora(), oculta: !acciones.avisar },
           {
             id: 'llamar',
@@ -562,17 +569,17 @@ export function DetalleEnvioPage({ id }: { id: string }) {
             }}
           />
           <DialogoDireccion abierto={direccion} onAbiertoChange={setDireccion} envio={f} onGuardada={recargar} />
-          <ConfirmDialog
-            abierto={confirmar !== null}
-            onAbiertoChange={(v) => !v && ocupado === null && setConfirmar(null)}
-            titulo={confirmar === 'devolver' ? t('devolver.titulo') : t('cancelar.titulo')}
-            descripcion={confirmar === 'devolver' ? t('devolver.descripcion') : t('cancelar.descripcion')}
-            textoConfirmar={confirmar === 'devolver' ? t('devolver.confirmar') : t('cancelar.confirmar')}
-            textoCancelar={t('volver')}
-            tono="peligro"
-            icono={confirmar === 'devolver' ? RotateCcw : Ban}
-            cargando={ocupado === 'devolver' || ocupado === 'cancelar'}
-            onConfirmar={() => void cambiar(confirmar === 'devolver' ? 'returned' : 'cancelled', confirmar ?? 'cancelar')}
+          <DialogoDevolver
+            abierto={confirmar === 'devolver'}
+            onAbiertoChange={(v) => !v && setConfirmar(null)}
+            envios={[{ id: f.id, numero: f.numero, status: f.status, pedido: f.pedido, sourceType: e?.source_type ?? null, sourceId: e?.source_id ?? null, pagado: f.pagado, sede: e && (e.branch as { name?: string } | null)?.name ? String((e.branch as { name?: string }).name) : null }]}
+            onHecho={recargar}
+          />
+          <DialogoCancelar
+            abierto={confirmar === 'cancelar'}
+            onAbiertoChange={(v) => !v && setConfirmar(null)}
+            envios={[{ id: f.id, numero: f.numero, status: f.status, pedido: f.pedido, sourceType: e?.source_type ?? null, sourceId: e?.source_id ?? null, pagado: f.pagado }]}
+            onHecho={recargar}
           />
         </>
       )}

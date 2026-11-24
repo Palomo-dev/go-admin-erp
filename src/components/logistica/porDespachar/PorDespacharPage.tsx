@@ -69,6 +69,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import { contarDomiciliariosActivos, listarPorDespachar } from '@/lib/services/logistica/despachoService';
+import { avisarCliente } from '../logisticaApi';
 import {
   CANALES_ENVIO,
   FILTROS_PAGO,
@@ -218,8 +219,10 @@ export function PorDespacharPage() {
     let primerError: string | null = null;
     for (const f of aptos) {
       try {
-        await deliveryIntegrationService.changeStatus(f.id, 'ready_for_pickup');
+        const r = await deliveryIntegrationService.changeStatus(f.id, 'ready_for_pickup');
         ok += 1;
+        // «listo» solo llega si este cambio llevó el pedido de la tienda a «listo»: mismo aviso que en Pedidos online.
+        if (r.aviso && f.pedidoWebId) void avisarCliente({ source_type: 'web_order', source_id: f.pedidoWebId }, r.aviso);
       } catch (e) {
         primerError ??= e instanceof EnvioError ? e.codigo : 'ERROR';
       }

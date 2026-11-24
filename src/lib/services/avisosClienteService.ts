@@ -190,7 +190,34 @@ export async function datosDeAviso(
   };
 }
 
-export type ResultadoCanal = EstadoRegistroAviso | 'apagado' | null;
+/** `ya_enviado`: aviso automático de un momento que ya salió (o está en cola) por ese canal; no se repite. */
+export type ResultadoCanal = EstadoRegistroAviso | 'apagado' | 'ya_enviado' | null;
+
+/** Estados del registro que cuentan como «ese aviso ya salió». Un `failed` o `no_data` no bloquea. */
+const ESTADOS_YA_AVISADO: readonly EstadoRegistroAviso[] = ['queued', 'sent', 'delivered'];
+
+/**
+ * Canales por los que este momento ya se avisó en el pedido. Lo usa el aviso automático
+ * (`unaVez`): el mismo «listo», «en camino» o «entregado» puede llegar por Pedidos online y por
+ * Logística (sincronización envío ↔ pedido, migración 20261124233000) y el cliente no debe
+ * recibirlo dos veces. Si la lectura falla, no se bloquea nada (mejor un repetido que uno perdido).
+ */
+export async function canalesYaAvisados(
+  db: SupabaseClient,
+  organizationId: number,
+  orderId: string,
+  momento: MomentoAviso,
+): Promise<Set<CanalAviso>> {
+  const { data, error } = await db
+    .from('web_order_notices')
+    .select('channel')
+    .eq('organization_id', organizationId)
+    .eq('web_order_id', orderId)
+    .eq('moment', momento)
+    .in('status', [...ESTADOS_YA_AVISADO]);
+  if (error || !data) return new Set();
+  return new Set((data as Array<{ channel: CanalAviso }>).map((f) => f.channel));
+}
 
 /**
  * Envía los avisos del estado ACTUAL del pedido por los canales encendidos.
@@ -205,6 +232,11 @@ export async function avisarClientePedido(
     url: string | null;
     actor?: string | null;
     soloCanal?: CanalAviso | null;
+    /**
+     * Aviso automático (cambio de estado, no «Reenviar»): no repite un momento que ya salió por
+     * ese canal (`canalesYaAvisados`).
+     */
+    unaVez?: boolean;
     enviarCorreo: (extra: { asunto: string; texto: string; nombreVisible: string | null; responderA: string | null; datos?: DatosAviso }) => Promise<{ ok: boolean; id?: string | null; error?: string | null }>;
     /** Legado (sin tablas): qué estados avisaban antes. */
     estadoConAvisoLegado: (estado: string) => boolean;
@@ -227,15 +259,29 @@ export async function avisarClientePedido(
   // `recibido` lo manda el sitio al crear el pedido; aquí solo si se reenvía.
   if (!momento) return { email: null, whatsapp: null, momento };
 
+  const yaAvisados = contexto.unaVez ? await canalesYaAvisados(db, organizationId, pedido.id, momento) : new Set<CanalAviso>();
+  const pendientes = (canal: CanalAviso) =>
+    ajustes.momentos[momento][canal] && (!contexto.soloCanal || contexto.soloCanal === canal) && !yaAvisados.has(canal);
+  if (!pendientes('email') && !pendientes('whatsapp')) {
+    return {
+      email: yaAvisados.has('email') ? 'ya_enviado' : 'apagado',
+      whatsapp: yaAvisados.has('whatsapp') ? 'ya_enviado' : 'apagado',
+      momento,
+    };
+  }
+
   const base = await datosDeAviso(db, organizationId, pedido, ajustes.nombreVisible || contexto.negocio, contexto.url);
   const extraEnvio = (momento === 'en_camino' || momento === 'entregado') && contexto.datosEnvio
     ? await contexto.datosEnvio(momento).catch(() => ({}))
     : {};
   const datos: DatosAviso = { ...base, ...extraEnvio };
   const texto = textoAviso(momento, datos);
-  const resultado: { email: ResultadoCanal; whatsapp: ResultadoCanal } = { email: 'apagado', whatsapp: 'apagado' };
+  const resultado: { email: ResultadoCanal; whatsapp: ResultadoCanal } = {
+    email: yaAvisados.has('email') ? 'ya_enviado' : 'apagado',
+    whatsapp: yaAvisados.has('whatsapp') ? 'ya_enviado' : 'apagado',
+  };
 
-  if (ajustes.momentos[momento].email && contexto.soloCanal !== 'whatsapp') {
+  if (pendientes('email')) {
     if (!pedido.customer_email) {
       resultado.email = 'no_data';
       await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'email', estado: 'no_data', detalle: 'sin_correo', actor: contexto.actor });
@@ -249,7 +295,7 @@ export async function avisarClientePedido(
     }
   }
 
-  if (ajustes.momentos[momento].whatsapp && contexto.soloCanal !== 'email') {
+  if (pendientes('whatsapp')) {
     if (!pedido.customer_phone || !pedido.customer_id) {
       resultado.whatsapp = 'no_data';
       await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'whatsapp', estado: 'no_data', detalle: 'sin_telefono', actor: contexto.actor });

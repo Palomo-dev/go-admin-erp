@@ -13,6 +13,12 @@ import { enviarAvisoNovedadPedido, enviarCorreoEstadoPedido } from '@/lib/servic
  * `canal` (opcional, «Reenviar» del historial): repite solo ese canal. Qué
  * canales salen lo deciden los ajustes de Avisos al cliente.
  *
+ * Sin `canal` es un aviso automático (cambio de estado en Pedidos online, en
+ * Logística o en Comandas) y sale UNA vez por momento y canal: desde que el
+ * envío y el pedido comparten estado (migración 20261124233000), «listo»,
+ * «en camino» y «entregado» pueden pedirse por los dos lados y el cliente no
+ * debe recibirlos dos veces. «Reenviar» sí repite.
+ *
  * Sesión + membresía (`withOrg`): la organización sale de la sesión y el
  * pedido se lee filtrado por ella (un id de otra organización → 404). El
  * correo se arma con el estado guardado, nunca con uno que mande el cliente.
@@ -69,6 +75,6 @@ export const POST = withOrg(async (ctx, request, routeParams) => {
     return NextResponse.json({ success: true, enviado: false, motivo: 'estado_distinto' });
   }
 
-  const enviado = await enviarCorreoEstadoPedido(db, ctx.organizationId, orderId, { actor: ctx.userId, soloCanal: canal });
+  const enviado = await enviarCorreoEstadoPedido(db, ctx.organizationId, orderId, { actor: ctx.userId, soloCanal: canal, unaVez: !canal });
   return NextResponse.json({ success: true, enviado });
 });

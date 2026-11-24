@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,6 +25,7 @@ import {
 } from '@/lib/services/deliveryIntegrationService';
 import { useTranslations } from 'next-intl';
 import { useEvidenciasEnvio } from '@/components/logistica/useEvidenciasEnvio';
+import { EstadoEnvioBadge } from '@/components/logistica/EstadoEnvioBadge';
 
 interface DeliveryTrackingCardProps {
   webOrderId: string;
@@ -70,23 +70,6 @@ export function DeliveryTrackingCard({
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-      assigned: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-      picked_up: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
-      out_for_delivery: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-      delivered: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-      returned: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-      cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-    };
-    return colors[status] || colors.pending;
-  };
-
-  const getStatusLabel = (status: string) => {
-    return t.has(`deliveryTrackingCard.estados.${status}`) ? t(`deliveryTrackingCard.estados.${status}`) : status;
   };
 
   const formatTime = (date: string) => {
@@ -159,9 +142,8 @@ export function DeliveryTrackingCard({
             <Truck className="h-5 w-5 dark:text-gray-300" />
             {t('deliveryTrackingCard.tracking')}
           </CardTitle>
-          <Badge className={getStatusColor(shipment.status)}>
-            {getStatusLabel(shipment.status)}
-          </Badge>
+          {/* El mismo estado (e insignia) que muestra Logística: listo para salir, recogido, en reparto… */}
+          <EstadoEnvioBadge estado={shipment.status} />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

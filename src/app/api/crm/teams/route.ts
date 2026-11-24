@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
+import { isOrgAdmin } from '@/lib/utils/rbac';
 import {
   getSalesTeams,
   createSalesTeam,
@@ -35,6 +36,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getServerOrgContext();
+    if (!isOrgAdmin(ctx)) {
+      console.warn('[CRM Teams] escritura sin permiso (org %s, rol %s)', ctx.organizationId, ctx.roleId);
+      return NextResponse.json(
+        { success: false, error: 'No autorizado: se requiere rol admin u owner' },
+        { status: 403 }
+      );
+    }
     const body = await readOrgBody(ctx, request);
 
     if (!body?.name) {

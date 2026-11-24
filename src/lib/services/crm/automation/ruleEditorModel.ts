@@ -38,6 +38,10 @@ export interface RuleFormState {
   is_active: boolean;
   actions: RuleAction[];
   conditions: ConditionGroup;
+  /** «Solo en horario Ley 2300 (acciones de contacto)»: `trigger_config.solo_horario_ley2300`. */
+  solo_horario_ley2300: boolean;
+  /** El resto de `trigger_config` tal como vino: se conserva al guardar. */
+  trigger_config: Record<string, unknown>;
 }
 
 /** Lo mínimo que el modelo necesita de una regla guardada. */
@@ -55,6 +59,7 @@ export interface RuleSource {
   is_active: boolean;
   actions?: RuleAction[] | null;
   conditions?: unknown;
+  trigger_config?: Record<string, unknown> | null;
 }
 
 export interface RulePayload {
@@ -72,6 +77,7 @@ export interface RulePayload {
   is_active: boolean;
   actions: RuleAction[];
   conditions: ConditionGroup;
+  trigger_config: Record<string, unknown>;
 }
 
 export interface FormError {
@@ -92,6 +98,8 @@ export const EMPTY_FORM: RuleFormState = Object.freeze({
   is_active: false,
   actions: [],
   conditions: { op: 'and', rules: [] },
+  solo_horario_ley2300: false,
+  trigger_config: {},
 }) as RuleFormState;
 
 /** Ejemplo real con el que arranca el estado vacío de la lista. */
@@ -109,7 +117,7 @@ export const EXAMPLE_FORM: RuleFormState = {
 // ─── Regla ⇄ formulario ─────────────────────────────────────────────────────
 
 export function ruleToForm(rule: RuleSource | null): RuleFormState {
-  if (!rule) return { ...EMPTY_FORM, actions: [], conditions: { op: 'and', rules: [] } };
+  if (!rule) return { ...EMPTY_FORM, actions: [], conditions: { op: 'and', rules: [] }, trigger_config: {} };
   return {
     name: rule.name,
     description: rule.description ?? '',
@@ -123,6 +131,8 @@ export function ruleToForm(rule: RuleSource | null): RuleFormState {
     is_active: rule.is_active,
     actions: (rule.actions ?? []).map((a) => ({ ...a })),
     conditions: normalizeConditions(rule.conditions),
+    solo_horario_ley2300: rule.trigger_config?.solo_horario_ley2300 === true,
+    trigger_config: { ...(rule.trigger_config ?? {}) },
   };
 }
 
@@ -143,6 +153,7 @@ export function formToPayload(form: RuleFormState, ruleId?: string): RulePayload
     is_active: form.is_active,
     actions: form.actions,
     conditions: form.conditions,
+    trigger_config: { ...(form.trigger_config ?? {}), solo_horario_ley2300: form.solo_horario_ley2300 === true },
   };
   if (ruleId) payload.id = ruleId;
   return payload;

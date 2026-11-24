@@ -42,7 +42,7 @@ interface FormState {
 
 const DEFAULTS: FormState = { sttProvider: 'elevenlabs', analysisProvider: 'google', analysisModel: 'gemini-3.8-flash', language: 'spa', dualTranscribe: true, autoTranscribe: true, autoAnalyze: true, apply: 'suggest', threshold: 0.8, minDuration: 5 };
 
-const selectCls = 'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200';
+const selectCls = 'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm';
 
 export function CallAiPolicyCard({ className }: { className?: string }) {
   const [form, setForm] = useState<FormState>(DEFAULTS);
@@ -128,11 +128,11 @@ export function CallAiPolicyCard({ className }: { className?: string }) {
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base"><Sparkles size={16} className="text-purple-600 dark:text-purple-400" /> Inteligencia de llamadas</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-base"><Sparkles size={16} className="text-brand" /> Inteligencia de llamadas</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
-          <p className="flex items-center gap-2 text-sm text-gray-500"><Loader2 size={14} className="animate-spin" /> Cargando…</p>
+          <p className="flex items-center gap-2 text-sm text-fg-secondary"><Loader2 size={14} className="animate-spin" /> Cargando…</p>
         ) : (
           <fieldset disabled={!canEdit || saving} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
@@ -175,7 +175,7 @@ export function CallAiPolicyCard({ className }: { className?: string }) {
             </div>
             <div>
               <Label htmlFor="threshold" className="mb-1 block">Umbral para mover etapa ({Math.round(form.threshold * 100)} %)</Label>
-              <input id="threshold" type="range" min={50} max={100} step={5} value={Math.round(form.threshold * 100)} onChange={(e) => setForm((f) => ({ ...f, threshold: Number(e.target.value) / 100 }))} className="w-full accent-blue-600" />
+              <input id="threshold" type="range" min={50} max={100} step={5} value={Math.round(form.threshold * 100)} onChange={(e) => setForm((f) => ({ ...f, threshold: Number(e.target.value) / 100 }))} className="w-full accent-brand" />
             </div>
             <div>
               <Label htmlFor="min-dur" className="mb-1 block">Duración mínima (s)</Label>
@@ -186,13 +186,13 @@ export function CallAiPolicyCard({ className }: { className?: string }) {
               ['autoTranscribe', 'Transcribir automáticamente al terminar la llamada'],
               ['autoAnalyze', 'Analizar automáticamente al transcribir'],
             ] as const).map(([k, label]) => (
-              <div key={k} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 px-3 py-2 dark:border-gray-700 sm:col-span-2">
+              <div key={k} className="flex items-center justify-between gap-2 rounded-md border border-line px-3 py-2 sm:col-span-2">
                 <Label htmlFor={`sw-${k}`} className="text-sm">{label}</Label>
                 <Switch id={`sw-${k}`} checked={form[k]} onCheckedChange={(v) => setForm((f) => ({ ...f, [k]: v }))} />
               </div>
             ))}
             <div className="flex items-center justify-between sm:col-span-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">{canEdit ? 'Se guarda en provider_configs (stt / analysis).' : 'Solo administradores pueden modificar la política.'}</p>
+              <p className="text-xs text-fg-secondary">{canEdit ? 'Se guarda en provider_configs (stt / analysis).' : 'Solo administradores pueden modificar la política.'}</p>
               <Button type="button" onClick={save} disabled={!canEdit || saving}>
                 {saving ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />} Guardar
               </Button>

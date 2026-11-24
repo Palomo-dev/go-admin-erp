@@ -62,8 +62,19 @@ export interface OpportunityFormProps {
   /** Ola 3B: cliente elegido fuera del formulario (`CustomerLinkPicker`): se copia a `customer_id`. */
   clienteId?: string | null;
   onElegirCliente?: () => void;
-  /** Ola 3B (página): suma de las líneas; si hay líneas, es el monto. */
+  /** Total de las líneas (con impuestos); si hay líneas, es el monto y deja de ser manual. */
   montoCalculado?: number | null;
+  /** «Qué le vas a vender» (diálogo y hoja): entre Cliente y Negocio. */
+  seccionLineas?: ReactNode;
+  /** Texto del botón principal al crear («Crear oportunidad · $ 5.519.220»). */
+  textoCrear?: string;
+  /** Título y descripción propios (Leads › Calificar en lote). */
+  titulo?: string;
+  descripcion?: string;
+  clienteFijoTexto?: string;
+  debajoNombre?: (nombre: string) => ReactNode;
+  montoPlaceholder?: string;
+  montoAyuda?: string;
   onAgregarLineas?: () => void;
   lineasFactura?: { numero: string; lineas: readonly { concepto: string; cantidad: number; total: number }[] } | null;
   seccionesPagina?: ReactNode;
@@ -112,8 +123,8 @@ export function OpportunityForm(props: OpportunityFormProps) {
     props.onEnviar(modo === 'edit' ? cuerpoEdicion(v, { zona: timezone, expectedUpdatedAt: props.updatedAt }) : cuerpoAlta(v, { origen, zona: timezone, origenRef: props.origenRef }));
   };
 
-  const titulo = origen === 'lead' ? t('tituloLead') : modo === 'edit' ? t('tituloEditar') : t('titulo');
-  const descripcion = origen === 'lead' ? t('pasoLead') : origen !== 'general' ? t('descOrigen') : undefined;
+  const titulo = props.titulo ?? (origen === 'lead' ? t('tituloLead') : modo === 'edit' ? t('tituloEditar') : t('titulo'));
+  const descripcion = props.descripcion ?? (origen === 'lead' ? t('pasoLead') : origen !== 'general' ? t('descOrigen') : undefined);
   const IconoOrigen = ICONO_ORIGEN[origen];
   const prob = probabilidadDeEtapa(props.etapas, v.stage_id);
   const valorPonderado = ponderado(v.amount, prob);
@@ -151,6 +162,12 @@ export function OpportunityForm(props: OpportunityFormProps) {
         onElegirCliente={props.onElegirCliente}
         onAgregarLineas={props.onAgregarLineas}
         opcionResponsable={props.opcionResponsable}
+        trasCliente={layout !== 'page' ? props.seccionLineas : undefined}
+        montoDeLineas={typeof props.montoCalculado === 'number' && props.montoCalculado > 0}
+        clienteFijoTexto={props.clienteFijoTexto}
+        debajoNombre={props.debajoNombre}
+        montoPlaceholder={props.montoPlaceholder}
+        montoAyuda={props.montoAyuda}
       />
       {props.lineasFactura && <LineasCopiadas numero={props.lineasFactura.numero} lineas={props.lineasFactura.lineas} moneda={props.monedaBase} />}
       {layout === 'page' && props.seccionesPagina}
@@ -168,7 +185,7 @@ export function OpportunityForm(props: OpportunityFormProps) {
       <button type="button" onClick={cerrar} disabled={ocupado} className={clasesBoton({ variante: 'secundario' })}>{t('cancelar')}</button>
       <button type="button" onClick={enviar} disabled={ocupado} aria-busy={ocupado || undefined} className={clasesBoton()}>
         {ocupado && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
-        {modo === 'edit' ? t('guardar') : t('crear')}
+        {modo === 'edit' ? t('guardar') : props.textoCrear ?? t('crear')}
       </button>
     </>
   );

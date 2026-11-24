@@ -69,6 +69,8 @@ export interface ReferralCustomerRef {
   id: string;
   full_name: string | null;
   email?: string | null;
+  /** Solo en `referred`: alta de la ficha (al convertir, es el alta del lead). */
+  created_at?: string | null;
 }
 
 export interface ReferralProgramRef {
@@ -132,7 +134,7 @@ export interface ReferralRequest {
 
 const REFERRAL_SELECT = `*,
   referrer:customers!referrals_referrer_customer_id_fkey(id, full_name, email),
-  referred:customers!referrals_referred_customer_id_fkey(id, full_name),
+  referred:customers!referrals_referred_customer_id_fkey(id, full_name, created_at),
   program:referral_programs(id, name, reward_type, reward_amount, reward_to, is_active),
   opportunity:opportunities(id, name, status, record_type)`;
 

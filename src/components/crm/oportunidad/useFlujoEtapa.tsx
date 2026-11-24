@@ -17,6 +17,7 @@ import type { OpportunityData } from '@/lib/services/crm/wonCloseSteps';
 import { editarOportunidad, ganarOportunidad, leerMotivosPerdida, leerOportunidad, moverEtapa, perderOportunidad } from './apiOportunidades';
 import { etapasDeOportunidad, interpretarRechazo, puedeEditarOportunidad, type EtapaApi, type OportunidadApi, type PermisosPantalla } from './oportunidadLogica';
 import { crearDepsGanar, documentosDe, ejecutarPasosGanar, pasosElegidos } from './pasosGanar';
+import { usePasosGanar } from './lineas/usePasosGanar';
 
 /**
  * Flujo ÚNICO de cambio de etapa (plan §4.8: «un solo useStageFlow para
@@ -56,6 +57,9 @@ export function useFlujoEtapa({ etapas, permisos, usuarioId, onHecho, onRevertir
   const moneda = useMonedaOrganizacion();
   const sucursal = useBranchOpcional()?.branchFilter ?? null;
   const [modo, setModo] = useState<Modo | null>(null);
+  // «Ganar»: pasos derivados de las líneas de la oportunidad (Figma 1787:900392).
+  const opGanar = modo?.tipo === 'ganar' ? modo.op : null;
+  const ganarDerivado = usePasosGanar(opGanar?.id ?? null, moneda.paraDocumento(opGanar?.currency), opGanar?.cliente_nombre ?? null);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [motivos, setMotivos] = useState<MotivoPerdida[] | null>(null);
@@ -208,6 +212,8 @@ export function useFlujoEtapa({ etapas, permisos, usuarioId, onHecho, onRevertir
         monedaBase={moneda}
         monedas={op.currency ? [op.currency] : []}
         stageId={modo.stageId}
+        pasos={ganarDerivado.pasos}
+        resumenLineas={ganarDerivado.resumen}
         onGanar={(c) => alGanar(op, c)}
         onVerFactura={(d) => d.href && window.open(d.href, '_self')}
       />

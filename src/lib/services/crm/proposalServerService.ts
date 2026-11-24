@@ -27,6 +27,7 @@ import {
   type DiscoveryFieldLite,
 } from '@/lib/services/crm/proposalNarrative';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
+import { esRetencion } from '@/lib/services/taxResolverCore';
 
 export interface ProposalContextData {
   opportunityId: string;
@@ -113,9 +114,18 @@ export async function loadProposalContext(orgId: number, opportunityId: string, 
       ? supabase.from('verticals').select('id, slug').eq('id', o.vertical_id as string).eq('organization_id', orgId).maybeSingle()
       : Promise.resolve({ data: null }),
     supabase.from('opportunity_objections').select('resolved, notes, objection:objections(title, recommended_response)').eq('opportunity_id', opportunityId).eq('organization_id', orgId),
-    supabase.from('opportunity_products').select('product_id, quantity, unit_price, total_price, product:products(name, sku)').eq('opportunity_id', opportunityId),
-    supabase.from('opportunity_custom_lines').select('concept, quantity, unit_price, total_price').eq('opportunity_id', opportunityId),
+    supabase
+      .from('opportunity_products')
+      .select('product_id, quantity, unit_price, total_price, modifiers, notes, created_at, product:products(name, sku, product_tax_relations(organization_taxes(rate, kind, is_active, tax_templates(code))))')
+      .eq('opportunity_id', opportunityId)
+      .order('created_at'),
+    supabase.from('opportunity_custom_lines').select('concept, quantity, unit_price, total_price').eq('opportunity_id', opportunityId).order('created_at'),
   ]);
+  const { data: espacios } = await supabase
+    .from('opportunity_spaces')
+    .select('nights, unit_price, total_price, checkin_date, checkout_date, rate_plan, created_at, tipo:space_types(name), espacio:spaces(label)')
+    .eq('opportunity_id', opportunityId)
+    .order('created_at');
 
   const customer = (customerRes as { data: Record<string, unknown> | null }).data;
   const vertical = (verticalRes as { data: Record<string, unknown> | null }).data;
@@ -155,7 +165,31 @@ export async function loadProposalContext(orgId: number, opportunityId: string, 
     const pr = Array.isArray(prod) ? prod[0] : prod;
     const qty = Number(p.quantity) || 1;
     const unit = Number(p.unit_price) || 0;
-    lines.push({ description: String(pr?.name ?? `Producto #${p.product_id}`), qty, unit_price: unit, total: Number(p.total_price) || qty * unit });
+    // Modificadores en la descripción (no mueven stock) e impuestos del producto, para que la
+    // cotización y la factura lleven la variante (product_id), su impuesto y lo elegido.
+    const mods = Array.isArray(p.modifiers) ? (p.modifiers as { name?: unknown }[]).map((m) => String(m?.name ?? '')).filter(Boolean) : [];
+    const nombre = String(pr?.name ?? `Producto #${p.product_id}`);
+    const impuesto = impuestoDeProducto(pr?.product_tax_relations);
+    lines.push({
+      description: [mods.length ? `${nombre} (${mods.join(', ')})` : nombre, typeof p.notes === 'string' && p.notes ? p.notes : null].filter(Boolean).join(' — '),
+      qty,
+      unit_price: unit,
+      total: Number(p.total_price) || qty * unit,
+      product_id: Number(p.product_id) || null,
+      tax_rate: impuesto.tasa,
+      tax_code: impuesto.codigo,
+    });
+  }
+  for (const s of ((espacios ?? []) as Record<string, unknown>[])) {
+    const rel = (k: string) => {
+      const v = s[k] as Record<string, unknown> | Record<string, unknown>[] | null;
+      return Array.isArray(v) ? v[0] : v;
+    };
+    const noches = Number(s.nights) || 1;
+    const unit = Number(s.unit_price) || 0;
+    const nombre = String(rel('tipo')?.name ?? rel('espacio')?.label ?? 'Hospedaje');
+    const fechas = s.checkin_date && s.checkout_date ? ` ${String(s.checkin_date)} → ${String(s.checkout_date)}` : '';
+    lines.push({ description: `${nombre}${fechas}${s.rate_plan ? ` · ${String(s.rate_plan)}` : ''}`, qty: noches, unit_price: unit, total: Number(s.total_price) || noches * unit });
   }
   for (const c of ((customRes as { data: Record<string, unknown>[] | null }).data ?? [])) {
     const qty = Number(c.quantity) || 1;
@@ -214,9 +248,23 @@ async function sucursalPropuesta(orgId: number, branchId: number | null, supabas
   return (data as { id: number } | null)?.id ?? null;
 }
 
+/** Impuestos activos del producto (sin retenciones): tarifa sumada y el código si es uno solo. */
+function impuestoDeProducto(rel: unknown): { tasa: number; codigo: string | null } {
+  const filas = (Array.isArray(rel) ? rel : [])
+    .map((r) => {
+      const t = (r as { organization_taxes?: unknown }).organization_taxes;
+      return (Array.isArray(t) ? t[0] : t) as { rate?: number | string | null; kind?: string | null; is_active?: boolean | null; tax_templates?: { code?: string | null } | { code?: string | null }[] | null } | null;
+    })
+    .filter((f): f is NonNullable<typeof f> => !!f && f.is_active !== false && !esRetencion(f as Parameters<typeof esRetencion>[0]));
+  const tasa = Math.round(filas.reduce((s, f) => s + (Number(f.rate) || 0), 0) * 10000) / 10000;
+  const plantilla = filas.length === 1 ? (Array.isArray(filas[0].tax_templates) ? filas[0].tax_templates[0] : filas[0].tax_templates) : null;
+  return { tasa: tasa > 0 && tasa <= 100 ? tasa : 0, codigo: plantilla?.code ?? null };
+}
+
 /**
- * Líneas de la propuesta en la forma de `fn_cotizacion_guardar`: sin impuesto
- * (como antes) y con el total de la oportunidad respetado — si la línea trae un
+ * Líneas de la propuesta en la forma de `fn_cotizacion_guardar`: con la
+ * variante (`product_id`) y el impuesto de cada producto (Figma 1764:134618:
+ * «pasar product_id, impuestos y modificadores») y con el total de la oportunidad respetado — si la línea trae un
  * total menor que cantidad × precio, la diferencia es descuento. Sin líneas,
  * una sola con el valor de la oportunidad, para que cabecera y líneas cuadren.
  */
@@ -234,7 +282,9 @@ function lineasPropuesta(ctx: ProposalContextData): Array<Record<string, unknown
       qty,
       unit_price: Math.max(unit, 0),
       discount_amount: total < bruto ? Math.round((bruto - total) * 100) / 100 : 0,
-      tax_rate: 0,
+      ...(l.product_id ? { product_id: l.product_id } : {}),
+      tax_rate: l.tax_rate ?? 0,
+      ...(l.tax_code ? { tax_code: l.tax_code } : {}),
       tax_included: false,
     };
   });

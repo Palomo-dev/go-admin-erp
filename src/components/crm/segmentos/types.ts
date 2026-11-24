@@ -11,6 +11,11 @@ export interface Segment {
   is_dynamic: boolean;
   customer_count: number;
   last_run_at: string | null;
+  /** Foto de miembros de un estático (`segment_members`). */
+  members_snapshotted_at?: string | null;
+  /** Desglose por canal del último recálculo (ver `segmentosConteosLogica`). */
+  counts_json?: unknown;
+  counted_at?: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;

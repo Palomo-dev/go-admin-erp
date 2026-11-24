@@ -20,7 +20,6 @@ import {
   type ActionFieldDef,
 } from '@/lib/services/crm/automation/ruleCatalog';
 import type { FormError, RuleAction } from '@/lib/services/crm/automation/ruleEditorModel';
-import { SELECT_CLASS } from './TriggerBlock';
 import type { RuleLookups } from './useRuleLookups';
 import { useTranslations } from 'next-intl';
 
@@ -36,7 +35,9 @@ interface Props {
   onRemove: () => void;
 }
 
-const LABEL_CLASS = 'text-xs text-gray-700 dark:text-gray-300';
+const LABEL_CLASS = 'text-xs text-fg-secondary';
+const SELECT_CLASS =
+  'h-10 w-full rounded-lg border border-line-strong bg-surface px-2 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 export function ActionChipEditor({ index, total, action, lookups, errors, onPatch, onChangeType, onMove, onRemove }: Props) {
   const t = useTranslations('crm.automatizaciones');
@@ -103,15 +104,15 @@ export function ActionChipEditor({ index, total, action, lookups, errors, onPatc
         {usesEntity
           ? <span className={`block font-medium ${LABEL_CLASS}`}>{f.label}</span>
           : <Label htmlFor={id(f.key)} className={LABEL_CLASS}>{f.label}</Label>}
-        {lookups.loading && usesEntity ? <p className="text-xs text-gray-600 dark:text-gray-400">{t('actionChipEditor.cargando')}</p> : control}
-        {f.hint && <p id={`${id(f.key)}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{f.hint}</p>}
-        {err && <p id={`${id(f.key)}-error`} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{err}</p>}
+        {lookups.loading && usesEntity ? <p className="text-xs text-fg-secondary">{t('actionChipEditor.cargando')}</p> : control}
+        {f.hint && <p id={`${id(f.key)}-hint`} className="mt-1 text-xs text-fg-secondary">{f.hint}</p>}
+        {err && <p id={`${id(f.key)}-error`} role="alert" className="mt-1 text-xs text-danger-text">{err}</p>}
       </div>
     );
   };
 
   return (
-    <div className="min-w-0 rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+    <div className="min-w-0">
       {/* UX móvil: el selector de tipo ocupa toda la fila y los botones van debajo; en línea desde `sm`. */}
       <div className="flex flex-wrap items-end gap-2">
         <div className="w-full min-w-0 sm:w-auto sm:min-w-[200px] sm:flex-1">
@@ -121,7 +122,7 @@ export function ActionChipEditor({ index, total, action, lookups, errors, onPatc
               <option key={c.type} value={c.type}>{c.implemented ? c.label : t('actionChipEditor.noDisponible', { label: c.label })}</option>
             ))}
           </select>
-          <p id={`${id('type')}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{entry?.hint}</p>
+          <p id={`${id('type')}-hint`} className="mt-1 text-xs text-fg-secondary">{entry?.hint}</p>
         </div>
         <div className="flex items-center gap-0.5">
           <Button id={id('move-up')} type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={t('actionChipEditor.subirAccion', { n: index + 1 })} disabled={index === 0} onClick={() => onMove('up')}>
@@ -130,14 +131,14 @@ export function ActionChipEditor({ index, total, action, lookups, errors, onPatc
           <Button id={id('move-down')} type="button" size="icon" variant="ghost" className="h-8 w-8" aria-label={t('actionChipEditor.bajarAccion', { n: index + 1 })} disabled={index >= total - 1} onClick={() => onMove('down')}>
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="h-8 text-red-700 hover:text-red-800 dark:text-red-300" onClick={onRemove}>
+          <Button type="button" size="sm" variant="ghost" className="h-8 text-danger-text hover:text-danger-text" onClick={onRemove}>
             <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" /> {t('actionChipEditor.quitar')}
           </Button>
         </div>
       </div>
 
       {entry && !entry.implemented && (
-        <p role="alert" className="mt-2 flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-300">
+        <p role="alert" className="mt-2 flex items-center gap-1.5 text-xs text-warning-text">
           <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
           {t('actionChipEditor.estaAccionTodaviaNo')}
         </p>

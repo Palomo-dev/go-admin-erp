@@ -2,17 +2,19 @@
 
 /**
  * Listado de Llamadas — /app/crm/llamadas (Figma 1351:18 listo, 1358:17
- * cargando, 1358:1082 vacío, 1358:1687 error; 1363:20 detalle).
+ * cargando, 1358:1082 vacío, 1358:1687 error). Una fila abre su detalle en
+ * /app/crm/llamadas/[id] (Figma 1363:20, página propia: `LlamadaDetalle`).
  *
  * Todo del kit: `PageHeader`, `StatCard`, `ListToolbar`, `DataTable` (con sus
  * estados cargando / vacío / sin resultados / error / sin permiso y tarjetas en
- * móvil), `Pagination` y `HojaDetalle`. Una sola petición (`GET /api/crm/calls`
+ * móvil) y `Pagination`. Una sola petición (`GET /api/crm/calls`
  * → RPC `crm_calls_list`) trae filas, total y cifras con el MISMO ámbito: los
  * filtros, el permiso `crm.calls.view_all` y la sucursal, resueltos en la base.
  * La búsqueda también encuentra palabras dichas en la llamada (transcripción).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, ArrowUp, Download, Phone, PhoneOutgoing, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/kit/PageHeader';
@@ -20,17 +22,13 @@ import { KpiStrip } from '@/components/kit/KpiStrip';
 import { StatCard } from '@/components/kit/StatCard';
 import { DataTable, type ColumnaTabla, type EstadoTabla } from '@/components/kit/DataTable';
 import { Pagination } from '@/components/kit/Pagination';
-import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatoEntero, useEtiquetaRango } from '@/components/kit/useIdiomaKit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { addPlainDays } from '@/lib/utils/dateDisplay';
 import type { CallListRow } from '@/lib/services/crm/callManagementService';
-import { pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { CallsFilters } from './CallsFilters';
-import { CallRowDetail } from './CallRowDetail';
-import { CallButton } from './CallButton';
 import {
   ClienteLlamada,
   FechaLlamada,
@@ -54,7 +52,6 @@ import {
   numeroContraparte,
   parametrosLlamadas,
   porcentaje,
-  tipoDeLlamada,
   type CallsTableFilters,
 } from './callsListadoLogica';
 import { abrirMarcador } from './softphoneUi';
@@ -69,31 +66,16 @@ const PAGINAS_EXPORTAR = 50;
 interface CallsTableProps {
   initialFilters?: Partial<CallsTableFilters>;
   limit?: number;
-  /** Abre esta llamada en la hoja de detalle (deep link `?call=`). */
-  openCallId?: string | null;
   /** Al cambiar, recarga (p. ej. al cerrar el diálogo de disposición). */
   refreshKey?: number;
-  /** Se llama al cerrar la hoja (la página quita `?call=` de la URL). */
-  onCerrarLlamada?: () => void;
 }
 
-/** Fila mínima para el deep link cuando la llamada no está en la página visible. */
-function filaDesdeDetalle(d: Record<string, unknown>): CallListRow {
-  const consents = (d.consents as { consent_type: string; method: string }[] | undefined) ?? [];
-  return {
-    ...(d as unknown as CallListRow),
-    customer: null,
-    opportunity: null,
-    user: null,
-    recordings: ((d.recordings as CallListRow['recordings'] | undefined) ?? []).filter((r) => r.status !== 'deleted'),
-    disposition_outcome: ((d.metadata as Record<string, unknown> | undefined)?.disposition_outcome as string | undefined) ?? null,
-    consent_method: consents.find((c) => c.consent_type === 'recording')?.method ?? null,
-    sentiment: null,
-  };
-}
+/** Ruta del detalle de una llamada (Figma 1363:20). */
+export const rutaDetalleLlamada = (id: string) => `/app/crm/llamadas/${encodeURIComponent(id)}`;
 
-export function CallsTable({ initialFilters, limit = 25, openCallId, refreshKey = 0, onCerrarLlamada }: CallsTableProps) {
+export function CallsTable({ initialFilters, limit = 25, refreshKey = 0 }: CallsTableProps) {
   const t = useTranslations('crm.llamadas');
+  const router = useRouter();
   const entero = useFormatoEntero();
   const etiquetaRango = useEtiquetaRango();
   const { getToday, formatDateTime } = useFormatDate();
@@ -103,7 +85,6 @@ export function CallsTable({ initialFilters, limit = 25, openCallId, refreshKey 
   const [pagina, setPagina] = useState(1);
   const [tamano, setTamano] = useState(limit);
   const [revision, setRevision] = useState(0);
-  const [abierta, setAbierta] = useState<CallListRow | null>(null);
   const [exportando, setExportando] = useState(false);
   const [errorExportar, setErrorExportar] = useState(false);
   const abortExportar = useRef<AbortController | null>(null);
@@ -127,26 +108,7 @@ export function CallsTable({ initialFilters, limit = 25, openCallId, refreshKey 
     if (result && pagina > ultima) setPagina(ultima);
   }, [result, total, tamano, pagina]);
 
-  // Deep link `?call=`: primero la fila visible; si no está, se lee la llamada.
-  useEffect(() => {
-    if (!openCallId) return;
-    const enPagina = result?.data.find((c) => c.id === openCallId);
-    if (enPagina) {
-      setAbierta(enPagina);
-      return;
-    }
-    if (loading) return;
-    const ctrl = new AbortController();
-    pedirCrm<Record<string, unknown>>(`/api/crm/calls/${encodeURIComponent(openCallId)}`, { signal: ctrl.signal })
-      .then(({ data }) => !ctrl.signal.aborted && setAbierta(filaDesdeDetalle(data)))
-      .catch(() => undefined);
-    return () => ctrl.abort();
-  }, [openCallId, result, loading]);
-
-  const cerrar = useCallback(() => {
-    setAbierta(null);
-    onCerrarLlamada?.();
-  }, [onCerrarLlamada]);
+  const abrir = (c: CallListRow) => router.push(rutaDetalleLlamada(c.id));
 
   const exportar = async () => {
     if (abortExportar.current) return;
@@ -185,7 +147,7 @@ export function CallsTable({ initialFilters, limit = 25, openCallId, refreshKey 
     { id: 'duracion', encabezado: t('columnas.duracion'), ancho: '7%', celda: (c) => formatDuration(c.duration_seconds), className: 'tabular-nums text-[13px]' },
     { id: 'resultado', encabezado: t('columnas.resultado'), ancho: '14%', celda: (c) => <ResultadoLlamada call={c} /> },
     { id: 'sentimiento', encabezado: t('columnas.sentimiento'), ancho: '10%', celda: (c) => <SentimientoLlamada call={c} /> },
-    { id: 'grabacion', encabezado: t('columnas.grabacion'), ancho: '8%', celda: (c) => <GrabacionLlamada call={c} onOir={() => setAbierta(c)} /> },
+    { id: 'grabacion', encabezado: t('columnas.grabacion'), ancho: '8%', celda: (c) => <GrabacionLlamada call={c} onOir={() => abrir(c)} /> },
   ];
 
   const estado: EstadoTabla = error ? (forbidden ? 'sinPermiso' : 'error') : loading && !result ? 'cargando' : total > 0 ? 'listo' : filtrado ? 'sinResultados' : 'vacio';
@@ -285,10 +247,10 @@ export function CallsTable({ initialFilters, limit = 25, openCallId, refreshKey 
         obtenerId={(c) => c.id}
         etiqueta={t('titulo')}
         estado={estado}
-        onFilaClick={setAbierta}
+        onFilaClick={abrir}
         etiquetaFila={(c) => nombreContacto(c) ?? numeroContraparte(c)}
         atributosFila={datosContactoLlamada}
-        tarjetaMovil={(c) => <TarjetaLlamada call={c} onAbrir={() => setAbierta(c)} />}
+        tarjetaMovil={(c) => <TarjetaLlamada call={c} onAbrir={() => abrir(c)} />}
         termino={filters.q.trim() || undefined}
         vacio={{
           icono: PhoneOutgoing,
@@ -321,28 +283,6 @@ export function CallsTable({ initialFilters, limit = 25, openCallId, refreshKey 
         }
       />
 
-      <HojaDetalle
-        abierto={abierta !== null}
-        onAbiertoChange={(a) => !a && cerrar()}
-        titulo={abierta ? nombreContacto(abierta) ?? numeroContraparte(abierta) : t('titulo')}
-        subtitulo={abierta ? `${t(`tipos.${tipoDeLlamada(abierta)}`)} · ${formatDateTime(abierta.started_at ?? abierta.created_at)} · ${formatDuration(abierta.duration_seconds)}` : undefined}
-        insignia={abierta ? <ResultadoLlamada call={abierta} /> : undefined}
-        ancho={640}
-        pie={
-          abierta ? (
-            <CallButton
-              phoneNumber={numeroContraparte(abierta)}
-              customerId={abierta.customer?.id ?? abierta.customer_id ?? null}
-              opportunityId={abierta.opportunity_id ?? null}
-              displayName={nombreContacto(abierta)}
-              label={t('volverALlamar')}
-              variant="outline"
-            />
-          ) : undefined
-        }
-      >
-        {abierta && <CallRowDetail call={abierta} />}
-      </HojaDetalle>
     </div>
   );
 }

@@ -1225,15 +1225,20 @@ describe('F0 Guardarraíles', () => {
   // ninguno. La conducta se prueba EJECUTADA en ruleMutations.test.ts y
   // ruleEditorModel.test.ts; aquí solo queda el cableado, con regex que
   // toleran espacios, paréntesis, llaves y constantes intermedias.
+  //
+  // 2026-11-15 (Figma CRM 1373:17 / 1375:17): el editor dejó de ser una hoja
+  // lateral y pasó a página completa (`RuleBuilderPage`, rutas `nueva` y
+  // `[id]`), y el estado vacío ofrece plantillas probadas en lugar del
+  // ejemplo. R-1 (foco al cerrar la hoja) ya no aplica: no hay hoja que cierre;
+  // «Nueva regla» es un enlace a la ruta `nueva`. R-3 pasa a vigilar que las
+  // plantillas nacen PAUSADAS. R-4 y R-5 siguen, sobre los archivos nuevos.
   describe('Automatizaciones: estado tras una mutación y foco tras cerrar', () => {
     const dir = path.join(SRC_ROOT, 'components', 'crm', 'automatizaciones');
     const hook = readFile(path.join(dir, 'useAutomationRules.ts'));
     const page = readFile(path.join(dir, 'AutomatizacionesPage.tsx'));
-    const sheet = readFile(path.join(dir, 'RuleEditorSheet.tsx'));
+    const builder = readFile(path.join(dir, 'RuleBuilderPage.tsx'));
+    const bloques = readFile(path.join(dir, 'BloquesConstructor.tsx'));
 
-    // R-1: la hoja devuelve el foco al botón «Nueva regla» si el estado vacío se desmontó.
-    const RETURN_FOCUS = /useReturnFocus\s*\(\s*open\s*,\s*returnFocusFallback\s*\)/;
-    const FALLBACK_PROP = /returnFocusFallback\s*=\s*\{[^}]+\}/;
     // R-5: el bloque del disparador avisa del evento mudo sobre el formulario cargado.
     const MUTED = /mutedEvent\s*\(\s*form\s*\)/;
     // R-2 / M26: el hook no hace red ni estado por su cuenta; todo pasa por
@@ -1250,51 +1255,45 @@ describe('F0 Guardarraíles', () => {
       expect(hook).not.toMatch(/\bviewOf\b|\bupsertRule\b|\bwithoutRule\b/);
     });
 
-    test('R-2: el Alert de recarga fallida dice que se muestra la última lista conocida', () => {
+    test('R-2: el aviso de recarga fallida dice que se muestra la última lista conocida', () => {
       // El texto vive en messages (i18n): la página usa la clave cuando ya hubo
       // una carga buena, y la clave en español conserva la frase exigida.
-      expect(page).toMatch(/loaded\s*\?\s*t\('automatizacionesPage\.muestraUltimaListaConocida'\)/);
+      expect(page).toMatch(/error\s*&&\s*loaded[\s\S]{0,400}automatizacionesPage\.muestraUltimaListaConocida/);
       const es = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'messages', 'es.json'), 'utf8'));
       expect(es.crm.automatizaciones.automatizacionesPage.muestraUltimaListaConocida).toContain('Se muestra la última lista conocida');
     });
 
-    test('R-1: la hoja del editor tiene fallback de foco («Nueva regla») para cuando el estado vacío se desmontó', () => {
-      expect(sheet).toMatch(RETURN_FOCUS);
-      expect(page).toMatch(FALLBACK_PROP);
-      expect(page).toMatch(/newButtonRef\s*\.\s*current/);
+    test('R-1 (página): «Nueva regla» lleva a la ruta del constructor, que guarda por ruleMutations', () => {
+      expect(page).toMatch(/href=\{`\$\{BASE\}\/nueva`\}/);
+      expect(builder).toMatch(/\bsaveRule\s*\(\s*browserFetch\b/);
+      expect(builder).not.toMatch(DIRECT_FETCH);
     });
 
-    test('R-3: el estado vacío describe lo que el ejemplo hace de verdad (no promete una etapa que no lleva)', () => {
-      const empty = readFile(path.join(dir, 'RulesEmptyState.tsx'));
-      expect(empty).toMatch(/describeRule\s*\(\s*\{\s*\.\.\.EXAMPLE_FORM/);
-      expect(empty).not.toContain('entra en «Propuesta enviada»');
+    test('R-3: las plantillas del estado vacío nacen pausadas y con su template_key', () => {
+      const plantillas = fs.readFileSync(path.join(SRC_ROOT, 'lib', 'services', 'crm', 'automation', 'ruleTemplates.ts'), 'utf8');
+      expect(plantillas).toMatch(/is_active:\s*false/);
+      expect(plantillas).toMatch(/template_key:\s*clave/);
+      expect(page).toMatch(/<TarjetasPlantillaRegla\b/);
     });
 
     test('R-5: el bloque del disparador avisa del evento mudo sobre el formulario cargado (mutedEvent)', () => {
-      expect(readFile(path.join(dir, 'TriggerBlock.tsx'))).toMatch(MUTED);
+      expect(bloques).toMatch(MUTED);
     });
 
     test('R-4: sin requestAnimationFrame para mover el foco (con la ventana ocluida no dispara)', () => {
-      for (const f of ['RuleEditorSheet.tsx', 'ActionsBlock.tsx', 'ConditionsBlock.tsx']) {
-        expect({ f, raf: /requestAnimationFrame\s*\(/.test(readFile(path.join(dir, f))) }).toEqual({ f, raf: false });
+      for (const [f, src] of [['RuleBuilderPage.tsx', builder], ['BloquesConstructor.tsx', bloques]] as const) {
+        expect({ f, raf: /requestAnimationFrame\s*\(/.test(src) }).toEqual({ f, raf: false });
       }
     });
 
-    test('los guardarraíles de cadena toleran un reformateo (prettier): los cuatro rojos falsos de la ronda 3 son verdes', () => {
-      // Los dos primeros ya no tienen guardarraíl de texto: el hook no contiene
-      // esas líneas y su conducta se prueba ejecutada. Ningún regex de arriba
-      // los mira, y ningún regex de arriba se rompe con ellos.
+    test('los guardarraíles de cadena toleran un reformateo (prettier): los rojos falsos de la ronda 3 son verdes', () => {
       const reformatted = [
         'setRules(prev => upsertRule(prev, row))',
         'if (!loadedOnce.current) {\n  setLoading(true);\n}',
-        'const focusFallback = () => newButtonRef.current;\n<RuleEditorSheet returnFocusFallback={focusFallback} />',
         'const muted = mutedEvent( form );',
-        'const onCloseAutoFocus = useReturnFocus( open , returnFocusFallback )',
       ];
       expect(reformatted.filter((s) => DIRECT_FETCH.test(s) || OWN_STATE.test(s))).toEqual([]);
-      expect(reformatted[2]).toMatch(FALLBACK_PROP);
-      expect(reformatted[3]).toMatch(MUTED);
-      expect(reformatted[4]).toMatch(RETURN_FOCUS);
+      expect(reformatted[2]).toMatch(MUTED);
     });
   });
 
@@ -3998,6 +3997,9 @@ describe('44. Detalles en celular: una sola «←», la del MobileHeader del she
     'components/pms/checkout/CheckoutDialog.tsx': 1, // «Atrás» entre pasos del diálogo
     // `components/pos/promociones/nuevo/PromotionWizard.tsx` salió el 2026-11-24: Promociones V2
     // (Figma A2 2999:193484) es una sola pantalla, sin «Anterior» entre pasos.
+    // «Atrás» entre los pasos del editor de agente (hoja lateral): desde el 2026-11-21 el primer
+    // paso muestra «Cancelar» y los demás «Atrás»; no vuelve a la página padre.
+    'components/crm/agentes/AgentEditorDialog.tsx': 1,
   };
   const APP = path.join(SRC_ROOT, 'app', 'app');
   const FORMULARIO = new Set(['nuevo', 'nueva', 'crear', 'editar', 'new', 'edit', 'create']);

@@ -6,6 +6,5 @@ export { SoftphoneDock } from './SoftphoneDock';
 export { CallButton } from './CallButton';
 export { CallPlayer } from './CallPlayer';
 export { CallsTable } from './CallsTable';
-export { CallRowDetail } from './CallRowDetail';
 export { CallDispositionDialog } from './CallDispositionDialog';
 export { IncomingCallToast } from './IncomingCallToast';

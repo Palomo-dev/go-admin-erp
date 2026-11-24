@@ -3,9 +3,10 @@ import type { HealthBand } from '@/lib/services/crm/healthBands';
 import { bandLabel } from '@/lib/services/crm/healthBands';
 
 /**
- * Estilos por banda (F11). Contraste AA en ambos temas: texto pequeño con
- * `*-700` sobre blanco y `*-400` sobre gris 900; los badges usan `*-100/*-800`.
- * La banda SIEMPRE se comunica con icono + texto (`bandLabel`), nunca solo color.
+ * Estilos por banda (F11) con los tokens del sistema (sin `dark:`: los tokens
+ * ya cambian con el tema). La banda SIEMPRE se comunica con icono + texto
+ * (`bandLabel`), nunca solo con color. Los usan la ficha del cliente
+ * (`ClientHealthCard` y sus piezas) y la pantalla de Salud.
  */
 export interface BandStyle {
   label: string;
@@ -13,32 +14,37 @@ export interface BandStyle {
   ring: string;
   badge: string;
   bar: string;
+  /** Fondo suave (círculo del puntaje en la lista). */
+  soft: string;
   icon: LucideIcon;
 }
 
 export const BAND_STYLES: Record<HealthBand, BandStyle> = {
   green: {
     label: bandLabel('green'),
-    text: 'text-green-700 dark:text-green-400',
-    ring: 'stroke-green-600 dark:stroke-green-400',
-    badge: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
-    bar: 'bg-green-600 dark:bg-green-400',
+    text: 'text-success-text',
+    ring: 'stroke-success',
+    badge: 'bg-success-subtle text-success-text border-line-success',
+    bar: 'bg-success',
+    soft: 'bg-success-subtle',
     icon: CheckCircle2,
   },
   yellow: {
     label: bandLabel('yellow'),
-    text: 'text-amber-700 dark:text-amber-400',
-    ring: 'stroke-amber-600 dark:stroke-amber-400',
-    badge: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800',
-    bar: 'bg-amber-600 dark:bg-amber-400',
+    text: 'text-warning-text',
+    ring: 'stroke-warning',
+    badge: 'bg-warning-subtle text-warning-text border-line-warning',
+    bar: 'bg-warning',
+    soft: 'bg-warning-subtle',
     icon: CircleDot,
   },
   red: {
     label: bandLabel('red'),
-    text: 'text-red-700 dark:text-red-400',
-    ring: 'stroke-red-600 dark:stroke-red-400',
-    badge: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800',
-    bar: 'bg-red-600 dark:bg-red-400',
+    text: 'text-danger-text',
+    ring: 'stroke-danger',
+    badge: 'bg-danger-subtle text-danger-text border-line-danger',
+    bar: 'bg-danger',
+    soft: 'bg-danger-subtle',
     icon: AlertTriangle,
   },
 };

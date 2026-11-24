@@ -1,283 +1,87 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { FileDown, RefreshCw, Fingerprint } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { useOrganization, getOrganizationId } from '@/lib/hooks/useOrganization';
-import { cn } from '@/utils/Utils';
-import { useToast } from '@/components/ui/use-toast';
+/**
+ * Identidades del CRM (Figma CRM 1436:19, 1438:721 y 1438:1130): posibles
+ * duplicados y cómo se reconoce a cada cliente en cada canal. Todo se lee por
+ * `/api/crm/**` (organización y permisos en el servidor); fusionar y deshacer
+ * son RPC transaccionales (`crm_merge_customers`, `crm_unmerge_customer`).
+ */
 
-import { IdentidadesFiltros } from './IdentidadesFiltros';
-import { IdentidadesStats } from './IdentidadesStats';
-import { IdentidadesTable } from './IdentidadesTable';
-import { DuplicadosPanel } from './DuplicadosPanel';
-import { createIdentidadesService } from './IdentidadesService';
-import type { ChannelIdentity, IdentityFilters } from './types';
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { History, Merge, RefreshCw, X } from 'lucide-react';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { cn } from '@/utils/Utils';
+import { DuplicadosPanel, useDuplicados } from './DuplicadosPanel';
+import { IdentidadesCanalPanel } from './IdentidadesCanalPanel';
+
+type Pestana = 'duplicados' | 'canales';
 
 export function IdentidadesPage() {
-  // Mantiene cargada la organización activa (getOrganizationId la lee).
-  useOrganization();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  
-  const [filters, setFilters] = useState<IdentityFilters>({
-    search: '',
-    identityType: null,
-    channelId: null,
-    verified: null,
-    showDuplicates: false
-  });
-
-  // Datos para filtros
-  const [channels, setChannels] = useState<{ id: string; name: string; type: string }[]>([]);
-
-  // Datos
-  const [identities, setIdentities] = useState<ChannelIdentity[]>([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    phone: 0,
-    email: 0,
-    whatsapp: 0,
-    verified: 0,
-    unverified: 0
-  });
-
-  // Estado para edición
-  const [editingIdentity, setEditingIdentity] = useState<ChannelIdentity | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const [editVerified, setEditVerified] = useState(false);
-
-  const loadData = useCallback(async () => {
-    const orgId = getOrganizationId();
-    const service = createIdentidadesService(orgId);
-
-    setRefreshing(true);
-    try {
-      const [channelsData, identitiesData, statsData] = await Promise.all([
-        service.getChannels(),
-        service.getIdentities(filters),
-        service.getStats()
-      ]);
-
-      setChannels(channelsData);
-      setIdentities(identitiesData);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las identidades',
-        variant: 'destructive'
-      });
-    } finally {
-      setRefreshing(false);
-      setLoading(false);
-    }
-  }, [filters, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleVerify = async (id: string) => {
-    const orgId = getOrganizationId();
-    const service = createIdentidadesService(orgId);
-    
-    const success = await service.verifyIdentity(id);
-    if (success) {
-      toast({
-        title: 'Identidad verificada',
-        description: 'La identidad ha sido marcada como verificada'
-      });
-      loadData();
-    } else {
-      toast({
-        title: 'Error',
-        description: 'No se pudo verificar la identidad',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleEdit = (identity: ChannelIdentity) => {
-    setEditingIdentity(identity);
-    setEditValue(identity.identity_value);
-    setEditVerified(identity.verified);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingIdentity) return;
-
-    const orgId = getOrganizationId();
-    const service = createIdentidadesService(orgId);
-    
-    const success = await service.updateIdentity(editingIdentity.id, {
-      identity_value: editValue,
-      verified: editVerified
-    });
-
-    if (success) {
-      toast({
-        title: 'Identidad actualizada',
-        description: 'Los cambios han sido guardados'
-      });
-      setEditingIdentity(null);
-      loadData();
-    } else {
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la identidad',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta identidad?')) return;
-
-    const orgId = getOrganizationId();
-    const service = createIdentidadesService(orgId);
-    
-    const success = await service.deleteIdentity(id);
-    if (success) {
-      toast({
-        title: 'Identidad eliminada',
-        description: 'La identidad ha sido eliminada'
-      });
-      loadData();
-    } else {
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar la identidad',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleExportCSV = async () => {
-    const orgId = getOrganizationId();
-    const service = createIdentidadesService(orgId);
-    await service.exportToCSV(identities);
-    toast({
-      title: 'Exportación completada',
-      description: 'El archivo CSV ha sido descargado'
-    });
-  };
+  const t = useTranslations('crm.duplicados.pantalla');
+  const router = useRouter();
+  const [pestana, setPestana] = useState<Pestana>('duplicados');
+  const dup = useDuplicados();
+  const buscando = dup.estado === 'cargando';
+  const total = dup.datos?.grupos.length;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <Fingerprint className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-              Identidades Omnicanal
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-              Gestiona identidades y resuelve duplicados
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadData}
-            disabled={refreshing}
-          >
-            <RefreshCw className={cn('h-4 w-4 mr-2', refreshing && 'animate-spin')} />
-            Actualizar
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleExportCSV}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <FileDown className="h-4 w-4 mr-2" />
-            Exportar CSV
-          </Button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <IdentidadesStats stats={stats} loading={loading} />
-
-      {/* Filtros */}
-      <IdentidadesFiltros
-        filters={filters}
-        onFiltersChange={setFilters}
-        channels={channels}
+    <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={Merge}
+        migas={[{ etiqueta: t('migaCrm'), href: '/app/crm' }, { etiqueta: t('titulo') }]}
+        acciones={
+          <>
+            {dup.datos?.puedeFusionar && (
+              <Link href="/app/crm/identidades/historial" className={clasesBoton({ variante: 'secundario' })}>
+                <History aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('historial')}
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setPestana('duplicados');
+                dup.recargar();
+              }}
+              disabled={buscando}
+              className={clasesBoton()}
+            >
+              <RefreshCw aria-hidden="true" className={cn('size-4', buscando && 'animate-spin')} strokeWidth={1.5} />
+              {t('buscarAhora')}
+            </button>
+            <Link href="/app/crm" aria-label={t('cerrar')} title={t('cerrar')} className={clasesBoton({ variante: 'secundario', className: 'size-10 px-0' })}>
+              <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </Link>
+          </>
+        }
+        movil={{
+          titulo: t('titulo'),
+          menu: [
+            { id: 'buscar', etiqueta: t('buscarAhora'), icono: RefreshCw, onSelect: () => { setPestana('duplicados'); dup.recargar(); } },
+            ...(dup.datos?.puedeFusionar ? [{ id: 'historial', etiqueta: t('historial'), icono: History, onSelect: () => router?.push('/app/crm/identidades/historial') }] : []),
+          ],
+        }}
       />
 
-      {/* Contenido principal */}
-      {filters.showDuplicates ? (
-        // Duplicados y fusión: servidor y RPC transaccional (DuplicadosPanel).
-        <DuplicadosPanel onCambio={loadData} />
-      ) : (
-        <IdentidadesTable
-          identities={identities}
-          loading={loading}
-          onVerify={handleVerify}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      )}
+      <SegmentedControl<Pestana>
+        etiqueta={t('pestanas.etiqueta')}
+        valor={pestana}
+        onValorChange={setPestana}
+        className="self-start"
+        opciones={[
+          { valor: 'duplicados', etiqueta: t('pestanas.duplicados'), contador: total },
+          { valor: 'canales', etiqueta: t('pestanas.canales') },
+        ]}
+      />
 
-      {/* Diálogo de edición */}
-      <Dialog open={!!editingIdentity} onOpenChange={() => setEditingIdentity(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Identidad</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Input 
-                value={editingIdentity?.identity_type || ''} 
-                disabled 
-                className="bg-gray-100 dark:bg-gray-800"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Valor</Label>
-              <Input
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                placeholder="Teléfono, email, etc."
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Verificado</Label>
-              <Switch
-                checked={editVerified}
-                onCheckedChange={setEditVerified}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingIdentity(null)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEdit} className="bg-blue-600 hover:bg-blue-700">
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {pestana === 'duplicados' ? <DuplicadosPanel estado={dup.estado} datos={dup.datos} onRecargar={dup.recargar} /> : <IdentidadesCanalPanel />}
     </div>
   );
 }

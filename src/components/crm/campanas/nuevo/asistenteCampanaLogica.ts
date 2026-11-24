@@ -8,7 +8,9 @@
  *
  * El canal «Llamada con agente IA» no sigue aquí: su asistente propio (agente,
  * voz, topes, Ley 2300, RNE) vive en `/app/crm/campanas/voz/nueva`, y este le
- * pasa el segmento y el nombre ya elegidos.
+ * pasa el segmento y el nombre ya elegidos. Ese asistente usa el nombre; el
+ * segmento todavía no puede ser audiencia de llamadas (ver
+ * `FUENTES_NO_DISPONIBLES` en `voz/asistenteVozLogica.ts`) y solo avisa.
  */
 
 export const PASOS_ASISTENTE = ['audiencia', 'contenido', 'horario', 'revision'] as const;

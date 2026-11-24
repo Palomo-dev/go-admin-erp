@@ -17,13 +17,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { destinoDesdeRutaVieja, hrefConDialogo, RUTA_BASE_POR_DEFECTO } from '../config/dialogoUrl';
 import { pantallaAnterior } from './abrirConfiguracion';
 
-export function RedirigirAlDialogo() {
+interface Props {
+  /**
+   * Pantalla sobre la que se abre el diálogo si se entró directo por el enlace
+   * (sin pantalla previa en esta pestaña). Por defecto, Inicio; una página que
+   * se mudó de su módulo abre sobre el módulo (`/app/crm/salud`).
+   */
+  base?: string;
+}
+
+export function RedirigirAlDialogo({ base = RUTA_BASE_POR_DEFECTO }: Props = {}) {
   const router = useRouter();
   useEffect(() => {
     const { pathname, search, hash } = window.location;
     const destino = destinoDesdeRutaVieja(pathname, search, hash) ?? { seccionId: null };
-    router.replace(hrefConDialogo(pantallaAnterior() ?? RUTA_BASE_POR_DEFECTO, destino), { scroll: false });
-  }, [router]);
+    router.replace(hrefConDialogo(pantallaAnterior() ?? base, destino), { scroll: false });
+  }, [router, base]);
 
   return (
     <div className="space-y-4 p-4 lg:p-8" aria-busy="true">

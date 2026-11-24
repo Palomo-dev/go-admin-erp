@@ -1,148 +1,167 @@
 'use client';
 
 /**
- * Crear/editar un partner en hoja lateral: validación junto al campo con
- * `aria-describedby`, foco al primer error, 409 del servidor (correo repetido)
- * en un `Alert` con qué pasó, y retorno de foco al disparador o al fallback.
- * La tasa propia vacía = hereda la del tier (se guarda 0).
+ * Crear/editar un partner en hoja lateral (desde «Nuevo partner» del
+ * directorio y «Editar» de la ficha). Validación junto al campo
+ * (`validatePartnerForm`) con foco al primer error; los errores del servidor
+ * (correo repetido, nivel ajeno, sin permiso) se traducen por su `code`.
+ * La tasa propia vacía = hereda la del nivel (se guarda 0).
+ * Escribe por `/api/crm/partners/**` (admin/manager en el servidor).
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/components/ui/use-toast';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
-import type { PartnerTier, PartnerView } from '@/lib/services/crm/partnerService';
+import { PhoneInput } from '@/components/kit/PhoneInput';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { clasesBoton } from '@/components/kit/botonClases';
+import type { PartnerTier } from '@/lib/services/crm/partnerService';
 import { formatRate, partnerFormToPayload, partnerToForm, validatePartnerForm, type FieldError, type PartnerForm } from '@/lib/services/crm/partnerModel';
+import type { PartnerView } from '@/lib/services/crm/partnerService';
+import { claveErrorPartners } from './redPartnersErrores';
 
 const NO_TIER = '__none__';
 
-interface Props {
-  open: boolean;
-  partner: PartnerView | null;
-  tiers: PartnerTier[];
-  onOpenChange: (open: boolean) => void;
-  onSave: (payload: Record<string, unknown>, id?: string) => Promise<unknown>;
-  returnFocusFallback: () => HTMLElement | null;
+/** Clave i18n de cada mensaje de `validatePartnerForm` (los mensajes del modelo están en español). */
+function claveValidacion(e: FieldError<keyof PartnerForm>): string {
+  if (e.field === 'name') return 'editor.errores.nombre';
+  if (e.field === 'email') return e.message.includes('formato') ? 'editor.errores.correoFormato' : 'editor.errores.correo';
+  if (e.field === 'phone') return 'editor.errores.telefono';
+  return 'editor.errores.tasa';
 }
 
-export function PartnerEditor({ open, partner, tiers, onOpenChange, onSave, returnFocusFallback }: Props) {
+interface Props {
+  abierto: boolean;
+  partner: PartnerView | null;
+  tiers: PartnerTier[];
+  onAbiertoChange: (abierto: boolean) => void;
+  onGuardar: (payload: Record<string, unknown>, id?: string) => Promise<unknown>;
+}
+
+export function PartnerEditor({ abierto, partner, tiers, onAbiertoChange, onGuardar }: Props) {
+  const t = useTranslations('crm.redPartners');
   const [form, setForm] = useState<PartnerForm>(() => partnerToForm(null));
-  const [errors, setErrors] = useState<FieldError<keyof PartnerForm>[]>([]);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [focusId, setFocusId] = useState<string | null>(null);
-  const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
+  const [errores, setErrores] = useState<FieldError<keyof PartnerForm>[]>([]);
+  const [errorServidor, setErrorServidor] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [foco, setFoco] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!abierto) return;
     setForm(partnerToForm(partner));
-    setErrors([]);
-    setServerError(null);
-  }, [open, partner]);
+    setErrores([]);
+    setErrorServidor(null);
+  }, [abierto, partner]);
 
   useEffect(() => {
-    if (!focusId) return;
-    document.getElementById(focusId)?.focus();
-    setFocusId(null);
-  }, [focusId]);
+    if (!foco) return;
+    document.getElementById(foco)?.focus();
+    setFoco(null);
+  }, [foco]);
 
-  const update = (next: PartnerForm) => {
+  const actualizar = (next: PartnerForm) => {
     setForm(next);
-    if (errors.length) setErrors(validatePartnerForm(next));
+    if (errores.length) setErrores(validatePartnerForm(next));
   };
-  const errorOf = (f: keyof PartnerForm) => errors.find((e) => e.field === f)?.message;
-  const tier = tiers.find((t) => t.id === form.tier_id) ?? null;
+  const errorDe = (f: keyof PartnerForm) => {
+    const e = errores.find((x) => x.field === f);
+    return e ? t(claveValidacion(e)) : undefined;
+  };
+  const tier = tiers.find((x) => x.id === form.tier_id) ?? null;
 
-  const submit = async () => {
+  const enviar = async () => {
     const errs = validatePartnerForm(form);
-    setErrors(errs);
-    if (errs.length) return setFocusId(`partner-${errs[0].field}`);
-    setSaving(true);
-    setServerError(null);
+    setErrores(errs);
+    if (errs.length) return setFoco(`partner-${errs[0].field}`);
+    setGuardando(true);
+    setErrorServidor(null);
     try {
-      await onSave(partnerFormToPayload(form), partner?.id);
-      toast({ title: partner ? 'Partner actualizado' : 'Partner creado', description: `«${form.name.trim()}»${form.is_active ? '' : ' (inactivo)'}` });
-      onOpenChange(false);
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
-      setFocusId('partner-server-error');
+      await onGuardar(partnerFormToPayload(form), partner?.id);
+      toast({ title: partner ? t('editor.actualizado') : t('editor.creado'), description: form.name.trim() });
+      onAbiertoChange(false);
+    } catch (e) {
+      setErrorServidor(t(claveErrorPartners(e)));
+      setFoco('partner-server-error');
     } finally {
-      setSaving(false);
+      setGuardando(false);
     }
   };
 
-  const field = (key: keyof PartnerForm, label: string, extra: { type?: string; placeholder?: string; hint?: string } = {}) => {
-    const err = errorOf(key);
+  const campo = (key: keyof PartnerForm, etiqueta: string, extra: { type?: string; placeholder?: string; ayuda?: string } = {}) => {
+    const err = errorDe(key);
     const id = `partner-${key}`;
+    const describe = err ? `${id}-error` : extra.ayuda ? `${id}-hint` : undefined;
     return (
-      <div>
-        <Label htmlFor={id} className="text-xs text-gray-700 dark:text-gray-300">{label}</Label>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id} className="text-sm font-medium text-fg">{etiqueta}</Label>
         {extra.type === 'tel' ? (
-          <PhoneInput id={id} value={String(form[key])} autoComplete="off" aria-invalid={!!err} showValidation={false}
-            aria-describedby={err ? `${id}-error` : extra.hint ? `${id}-hint` : undefined} onChange={(v) => update({ ...form, [key]: v })} />
+          <PhoneInput id={id} value={String(form[key])} autoComplete="off" aria-invalid={!!err} showValidation={false} aria-describedby={describe} onChange={(v) => actualizar({ ...form, [key]: v })} />
         ) : (
-        <Input id={id} type={extra.type ?? 'text'} value={String(form[key])} placeholder={extra.placeholder} autoComplete="off" aria-invalid={!!err}
-          aria-describedby={err ? `${id}-error` : extra.hint ? `${id}-hint` : undefined} onChange={(e) => update({ ...form, [key]: e.target.value })} />
+          <Input id={id} type={extra.type ?? 'text'} value={String(form[key])} placeholder={extra.placeholder} autoComplete="off" aria-invalid={!!err} aria-describedby={describe} onChange={(e) => actualizar({ ...form, [key]: e.target.value })} />
         )}
-        {err ? <p id={`${id}-error`} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{err}</p>
-          : extra.hint ? <p id={`${id}-hint`} className="mt-1 text-xs text-gray-600 dark:text-gray-400">{extra.hint}</p> : null}
+        {err ? (
+          <p id={`${id}-error`} role="alert" className="text-xs text-danger-text">{err}</p>
+        ) : extra.ayuda ? (
+          <p id={`${id}-hint`} className="text-xs text-fg-secondary">{extra.ayuda}</p>
+        ) : null}
       </div>
     );
   };
 
   return (
-    <Sheet open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">{partner ? `Editar «${partner.name}»` : 'Nuevo partner'}</SheetTitle>
-          <SheetDescription className="text-gray-600 dark:text-gray-400">Consultor, integrador o revendedor que trae o cierra deals. Su comisión queda registrada por deal; aquí no se paga nada.</SheetDescription>
+    <Sheet open={abierto} onOpenChange={(next) => { if (!guardando) onAbiertoChange(next); }}>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 bg-canvas p-0 sm:max-w-xl">
+        <SheetHeader className="text-left border-b border-line bg-surface px-6 pr-8 py-4">
+          <SheetTitle className="text-fg">{partner ? t('editor.tituloEditar', { nombre: partner.name }) : t('editor.tituloNuevo')}</SheetTitle>
+          <SheetDescription className="text-fg-secondary">{t('editor.descripcion')}</SheetDescription>
         </SheetHeader>
-        <form className="flex-1 space-y-4 overflow-y-auto px-6 py-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-          {field('name', 'Nombre', { placeholder: 'Carlos Consultor' })}
-          {field('company_name', 'Empresa (opcional)')}
+        <form className="flex-1 space-y-4 overflow-y-auto px-6 py-4" noValidate onSubmit={(e) => { e.preventDefault(); void enviar(); }}>
+          {campo('name', t('editor.nombre'))}
+          {campo('company_name', t('editor.empresa'))}
           <div className="grid gap-4 sm:grid-cols-2">
-            {field('email', 'Correo', { type: 'email', hint: 'Único por organización.' })}
-            {field('phone', 'Teléfono (opcional)', { type: 'tel' })}
+            {campo('email', t('editor.correo'), { type: 'email', ayuda: t('editor.correoAyuda') })}
+            {campo('phone', t('editor.telefono'), { type: 'tel' })}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="partner-tier_id" className="text-xs text-gray-700 dark:text-gray-300">Tier</Label>
-              <Select value={form.tier_id || NO_TIER} onValueChange={(v) => update({ ...form, tier_id: v === NO_TIER ? '' : v })}>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="partner-tier_id" className="text-sm font-medium text-fg">{t('editor.nivel')}</Label>
+              <Select value={form.tier_id || NO_TIER} onValueChange={(v) => actualizar({ ...form, tier_id: v === NO_TIER ? '' : v })}>
                 <SelectTrigger id="partner-tier_id" className="text-left [&>span]:line-clamp-1" aria-describedby="partner-tier-hint"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NO_TIER}>Sin tier</SelectItem>
-                  {tiers.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} · {formatRate(t.commission_rate)}</SelectItem>)}
+                  <SelectItem value={NO_TIER}>{t('nivel.sinNivel')}</SelectItem>
+                  {tiers.map((x) => <SelectItem key={x.id} value={x.id}>{x.name} · {formatRate(x.commission_rate)}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <p id="partner-tier-hint" className="mt-1 text-xs text-gray-600 dark:text-gray-400">Sube solo al registrar deals que cumplan los umbrales; bajar es manual, aquí.</p>
+              <p id="partner-tier-hint" className="text-xs text-fg-secondary">{t('editor.nivelAyuda')}</p>
             </div>
-            {field('commission_rate', 'Comisión propia % (opcional)', { type: 'number', placeholder: tier ? `Hereda ${formatRate(tier.commission_rate)}` : 'Sin tier: 0 %', hint: 'Vacío = usa la tasa del tier. Si se indica, manda sobre la del tier.' })}
+            {campo('commission_rate', t('editor.tasaPropia'), {
+              type: 'number',
+              placeholder: tier ? t('editor.heredaTasa', { tasa: formatRate(tier.commission_rate) }) : t('editor.sinNivelTasa'),
+              ayuda: t('editor.tasaAyuda'),
+            })}
           </div>
-          {serverError && (
-            <Alert id="partner-server-error" variant="destructive" tabIndex={-1}>
-              <AlertTitle>No se pudo guardar</AlertTitle>
-              <AlertDescription>{serverError}</AlertDescription>
-            </Alert>
+          {errorServidor && (
+            <div id="partner-server-error" tabIndex={-1}>
+              <AvisoTonal tono="peligro" titulo={t('editor.errorGuardar')} descripcion={errorServidor} rol="alert" />
+            </div>
           )}
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Guardar</button>
+          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">{t('editor.guardar')}</button>
         </form>
-        <SheetFooter className="gap-3 border-t border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 sm:justify-between">
+        <SheetFooter className="gap-3 border-t border-line bg-surface px-6 py-3 sm:justify-between">
           <div className="flex items-center gap-2 self-center">
-            <Switch id="partner-is_active" checked={form.is_active} disabled={saving} onCheckedChange={(v) => update({ ...form, is_active: v })} />
-            <Label htmlFor="partner-is_active" className="text-sm text-gray-900 dark:text-gray-100">{form.is_active ? 'Activo' : 'Inactivo'}</Label>
+            <Switch id="partner-is_active" checked={form.is_active} disabled={guardando} onCheckedChange={(v) => actualizar({ ...form, is_active: v })} />
+            <Label htmlFor="partner-is_active" className="text-sm text-fg">{form.is_active ? t('estado.activo') : t('estado.inactivo')}</Label>
           </div>
-          <div className="flex gap-2 [&>button]:h-11 [&>button]:flex-1 sm:[&>button]:h-9 sm:[&>button]:flex-none">
-            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
-              {saving ? 'Guardando…' : partner ? 'Guardar cambios' : 'Crear partner'}
-            </Button>
+          <div className="flex gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
+            <button type="button" disabled={guardando} onClick={() => onAbiertoChange(false)} className={clasesBoton({ variante: 'secundario' })}>{t('editor.cancelar')}</button>
+            <button type="button" disabled={guardando} onClick={() => void enviar()} className={clasesBoton()}>
+              {guardando ? t('editor.guardando') : partner ? t('editor.guardarCambios') : t('editor.crear')}
+            </button>
           </div>
         </SheetFooter>
       </SheetContent>

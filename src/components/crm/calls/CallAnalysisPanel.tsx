@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
 import { GateWarningDialog } from '@/components/crm/pipeline/GateWarningDialog';
+import { aplicarAnalisis, pedirAnalisis, type AccionesAplicar } from './accionesInteligencia';
 import { useCallIntelligence, ERROR_LABELS, providerLabel, type CallIntelligenceState } from './useCallIntelligence';
 import { AnalysisScore, AnalysisObjections, AnalysisDiscovery } from './CallAnalysisSections';
 
@@ -25,7 +26,7 @@ export interface CallAnalysisPanelProps {
   className?: string;
 }
 
-type ApplyActions = { stage?: boolean; tasks?: number[] | 'all'; tags?: boolean; discovery?: boolean; objections?: boolean };
+type ApplyActions = AccionesAplicar;
 
 const SENTIMENT: Record<string, { label: string; variant: 'success' | 'secondary' | 'destructive' | 'warning' }> = {
   positive: { label: 'Positivo', variant: 'success' },
@@ -52,17 +53,15 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
     setRunning(true);
     s.setBusy(true);
     try {
-      const res = await fetch(`/api/crm/calls/${callId}/analyze`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }) });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo analizar');
+      const r = await pedirAnalisis(callId, force);
       // Igual que en el panel de transcripción (ronda 6, tester r5 N1): si la ruta
       // devolvió el job que ya estaba vivo, no se anuncia uno nuevo.
-      const deduped = json.data?.deduped === true;
+      const deduped = r === 'reutilizado';
       // Ronda 7 (tester r6 F1): igual que en el panel de transcripción, si la
       // ruta publica `dedupe_checked:false` es que NO pudo comprobar si ya había
       // otro trabajo vivo; se dice, en vez de prometer un análisis nuevo limpio.
-      const unchecked = json.data?.dedupe_checked === false;
-      const queued = res.status === 202;
+      const unchecked = r === 'sinComprobar';
+      const queued = r === 'encolado' || unchecked;
       toast({
         title: deduped ? 'Ya había un análisis en curso' : queued ? 'Análisis en cola' : 'Análisis listo',
         description: deduped
@@ -86,19 +85,13 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
     if (!analysis) return;
     setApplying(key);
     try {
-      const res = await fetch(`/api/crm/calls/${callId}/analysis/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisId: analysis.id, actions, ignore_gate: ignoreGate }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (res.status === 409 && json.data?.gate) {
-        setGate({ missing: (json.data.gate.missing ?? []).map((m: { label?: string; detail?: string }) => m.detail ?? m.label ?? ''), stageName: bundle?.suggested_stage?.name ?? 'la etapa sugerida' });
+      const r = await aplicarAnalisis(callId, analysis.id, actions, ignoreGate);
+      if (r.tipo === 'criterios') {
+        setGate({ missing: r.faltan, stageName: bundle?.suggested_stage?.name ?? 'la etapa sugerida' });
         return;
       }
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo aplicar');
-      const done: string[] = json.data?.applied ?? [];
-      const skipped: Array<{ action: string; reason: string }> = json.data?.skipped ?? [];
+      const done = r.aplicadas;
+      const skipped = r.omitidas;
       toast({ title: done.length ? `Aplicado: ${done.join(', ')}` : 'Nada nuevo que aplicar', description: skipped.length ? skipped.map((x) => `${x.action}: ${x.reason}`).join(' · ') : undefined });
       await s.refetch();
       onApplied?.();
@@ -110,9 +103,9 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
   };
 
   const header = (
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-        <Sparkles size={16} className="text-purple-600 dark:text-purple-400" /> Análisis IA
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
+      <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+        <Sparkles size={16} className="text-brand" /> Análisis IA
         {analysis && (
           <Badge variant="secondary" className="text-[10px] font-normal">
             {providerLabel(analysis.provider)}{analysis.model ? ` · ${analysis.model}` : ''}
@@ -131,25 +124,25 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
   );
 
   return (
-    <section className={cn('flex flex-col rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800', className)} aria-label="Análisis IA de la llamada">
+    <section className={cn('flex flex-col rounded-lg border border-line bg-surface', className)} aria-label="Análisis IA de la llamada">
       {header}
       <div className="space-y-3 p-3 text-sm" aria-live="polite">
         {!analysis && (analyzeJobWorking || running) && (
-          <p className="flex items-center gap-2 text-purple-700 dark:text-purple-300"><Loader2 size={16} className="animate-spin" /> Analizando la llamada…</p>
+          <p className="flex items-center gap-2 text-brand"><Loader2 size={16} className="animate-spin" /> Analizando la llamada…</p>
         )}
         {!analysis && !analyzeJobWorking && !running && bundle?.job?.status === 'failed' && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+          <div className="rounded-md border border-line-danger bg-danger-subtle p-3 text-danger-text">
             <p className="flex items-center gap-2"><AlertTriangle size={16} /> {ERROR_LABELS[(bundle.job.last_error ?? '').split(':')[0]] ?? 'El análisis falló'}</p>
             {bundle.job.last_error && <p className="text-xs opacity-80">{bundle.job.last_error}</p>}
           </div>
         )}
         {!analysis && !analyzeJobWorking && !running && bundle?.job?.status !== 'failed' && (
-          <p className="text-gray-500 dark:text-gray-400">{transcriptReady ? 'Sin análisis todavía. Pulsa "Analizar".' : 'El análisis se genera al completar la transcripción.'}</p>
+          <p className="text-fg-secondary">{transcriptReady ? 'Sin análisis todavía. Pulsa "Analizar".' : 'El análisis se genera al completar la transcripción.'}</p>
         )}
 
         {analysis && (
           <>
-            <p className="text-gray-800 dark:text-gray-100">{analysis.summary}</p>
+            <p className="text-fg">{analysis.summary}</p>
             <div className="flex flex-wrap items-center gap-2">
               {analysis.sentiment && (
                 <Badge variant={SENTIMENT[analysis.sentiment]?.variant ?? 'secondary'}>
@@ -172,11 +165,11 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
 
             {(analysis.next_steps?.length ?? 0) > 0 && (
               <div>
-                <h4 className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400"><ListChecks size={12} /> Próximos pasos</h4>
+                <h4 className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase text-fg-secondary"><ListChecks size={12} /> Próximos pasos</h4>
                 <ul className="space-y-1">
                   {analysis.next_steps!.map((n, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2 text-gray-700 dark:text-gray-200">
-                      <span>{n.action} <span className="text-xs text-gray-400">({n.owner === 'customer' ? 'cliente' : 'agente'}{n.due_date ? ` · ${n.due_date}` : ''})</span></span>
+                    <li key={i} className="flex items-center justify-between gap-2 text-fg">
+                      <span>{n.action} <span className="text-xs text-fg-muted">({n.owner === 'customer' ? 'cliente' : 'agente'}{n.due_date ? ` · ${n.due_date}` : ''})</span></span>
                     </li>
                   ))}
                 </ul>
@@ -185,14 +178,14 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
 
             {(analysis.suggested_tasks?.length ?? 0) > 0 && (
               <div>
-                <h4 className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Tareas sugeridas</h4>
+                <h4 className="mb-1 text-xs font-semibold uppercase text-fg-secondary">Tareas sugeridas</h4>
                 <ul className="space-y-1">
                   {analysis.suggested_tasks!.map((t, i) => {
                     const done = applied.has(`task:${i}`);
                     return (
-                      <li key={i} className="flex items-center justify-between gap-2 text-gray-700 dark:text-gray-200">
-                        <span className={cn(done && 'line-through opacity-60')}>{t.title} <span className="text-xs text-gray-400">({t.priority ?? 'med'}{t.due_date ? ` · ${t.due_date}` : ''})</span></span>
-                        {done ? <CheckCircle2 size={16} className="shrink-0 text-green-600 dark:text-green-400" aria-label="Tarea creada" /> : (
+                      <li key={i} className="flex items-center justify-between gap-2 text-fg">
+                        <span className={cn(done && 'line-through opacity-60')}>{t.title} <span className="text-xs text-fg-muted">({t.priority ?? 'med'}{t.due_date ? ` · ${t.due_date}` : ''})</span></span>
+                        {done ? <CheckCircle2 size={16} className="shrink-0 text-success-text" aria-label="Tarea creada" /> : (
                           <Button size="sm" variant="outline" className="h-7 text-xs" disabled={applying !== null} onClick={() => apply({ tasks: [i] }, `task:${i}`)}>
                             {applying === `task:${i}` ? <Loader2 size={12} className="animate-spin" /> : 'Crear tarea'}
                           </Button>
@@ -205,8 +198,8 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
             )}
 
             {analysis.suggested_stage_id && opportunityId !== null && (
-              <div role="region" aria-labelledby={`stage-sugg-${analysis.id}`} className="rounded-md border border-purple-200 bg-purple-50 p-2 dark:border-purple-800 dark:bg-purple-900/20">
-                <p id={`stage-sugg-${analysis.id}`} className="flex items-center gap-1 text-purple-900 dark:text-purple-100">
+              <div role="region" aria-labelledby={`stage-sugg-${analysis.id}`} className="rounded-md border border-line-brand bg-brand-tint p-2">
+                <p id={`stage-sugg-${analysis.id}`} className="flex items-center gap-1 text-fg">
                   <ArrowRight size={14} /> Mover a <strong>{bundle?.suggested_stage?.name ?? 'etapa sugerida'}</strong> · confianza {Math.round((analysis.suggested_stage_confidence ?? 0) * 100)} %
                 </p>
                 <div className="mt-1 flex gap-2">
@@ -218,7 +211,7 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
                 </div>
               </div>
             )}
-            {analysis.raw_response?.rejected_stage_id && <p className="text-[11px] text-gray-400">La etapa sugerida por el modelo no pertenece al pipeline y se descartó.</p>}
+            {analysis.raw_response?.rejected_stage_id && <p className="text-[11px] text-fg-muted">La etapa sugerida por el modelo no pertenece al pipeline y se descartó.</p>}
 
             <AnalysisDiscovery analysis={analysis} applied={applied.has('discovery')} />
 
@@ -230,7 +223,7 @@ export function CallAnalysisPanel({ callId, opportunityId, state, onApplied, cla
               </div>
             )}
 
-            <div className="flex justify-end border-t border-gray-100 pt-2 dark:border-gray-700">
+            <div className="flex justify-end border-t border-line pt-2">
               <Button size="sm" variant="outline" disabled={applying !== null} onClick={() => apply({ stage: !!analysis.suggested_stage_id, tasks: 'all', tags: true, discovery: true, objections: true }, 'all')}>
                 {applying === 'all' ? <Loader2 size={12} className="mr-1 animate-spin" /> : <CheckCircle2 size={12} className="mr-1" />} Aplicar todo
               </Button>

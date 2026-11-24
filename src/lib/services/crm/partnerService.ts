@@ -87,6 +87,11 @@ export interface PartnerDeal {
   commission_amount: number | null;
   commission_status: CommissionStatus;
   commission_paid_at: string | null;
+  /** Monto × tasa efectiva al registrar (migración 20261115190000); null en deals anteriores. */
+  commission_suggested?: number | null;
+  /** Quién ajustó la comisión respecto a la sugerida (admin/manager); null si no se ajustó. */
+  commission_adjusted_by?: string | null;
+  commission_adjusted_at?: string | null;
   created_at: string;
 }
 
@@ -96,6 +101,9 @@ export interface DealOpportunityRef {
   amount: number | null;
   currency: string | null;
   status: string | null;
+  customer_id?: string | null;
+  /** Nombre del cliente de la oportunidad (lectura aparte de `customers`). */
+  customer_name?: string | null;
 }
 
 export interface PartnerDealView extends PartnerDeal {
@@ -105,6 +113,15 @@ export interface PartnerDealView extends PartnerDeal {
 export interface PartnerDealInput {
   opportunity_id: string;
   deal_type: DealType;
+}
+
+/**
+ * Comisión ajustada a mano en «Registrar deal». Solo la ruta la construye, y
+ * solo para admin/manager (`canManagePartners`); el usuario sale de la sesión.
+ */
+export interface CommissionOverride {
+  amount: number;
+  userId: string;
 }
 
 export interface PartnerDealFilters {
@@ -124,9 +141,17 @@ export interface PartnerView extends Partner {
   commissions_currency: string | null;
   /** true si los deals mezclan monedas: la suma no se muestra. */
   currency_mixed: boolean;
+  /** Revenue atribuido: monto de las oportunidades GANADAS de sus deals no rechazados. */
+  revenue_attributed: number;
 }
 
-const DEAL_SELECT = '*, opportunity:opportunities(id, name, amount, currency, status)';
+/** Deal de la organización con su partner (pestañas Deals y Comisiones). */
+export interface OrgPartnerDealView extends PartnerDealView {
+  partner: { id: string; name: string } | null;
+}
+
+const DEAL_SELECT = '*, opportunity:opportunities(id, name, amount, currency, status, customer_id)';
+const ORG_DEAL_SELECT = '*, opportunity:opportunities(id, name, amount, currency, status, customer_id), partner:partners(id, name)';
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -135,6 +160,23 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 
 function toDealView(row: Record<string, unknown>): PartnerDealView {
   return { ...(row as unknown as PartnerDeal), opportunity: one(row.opportunity as DealOpportunityRef | DealOpportunityRef[] | null) };
+}
+
+/**
+ * Nombre del cliente de cada oportunidad, en una lectura aparte de `customers`
+ * (acotada a la organización). Si falla, los deals siguen sin nombre de cliente:
+ * es un dato de presentación, no de la comisión.
+ */
+async function attachCustomerNames<T extends PartnerDealView>(deals: T[], orgId: number, supabase: SupabaseClient): Promise<T[]> {
+  const ids = Array.from(new Set(deals.map((d) => d.opportunity?.customer_id).filter((v): v is string => typeof v === 'string' && v.length > 0)));
+  if (ids.length === 0) return deals;
+  const { data, error } = await supabase.from('customers').select('id, full_name').eq('organization_id', orgId).in('id', ids);
+  if (error) {
+    console.error('[partnerService] no se pudieron leer los clientes de las oportunidades:', error.message);
+    return deals;
+  }
+  const names = new Map(((data as Array<{ id: string; full_name: string | null }> | null) ?? []).map((c) => [c.id, c.full_name]));
+  return deals.map((d) => (d.opportunity ? { ...d, opportunity: { ...d.opportunity, customer_name: names.get(d.opportunity.customer_id ?? '') ?? null } } : d));
 }
 
 // ─── Pertenencia ─────────────────────────────────────────────────────────────
@@ -175,12 +217,13 @@ export async function getPartners(orgId: number, supabase: SupabaseClient): Prom
   const [{ data: partners, error: e1 }, tiers, { data: deals, error: e3 }] = await Promise.all([
     supabase.from('partners').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }),
     getPartnerTiers(orgId, supabase),
-    supabase.from('partner_deals').select('partner_id, commission_status, commission_amount, opportunity:opportunities(currency)').eq('organization_id', orgId),
+    supabase.from('partner_deals').select('partner_id, commission_status, commission_amount, opportunity:opportunities(currency, amount, status)').eq('organization_id', orgId),
   ]);
   if (e1) throw e1;
   if (e3) throw e3;
   const tierById = new Map(tiers.map((t) => [t.id, t]));
-  type DealRow = { partner_id: string; commission_status: string; commission_amount: number | null; opportunity: { currency: string | null } | { currency: string | null }[] | null };
+  type DealOpp = { currency: string | null; amount?: number | string | null; status?: string | null };
+  type DealRow = { partner_id: string; commission_status: string; commission_amount: number | null; opportunity: DealOpp | DealOpp[] | null };
   const dealsByPartner = new Map<string, DealRow[]>();
   for (const d of (deals as DealRow[] | null) ?? []) {
     const list = dealsByPartner.get(d.partner_id) ?? [];
@@ -199,8 +242,39 @@ export async function getPartners(orgId: number, supabase: SupabaseClient): Prom
       commissions: summarizeCommissions(own),
       commissions_currency: currencies.length === 1 ? currencies[0] : null,
       currency_mixed: currencies.length > 1,
+      revenue_attributed: attributedRevenue(own.map((d) => ({ commission_status: d.commission_status, amount: one(d.opportunity)?.amount, status: one(d.opportunity)?.status }))),
     };
   });
+}
+
+/** Revenue atribuido: suma del monto de oportunidades ganadas en deals no rechazados (anotación Figma 1316:774932). */
+export function attributedRevenue(deals: ReadonlyArray<{ commission_status: string; amount: number | string | null | undefined; status: string | null | undefined }>): number {
+  let total = 0;
+  for (const d of deals) {
+    if (d.commission_status === 'rejected' || d.status !== 'won') continue;
+    const n = Number(d.amount);
+    if (Number.isFinite(n)) total += n;
+  }
+  return Math.round(total * 100) / 100;
+}
+
+/**
+ * Deals de partner de toda la organización con partner y oportunidad
+ * (pestañas «Deals» y «Comisiones»). Más recientes primero; tope `limit`.
+ */
+export async function getOrgPartnerDeals(orgId: number, supabase: SupabaseClient, limit = 1000): Promise<OrgPartnerDealView[]> {
+  const { data, error } = await supabase
+    .from('partner_deals')
+    .select(ORG_DEAL_SELECT)
+    .eq('organization_id', orgId)
+    .order('created_at', { ascending: false })
+    .range(0, Math.max(1, Math.min(limit, 2000)) - 1);
+  if (error) throw error;
+  const rows = ((data as Record<string, unknown>[] | null) ?? []).map((row) => ({
+    ...toDealView(row),
+    partner: one(row.partner as { id: string; name: string } | Array<{ id: string; name: string }> | null),
+  }));
+  return attachCustomerNames(rows, orgId, supabase);
 }
 
 export async function createPartner(orgId: number, data: PartnerInput, supabase: SupabaseClient): Promise<Partner> {
@@ -306,7 +380,8 @@ export async function getPartnerDeals(partnerId: string, orgId: number, supabase
   query = query.range(offset, offset + limit - 1);
   const { data, error, count } = await query;
   if (error) throw error;
-  return { data: ((data as Record<string, unknown>[] | null) ?? []).map(toDealView), count: count ?? 0 };
+  const rows = await attachCustomerNames(((data as Record<string, unknown>[] | null) ?? []).map(toDealView), orgId, supabase);
+  return { data: rows, count: count ?? 0 };
 }
 
 export interface RegisterDealResult {
@@ -323,7 +398,14 @@ export interface RegisterDealResult {
  * Dos escrituras (deal, tier): si la promoción falla, el deal queda y se
  * reevalúa en el siguiente; se registra el fallo.
  */
-export async function registerPartnerDeal(partnerId: string, orgId: number, input: PartnerDealInput, supabase: SupabaseClient): Promise<RegisterDealResult> {
+export async function registerPartnerDeal(
+  partnerId: string,
+  orgId: number,
+  input: PartnerDealInput,
+  supabase: SupabaseClient,
+  override?: CommissionOverride | null,
+  now: Date = new Date(),
+): Promise<RegisterDealResult> {
   const partner = await requirePartner(partnerId, orgId, supabase);
   const { data: opp, error: eOpp } = await supabase
     .from('opportunities')
@@ -350,7 +432,8 @@ export async function registerPartnerDeal(partnerId: string, orgId: number, inpu
   const tiers = await getPartnerTiers(orgId, supabase);
   const tier = partner.tier_id ? tiers.find((t) => t.id === partner.tier_id) ?? null : null;
   const rate = effectiveCommissionRate(partner, tier);
-  const commission = computePartnerCommission((opp as { amount: unknown }).amount, rate);
+  const suggested = computePartnerCommission((opp as { amount: unknown }).amount, rate);
+  const adjustment = commissionAdjustment(suggested, (opp as { amount: unknown }).amount, override, now);
 
   const { data: deal, error } = await supabase
     .from('partner_deals')
@@ -359,7 +442,10 @@ export async function registerPartnerDeal(partnerId: string, orgId: number, inpu
       partner_id: partnerId,
       opportunity_id: input.opportunity_id,
       deal_type: input.deal_type,
-      commission_amount: commission,
+      commission_amount: adjustment.amount,
+      commission_suggested: suggested,
+      commission_adjusted_by: adjustment.adjustedBy,
+      commission_adjusted_at: adjustment.adjustedAt,
       commission_status: 'pending',
     })
     .select(DEAL_SELECT)
@@ -389,7 +475,29 @@ export async function registerPartnerDeal(partnerId: string, orgId: number, inpu
     }
   }
 
-  return { deal: toDealView(deal as Record<string, unknown>), commission_rate: rate, promoted_to: promotedTo };
+  const [view] = await attachCustomerNames([toDealView(deal as Record<string, unknown>)], orgId, supabase);
+  return { deal: view, commission_rate: rate, promoted_to: promotedTo };
+}
+
+/**
+ * Comisión final del deal: la sugerida, o la ajustada por admin/manager si es
+ * distinta. El ajuste va de 0 al monto de la oportunidad (400 si no); se
+ * guarda quién y cuándo (anotación Figma 1318:91785).
+ */
+export function commissionAdjustment(
+  suggested: number,
+  opportunityAmount: unknown,
+  override: CommissionOverride | null | undefined,
+  now: Date,
+): { amount: number; adjustedBy: string | null; adjustedAt: string | null } {
+  if (!override) return { amount: suggested, adjustedBy: null, adjustedAt: null };
+  const amount = Math.round(override.amount * 100) / 100;
+  const max = Number(opportunityAmount);
+  if (!Number.isFinite(amount) || amount < 0 || (Number.isFinite(max) && max > 0 && amount > max)) {
+    throw new F12Error(400, 'COMMISSION_OUT_OF_RANGE', 'La comisión debe estar entre 0 y el monto de la oportunidad');
+  }
+  if (amount === suggested) return { amount: suggested, adjustedBy: null, adjustedAt: null };
+  return { amount, adjustedBy: override.userId, adjustedAt: now.toISOString() };
 }
 
 /** Transición de comisión por la máquina pura, con guarda optimista: dos «pagar» concurrentes → uno gana, el otro 409. */

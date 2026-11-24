@@ -1,7 +1,5 @@
-export * from './types';
-export { createIdentidadesService } from './IdentidadesService';
 export { IdentidadesPage } from './IdentidadesPage';
-export { IdentidadesFiltros } from './IdentidadesFiltros';
-export { IdentidadesStats } from './IdentidadesStats';
-export { IdentidadesTable } from './IdentidadesTable';
-export { DuplicadosPanel } from './DuplicadosPanel';
+export { DuplicadosPanel, useDuplicados } from './DuplicadosPanel';
+export { IdentidadesCanalPanel } from './IdentidadesCanalPanel';
+export { CompararFusion } from './CompararFusion';
+export { HistorialFusiones } from './HistorialFusiones';

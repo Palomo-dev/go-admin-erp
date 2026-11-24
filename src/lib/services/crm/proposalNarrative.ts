@@ -29,6 +29,12 @@ export interface PricingLine {
   qty: number;
   unit_price: number;
   total: number;
+  /** Producto vendible (la variante): la factura descuenta su stock al emitir. */
+  product_id?: number | null;
+  /** Tarifa de impuestos del producto (sin retenciones), en %. */
+  tax_rate?: number;
+  /** Código de plantilla si el producto tiene un solo impuesto (`IVA_19`). */
+  tax_code?: string | null;
 }
 
 export interface PricingSection extends ProposalSection {

@@ -9,7 +9,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import type { SalesRole, Territory, OrgMember } from '../types';
+import type { OpcionCatalogo, OrgMember } from '../types';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useTranslations } from 'next-intl';
 
@@ -24,13 +24,18 @@ interface MemberForm {
 interface MemberDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  roles: SalesRole[];
-  territories: Territory[];
+  roles: OpcionCatalogo[];
+  territories: OpcionCatalogo[];
   orgMembers: OrgMember[];
   form: MemberForm;
   onFormChange: (form: MemberForm) => void;
   onAdd: () => void;
   saving: boolean;
+  /**
+   * Editar un miembro existente («Editar cuota», Figma 1411:837770): el
+   * miembro no se cambia, solo rol, territorio y cuota.
+   */
+  editando?: { nombre: string } | null;
 }
 
 /**
@@ -40,7 +45,7 @@ interface MemberDialogProps {
 const MONEDAS_CATALOGO = ['USD'];
 
 export function MemberDialog({
-  open, onOpenChange, roles, territories, orgMembers, form, onFormChange, onAdd, saving,
+  open, onOpenChange, roles, territories, orgMembers, form, onFormChange, onAdd, saving, editando,
 }: MemberDialogProps) {
   const tx = useTranslations('crm.equipo');
   const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
@@ -51,10 +56,11 @@ export function MemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{tx('equiposTab.anadirMiembro')}</DialogTitle>
-          <DialogDescription>{tx('memberDialog.seleccionaMiembroOrganizacion')}</DialogDescription>
+          <DialogTitle>{editando ? tx('pantalla.miembro.editarTitulo') : tx('equiposTab.anadirMiembro')}</DialogTitle>
+          <DialogDescription>{editando ? editando.nombre : tx('memberDialog.seleccionaMiembroOrganizacion')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {!editando && (
           <div className="space-y-2">
             <Label>{tx('memberDialog.miembro')}</Label>
             <Select
@@ -71,6 +77,7 @@ export function MemberDialog({
               </SelectContent>
             </Select>
           </div>
+          )}
           <div className="space-y-2">
             <Label>{tx('performanceTab.rol')}</Label>
             <Select
@@ -81,7 +88,7 @@ export function MemberDialog({
               <SelectContent>
                 <SelectItem value="none">{tx('memberDialog.sinRol')}</SelectItem>
                 {roles.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>{r.name} ({r.code})</SelectItem>
+                  <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -97,7 +104,7 @@ export function MemberDialog({
                 <SelectContent>
                   <SelectItem value="none">{tx('memberDialog.heredaEquipo')}</SelectItem>
                   {territories.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -108,6 +115,7 @@ export function MemberDialog({
               <Label>{tx('performanceTab.cuota')}</Label>
               <Input
                 type="number"
+                min={0}
                 value={form.quota_amount}
                 onChange={(e) => onFormChange({ ...form, quota_amount: e.target.value })}
                 placeholder="0"
@@ -131,7 +139,7 @@ export function MemberDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>{tx('memberDialog.cancelar')}</Button>
-          <Button onClick={onAdd} disabled={saving}>{saving ? tx('memberDialog.anadiendo') : tx('memberDialog.anadir')}</Button>
+          <Button onClick={onAdd} disabled={saving}>{editando ? (saving ? tx('teamDialog.guardando') : tx('teamDialog.guardar')) : saving ? tx('memberDialog.anadiendo') : tx('memberDialog.anadir')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

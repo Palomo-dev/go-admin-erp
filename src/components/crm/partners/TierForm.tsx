@@ -1,97 +1,109 @@
 'use client';
 
-/** Formulario de un tier (crear o editar en su sitio dentro de `TierEditor`). */
+/** Formulario de un nivel (crear o editar en su sitio dentro de `TierEditor`). Validación: `validateTierForm`. */
 
 import { useEffect, useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { clasesBoton } from '@/components/kit/botonClases';
 import type { PartnerTier } from '@/lib/services/crm/partnerService';
-import { formatRate, tierFormToPayload, tierToForm, validateTierForm, type FieldError, type TierForm as TierFormState } from '@/lib/services/crm/partnerModel';
+import { formatRate, tierFormToPayload, tierToForm, validateTierForm, type FieldError, type TierForm as EstadoForm } from '@/lib/services/crm/partnerModel';
+import { claveErrorPartners } from './redPartnersErrores';
 
 interface Props {
   tier: PartnerTier | null;
-  onSave: (payload: Record<string, unknown>, id?: string) => Promise<unknown>;
-  onCancel: () => void;
+  onGuardar: (payload: Record<string, unknown>, id?: string) => Promise<unknown>;
+  onCancelar: () => void;
 }
 
-export function TierForm({ tier, onSave, onCancel }: Props) {
-  const [f, setF] = useState<TierFormState>(() => tierToForm(tier));
-  const [errors, setErrors] = useState<FieldError<keyof TierFormState>[]>([]);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [focusId, setFocusId] = useState<string | null>(null);
-  const prefix = `tier-${tier?.id ?? 'new'}`;
+const CLAVE_ERROR: Record<keyof EstadoForm, string> = {
+  name: 'nivelForm.errores.nombre',
+  min_deals: 'nivelForm.errores.deals',
+  min_revenue: 'nivelForm.errores.revenue',
+  commission_rate: 'nivelForm.errores.tasa',
+  benefitsText: 'nivelForm.errores.nombre',
+};
+
+export function TierForm({ tier, onGuardar, onCancelar }: Props) {
+  const t = useTranslations('crm.redPartners');
+  const [f, setF] = useState<EstadoForm>(() => tierToForm(tier));
+  const [errores, setErrores] = useState<FieldError<keyof EstadoForm>[]>([]);
+  const [errorServidor, setErrorServidor] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [foco, setFoco] = useState<string | null>(null);
+  const prefijo = `tier-${tier?.id ?? 'new'}`;
 
   useEffect(() => {
-    if (!focusId) return;
-    document.getElementById(focusId)?.focus();
-    setFocusId(null);
-  }, [focusId]);
+    if (!foco) return;
+    document.getElementById(foco)?.focus();
+    setFoco(null);
+  }, [foco]);
 
-  const update = (next: TierFormState) => {
+  const actualizar = (next: EstadoForm) => {
     setF(next);
-    if (errors.length) setErrors(validateTierForm(next));
+    if (errores.length) setErrores(validateTierForm(next));
   };
-  const errorOf = (k: keyof TierFormState) => errors.find((e) => e.field === k)?.message;
+  const errorDe = (k: keyof EstadoForm) => (errores.some((e) => e.field === k) ? t(CLAVE_ERROR[k]) : undefined);
 
-  const submit = async () => {
+  const enviar = async () => {
     const errs = validateTierForm(f);
-    setErrors(errs);
-    if (errs.length) return setFocusId(`${prefix}-${errs[0].field}`);
-    setSaving(true);
-    setServerError(null);
+    setErrores(errs);
+    if (errs.length) return setFoco(`${prefijo}-${errs[0].field}`);
+    setGuardando(true);
+    setErrorServidor(null);
     try {
-      await onSave(tierFormToPayload(f), tier?.id);
-      toast({ title: tier ? 'Tier actualizado' : 'Tier creado', description: `«${f.name.trim()}» · ${formatRate(Number(f.commission_rate))}` });
-      onCancel();
-    } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
-      setFocusId(`${prefix}-server-error`);
+      await onGuardar(tierFormToPayload(f), tier?.id);
+      toast({ title: tier ? t('nivelForm.actualizado') : t('nivelForm.creado'), description: `${f.name.trim()} · ${formatRate(Number(f.commission_rate))}` });
+      onCancelar();
+    } catch (e) {
+      setErrorServidor(t(claveErrorPartners(e)));
+      setFoco(`${prefijo}-server-error`);
     } finally {
-      setSaving(false);
+      setGuardando(false);
     }
   };
 
-  const num = (k: 'min_deals' | 'min_revenue' | 'commission_rate', label: string, step: string) => {
-    const err = errorOf(k);
+  const numero = (k: 'min_deals' | 'min_revenue' | 'commission_rate', etiqueta: string, paso: string) => {
+    const err = errorDe(k);
     return (
-      <div>
-        <Label htmlFor={`${prefix}-${k}`} className="text-xs text-gray-700 dark:text-gray-300">{label}</Label>
-        <Input id={`${prefix}-${k}`} type="number" inputMode="decimal" min={0} step={step} value={f[k]} aria-invalid={!!err} aria-describedby={err ? `${prefix}-${k}-error` : undefined} onChange={(e) => update({ ...f, [k]: e.target.value })} />
-        {err && <p id={`${prefix}-${k}-error`} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{err}</p>}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${prefijo}-${k}`} className="text-sm font-medium text-fg">{etiqueta}</Label>
+        <Input id={`${prefijo}-${k}`} type="number" inputMode="decimal" min={0} step={paso} value={f[k]} aria-invalid={!!err} aria-describedby={err ? `${prefijo}-${k}-error` : undefined} onChange={(e) => actualizar({ ...f, [k]: e.target.value })} />
+        {err && <p id={`${prefijo}-${k}-error`} role="alert" className="text-xs text-danger-text">{err}</p>}
       </div>
     );
   };
 
   return (
-    <form className="space-y-3" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-      <div>
-        <Label htmlFor={`${prefix}-name`} className="text-xs text-gray-700 dark:text-gray-300">Nombre</Label>
-        <Input id={`${prefix}-name`} value={f.name} autoComplete="off" aria-invalid={!!errorOf('name')} aria-describedby={errorOf('name') ? `${prefix}-name-error` : undefined} onChange={(e) => update({ ...f, name: e.target.value })} />
-        {errorOf('name') && <p id={`${prefix}-name-error`} role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">{errorOf('name')}</p>}
+    <form className="space-y-3" noValidate onSubmit={(e) => { e.preventDefault(); void enviar(); }}>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${prefijo}-name`} className="text-sm font-medium text-fg">{t('nivelForm.nombre')}</Label>
+        <Input id={`${prefijo}-name`} value={f.name} autoComplete="off" aria-invalid={!!errorDe('name')} aria-describedby={errorDe('name') ? `${prefijo}-name-error` : undefined} onChange={(e) => actualizar({ ...f, name: e.target.value })} />
+        {errorDe('name') && <p id={`${prefijo}-name-error`} role="alert" className="text-xs text-danger-text">{errorDe('name')}</p>}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
-        {num('min_deals', 'Deals mínimos', '1')}
-        {num('min_revenue', 'Revenue mínimo', 'any')}
-        {num('commission_rate', 'Comisión %', 'any')}
+        {numero('min_deals', t('nivelForm.dealsMinimos'), '1')}
+        {numero('min_revenue', t('nivelForm.revenueMinimo'), 'any')}
+        {numero('commission_rate', t('nivelForm.tasa'), 'any')}
       </div>
-      <div>
-        <Label htmlFor={`${prefix}-benefits`} className="text-xs text-gray-700 dark:text-gray-300">Beneficios (uno por línea)</Label>
-        <Textarea id={`${prefix}-benefits`} rows={3} value={f.benefitsText} onChange={(e) => update({ ...f, benefitsText: e.target.value })} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${prefijo}-benefits`} className="text-sm font-medium text-fg">{t('nivelForm.beneficios')}</Label>
+        <Textarea id={`${prefijo}-benefits`} rows={3} value={f.benefitsText} onChange={(e) => actualizar({ ...f, benefitsText: e.target.value })} />
       </div>
-      {serverError && (
-        <Alert id={`${prefix}-server-error`} variant="destructive" tabIndex={-1}>
-          <AlertTitle>No se pudo guardar</AlertTitle>
-          <AlertDescription>{serverError}</AlertDescription>
-        </Alert>
+      {errorServidor && (
+        <div id={`${prefijo}-server-error`} tabIndex={-1}>
+          <AvisoTonal tono="peligro" titulo={t('editor.errorGuardar')} descripcion={errorServidor} rol="alert" />
+        </div>
       )}
-      <div className="flex justify-end gap-2 [&>button]:h-11 sm:[&>button]:h-8">
-        <Button type="button" variant="outline" size="sm" disabled={saving} onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" size="sm" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving}>{saving ? 'Guardando…' : tier ? 'Guardar' : 'Crear tier'}</Button>
+      <div className="flex justify-end gap-2">
+        <button type="button" disabled={guardando} onClick={onCancelar} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>{t('editor.cancelar')}</button>
+        <button type="submit" disabled={guardando} className={clasesBoton({ tamano: 'sm' })}>
+          {guardando ? t('editor.guardando') : tier ? t('nivelForm.guardar') : t('nivelForm.crear')}
+        </button>
       </div>
     </form>
   );

@@ -68,15 +68,14 @@ describe('hints honestos de las tarjetas', () => {
   });
 });
 
+// El tablero (RevenueOsPage y sus paneles, ForecastDashboard) se retiró el
+// 2026-11-24: sus secciones son reportes de /app/reportes
+// (`reportes/modulos/crmIngresosReports.ts`). Las reglas de fuente pasan a ese módulo.
 describe('contrato de fuente (r2)', () => {
   const UI = 'src/components/crm/revenueos';
-  const PRON = 'src/components/crm/pronostico';
-  it('ninguna vista del panel ni del forecast usa formatCurrency (COP por defecto) ni la cadena "COP"', () => {
-    const files = [
-      `${UI}/KpiTiles.tsx`, `${UI}/FunnelPanel.tsx`, `${UI}/RevenueMathPanel.tsx`, `${UI}/RevenueTrendChart.tsx`, `${UI}/RevenueOsPage.tsx`, `${UI}/formatters.ts`, `${UI}/kpiHints.ts`,
-      `${PRON}/ForecastDashboard.tsx`, `${PRON}/ForecastScenarios.tsx`, `${PRON}/GoalProgress.tsx`, `${PRON}/ForecastByStage.tsx`, `${PRON}/ForecastChart.tsx`,
-      'src/lib/services/crm/revenueOsService.ts',
-    ];
+  const REPORTES = 'src/lib/services/reportes/modulos/crmIngresosReports.ts';
+  it('ni los formatos ni los reportes usan formatCurrency (COP por defecto) ni la cadena "COP"', () => {
+    const files = [`${UI}/formatters.ts`, `${UI}/kpiHints.ts`, REPORTES, 'src/lib/services/crm/revenueOsService.ts'];
     const bad = files.filter((f) => /formatCurrency|['"]COP['"]/.test(read(f)));
     expect(bad).toEqual([]);
   });
@@ -87,21 +86,19 @@ describe('contrato de fuente (r2)', () => {
     expect(svc).toMatch(/pipeline_names/);
     expect(read('src/lib/services/crm/revenueOs/rpc.ts')).toMatch(/select\('id, name'\)/);
   });
-  it('la página pasa currency y pipeline_names, avisa sin moneda y el hook vacía data al fallar', () => {
-    const page = read(`${UI}/RevenueOsPage.tsx`);
-    expect(page).toMatch(/pipelineNames=\{data\.pipeline_names\}/);
-    expect(page).toMatch(/SIN_MONEDA/);
-    expect((page.match(/currency=\{currency\}/g) ?? []).length).toBeGreaterThanOrEqual(5);
-    const hook = read(`${UI}/useRevenueDashboard.ts`);
-    expect(hook).toMatch(/data: null, loading: false, error: describeError\(err\)/);
+  it('los reportes toman la moneda de la organización (getRevenueCurrency) para el texto del cobrado y los nombres de pipeline de fetchPipelines', () => {
+    const r = read(REPORTES);
+    expect(r).toMatch(/getRevenueCurrency\(orgId, db\)/);
+    expect(r).toMatch(/collectedHint\(r, moneda\)/);
+    expect(r).toMatch(/fetchPipelines\(orgId, db\)/);
   });
   it('el embudo avisa de etapas posteriores a la ganada y declara la base «última etapa»', () => {
-    const f = read(`${UI}/FunnelPanel.tsx`);
+    const f = read(REPORTES);
     expect(f).toMatch(/ignoredAfterWon/);
     expect(f).toMatch(/overallBasis === 'last'/);
   });
   it('la matemática comercial explica CAC como gasto ÷ oportunidades ganadas en el periodo y ARPA como ticket por factura pagada', () => {
-    const m = read(`${UI}/RevenueMathPanel.tsx`);
+    const m = read(REPORTES);
     expect(m).toMatch(/Gasto de adquisición del periodo ÷ oportunidades ganadas en el periodo/);
     expect(m).toMatch(/Ticket medio por factura pagada/);
   });

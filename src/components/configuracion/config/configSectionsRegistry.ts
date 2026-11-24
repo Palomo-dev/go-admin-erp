@@ -82,6 +82,10 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   // Sitio web se queda en su módulo (decisión del dueño, 2026-10-07): aquí solo se enlaza.
   { id: 'sitioweb.general', modulo: 'sitioweb', seccion: 'general', clave: 'sitiowebGeneral', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/sitio-web/configuracion' },
   { id: 'crm.general', modulo: 'crm', seccion: 'general', clave: 'crmGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
+  // «Salud de clientes» (Figma pág. 10, sección 3080:36387; aprobado 2026-11-24): antes era la página
+  // «Factores de salud» del CRM (su ruta abre el diálogo: `dialogoUrl.ts`). Segunda pestaña de CRM. Mismo permiso que `PUT /api/crm/health/config`
+  // (admin); el panel pinta su solo lectura con el `puedeEditar` que devuelve esa ruta (S6).
+  { id: 'crm.salud', modulo: 'crm', seccion: 'salud', clave: 'crmSalud', permiso: PERMISO_ADMIN, ajustes: [], estadosPropios: true, nueva: true },
   {
     id: 'crm.agente-voz',
     modulo: 'crm',

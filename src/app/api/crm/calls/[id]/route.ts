@@ -3,14 +3,17 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { isOrgAdmin } from '@/lib/utils/rbac';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { getCall, getCallRecordings } from '@/lib/services/crm/callManagementService';
+import { getCall, getCallDetailRelations, getCallRecordings } from '@/lib/services/crm/callManagementService';
 import { applyDisposition, callPatchSchema, type CallRowForDisposition } from '@/lib/services/crm/callDispositionService';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/crm/calls/[id] — Llamada + grabaciones + consentimientos.
+ * GET /api/crm/calls/[id] — Llamada + grabaciones + consentimientos y, para el
+ * detalle (Figma 1363:20), cliente, oportunidad con su etapa, quién llamó, quién
+ * dejó la disposición y cuántas llamadas hay con ese cliente. Todo con el
+ * cliente de la sesión: la RLS decide qué se ve.
  */
 export async function GET(
   request: NextRequest,
@@ -32,16 +35,17 @@ export async function GET(
     if (!call) {
       return NextResponse.json({ success: false, error: 'Llamada no encontrada' }, { status: 404 });
     }
-    const [recordings, consentsRes] = await Promise.all([
+    const [recordings, consentsRes, relations] = await Promise.all([
       getCallRecordings(id, ctx.organizationId, ctx.supabase),
       ctx.supabase
         .from('call_consents')
         .select('id, consent_type, method, locale, announced_at, recorded_announcement_text')
         .eq('organization_id', ctx.organizationId)
         .eq('call_id', id),
+      getCallDetailRelations(call, ctx.organizationId, ctx.supabase),
     ]);
     return NextResponse.json(
-      { success: true, data: { ...call, recordings, consents: consentsRes.data ?? [] } },
+      { success: true, data: { ...call, recordings, consents: consentsRes.data ?? [], ...relations } },
       { status: 200, headers: { 'Cache-Control': 'private, no-store' } }
     );
   } catch (error: unknown) {

@@ -42,6 +42,8 @@ describe('rutas viejas → sección del diálogo', () => {
     ['/app/configuracion?modulo=no-existe', { seccionId: null }],
     ['/app/configuracion/asistente', { seccionId: 'general.asistente' }],
     ['/app/configuracion/pos/avisos-cliente', { seccionId: 'pos.avisos-cliente' }],
+    // Página que vivía en su módulo: abre su sección con el aviso «se movió» (Figma pág. 10, S10).
+    ['/app/crm/salud/configuracion', { seccionId: 'crm.salud', movido: 'crmSaludConfiguracion' }],
     ['/app/configuracion?config=chat.ia&config_ajuste=x', { seccionId: 'chat.ia', ancla: 'x' }],
   ])('%s', (href, esperado) => {
     expect(destino(href)).toEqual(esperado);

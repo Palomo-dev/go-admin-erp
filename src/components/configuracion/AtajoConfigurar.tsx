@@ -21,10 +21,15 @@ interface Props {
   ancla?: string;
   /** Solo el engranaje (cabecera del celular); el nombre accesible no cambia. */
   soloIcono?: boolean;
+  /**
+   * Texto propio del botón («Configurar factores» en Salud de clientes). Con él,
+   * el nombre accesible es ese texto visible (el título conserva la sección).
+   */
+  etiqueta?: string;
   className?: string;
 }
 
-export function AtajoConfigurar({ seccion, ancla, soloIcono, className }: Props) {
+export function AtajoConfigurar({ seccion, ancla, soloIcono, etiqueta, className }: Props) {
   const t = useTranslations('configuracionUnificada');
   const s = seccionPorId(seccion);
   const nombre = s ? t('configurar.aria', { seccion: `${t(`modulos.${s.modulo}`)} › ${t(`secciones.${s.clave}.titulo`)}` }) : t('configurar.etiqueta');
@@ -37,7 +42,7 @@ export function AtajoConfigurar({ seccion, ancla, soloIcono, className }: Props)
         e.preventDefault();
         abrirConfiguracion({ seccionId: s ? seccion : null, ancla });
       }}
-      aria-label={nombre}
+      aria-label={etiqueta && !soloIcono ? undefined : nombre}
       title={nombre}
       className={
         soloIcono
@@ -46,7 +51,7 @@ export function AtajoConfigurar({ seccion, ancla, soloIcono, className }: Props)
       }
     >
       <Settings aria-hidden="true" className={soloIcono ? 'size-5' : 'size-4'} strokeWidth={1.5} />
-      {!soloIcono && t('configurar.etiqueta')}
+      {!soloIcono && (etiqueta ?? t('configurar.etiqueta'))}
     </Link>
   );
 }

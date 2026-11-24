@@ -742,3 +742,72 @@ export async function listCallsWithRelations(
     canViewAll: raw.canViewAll === true,
   };
 }
+
+// ─── Detalle de una llamada (Figma 1363:20) ─────────────────────────────────
+
+/** Relaciones del detalle: «Vinculada a», quién llamó y su historial con el cliente. */
+export interface CallDetailRelations {
+  customer: { id: string; full_name: string | null; first_name: string | null; last_name: string | null; phone: string | null } | null;
+  opportunity: { id: string; name: string; amount: number | null; currency: string | null; stage_name: string | null } | null;
+  user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
+  /** Nombre de quien registró la disposición (`metadata.disposition_by`). */
+  disposition_user: { id: string; first_name: string | null; last_name: string | null; email: string | null } | null;
+  /** Llamadas con el mismo cliente (todas, incluida esta) y la más reciente. */
+  customer_calls: { count: number; last_started_at: string | null } | null;
+}
+
+type PerfilCorto = { id: string; first_name: string | null; last_name: string | null; email: string | null };
+
+/**
+ * Lee las relaciones del detalle de una llamada con el cliente que reciba (la
+ * ruta usa el de la SESIÓN: la RLS decide qué cliente, oportunidad y perfiles
+ * se ven). Cada lectura que falla deja su parte en `null`: el detalle se
+ * muestra igual, sin esa tarjeta.
+ */
+export async function getCallDetailRelations(call: CallRecord, organizationId: number, supabase: SupabaseClient): Promise<CallDetailRelations> {
+  const dispositionBy = typeof call.metadata?.disposition_by === 'string' ? (call.metadata.disposition_by as string) : null;
+  const perfiles = Array.from(new Set([call.user_id, dispositionBy].filter((x): x is string => !!x)));
+
+  const [cliente, oportunidad, usuarios, conteo, ultima] = await Promise.all([
+    call.customer_id
+      ? supabase.from('customers').select('id, full_name, first_name, last_name, phone').eq('id', call.customer_id).eq('organization_id', organizationId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    call.opportunity_id
+      ? supabase.from('opportunities').select('id, name, amount, currency, stage_id').eq('id', call.opportunity_id).eq('organization_id', organizationId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    perfiles.length > 0 ? supabase.from('profiles').select('id, first_name, last_name, email').in('id', perfiles) : Promise.resolve({ data: [], error: null }),
+    call.customer_id
+      ? supabase.from('calls').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).eq('customer_id', call.customer_id)
+      : Promise.resolve({ count: null, error: null }),
+    call.customer_id
+      ? supabase
+          .from('calls')
+          .select('started_at')
+          .eq('organization_id', organizationId)
+          .eq('customer_id', call.customer_id)
+          .not('started_at', 'is', null)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+
+  const opp = (oportunidad.data ?? null) as { id: string; name: string; amount: number | null; currency: string | null; stage_id: string | null } | null;
+  let stageName: string | null = null;
+  if (opp?.stage_id) {
+    const { data: etapa } = await supabase.from('stages').select('name').eq('id', opp.stage_id).maybeSingle();
+    stageName = (etapa as { name?: string } | null)?.name ?? null;
+  }
+  const lista = ((usuarios.data ?? []) as PerfilCorto[]) ?? [];
+  const perfil = (id: string | null) => (id ? lista.find((p) => p.id === id) ?? null : null);
+
+  return {
+    customer: (cliente.data ?? null) as CallDetailRelations['customer'],
+    opportunity: opp ? { id: opp.id, name: opp.name, amount: opp.amount === null ? null : Number(opp.amount), currency: opp.currency, stage_name: stageName } : null,
+    user: perfil(call.user_id),
+    disposition_user: perfil(dispositionBy),
+    customer_calls: call.customer_id
+      ? { count: (conteo as { count: number | null }).count ?? 0, last_started_at: ((ultima.data ?? null) as { started_at?: string } | null)?.started_at ?? null }
+      : null,
+  };
+}

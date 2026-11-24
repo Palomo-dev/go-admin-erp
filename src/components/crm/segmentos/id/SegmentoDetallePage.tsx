@@ -1,382 +1,322 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import {
-  ArrowLeft,
-  Filter,
-  Edit,
-  Play,
-  Megaphone,
-  Users,
-  Loader2,
-  Save,
-  X,
-  Trash2,
-  Plus,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { RichTextEditor } from '@/components/shared/RichTextEditor';
-import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
-import { SegmentosService, type ClienteSegmento } from '../SegmentosService';
-import { Segment, FilterRule, FILTER_FIELDS, FILTER_OPERATORS } from '../types';
-import { filtroParaGuardar, normalizarFiltroSegmento, type FiltroSegmento } from '@/lib/services/crm/segmentosFiltroLogica';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+/**
+ * /app/crm/segmentos/[id] — Figma CRM 1384:1045 «Segmentos / Miembros».
+ *
+ * Cabecera con migas y «←», cuatro KPI (clientes y quién se puede contactar
+ * por teléfono, correo y WhatsApp) y la tabla de miembros: Cliente · Ciudad ·
+ * Teléfono · Correo · WhatsApp · Salud · Entró. La contactabilidad de cada
+ * fila sale de la misma puerta del envío (`fn_can_contact`, vía
+ * `crm_segment_context_page`); los KPI, del conteo del servidor (dinámico) o
+ * del último recálculo guardado (`counts_json`).
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
+import { AlertTriangle, Copy, Pencil, Play, Send, Trash2, Users } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import {
+  AvatarIniciales,
+  ConfirmDialog,
+  DataTable,
+  EmptyState,
+  KpiStrip,
+  PageHeader,
+  RowActionsMenu,
+  StatCard,
+  StatusBadge,
+  clasesBoton,
+  type ColumnaTabla,
+  type EstadoTabla,
+  type TonoBadge,
+} from '@/components/kit';
+import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { cn } from '@/utils/Utils';
+import type { ConteoSegmento } from '@/lib/services/crm/segmentosConteoService';
+import { SegmentosService, type MiembroSegmento } from '../SegmentosService';
+import type { Segment } from '../types';
+import {
+  bandaSalud,
+  conteosDesdeDesglose,
+  enUso,
+  haceCuanto,
+  instanteActualizado,
+  leerConteos,
+  leerUsos,
+  piezasDeUso,
+  type ConteosSegmento,
+  type UsoSegmento,
+} from '../segmentosListaLogica';
 
 interface SegmentoDetallePageProps {
   segmentId: string;
 }
 
+const TONO_SALUD: Record<ReturnType<typeof bandaSalud>, TonoBadge> = { verde: 'exito', amarilla: 'advertencia', roja: 'peligro', sinDato: 'neutro' };
+
 export function SegmentoDetallePage({ segmentId }: SegmentoDetallePageProps) {
-  const t = useTranslations('crm.segmentos');
+  const t = useTranslations('crm.segmentos.miembros');
+  const tl = useTranslations('crm.segmentos.lista');
+  const tc = useTranslations('crm.segmentos.constructor');
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { toast } = useToast();
-  const { formatDate } = useFormatDate();
-  
-  const [segment, setSegment] = useState<Segment | null>(null);
-  const [customers, setCustomers] = useState<ClienteSegmento[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(searchParams?.get('edit') === 'true');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isRecalculating, setIsRecalculating] = useState(false);
+  const entero = useFormatoEntero();
+  const locale = useLocaleIntl();
 
-  // Form state
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isDynamic, setIsDynamic] = useState(true);
-  const [filters, setFilters] = useState<FilterRule[]>([]);
-  // Grupos «O todos estos» del constructor: aquí se edita el primero y los demás se conservan.
-  const [otrosGrupos, setOtrosGrupos] = useState<FilterRule[][]>([]);
+  const [segmento, setSegmento] = useState<Segment | null>(null);
+  const [estadoSegmento, setEstadoSegmento] = useState<'cargando' | 'listo' | 'noEncontrado' | 'error'>('cargando');
+  const [miembros, setMiembros] = useState<MiembroSegmento[]>([]);
+  const [estadoMiembros, setEstadoMiembros] = useState<'cargando' | 'listo' | 'error'>('cargando');
+  const [conteos, setConteos] = useState<ConteosSegmento | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
+  const [recalculando, setRecalculando] = useState(false);
+  const [borrar, setBorrar] = useState(false);
+  const [usos, setUsos] = useState<UsoSegmento | undefined>(undefined);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const cargar = useCallback(async () => {
+    setEstadoSegmento('cargando');
+    setEstadoMiembros('cargando');
+    let s: Segment | null;
     try {
-      const [segmentData, customersData] = await Promise.all([
-        SegmentosService.getSegmentById(segmentId),
-        SegmentosService.getSegmentCustomers(segmentId),
-      ]);
-
-      if (!segmentData) {
-        toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.segmentoNoEncontrado'), variant: 'destructive' });
-        router.push('/app/crm/segmentos');
-        return;
-      }
-
-      setSegment(segmentData);
-      setCustomers(customersData);
-      
-      // Initialize form
-      setName(segmentData.name);
-      setDescription(segmentData.description || '');
-      setIsDynamic(segmentData.is_dynamic);
-      const filtro = normalizarFiltroSegmento(segmentData.filter_json);
-      setFilters((filtro?.grupos[0] ?? []) as FilterRule[]);
-      setOtrosGrupos((filtro?.grupos.slice(1) ?? []) as FilterRule[][]);
+      s = await SegmentosService.getSegmentById(segmentId);
     } catch {
-      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.noPudoCargarSegmento'), variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [segmentId, router, toast, t]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.nombreRequerido'), variant: 'destructive' });
+      setEstadoSegmento('error');
       return;
     }
+    if (!s) {
+      setEstadoSegmento('noEncontrado');
+      return;
+    }
+    setSegmento(s);
+    setAhora(Date.now());
+    setConteos(leerConteos(s.counts_json));
+    setEstadoSegmento('listo');
+    SegmentosService.getUsos([s.id])
+      .then((raw) => setUsos(leerUsos(raw).get(segmentId)))
+      .catch(() => setUsos(undefined));
 
-    setIsSaving(true);
+    if (s.is_dynamic && s.filter_json) {
+      SegmentosService.previewFilter(s.filter_json as Parameters<typeof SegmentosService.previewFilter>[0])
+        .then((c: ConteoSegmento) => setConteos(conteosDesdeDesglose(c.coinciden, c.base, c.desglose)))
+        .catch(() => undefined);
+    }
     try {
-      const updated = await SegmentosService.updateSegment(segmentId, {
-        name,
-        description: description || undefined,
-        filter_json: filtroParaGuardar([filters, ...otrosGrupos]) as FilterRule[] | FiltroSegmento,
-        is_dynamic: isDynamic,
-      });
-
-      if (updated) {
-        toast({ title: t('segmentoDetallePage.segmentoActualizado') });
-        setIsEditing(false);
-        loadData();
-      }
+      setMiembros(await SegmentosService.getMiembros(s));
+      setEstadoMiembros('listo');
     } catch {
-      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.noPudoActualizar'), variant: 'destructive' });
+      setEstadoMiembros('error');
+    }
+  }, [segmentId]);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const recalcular = async () => {
+    setRecalculando(true);
+    try {
+      const n = await SegmentosService.recalculateSegment(segmentId);
+      toast({ title: tl('ok.recalculado'), description: tl('ok.clientes', { n, valor: entero(n) }) });
+      void cargar();
+    } catch {
+      toast({ title: tl('errores.recalcular'), variant: 'destructive' });
     } finally {
-      setIsSaving(false);
+      setRecalculando(false);
     }
   };
 
-  const handleRecalculate = async () => {
-    setIsRecalculating(true);
-    try {
-      const count = await SegmentosService.recalculateSegment(segmentId);
-      toast({ title: t('segmentoDetallePage.recalculoCompletado'), description: t('segmentoDetallePage.clientesSegmento', { count }) });
-      loadData();
-    } catch {
-      toast({ title: t('segmentoDetallePage.error'), description: t('segmentoDetallePage.noPudoRecalcular'), variant: 'destructive' });
-    } finally {
-      setIsRecalculating(false);
-    }
+  const duplicar = async () => {
+    const copia = await SegmentosService.duplicateSegment(segmentId);
+    if (copia) {
+      toast({ title: tl('ok.duplicado') });
+      router.push(`/app/crm/segmentos/${copia.id}`);
+    } else toast({ title: tl('errores.duplicar'), variant: 'destructive' });
   };
 
-  const addFilter = () => {
-    setFilters([...filters, { field: 'full_name', operator: 'contains', value: '' }]);
+  const eliminar = async () => {
+    const r = await SegmentosService.deleteSegment(segmentId);
+    setBorrar(false);
+    if (r === 'ok') {
+      toast({ title: tl('ok.eliminado') });
+      router.push('/app/crm/segmentos');
+    } else toast({ title: r === 'enCurso' ? tl('errores.enCurso') : tl('errores.eliminar'), variant: 'destructive' });
   };
 
-  const updateFilter = (index: number, updates: Partial<FilterRule>) => {
-    const newFilters = [...filters];
-    newFilters[index] = { ...newFilters[index], ...updates };
-    setFilters(newFilters);
-  };
+  const migas = [
+    { etiqueta: tc('migas.crm'), href: '/app/crm' },
+    { etiqueta: tc('migas.segmentos'), href: '/app/crm/segmentos' },
+    { etiqueta: segmento?.name ?? t('cargando') },
+  ];
 
-  const removeFilter = (index: number) => {
-    setFilters(filters.filter((_, i) => i !== index));
-  };
-
-  const getFieldType = (fieldValue: string): string => {
-    const field = FILTER_FIELDS.find(f => f.value === fieldValue);
-    return field?.type || 'text';
-  };
-
-  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
-  useCabeceraMovil({ modo: 'page', titulo: segment?.name, volverA: '/app/crm/segmentos' });
-
-  if (isLoading) {
+  if (estadoSegmento === 'noEncontrado' || estadoSegmento === 'error') {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
-        <StatsSkeleton count={3} />
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+        <PageHeader variante="form" volverA="/app/crm/segmentos" titulo={tc('migas.segmentos')} migas={migas.slice(0, 2)} />
+        <EmptyState
+          variante={estadoSegmento === 'error' ? 'error' : 'empty'}
+          titulo={estadoSegmento === 'error' ? t('error.titulo') : t('noEncontrado.titulo')}
+          descripcion={estadoSegmento === 'error' ? t('error.descripcion') : t('noEncontrado.descripcion')}
+          onReintentar={estadoSegmento === 'error' ? () => void cargar() : undefined}
+          accion={estadoSegmento === 'noEncontrado' ? { etiqueta: t('noEncontrado.volver'), href: '/app/crm/segmentos' } : undefined}
+        />
       </div>
     );
   }
 
-  if (!segment) return null;
+  const cargando = estadoSegmento === 'cargando';
+  const instante = segmento ? instanteActualizado(segmento) : null;
+  const subtitulo = segmento
+    ? [
+        segmento.is_dynamic ? tc('datos.dinamico') : tc('datos.estatico'),
+        tl('ok.clientes', { n: segmento.customer_count || 0, valor: entero(segmento.customer_count || 0) }),
+        instante
+          ? t(segmento.is_dynamic ? 'subtitulo.recalculado' : 'subtitulo.importado', { cuando: haceCuanto(instante, locale, ahora).toLocaleLowerCase(locale) })
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined;
+
+  const acciones = segmento ? (
+    <>
+      {segmento.is_dynamic && (
+        <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => router.push(`/app/crm/segmentos/${segmentId}/editar`)}>
+          <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {t('editarReglas')}
+        </button>
+      )}
+      <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => router.push(`/app/crm/campanas/nuevo?segment=${segmentId}`)}>
+        <Send aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {t('usarEnCampana')}
+      </button>
+      <RowActionsMenu
+        orientacion="horizontal"
+        titulo={segmento.name}
+        acciones={[
+          { id: 'recalcular', etiqueta: tl('menu.recalcular'), icono: Play, onSelect: () => void recalcular(), oculta: !segmento.is_dynamic, deshabilitada: recalculando },
+          { id: 'duplicar', etiqueta: tl('menu.duplicar'), icono: Copy, onSelect: () => void duplicar() },
+          { id: 'eliminar', etiqueta: tl('menu.eliminar'), icono: Trash2, destructiva: true, separadorAntes: true, onSelect: () => setBorrar(true) },
+        ]}
+      />
+    </>
+  ) : undefined;
+
+  const total = segmento?.customer_count ?? 0;
+  const sinDesglose = t('kpi.sinDesglose');
+  const cifra = (n: number | undefined) => (n === undefined ? '—' : entero(n));
+
+  const siNo = (si: boolean, estado: string) => (
+    <StatusBadge estado={estado} etiqueta={si ? t('si') : t('no')} tono={si ? 'exito' : 'neutro'} tamano="sm" />
+  );
+  const correoBadge = (m: MiembroSegmento) =>
+    m.email && m.email_bounced ? <StatusBadge estado="rebotado" etiqueta={t('correo.rebotado')} tono="peligro" tamano="sm" /> : siNo(!!m.email && m.can_email, 'correo');
+  const whatsappBadge = (m: MiembroSegmento) => siNo(!!m.phone && m.can_whatsapp, 'whatsapp');
+  const saludBadge = (m: MiembroSegmento) => {
+    const banda = bandaSalud(m.health_score);
+    return <StatusBadge estado={`salud-${banda}`} etiqueta={t(`salud.${banda}`)} tono={TONO_SALUD[banda]} tamano="sm" />;
+  };
+  const telefono = (m: MiembroSegmento) =>
+    m.phone ? (
+      <div className="min-w-0">
+        <p className={cn('truncate tabular-nums text-fg', (m.do_not_call || !m.can_voice) && 'font-medium')}>{m.phone}</p>
+        {(m.do_not_call || !m.can_voice) && <p className="text-xs text-fg-secondary">{t('telefono.rne')}</p>}
+      </div>
+    ) : (
+      <span className="text-fg-muted">—</span>
+    );
+  const cliente = (m: MiembroSegmento) => {
+    const titulo = m.company_name || m.full_name || t('sinNombre');
+    const contacto = m.company_name ? m.full_name : null;
+    return (
+      <div className="flex min-w-0 items-center gap-3">
+        <AvatarIniciales nombre={titulo} tamano="sm" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-fg">{titulo}</p>
+          {contacto && <p className="truncate text-xs text-fg-secondary">{contacto}</p>}
+        </div>
+      </div>
+    );
+  };
+
+  const columnas: ColumnaTabla<MiembroSegmento>[] = [
+    { id: 'cliente', encabezado: t('columnas.cliente'), celda: cliente, ancho: '26%' },
+    { id: 'ciudad', encabezado: t('columnas.ciudad'), celda: (m) => <span className="text-fg-secondary">{m.city ?? '—'}</span>, ocultarDebajo: 'xl' },
+    { id: 'telefono', encabezado: t('columnas.telefono'), celda: telefono },
+    { id: 'correo', encabezado: t('columnas.correo'), celda: correoBadge, ocultarDebajo: 'md' },
+    { id: 'whatsapp', encabezado: t('columnas.whatsapp'), celda: whatsappBadge, ocultarDebajo: 'md' },
+    { id: 'salud', encabezado: t('columnas.salud'), celda: saludBadge, ocultarDebajo: 'lg' },
+    { id: 'entro', encabezado: t('columnas.entro'), celda: (m) => <span className="text-fg-secondary">{haceCuanto(m.entro_en, locale, ahora) || '—'}</span>, ocultarDebajo: 'lg' },
+  ];
+
+  const estadoTabla: EstadoTabla = cargando || estadoMiembros === 'cargando' ? 'cargando' : estadoMiembros === 'error' ? 'error' : miembros.length === 0 ? 'vacio' : 'listo';
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
-          <Link href="/app/crm/segmentos" className="hidden lg:block">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Filter className="h-6 w-6 text-blue-600" />
-              </div>
-              {segment.name}
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              {t('segmentoDetallePage.crmSegmentosDetalle')}
-            </p>
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        variante="form"
+        volverA="/app/crm/segmentos"
+        titulo={segmento?.name ?? t('cargando')}
+        subtitulo={subtitulo}
+        cargando={cargando}
+        migas={migas}
+        acciones={acciones}
+        movil={{ accionesEnFila: true }}
+      />
+
+      <KpiStrip columnas={4} etiqueta={t('kpi.etiqueta')}>
+        <StatCard cargando={cargando} etiqueta={t('kpi.clientes')} valor={entero(conteos?.total ?? total)} />
+        <StatCard
+          cargando={cargando}
+          etiqueta={t('kpi.telefono')}
+          valor={cifra(conteos?.voice_contactable)}
+          detalle={conteos ? (conteos.rne_excluded > 0 ? t('kpi.rne', { n: conteos.rne_excluded, valor: entero(conteos.rne_excluded) }) : undefined) : sinDesglose}
+          tono={conteos && conteos.rne_excluded > 0 ? 'advertencia' : undefined}
+          iconoDetalle={conteos && conteos.rne_excluded > 0 ? AlertTriangle : undefined}
+        />
+        <StatCard cargando={cargando} etiqueta={t('kpi.correo')} valor={cifra(conteos?.email_contactable)} detalle={conteos ? undefined : sinDesglose} />
+        <StatCard cargando={cargando} etiqueta={t('kpi.whatsapp')} valor={cifra(conteos?.whatsapp_contactable)} detalle={conteos ? t('kpi.plantillas') : sinDesglose} />
+      </KpiStrip>
+
+      <DataTable<MiembroSegmento>
+        etiqueta={t('tabla')}
+        columnas={columnas}
+        filas={miembros}
+        obtenerId={(m) => m.id}
+        estado={estadoTabla}
+        etiquetaFila={(m) => m.company_name || m.full_name || t('sinNombre')}
+        onFilaClick={(m) => router.push(`/app/crm/clientes/${m.id}`)}
+        filasEsqueleto={6}
+        onReintentar={() => void cargar()}
+        vacio={{ icono: Users, titulo: t('vacio.titulo'), descripcion: segmento?.is_dynamic ? t('vacio.dinamico') : t('vacio.estatico') }}
+        error={{ titulo: t('error.miembros'), descripcion: t('error.descripcion') }}
+        tarjetaMovil={(m) => (
+          <div className="space-y-2 p-4">
+            {cliente(m)}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {telefono(m)}
+              {correoBadge(m)}
+              {whatsappBadge(m)}
+              {saludBadge(m)}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <>
-              <Button variant="outline" onClick={() => { setIsEditing(false); loadData(); }}>
-                <X className="h-4 w-4 mr-2" />
-                {t('constructor.cancelar')}
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                {t('segmentoDetallePage.guardar')}
-              </Button>
-            </>
-          ) : (
-            <>
-              {segment.is_dynamic && (
-                <Button variant="outline" onClick={handleRecalculate} disabled={isRecalculating}>
-                  {isRecalculating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-                  {t('segmentoDetallePage.recalcular')}
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => setIsEditing(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                {t('segmentoDetallePage.editar')}
-              </Button>
-              <Link href={`/app/crm/campanas/nuevo?segment=${segmentId}`}>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <Megaphone className="h-4 w-4 mr-2" />
-                  {t('segmentoDetallePage.crearCampana')}
-                </Button>
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
+        )}
+      />
+      {miembros.length >= 50 && <p className="text-xs text-fg-secondary">{t('primeros', { n: 50 })}</p>}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Info & Filtros */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Información */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-gray-900 dark:text-gray-100">{t('segmentoDetallePage.informacion')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isEditing ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>{t('constructor.datos.nombre')}</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-gray-50 dark:bg-gray-900 dark:text-gray-200" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t('constructor.datos.descripcion')}</Label>
-                    <RichTextEditor value={description} onChange={setDescription} className="dark:bg-gray-900 dark:border-gray-700" />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{t('segmentoDetallePage.segmentoDinamico')}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{t('segmentoDetallePage.recalculaAutomaticamente')}</p>
-                    </div>
-                    <Switch checked={isDynamic} onCheckedChange={setIsDynamic} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-4">
-                    <Badge className={segment.is_dynamic ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}>
-                      {segment.is_dynamic ? t('constructor.datos.dinamico') : t('constructor.datos.estatico')}
-                    </Badge>
-                    <span className="text-gray-500 dark:text-gray-400">
-                      {segment.customer_count} clientes
-                    </span>
-                  </div>
-                  {segment.description && (
-                    <HtmlContentRenderer html={segment.description} className="text-gray-700 dark:text-gray-300" />
-                  )}
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {t('segmentoDetallePage.ultimaEjecucion', { date: segment.last_run_at ? formatDate(segment.last_run_at) : t('segmentoDetallePage.nunca') })}
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Filtros */}
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-gray-900 dark:text-gray-100">{t('segmentoDetallePage.reglasFiltro')}</CardTitle>
-              {isEditing && (
-                <Button variant="outline" size="sm" onClick={addFilter}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('segmentoDetallePage.agregar')}
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {otrosGrupos.length > 0 && (
-                <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                  {t('segmentoDetallePage.editaPrimerGrupo')} {otrosGrupos.length === 1 ? t('segmentoDetallePage.hay1GrupoTodos') : t('segmentoDetallePage.hayGruposTodosEstos', { n: otrosGrupos.length })}{t('segmentoDetallePage.conservaGuardar')}
-                </p>
-              )}
-              {filters.length === 0 ? (
-                <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('segmentoDetallePage.sinReglasDefinidas')}</p>
-              ) : (
-                <div className="space-y-3">
-                  {filters.map((filter, index) => {
-                    const fieldType = getFieldType(filter.field);
-                    const operators = FILTER_OPERATORS[fieldType] || FILTER_OPERATORS.text;
-                    const fieldLabel = FILTER_FIELDS.some(f => f.value === filter.field) ? t(`segmentoDetallePage.campos.${filter.field}`) : filter.field;
-                    const opLabel = operators.some(o => o.value === filter.operator) ? t(`segmentoDetallePage.operadores.${fieldType in FILTER_OPERATORS ? fieldType : 'text'}.${filter.operator}`) : filter.operator;
-
-                    if (isEditing) {
-                      return (
-                        <div key={index} className="flex flex-wrap items-center gap-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                          <Select value={filter.field} onValueChange={(v) => updateFilter(index, { field: v })}>
-                            <SelectTrigger className="w-36 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
-                            <SelectContent className="border-gray-200 dark:border-gray-700">
-                              {FILTER_FIELDS.map((f) => <SelectItem key={f.value} value={f.value}>{t(`segmentoDetallePage.campos.${f.value}`)}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          <Select value={filter.operator} onValueChange={(v) => updateFilter(index, { operator: v as FilterRule['operator'] })}>
-                            <SelectTrigger className="w-32 bg-white dark:bg-gray-800 dark:text-gray-200"><SelectValue /></SelectTrigger>
-                            <SelectContent className="border-gray-200 dark:border-gray-700">
-                              {operators.map((o) => <SelectItem key={o.value} value={o.value}>{t(`segmentoDetallePage.operadores.${fieldType in FILTER_OPERATORS ? fieldType : 'text'}.${o.value}`)}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                          {!['is_empty', 'is_not_empty'].includes(filter.operator) && (
-                            <Input value={String(filter.value)} onChange={(e) => updateFilter(index, { value: e.target.value })} className="flex-1 min-w-[100px] bg-white dark:bg-gray-800 dark:text-gray-200" />
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => removeFilter(index)} className="text-red-600 dark:text-red-400"><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div key={index} className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                        <span className="font-medium text-gray-900 dark:text-gray-100">{fieldLabel}</span>
-                        <span className="mx-2 text-gray-500 dark:text-gray-400">{opLabel}</span>
-                        {!['is_empty', 'is_not_empty'].includes(filter.operator) && (
-                          <span className="text-blue-600 font-medium">&quot;{String(filter.value)}&quot;</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Clientes */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              {t('segmentoDetallePage.clientes', { n: customers.length })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {customers.length === 0 ? (
-              <p className="text-center text-gray-500 dark:text-gray-400 py-8">{t('segmentoDetallePage.noHayClientesEste')}</p>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {customers.map((customer) => (
-                  <Link key={customer.id} href={`/app/crm/clientes/${customer.id}`}>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer">
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{customer.full_name || t('segmentoDetallePage.sinNombre')}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{customer.email || customer.phone || t('segmentoDetallePage.sinContacto')}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <ConfirmDialog
+        abierto={borrar}
+        onAbiertoChange={setBorrar}
+        titulo={tl('eliminar.titulo')}
+        descripcion={
+          enUso(usos)
+            ? `${tl('eliminar.descripcion', { nombre: segmento?.name ?? '' })} ${tl('eliminar.enUso', { usos: piezasDeUso(usos).map((p) => tl(`uso.${p.clave}`, { n: p.n })).join(', ') })}`
+            : tl('eliminar.descripcion', { nombre: segmento?.name ?? '' })
+        }
+        textoConfirmar={tl('menu.eliminar')}
+        tono="peligro"
+        varianteConfirmar="destructivo"
+        onConfirmar={() => void eliminar()}
+      />
     </div>
   );
 }

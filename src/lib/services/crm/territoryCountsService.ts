@@ -33,6 +33,8 @@ export interface ConteoTerritorio {
   /** El territorio tiene reglas sobre la oportunidad: el conteo de clientes no las puede aplicar. */
   reglasDeOportunidad: boolean;
   sinReglas: boolean;
+  /** Oportunidades abiertas con `territory_id` de este territorio («1.912 clientes · 86 oportunidades»). */
+  oportunidades: number;
 }
 
 export interface ConteosTerritorios {
@@ -102,8 +104,20 @@ export async function contarTerritorios(ctx: CrmSesion, ahora: () => number = Da
       despues = String(pagina[pagina.length - 1].id);
     }
   }
+  const oportunidades = await Promise.all(
+    territorios.map(async (t) => {
+      const { count, error: eOpp } = await ctx.supabase
+        .from('opportunities')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', ctx.organizationId)
+        .eq('territory_id', t.id)
+        .eq('status', 'open');
+      if (eOpp) throw eOpp;
+      return count ?? 0;
+    }),
+  );
   return {
-    territorios: territorios.map((t) => {
+    territorios: territorios.map((t, i) => {
       const reglas = t.criteria?.rules ?? [];
       return {
         id: t.id,
@@ -111,6 +125,7 @@ export async function contarTerritorios(ctx: CrmSesion, ahora: () => number = Da
         solapados: acc.get(t.id)?.solapados ?? 0,
         reglasDeOportunidad: reglas.some((r) => r.field_key.startsWith('opportunities.')),
         sinReglas: reglas.length === 0,
+        oportunidades: oportunidades[i],
       };
     }),
     sinTerritorio,

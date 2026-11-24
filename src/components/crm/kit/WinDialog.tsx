@@ -12,8 +12,12 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CLASE_AREA, CLASE_AVISO_INFO, CLASE_CAMPO, simboloMoneda, type OpcionUsuario } from './camposCrm';
 import { SelectCrm } from './SelectCrm';
+import { Switch } from '@/components/ui/switch';
+import { StatusBadge } from '@/components/kit/StatusBadge';
 import {
   ACCIONES_GANAR,
+  accionesEfectivas,
+  accionesIniciales,
   alternarAccion,
   conteoResumen,
   cuerpoGanar,
@@ -22,6 +26,7 @@ import {
   valoresInicialesGanar,
   type DocumentoCreado,
   type PasoGanar,
+  type PasoGanarVista,
   type ValoresGanar,
 } from './winDialogLogica';
 
@@ -31,6 +36,10 @@ import {
  * `onGanar` recibe el cuerpo de `POST …/win` y devuelve los documentos
  * creados para el resumen; si falla, el diálogo no se cierra y conserva lo
  * escrito.
+ *
+ * Con `pasos` (Figma 1787:900392), el paso 2 muestra solo lo que piden las
+ * líneas: cada paso dice qué hará y con qué RPC; «Emitir la factura ahora» es
+ * un interruptor opcional. La oportunidad queda ganada aunque un paso falle.
  */
 export interface WinDialogProps {
   abierto: boolean;
@@ -48,9 +57,16 @@ export interface WinDialogProps {
   stageId?: string;
   onGanar: (cuerpo: ReturnType<typeof cuerpoGanar>) => Promise<DocumentoCreado[]>;
   onVerFactura?: (doc: DocumentoCreado) => void;
+  /** Pasos derivados de las líneas (sin ellos, la lista por defecto). */
+  pasos?: readonly PasoGanarVista[] | null;
+  /** «6 líneas · $ 6.197.520» para el subtítulo del paso 2. */
+  resumenLineas?: string | null;
 }
 
-export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, monedas, motivos = [], comision, stageId, onGanar, onVerFactura }: WinDialogProps) {
+/** Sin líneas que derivar: la lista corta de siempre (sin la venta POS, que se retiró). */
+const ACCIONES_POR_DEFECTO_VISIBLES = ACCIONES_GANAR.filter((a) => ['factura', 'onboarding', 'renovacion', 'referido', 'agradecimiento'].includes(a));
+
+export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, monedas, motivos = [], comision, stageId, onGanar, onVerFactura, pasos, resumenLineas }: WinDialogProps) {
   const t = useTranslations('crm.kit.ganar');
   const { getToday } = useFormatDate();
   const hoy = getToday();
@@ -63,10 +79,17 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
 
   useEffect(() => {
     if (!abierto) return;
-    setPaso('ficha'); setV(valoresInicialesGanar(oportunidad, monedaBase.code, hoy)); setIntentado(false); setError(null); setDocs([]);
+    setPaso('ficha'); setV(valoresInicialesGanar(oportunidad, monedaBase.code, hoy, accionesIniciales(pasos))); setIntentado(false); setError(null); setDocs([]);
     // Solo al abrir: la oportunidad puede cambiar de identidad por cada render de la pantalla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
+  // Los pasos derivados llegan cuando se leen las líneas: se marcan los suyos.
+  const clavePasos = (pasos ?? []).map((p) => p.accion).join(',');
+  useEffect(() => {
+    if (abierto && pasos && pasos.length) setV((x) => ({ ...x, acciones: accionesIniciales(pasos) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clavePasos]);
+  const efectivas = accionesEfectivas(v.acciones, pasos);
 
   const errores = validarGanar(v, hoy);
   const err = (k: keyof typeof errores) => (intentado && errores[k] ? t(`error.${errores[k]}`) : null);
@@ -82,7 +105,7 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
     setOcupado(true);
     setError(null);
     try {
-      setDocs(await onGanar(cuerpoGanar(v, oportunidad.win_data, stageId)));
+      setDocs(await onGanar(cuerpoGanar({ ...v, acciones: efectivas }, oportunidad.win_data, stageId)));
       setPaso('resumen');
     } catch (e) {
       setError(e instanceof Error && e.message ? e.message : t('errorGanar'));
@@ -97,7 +120,9 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
   const descripcion =
     paso === 'resumen'
       ? [oportunidad.clienteNombre, formatMoneda(oportunidad.amount, monedaBase)].filter(Boolean).join(' · ')
-      : t(paso === 'ficha' ? 'paso1' : 'paso2');
+      : paso === 'acciones' && pasos && pasos.length && resumenLineas
+        ? t('paso2Lineas', { resumen: resumenLineas })
+        : t(paso === 'ficha' ? 'paso1' : 'paso2');
 
   const pie =
     paso === 'ficha' ? (
@@ -110,7 +135,7 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
         <button type="button" onClick={() => setPaso('ficha')} disabled={ocupado} className={clasesBoton({ variante: 'fantasma' })}>{t('atras')}</button>
         <button type="button" onClick={ganar} disabled={ocupado} aria-busy={ocupado || undefined} className={clasesBoton()}>
           {ocupado ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Trophy aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-          {t('ganarOportunidad')}
+          {pasos && pasos.length ? t('ganarYEjecutar', { n: efectivas.length }) : t('ganarOportunidad')}
         </button>
       </>
     ) : (
@@ -156,11 +181,47 @@ export function WinDialog({ abierto, onAbiertoChange, oportunidad, monedaBase, m
           </FormField>
         </>
       )}
-      {paso === 'acciones' && (
+      {paso === 'acciones' && pasos && pasos.length > 0 && (
         <>
           <fieldset className="flex flex-col gap-2">
             <legend className="sr-only">{t('paso2')}</legend>
-            {ACCIONES_GANAR.map((a) => (
+            {pasos.map((p) => {
+              const elegido = efectivas.includes(p.accion);
+              const bloqueado = !!p.requiere && !v.acciones.includes(p.requiere);
+              const alternar = () => cambiar({ acciones: alternarAccion(v.acciones, p.accion) });
+              return p.interruptor ? (
+                <div key={p.accion} className={cn('flex items-start gap-3 rounded-lg bg-subtle px-4 py-3', bloqueado && 'opacity-60')}>
+                  <Switch checked={elegido} disabled={bloqueado} onCheckedChange={alternar} aria-label={p.titulo} className="mt-0.5" />
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-medium text-fg">{p.titulo}</span>
+                    <span className="text-[13px] text-fg-secondary">{p.detalle}</span>
+                    {p.tecnico && <span className="text-xs text-fg-muted">{p.tecnico}</span>}
+                  </div>
+                </div>
+              ) : (
+                <label key={p.accion} className={cn('flex items-start gap-3 rounded-lg border border-line px-4 py-3', bloqueado ? 'opacity-60' : 'cursor-pointer hover:bg-hover')}>
+                  <input type="checkbox" checked={elegido} disabled={bloqueado} onChange={alternar} className="mt-1 size-4 rounded border-line-strong accent-brand-action" />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-sm font-medium text-fg">{p.titulo}</span>
+                    <span className="text-[13px] text-fg-secondary">{p.detalle}</span>
+                    {p.tecnico && <span className="text-xs text-fg-muted">{p.tecnico}</span>}
+                  </span>
+                  <StatusBadge estado={elegido ? 'sehara' : 'omitido'} etiqueta={elegido ? t('seHara') : t('omitido')} tono="neutro" tamano="sm" />
+                </label>
+              );
+            })}
+          </fieldset>
+          <p className={CLASE_AVISO_INFO}>
+            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+            {t('comisionSistema')}
+          </p>
+        </>
+      )}
+      {paso === 'acciones' && !(pasos && pasos.length > 0) && (
+        <>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="sr-only">{t('paso2')}</legend>
+            {ACCIONES_POR_DEFECTO_VISIBLES.map((a) => (
               <label key={a} className="flex items-center gap-2 text-sm text-fg">
                 <input type="checkbox" checked={v.acciones.includes(a)} onChange={() => cambiar({ acciones: alternarAccion(v.acciones, a) })} className="size-4 rounded border-line-strong accent-brand-action" />
                 {t(`acciones.${a}`)}

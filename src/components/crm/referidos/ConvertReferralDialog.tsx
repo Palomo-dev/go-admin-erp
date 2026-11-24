@@ -1,156 +1,219 @@
 'use client';
 
 /**
- * Convertir un referido calificado en lead: crea la ficha de cliente y la
- * oportunidad (`source='referral'`, `deal_type='referral'`) con el mismo alta
- * que Leads, o enlaza una ficha existente. Se confirman los datos de contacto
- * porque sin correo ni teléfono el alta se rechaza (y se dice aquí antes).
+ * «Convertir en lead» (Figma 1303:85899), solo desde Calificado. Usa el MISMO
+ * alta que `/api/crm/leads` vía `POST /api/crm/referrals/[id]/convert`:
+ * ficha de cliente (lead) + origen «Referido». Si el correo o el teléfono ya
+ * existen en `customers`, propone «Enlazar esa ficha» (`customer_id`) en vez
+ * de duplicar; el 409 con `existing_customer` del servidor hace lo mismo.
+ * Responsable (vacío → asignación automática) y monto estimado opcional.
+ * «Embudo» y «Etapa inicial» del marco NO se piden: desde D2 el lead es la
+ * ficha y no está en un embudo, y el alta los ignora (`leadCreateService`);
+ * pedirlos sería prometer algo que no se guarda. Los errores 400/409 del alta
+ * se muestran tal cual.
  */
 
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/kit/PhoneInput';
-import { mensajeErrorTelefono } from '@/lib/utils/telefono';
-import { Switch } from '@/components/ui/switch';
+import { ArrowRight, Link2, TriangleAlert } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { Input } from '@/components/ui/input';
+import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
+import { FormField } from '@/components/kit/FormField';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { CampoNumero } from '@/components/kit/CampoNumero';
+import { PhoneInput } from '@/components/kit/PhoneInput';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
+import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
+import { mensajeErrorTelefono } from '@/lib/utils/telefono';
 import type { ReferralView } from '@/lib/services/crm/referralsService';
-import { EntitySearchList } from '@/components/crm/shared/EntitySearchList';
-import { useCustomerSearch } from '@/components/crm/shared/useCustomerSearch';
+import { ConvertReferralError } from './useReferrals';
+import { useReferidosFormato } from './useReferidosFormato';
 
 interface Props {
   open: boolean;
   referral: ReferralView | null;
   onOpenChange: (open: boolean) => void;
   onConvert: (id: string, payload: Record<string, unknown>) => Promise<{ lead: { id: string; name: string } }>;
-  returnFocusFallback: () => HTMLElement | null;
 }
 
-export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert, returnFocusFallback }: Props) {
+interface FichaExistente {
+  id: string;
+  nombre: string;
+  detalle: string | null;
+  por: 'correo' | 'telefono';
+}
+
+const digitos = (v: string | null | undefined) => (v ?? '').replace(/\D/g, '');
+
+/** Busca una ficha con el mismo correo (exacto) o teléfono (8 últimos dígitos) en la organización. */
+async function buscarDuplicado(email: string | null, phone: string | null): Promise<FichaExistente | null> {
+  const orgId = getOrganizationId();
+  if (!orgId || orgId <= 0) return null;
+  if (email) {
+    const { filas } = await buscarClientes(supabase, { organizationId: orgId, texto: email, limite: 5 });
+    const f = filas.find((c) => (c.email ?? '').trim().toLowerCase() === email.trim().toLowerCase());
+    if (f) return { id: f.id, nombre: f.full_name ?? '—', detalle: f.phone, por: 'correo' };
+  }
+  const tel = digitos(phone).slice(-8);
+  if (tel.length === 8) {
+    const { filas } = await buscarClientes(supabase, { organizationId: orgId, texto: tel, limite: 5 });
+    const f = filas.find((c) => digitos(c.phone).endsWith(tel));
+    if (f) return { id: f.id, nombre: f.full_name ?? '—', detalle: f.email, por: 'telefono' };
+  }
+  return null;
+}
+
+export function ConvertReferralDialog({ open, referral, onOpenChange, onConvert }: Props) {
+  const { t, recompensa, simbolo } = useReferidosFormato();
+  const escritorio = useEsEscritorio();
+  const cat = useCatalogosCrm();
+  const [duplicado, setDuplicado] = useState<FichaExistente | null>(null);
+  const [enlazar, setEnlazar] = useState(false);
+  const [responsable, setResponsable] = useState('');
+  const [monto, setMonto] = useState<number | null>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [useExisting, setUseExisting] = useState(false);
-  const [query, setQuery] = useState('');
-  const [existing, setExisting] = useState<{ id: string; title: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [focusId, setFocusId] = useState<string | null>(null);
-  const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
-  const { hits, loading, error: searchError } = useCustomerSearch(query, open && useExisting);
 
   useEffect(() => {
-    if (!open) return;
-    setEmail(referral?.referred_email ?? '');
-    setPhone(referral?.referred_phone ?? '');
-    setUseExisting(false);
-    setQuery('');
-    setExisting(null);
+    if (!open || !referral) return;
+    setDuplicado(null);
+    setEnlazar(false);
+    setResponsable('');
+    setMonto(null);
+    setEmail(referral.referred_email ?? '');
+    setPhone(referral.referred_phone ?? '');
     setError(null);
-  }, [open, referral?.id, referral?.referred_email, referral?.referred_phone]);
+    let vivo = true;
+    buscarDuplicado(referral.referred_email, referral.referred_phone)
+      .then((d) => vivo && setDuplicado(d))
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [open, referral]);
 
-  useEffect(() => {
-    if (!focusId) return;
-    document.getElementById(focusId)?.focus();
-    setFocusId(null);
-  }, [focusId]);
-
-  const contactMissing = !useExisting && !email.trim() && !phone.trim();
+  const sinContacto = !referral?.referred_email && !referral?.referred_phone;
+  const pideContacto = sinContacto && !enlazar;
 
   const submit = async () => {
     if (!referral) return;
-    if (useExisting && !existing) {
-      setError('Elige la ficha de cliente existente o desactiva esa opción.');
-      setFocusId('convert-existing');
-      return;
-    }
-    if (contactMissing) {
-      setError('Para crear el lead hace falta al menos correo o teléfono.');
-      setFocusId('convert-email');
-      return;
-    }
-    const phoneError = useExisting ? null : mensajeErrorTelefono(phone);
-    if (phoneError) {
-      setError(phoneError);
-      setFocusId('convert-phone');
-      return;
+    if (pideContacto) {
+      if (!email.trim() && !phone.trim()) return setError(t('convertirDialogo.faltaContacto'));
+      const errTel = mensajeErrorTelefono(phone);
+      if (errTel) return setError(errTel);
     }
     setSaving(true);
     setError(null);
     try {
-      const payload: Record<string, unknown> = useExisting
-        ? { customer_id: existing!.id }
-        : { referred_email: email.trim() || null, referred_phone: phone.trim() || null };
-      const { lead } = await onConvert(referral.id, payload);
-      toast({ title: 'Referido convertido en lead', description: `«${lead.name}» ya está en el pipeline.` });
+      const payload: Record<string, unknown> = {
+        ...(enlazar && duplicado ? { customer_id: duplicado.id } : {}),
+        ...(pideContacto ? { referred_email: email.trim() || null, referred_phone: phone.trim() || null } : {}),
+        ...(responsable ? { salesperson_id: responsable } : {}),
+        ...(monto !== null && monto > 0 ? { amount: monto } : {}),
+      };
+      await onConvert(referral.id, payload);
+      toast({ title: t('toast.convertido'), description: t('toast.convertidoDescripcion', { nombre: referral.referred_name }) });
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-      setFocusId('convert-error');
+      if (err instanceof ConvertReferralError && err.existingCustomer) {
+        setDuplicado({ id: err.existingCustomer.id, nombre: err.existingCustomer.full_name ?? '—', detalle: referral.referred_email, por: 'correo' });
+      }
+      setError(err instanceof Error ? err.message : t('errorDesconocido'));
     } finally {
       setSaving(false);
     }
   };
 
+  const contacto = [referral?.referred_email, referral?.referred_phone].filter(Boolean).join(' · ');
+  const programa = referral?.program ? `${referral.program.name} (${recompensa(referral.program, true)})` : t('programa.sin');
+
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-white dark:bg-gray-950">
-        <DialogHeader className="pr-6 text-left">
-          <DialogTitle className="text-gray-900 dark:text-gray-100">Convertir «{referral?.referred_name}» en lead</DialogTitle>
-          <DialogDescription className="text-gray-600 dark:text-gray-400">
-            Se crea la ficha de cliente y un lead con origen «referido» en el pipeline por defecto. El referido queda como convertido.
-          </DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-          <div className="flex items-center gap-2">
-            <Switch id="convert-existing-toggle" checked={useExisting} disabled={saving} onCheckedChange={setUseExisting} />
-            <Label htmlFor="convert-existing-toggle" className="text-sm text-gray-900 dark:text-gray-100">Ya existe como cliente: enlazar su ficha</Label>
+    <PanelAdaptable
+      abierto={open}
+      onAbiertoChange={onOpenChange}
+      titulo={t('convertirDialogo.titulo')}
+      descripcion={t('convertirDialogo.descripcion')}
+      ancho={560}
+      ocupado={saving}
+      pie={
+        <>
+          <button type="button" disabled={saving} onClick={() => onOpenChange(false)} className={clasesBoton({ variante: 'secundario', anchoCompleto: !escritorio })}>
+            {t('convertirDialogo.cancelar')}
+          </button>
+          <button type="submit" form="convertir-referido" disabled={saving} aria-busy={saving || undefined} className={clasesBoton({ anchoCompleto: !escritorio })}>
+            <ArrowRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {saving ? t('convertirDialogo.creando') : t('convertirDialogo.crear')}
+          </button>
+        </>
+      }
+    >
+      <form id="convertir-referido" className="flex flex-col gap-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+        {referral && (
+          <div className="rounded-xl bg-subtle px-4 py-3">
+            <p className="text-[15px] font-semibold text-fg">{referral.referred_name}</p>
+            <p className="mt-1 text-[13px] text-fg-secondary">{contacto || t('convertirDialogo.sinContacto')}</p>
+            <p className="mt-0.5 text-[13px] text-fg-secondary">
+              {t('convertirDialogo.referidaPor', { nombre: referral.referrer?.full_name ?? t('sinNombre') })} · {programa}
+            </p>
           </div>
-          {useExisting ? (
-            <EntitySearchList
-              id="convert-existing"
-              label="Ficha de cliente existente"
-              placeholder="Buscar por nombre o correo…"
-              query={query}
-              onQueryChange={setQuery}
-              hits={hits.map((h) => ({ id: h.id, title: h.full_name ?? 'Cliente sin nombre', subtitle: h.email ?? h.phone ?? null }))}
-              loading={loading}
-              error={searchError}
-              selectedId={existing?.id ?? null}
-              onSelect={(h) => setExisting({ id: h.id, title: h.title })}
-              hint={existing ? `Elegido: ${existing.title}` : 'Se enlazará esa ficha sin crear otra.'}
+        )}
+
+        {duplicado && !enlazar && (
+          <AvisoTonal
+            tono="advertencia"
+            icono={TriangleAlert}
+            titulo={t(duplicado.por === 'correo' ? 'convertirDialogo.duplicado' : 'convertirDialogo.duplicadoTelefono')}
+            descripcion={[duplicado.nombre, duplicado.detalle].filter(Boolean).join(' · ')}
+            accion={{ etiqueta: t('convertirDialogo.enlazar'), onClick: () => { setEnlazar(true); setError(null); } }}
+          />
+        )}
+        {duplicado && enlazar && (
+          <AvisoTonal
+            tono="informacion"
+            icono={Link2}
+            titulo={t('convertirDialogo.enlazada', { nombre: duplicado.nombre })}
+            accion={{ etiqueta: t('convertirDialogo.deshacer'), onClick: () => setEnlazar(false) }}
+          />
+        )}
+
+        {pideContacto && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField etiqueta={t('convertirDialogo.correo')} ayuda={t('convertirDialogo.faltaContacto')}>
+              <Input type="email" value={email} autoComplete="off" onChange={(e) => setEmail(e.target.value)} />
+            </FormField>
+            <FormField etiqueta={t('convertirDialogo.telefono')}>
+              {(c) => <PhoneInput id={c.id} aria-describedby={c['aria-describedby']} value={phone} autoComplete="off" onChange={setPhone} />}
+            </FormField>
+          </div>
+        )}
+
+        <FormField etiqueta={t('convertirDialogo.responsable')} ayuda={t('convertirDialogo.ayudaResponsable')}>
+          {(c) => (
+            <SelectCrm
+              id={c.id}
+              aria-describedby={c['aria-describedby']}
+              valor={responsable}
+              onValorChange={setResponsable}
+              opcionVacia={t('convertirDialogo.automatico')}
+              opciones={cat.usuarios.map((u) => ({ valor: u.id, etiqueta: u.nombre }))}
+              disabled={cat.cargando}
             />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="convert-email" className="text-xs text-gray-700 dark:text-gray-300">Correo</Label>
-                <Input id="convert-email" type="email" value={email} autoComplete="off" aria-invalid={contactMissing && !!error} aria-describedby="convert-contact-hint" onChange={(e) => setEmail(e.target.value)} />
-              </div>
-              <div>
-                <Label htmlFor="convert-phone" className="text-xs text-gray-700 dark:text-gray-300">Teléfono</Label>
-                <PhoneInput id="convert-phone" value={phone} autoComplete="off" aria-describedby="convert-contact-hint" onChange={setPhone} />
-              </div>
-              <p id="convert-contact-hint" className="text-xs text-gray-600 dark:text-gray-400 sm:col-span-2">Al menos uno de los dos: un lead sin forma de contacto no sirve para nada.</p>
-            </div>
           )}
-          {error && (
-            <Alert id="convert-error" variant="destructive" tabIndex={-1}>
-              <AlertTitle>No se pudo convertir</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Convertir</button>
-        </form>
-        <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
-          <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
-            {saving ? 'Convirtiendo…' : 'Crear lead'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </FormField>
+
+        <FormField etiqueta={t('convertirDialogo.monto')}>
+          {(c) => <CampoNumero id={c.id} valor={monto} onValorChange={setMonto} prefijo={simbolo} minimo={0} decimales={2} />}
+        </FormField>
+
+        {error && <AvisoTonal tono="peligro" rol="alert" titulo={t('convertirDialogo.error')} descripcion={error} />}
+      </form>
+    </PanelAdaptable>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
+  getAutomationRule,
   updateAutomationRule,
   deleteAutomationRule,
   validateRuleInput,
@@ -15,6 +16,30 @@ function errorResponse(error: unknown, tag: string): NextResponse {
   console.error(`[Automation Rules] ${tag}:`, message);
   const status = /inválida|inválido|requerido/i.test(message) ? 400 : 500;
   return NextResponse.json({ success: false, error: message }, { status });
+}
+
+/**
+ * GET /api/crm/automation-rules/[id] — Una regla con el nombre de quien la
+ * editó por última vez (cabecera del constructor, Figma 1375:17).
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const ctx = await getServerOrgContext();
+    const { id } = await params;
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      return NextResponse.json({ success: false, error: 'Regla no encontrada' }, { status: 404 });
+    }
+    const rule = await getAutomationRule(id, ctx.organizationId, ctx.supabase);
+    if (!rule) {
+      return NextResponse.json({ success: false, error: 'Regla no encontrada' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, data: rule }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error: unknown) {
+    return errorResponse(error, 'GET error');
+  }
 }
 
 /**

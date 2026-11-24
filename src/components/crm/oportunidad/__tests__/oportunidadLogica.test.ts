@@ -179,6 +179,7 @@ describe('formulario en página: líneas y origen/comisión (cálculo único)', 
     const c = cuerpoLineas(l);
     expect(c.products).toEqual([{ id: 'l1', product_id: 7, quantity: 5, unit_price: 2_000_000 }]);
     expect(c.spaces).toEqual([{ id: 'l3', space_id: 'e1', nights: 2, unit_price: 100 }]);
+    expect(cuerpoLineas(l, { sinIds: true }).products).toEqual([{ product_id: 7, quantity: 5, unit_price: 2_000_000 }]);
     expect(JSON.stringify(c)).not.toContain('total_price');
     expect(lineasValidas({ ...l, custom: [{ concept: ' ', quantity: 1, unit_price: 0 }] })).toBe(false);
   });
@@ -229,8 +230,10 @@ describe('«Nuevo pipeline» en 3 pasos', () => {
 });
 
 describe('ganar: acciones del Figma → pasos únicos de wonCloseSteps', () => {
-  it('reservas y comisión siempre; «agradecimiento» no tiene ejecutor; orden de buildInitialSteps', () => {
-    expect(pasosElegidos(['renovacion', 'factura', 'agradecimiento'])).toEqual(['invoice', 'reservations', 'renewal', 'commission']);
+  it('comisión siempre; «agradecimiento» y «membresía» no tienen ejecutor; orden de ORDEN_PASOS_GANAR', () => {
+    expect(pasosElegidos(['renovacion', 'factura', 'agradecimiento'])).toEqual(['invoice', 'renewal', 'commission']);
+    // Pasos derivados de las líneas (Figma 1787:900392): la venta POS ya no es una acción.
+    expect(pasosElegidos(['cita', 'reserva', 'membresia', 'emitir', 'factura', 'cupo'])).toEqual(['invoice', 'emit', 'reservations', 'class_slot', 'appointment', 'commission']);
     expect(documentosDe([{ paso: 'invoice', ok: true, mensaje: 'Factura en borrador: FV-1' }, { paso: 'renewal', ok: false, mensaje: 'x' }])).toEqual([
       { tipo: 'factura', numero: 'Factura en borrador: FV-1', href: '/app/finanzas/facturas-venta', estado: 'creado' },
       { tipo: 'otro', numero: 'x', href: null, estado: 'error' },

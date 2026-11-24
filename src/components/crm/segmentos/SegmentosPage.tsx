@@ -1,377 +1,323 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+/**
+ * /app/crm/segmentos — Figma CRM 1384:17 «Listado — listo», 1388:632 «vacío»,
+ * 1388:1079 «cargando» y 1388:1532 «error».
+ *
+ * Cabecera con «Importar lista», «Nuevo segmento» y «⋯»; búsqueda y chips
+ * Todos / Dinámicos / Estáticos; tabla Segmento · Tipo · Clientes ·
+ * Contactables · Actualizado · Usado en · «⋯». En celular, una tarjeta por
+ * segmento. Datos reales: `segments`, `counts_json` (contactables) y
+ * `crm_segment_usages` (campañas, campañas de voz y secuencias).
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Plus,
-  RefreshCw,
-  ArrowLeft,
-  Users,
-  Filter,
-  Zap,
-  FileText,
-  MoreVertical,
-  Eye,
-  Edit,
-  Copy,
-  Trash2,
-  Play,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { SegmentosService } from './SegmentosService';
-import { Segment, SegmentStats } from './types';
-import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { CopyableId } from '@/components/common/CopyableId';
 import { useTranslations } from 'next-intl';
+import { Copy, Download, Mail, MessageSquare, Pencil, Phone, Play, Plus, RefreshCw, Trash2, Users } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import {
+  ChipsOpcion,
+  ConfirmDialog,
+  DataTable,
+  PageHeader,
+  RowActionsMenu,
+  SearchInput,
+  StatusBadge,
+  clasesBoton,
+  type AccionFila,
+  type ColumnaTabla,
+  type EstadoTabla,
+} from '@/components/kit';
+import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { cn } from '@/utils/Utils';
+import { SegmentosService } from './SegmentosService';
+import type { Segment } from './types';
+import { ImportarListaDialog } from './ImportarListaDialog';
+import {
+  contactables,
+  enUso,
+  filtrarSegmentos,
+  haceCuanto,
+  instanteActualizado,
+  leerConteos,
+  leerUsos,
+  piezasDeUso,
+  reglasDeResumen,
+  type CanalContacto,
+  type TipoFiltroSegmento,
+  type UsoSegmento,
+} from './segmentosListaLogica';
+
+const ICONO_CANAL: Record<CanalContacto, typeof Phone> = { telefono: Phone, correo: Mail, whatsapp: MessageSquare };
 
 export function SegmentosPage() {
-  const t = useTranslations('crm.segmentos');
+  const t = useTranslations('crm.segmentos.lista');
+  const tc = useTranslations('crm.segmentos.constructor');
   const router = useRouter();
+  const locale = useLocaleIntl();
+  const entero = useFormatoEntero();
   const { formatDate } = useFormatDate();
-  const { toast } = useToast();
-  const [segments, setSegments] = useState<Segment[]>([]);
-  const [stats, setStats] = useState<SegmentStats>({ total: 0, dynamic: 0, static: 0, totalCustomers: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [deleteSegment, setDeleteSegment] = useState<Segment | null>(null);
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const [segmentos, setSegmentos] = useState<Segment[]>([]);
+  const [usos, setUsos] = useState<Map<string, UsoSegmento>>(new Map());
+  const [estado, setEstado] = useState<'cargando' | 'listo' | 'error' | 'sinPermiso'>('cargando');
+  const [busqueda, setBusqueda] = useState('');
+  const [tipo, setTipo] = useState<TipoFiltroSegmento>('todos');
+  const [importar, setImportar] = useState(false);
+  const [borrar, setBorrar] = useState<Segment | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
+
+  const cargar = useCallback(async () => {
+    setEstado('cargando');
     try {
-      const [segmentsData, statsData] = await Promise.all([
-        SegmentosService.getSegments(),
-        SegmentosService.getStats(),
-      ]);
-      setSegments(segmentsData);
-      setStats(statsData);
-    } catch (error) {
-      toast({
-        title: t('segmentoDetallePage.error'),
-        description: t('segmentosPage.noPudieronCargarSegmentos'),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+      const lista = await SegmentosService.listarSegmentos();
+      setSegmentos(lista);
+      setAhora(Date.now());
+      setEstado('listo');
+      // «Usado en» no bloquea la tabla: si falla, la columna queda en «—».
+      SegmentosService.getUsos(lista.map((s) => s.id))
+        .then((raw) => setUsos(leerUsos(raw)))
+        .catch(() => setUsos(new Map()));
+    } catch (e) {
+      setEstado((e as { code?: string } | null)?.code === '42501' ? 'sinPermiso' : 'error');
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    void cargar();
+  }, [cargar]);
 
-  const handleDuplicate = async (segment: Segment) => {
-    const duplicated = await SegmentosService.duplicateSegment(segment.id);
-    if (duplicated) {
-      toast({ title: t('segmentosPage.segmentoDuplicado') });
-      loadData();
+  const visibles = useMemo(() => filtrarSegmentos(segmentos, busqueda, tipo), [segmentos, busqueda, tipo]);
+  const hayFiltro = busqueda.trim() !== '' || tipo !== 'todos';
+  const estadoTabla: EstadoTabla =
+    estado === 'cargando' ? 'cargando' : estado === 'error' ? 'error' : estado === 'sinPermiso' ? 'sinPermiso' : segmentos.length === 0 ? 'vacio' : visibles.length === 0 ? 'sinResultados' : 'listo';
+
+  const recalcular = async (s: Segment) => {
+    try {
+      const n = await SegmentosService.recalculateSegment(s.id);
+      toast({ title: t('ok.recalculado'), description: t('ok.clientes', { n, valor: entero(n) }) });
+      void cargar();
+    } catch {
+      toast({ title: t('errores.recalcular'), variant: 'destructive' });
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteSegment) return;
-    const success = await SegmentosService.deleteSegment(deleteSegment.id);
-    if (success) {
-      toast({ title: t('segmentosPage.segmentoEliminado') });
-      loadData();
-    }
-    setDeleteSegment(null);
+  const duplicar = async (s: Segment) => {
+    const copia = await SegmentosService.duplicateSegment(s.id);
+    if (copia) {
+      toast({ title: t('ok.duplicado') });
+      void cargar();
+    } else toast({ title: t('errores.duplicar'), variant: 'destructive' });
   };
 
-  const handleRecalculate = async (segment: Segment) => {
-    toast({ title: t('segmentosPage.recalculando'), description: t('segmentosPage.estoPuedeTomarUnos') });
-    const count = await SegmentosService.recalculateSegment(segment.id);
-    toast({ title: t('segmentoDetallePage.recalculoCompletado'), description: t('segmentoDetallePage.clientesSegmento', { count }) });
-    loadData();
+  const eliminar = async () => {
+    if (!borrar) return;
+    const r = await SegmentosService.deleteSegment(borrar.id);
+    setBorrar(null);
+    if (r === 'ok') {
+      toast({ title: t('ok.eliminado') });
+      void cargar();
+    } else toast({ title: r === 'enCurso' ? t('errores.enCurso') : t('errores.eliminar'), variant: 'destructive' });
   };
+
+  const acciones = (s: Segment): AccionFila[] => {
+    return [
+      { id: 'abrir', etiqueta: t('menu.verMiembros'), icono: Users, onSelect: () => router.push(`/app/crm/segmentos/${s.id}`) },
+      { id: 'editar', etiqueta: t('menu.editarReglas'), icono: Pencil, onSelect: () => router.push(`/app/crm/segmentos/${s.id}/editar`), oculta: !s.is_dynamic },
+      { id: 'recalcular', etiqueta: t('menu.recalcular'), icono: Play, onSelect: () => void recalcular(s), oculta: !s.is_dynamic },
+      { id: 'duplicar', etiqueta: t('menu.duplicar'), icono: Copy, onSelect: () => void duplicar(s) },
+      {
+        id: 'eliminar',
+        etiqueta: t('menu.eliminar'),
+        icono: Trash2,
+        destructiva: true,
+        separadorAntes: true,
+        onSelect: () => setBorrar(s),
+      },
+    ];
+  };
+
+  const resumen = (s: Segment): string => {
+    if (s.description?.trim()) return s.description.replace(/<[^>]*>/g, '').trim();
+    const { piezas, gruposExtra } = reglasDeResumen(s.filter_json);
+    if (piezas.length === 0) return s.is_dynamic ? t('resumen.todos') : t('resumen.estatico');
+    const texto = piezas
+      .map((p) => {
+        const campo = tc.has(`campos.${p.campo}`) ? tc(`campos.${p.campo}`) : p.campo;
+        if (p.campo === 'tags' && p.operador === 'contains') return t('resumen.etiqueta', { valor: p.valor });
+        if (p.operador === 'equals') return `${campo} = ${p.valor}`;
+        if (p.operador === 'not_equals') return `${campo} ≠ ${p.valor}`;
+        const tipoOp = p.campo === 'tags' ? 'array' : ['created_at', 'last_contact_at'].includes(p.campo) ? 'date' : p.campo === 'health_score' ? 'number' : 'text';
+        const op = tc.has(`operadores.${tipoOp}.${p.operador}`) ? tc(`operadores.${tipoOp}.${p.operador}`).toLocaleLowerCase(locale) : p.operador;
+        return p.valor ? `${campo} ${op} ${p.valor}` : `${campo} ${op}`;
+      })
+      .join(' · ');
+    return gruposExtra > 0 ? `${texto} ${t('resumen.gruposExtra', { n: gruposExtra })}` : texto;
+  };
+
+  const tipoBadge = (s: Segment) => (
+    <StatusBadge estado={s.is_dynamic ? 'dinamico' : 'estatico'} etiqueta={s.is_dynamic ? tc('datos.dinamico') : tc('datos.estatico')} tono={s.is_dynamic ? 'marca' : 'neutro'} tamano="sm" />
+  );
+
+  const contactablesCelda = (s: Segment) => {
+    const c = contactables(leerConteos(s.counts_json));
+    const etiquetaContactables = c ? t('contactables.aria', { tel: entero(c.telefono), correo: entero(c.correo), wa: entero(c.whatsapp) }) : t('contactables.sinDato');
+    return (
+      <span
+        className="inline-flex items-center gap-1.5"
+        role="img"
+        title={etiquetaContactables}
+        aria-label={etiquetaContactables}
+      >
+        {(Object.keys(ICONO_CANAL) as CanalContacto[]).map((canal) => {
+          const Icono = ICONO_CANAL[canal];
+          const activo = !!c && c[canal] > 0;
+          return (
+            <Icono
+              key={canal}
+              aria-hidden="true"
+              className={cn('size-4', activo ? 'text-fg-secondary' : 'text-fg-muted opacity-40')}
+              strokeWidth={1.5}
+            />
+          );
+        })}
+      </span>
+    );
+  };
+
+  const actualizado = (s: Segment) => {
+    const instante = instanteActualizado(s);
+    if (!instante) return <span className="text-fg-muted">{t('nunca')}</span>;
+    return <span className="text-fg-secondary">{s.is_dynamic ? haceCuanto(instante, locale, ahora) : formatDate(instante)}</span>;
+  };
+
+  const usadoEn = (s: Segment) => {
+    if (!usos.has(s.id)) return <span className="text-fg-muted">—</span>;
+    const piezas = piezasDeUso(usos.get(s.id));
+    if (piezas.length === 0) return <StatusBadge estado="sinUso" etiqueta={t('uso.sinUso')} tono="neutro" tamano="sm" />;
+    return <span className="text-fg-secondary">{piezas.map((p) => t(`uso.${p.clave}`, { n: p.n })).join(' · ')}</span>;
+  };
+
+  const nombre = (s: Segment) => (
+    <div className="min-w-0">
+      <p className="truncate text-sm font-medium text-fg">{s.name}</p>
+      <p className="truncate text-xs text-fg-secondary">{resumen(s)}</p>
+    </div>
+  );
+
+  const columnas: ColumnaTabla<Segment>[] = [
+    { id: 'segmento', encabezado: t('columnas.segmento'), celda: nombre, ancho: '28%' },
+    { id: 'tipo', encabezado: t('columnas.tipo'), celda: tipoBadge, ancho: 122 },
+    { id: 'clientes', encabezado: t('columnas.clientes'), celda: (s) => <span className="tabular-nums text-fg">{entero(s.customer_count || 0)}</span>, ancho: 112 },
+    { id: 'contactables', encabezado: t('columnas.contactables'), celda: contactablesCelda, ocultarDebajo: 'xl' },
+    { id: 'actualizado', encabezado: t('columnas.actualizado'), celda: actualizado, ancho: 152, ocultarDebajo: 'md' },
+    { id: 'usado', encabezado: t('columnas.usadoEn'), celda: usadoEn, ancho: 172, ocultarDebajo: 'lg' },
+  ];
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/app/crm">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Filter className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              {t('constructor.migas.segmentos')}
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              {t('segmentosPage.crmSegmentos')}
-            </p>
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={Users}
+        migas={[{ etiqueta: tc('migas.crm'), href: '/app/crm' }, { etiqueta: t('titulo') }]}
+        acciones={
+          <>
+            <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => setImportar(true)}>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('importar')}
+            </button>
+            <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => router.push('/app/crm/segmentos/nuevo')}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('nuevo')}
+            </button>
+            <RowActionsMenu
+              orientacion="horizontal"
+              titulo={t('titulo')}
+              acciones={[{ id: 'actualizar', etiqueta: t('actualizar'), icono: RefreshCw, onSelect: () => void cargar() }]}
+            />
+          </>
+        }
+        movil={{
+          accion: (
+            <button type="button" aria-label={t('nuevo')} className={clasesBoton({ variante: 'primario', tamano: 'sm' })} onClick={() => router.push('/app/crm/segmentos/nuevo')}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            </button>
+          ),
+        }}
+      />
+
+      {estadoTabla !== 'vacio' && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar')} etiqueta={t('buscar')} className="lg:flex-1" />
+          <ChipsOpcion<TipoFiltroSegmento>
+            etiqueta={t('filtroTipo')}
+            valor={tipo}
+            onValorChange={setTipo}
+            opciones={[
+              { valor: 'todos', etiqueta: t('chips.todos') },
+              { valor: 'dinamicos', etiqueta: t('chips.dinamicos') },
+              { valor: 'estaticos', etiqueta: t('chips.estaticos') },
+            ]}
+          />
+        </div>
+      )}
+
+      <DataTable<Segment>
+        etiqueta={t('titulo')}
+        columnas={columnas}
+        filas={visibles}
+        obtenerId={(s) => s.id}
+        estado={estadoTabla}
+        etiquetaFila={(s) => s.name}
+        onFilaClick={(s) => router.push(`/app/crm/segmentos/${s.id}`)}
+        acciones={acciones}
+        filasEsqueleto={6}
+        termino={busqueda}
+        onLimpiarFiltros={hayFiltro ? () => { setBusqueda(''); setTipo('todos'); } : undefined}
+        onReintentar={() => void cargar()}
+        vacio={{
+          icono: Users,
+          titulo: t('vacio.titulo'),
+          descripcion: t('vacio.descripcion'),
+          accion: { etiqueta: t('nuevo'), icono: Plus, onClick: () => router.push('/app/crm/segmentos/nuevo') },
+        }}
+        error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
+        sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
+        tarjetaMovil={(s) => (
+          <div className="space-y-2 p-4">
+            <div className="flex items-start gap-2">
+              <div className="min-w-0 flex-1">{nombre(s)}</div>
+              {tipoBadge(s)}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <span className="tabular-nums text-fg">{t('ok.clientes', { n: s.customer_count || 0, valor: entero(s.customer_count || 0) })}</span>
+              {contactablesCelda(s)}
+              {actualizado(s)}
+            </div>
+            <div className="text-xs">{usadoEn(s)}</div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={loadData} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
-          <Link href="/app/crm/segmentos/nuevo">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="h-4 w-4 mr-2" />
-              {t('segmentosPage.nuevoSegmento')}
-            </Button>
-          </Link>
-        </div>
-      </div>
+        )}
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg shrink-0">
-                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">Total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-green-100 dark:bg-green-900/40 rounded-lg shrink-0">
-                <Zap className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.dynamic}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{t('segmentosPage.dinamicos')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg shrink-0">
-                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.static}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{t('segmentosPage.estaticos')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="p-3 sm:pt-4 sm:px-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg shrink-0">
-                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalCustomers}</p>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">{t('segmentosPage.clientes')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ImportarListaDialog abierto={importar} onAbiertoChange={setImportar} onImportado={(id) => router.push(`/app/crm/segmentos/${id}`)} />
 
-      {/* Table */}
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold">{t('constructor.datos.nombre')}</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden sm:table-cell">{t('constructor.datos.tipo')}</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold text-center">{t('segmentosPage.clientes')}</TableHead>
-              <TableHead className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hidden md:table-cell">{t('segmentosPage.ultimaEjecucion')}</TableHead>
-              <TableHead className="w-10 sm:w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={5}>
-                      <Skeleton className="h-10 w-full" />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </>
-            ) : segments.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-12">
-                  <Filter className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    {t('segmentosPage.noHaySegmentos')}
-                  </h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    {t('segmentosPage.creaPrimerSegmentoAgrupar')}
-                  </p>
-                  <Link href="/app/crm/segmentos/nuevo">
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t('segmentosPage.crearSegmento')}
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ) : (
-              segments.map((segment) => (
-                <TableRow
-                  key={segment.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-gray-100 dark:border-gray-700/50"
-                  onClick={() => router.push(`/app/crm/segmentos/${segment.id}`)}
-                >
-                  <TableCell className="py-2 sm:py-3">
-                    <div>
-                      <CopyableId
-                        label={segment.name}
-                        copyValue={segment.id}
-                        onClick={() => router.push(`/app/crm/segmentos/${segment.id}`)}
-                        iconSize={12}
-                        className="text-xs sm:text-sm truncate max-w-[150px] sm:max-w-none block"
-                      />
-                      {segment.description && (
-                        <p className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-1">
-                          {segment.description}
-                        </p>
-                      )}
-                      <div className="sm:hidden mt-1">
-                        <Badge
-                          variant="outline"
-                          className={`text-[10px] ${
-                            segment.is_dynamic
-                              ? 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30'
-                              : 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30'
-                          }`}
-                        >
-                          {segment.is_dynamic ? t('constructor.datos.dinamico') : t('constructor.datos.estatico')}
-                        </Badge>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-2 sm:py-3 hidden sm:table-cell">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] sm:text-xs ${
-                        segment.is_dynamic
-                          ? 'text-green-600 dark:text-green-400 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30'
-                          : 'text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30'
-                      }`}
-                    >
-                      {segment.is_dynamic ? t('constructor.datos.dinamico') : t('constructor.datos.estatico')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-2 sm:py-3 text-center">
-                    <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-gray-100">
-                      {segment.customer_count || 0}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-2 sm:py-3 hidden md:table-cell">
-                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                      {segment.last_run_at ? formatDate(segment.last_run_at) : t('segmentoDetallePage.nunca')}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-2 sm:py-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/segmentos/${segment.id}`); }}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          {t('segmentosPage.verDetalle')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/app/crm/segmentos/${segment.id}?edit=true`); }}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          {t('segmentoDetallePage.editar')}
-                        </DropdownMenuItem>
-                        {segment.is_dynamic && (
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRecalculate(segment); }}>
-                            <Play className="h-4 w-4 mr-2" />
-                            {t('segmentoDetallePage.recalcular')}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicate(segment); }}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          {t('segmentosPage.duplicar')}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={(e) => { e.stopPropagation(); setDeleteSegment(segment); }}
-                          className="text-red-600 dark:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t('segmentosPage.eliminar')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        </div>
-      </Card>
-
-      {/* Confirmación de eliminación */}
-      <AlertDialog open={!!deleteSegment} onOpenChange={() => setDeleteSegment(null)}>
-        <AlertDialogContent className="bg-white dark:bg-gray-900">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-gray-900 dark:text-gray-100">
-              {t('segmentosPage.eliminarSegmento')}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-500 dark:text-gray-400">
-              {t('segmentosPage.estaAccionNoPuede', { name: deleteSegment?.name ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
-              {t('constructor.cancelar')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              {t('segmentosPage.eliminar')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        abierto={borrar !== null}
+        onAbiertoChange={(a) => !a && setBorrar(null)}
+        titulo={t('eliminar.titulo')}
+        descripcion={
+          borrar && enUso(usos.get(borrar.id))
+            ? `${t('eliminar.descripcion', { nombre: borrar.name })} ${t('eliminar.enUso', { usos: piezasDeUso(usos.get(borrar.id)).map((p) => t(`uso.${p.clave}`, { n: p.n })).join(', ') })}`
+            : t('eliminar.descripcion', { nombre: borrar?.name ?? '' })
+        }
+        textoConfirmar={t('menu.eliminar')}
+        tono="peligro"
+        varianteConfirmar="destructivo"
+        onConfirmar={() => void eliminar()}
+      />
     </div>
   );
 }

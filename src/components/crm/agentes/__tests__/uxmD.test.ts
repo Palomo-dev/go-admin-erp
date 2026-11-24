@@ -168,7 +168,8 @@ describe("UXM-D · guardas estáticas (375 px)", () => {
     for (const f of ["voces/VoiceCard.tsx", "voces/MyVoiceCard.tsx"]) expect(read(f)).toContain("VoicePreviewButton");
   });
   test("las cuadrículas declaran grid-cols-1 y las pestañas internas no son inline-flex sueltas", () => {
-    for (const f of ["voces/VoiceLibraryGrid.tsx", "voces/MyVoicesPanel.tsx", "AgentesIaPage.tsx"]) {
+    // La cuadrícula de agentes vive en `listado/AgentesListado.tsx` desde el listado del Figma 1298:84133.
+    for (const f of ["voces/VoiceLibraryGrid.tsx", "voces/MyVoicesPanel.tsx", "listado/AgentesListado.tsx"]) {
       expect({ f, ok: /grid grid-cols-1 gap-3/.test(read(f)) }).toEqual({ f, ok: true });
     }
     // Regla de pestañas (2026-10-06): dentro de la sección «Voces», Biblioteca / Mis voces es

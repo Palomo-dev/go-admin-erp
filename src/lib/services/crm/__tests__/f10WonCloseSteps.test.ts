@@ -20,6 +20,7 @@ import {
   executeInvoice,
   executeReferral,
   executeRenewal,
+  ORDEN_PASOS_GANAR,
   WON_STEP_EXECUTORS,
   type OpportunityData,
   type WonCloseDeps,
@@ -60,8 +61,9 @@ describe('pasos del modal', () => {
     const ids = buildInitialSteps().map((s) => s.id);
     expect(ids).toEqual(['invoice', 'pos_sale', 'reservations', 'onboarding', 'renewal', 'referral', 'commission']);
     expect(ids).not.toContain('stock');
-    expect(Object.keys(WON_STEP_EXECUTORS).sort()).toEqual([...ids].sort());
-    for (const f of ['src/lib/services/crm/wonCloseSteps.ts', 'src/components/crm/pipeline/WonCloseModal.tsx']) {
+    // Un ejecutor por paso: los del modal fijo y los de «Ganar» por líneas (ORDEN_PASOS_GANAR: emit, class_slot, appointment).
+    expect(Object.keys(WON_STEP_EXECUTORS).sort()).toEqual([...new Set([...ids, ...ORDEN_PASOS_GANAR])].sort());
+    for (const f of ['src/lib/services/crm/wonCloseSteps.ts', 'src/lib/services/crm/wonCloseStepsLineas.ts', 'src/components/crm/pipeline/WonCloseModal.tsx']) {
       expect(readFileSync(join(process.cwd(), f), 'utf8')).not.toMatch(/from\('inventory'\)/);
     }
   });

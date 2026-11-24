@@ -13,12 +13,27 @@
  */
 import { createContext, useContext, useEffect, useRef } from 'react';
 
+/** Tono de la insignia de la barra cuando el panel cuenta su propio estado. */
+export type TonoAvisoBarra = 'advertencia' | 'peligro' | 'informacion';
+
 export interface CambiosPanel {
   /** Cuántos cambios sin guardar (0 = ninguno). */
   cambios: number;
   guardando?: boolean;
   guardar: () => void | Promise<void>;
   descartar: () => void;
+  /** Texto del botón Guardar si no es «Guardar cambios» (Salud de clientes: «Guardar y recalcular»). */
+  etiquetaGuardar?: string;
+  /** Guardar no se puede pulsar (ni con Ctrl+S): `aviso` dice por qué. */
+  bloqueado?: boolean;
+  /** Insignia de la barra en lugar de «N cambios sin guardar». */
+  aviso?: { texto: string; tono: TonoAvisoBarra };
+  /**
+   * La barra se muestra aunque no haya cambios: lo que se ve aún no está
+   * guardado (la propuesta inicial de Salud de clientes). Sin cambios no hay
+   * «Descartar» ni se pregunta al cerrar.
+   */
+  pendiente?: boolean;
 }
 
 type Registrar = (cambios: CambiosPanel | null) => void;
@@ -56,10 +71,12 @@ export function useDentroDelDialogo(): boolean {
  * El panel avisa al diálogo de sus cambios sin guardar. Las funciones se leen
  * de una referencia: el panel puede pasarlas sin memorizar.
  */
-export function useRegistrarCambios({ cambios, guardando = false, guardar, descartar }: CambiosPanel): void {
+export function useRegistrarCambios({ cambios, guardando = false, guardar, descartar, etiquetaGuardar, bloqueado = false, aviso, pendiente = false }: CambiosPanel): void {
   const registrar = useContext(CambiosContext);
   const acciones = useRef({ guardar, descartar });
   acciones.current = { guardar, descartar };
+  const textoAviso = aviso?.texto;
+  const tonoAviso = aviso?.tono;
 
   useEffect(() => {
     if (!registrar) return;
@@ -68,8 +85,12 @@ export function useRegistrarCambios({ cambios, guardando = false, guardar, desca
       guardando,
       guardar: () => acciones.current.guardar(),
       descartar: () => acciones.current.descartar(),
+      ...(etiquetaGuardar ? { etiquetaGuardar } : {}),
+      ...(bloqueado ? { bloqueado } : {}),
+      ...(textoAviso && tonoAviso ? { aviso: { texto: textoAviso, tono: tonoAviso } } : {}),
+      ...(pendiente ? { pendiente } : {}),
     });
-  }, [registrar, cambios, guardando]);
+  }, [registrar, cambios, guardando, etiquetaGuardar, bloqueado, textoAviso, tonoAviso, pendiente]);
 
   useEffect(() => {
     if (!registrar) return;

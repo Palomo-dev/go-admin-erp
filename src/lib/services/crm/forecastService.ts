@@ -23,6 +23,7 @@ import {
   MOTIVOS_AJUSTE,
   TAMANO_PAGINA_PRONOSTICO,
   calcularFilaPronostico,
+  calcularPorMes,
   calcularPronostico,
   categoriaPronostico,
   type ForecastSnapshot,
@@ -103,6 +104,7 @@ export async function listarPronostico(ctx: CrmSesion, f: z.infer<typeof forecas
   // El navegador recibe solo la página visible; los totales cuentan todas.
   return {
     ...calculo,
+    months: calcularPorMes(s),
     currentUserId: ctx.userId,
     sellers: vendedores,
     moneda,

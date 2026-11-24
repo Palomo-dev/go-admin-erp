@@ -245,7 +245,7 @@ describe('guardarraíles estáticos F12 (UI)', () => {
     }
   });
   it('las fechas de referidos y deals pasan por useFormatDate (timezone de la organización)', () => {
-    expect(read('src/components/crm/referidos/ReferralCard.tsx')).toContain('useFormatDate()');
-    expect(read('src/components/crm/partners/PartnerDealTable.tsx')).toContain('useFormatDate()');
+    expect(read('src/components/crm/referidos/useReferidosFormato.ts')).toContain('useFormatDate()');
+    expect(read('src/components/crm/partners/DealsTabla.tsx')).toContain('useFormatDate()');
   });
 });

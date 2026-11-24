@@ -37,7 +37,7 @@ export function UnverifiedConsentBadge({ method, variant = 'compact', className 
       role="status"
       title={UNVERIFIED_CONSENT_TITLE}
       className={cn(
-        'inline-flex items-center gap-1 rounded border border-amber-400 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:border-amber-500 dark:bg-amber-950/60 dark:text-amber-200',
+        'inline-flex items-center gap-1 rounded border border-line-warning bg-warning-subtle px-1.5 py-0.5 text-[11px] font-medium text-warning-text',
         className
       )}
     >

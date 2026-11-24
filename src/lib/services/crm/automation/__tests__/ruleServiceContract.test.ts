@@ -115,8 +115,8 @@ describe('M23 · evaluateTrigger descarta la regla cuyo `event` no es el del out
   });
 });
 
-/** El payload que manda el editor: 12 claves, todas con valor no trivial. */
-const FULL_PAYLOAD: Required<Omit<CreateAutomationRuleInput, 'trigger_config' | 'template_key' | 'created_by'>> = {
+/** El payload que manda el editor: 13 claves, todas con valor no trivial (la 13.ª, `trigger_config`, lleva «Solo en horario Ley 2300»). */
+const FULL_PAYLOAD: Required<Omit<CreateAutomationRuleInput, 'template_key' | 'created_by'>> = {
   name: 'Seguimiento de propuesta',
   description: 'Escribe y recuerda llamar',
   trigger_type: 'stage_change',
@@ -129,13 +129,14 @@ const FULL_PAYLOAD: Required<Omit<CreateAutomationRuleInput, 'trigger_config' | 
   is_active: false,
   actions: [{ type: 'send_email', subject: 'Hola' }],
   conditions: { op: 'or', rules: [{ field: 'opportunity.amount', operator: 'gte', value: 10 }] },
+  trigger_config: { solo_horario_ley2300: true },
 };
 
 describe('M32–M35 · cada clave del payload llega a la fila, sin valores fijos', () => {
-  it('el payload del editor tiene exactamente 12 claves (si crece, esta prueba debe crecer)', () => {
+  it('el payload del editor tiene exactamente 13 claves (si crece, esta prueba debe crecer)', () => {
     const payload = formToPayload({ ...ruleToForm(null), name: 'Cualquiera' });
     expect(Object.keys(payload).sort()).toEqual(Object.keys(FULL_PAYLOAD).sort());
-    expect(Object.keys(payload)).toHaveLength(12);
+    expect(Object.keys(payload)).toHaveLength(13);
   });
 
   it('PATCH: la fila escrita es el payload entero (`updated_at` aparte)', async () => {
@@ -158,7 +159,6 @@ describe('M32–M35 · cada clave del payload llega a la fila, sin valores fijos
     expect(written[0]).toEqual({
       ...FULL_PAYLOAD,
       organization_id: ORG,
-      trigger_config: {},
       template_key: null,
       created_by: 'u1',
     });

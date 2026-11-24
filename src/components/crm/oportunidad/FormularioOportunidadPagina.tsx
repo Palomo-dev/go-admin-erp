@@ -17,7 +17,7 @@ import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { crearOportunidad, editarOportunidad, type OportunidadDetalleApi } from './apiOportunidades';
-import { cantidadLineas, cuerpoLineas, cuerpoOrigenComision, LINEAS_VACIAS, lineasDesdeApi, lineasValidas, origenComisionDesdeApi, totalLineas, type Lineas, type OrigenComision } from './lineasLogica';
+import { cantidadLineas, cuerpoLineas, cuerpoOrigenComision, LINEAS_VACIAS, lineasDesdeApi, lineasValidas, origenComisionDesdeApi, totalesLineas, type Lineas, type OrigenComision } from './lineasLogica';
 import { permisosFila, permisosPantalla } from './oportunidadLogica';
 import { LineasOportunidad } from './LineasOportunidad';
 import { OrigenComisionSeccion } from './OrigenComisionSeccion';
@@ -140,11 +140,11 @@ export function FormularioOportunidadPagina({ modo, id, inicial }: FormularioOpo
           clienteNombre={cliente?.nombre ?? null}
           clienteId={cliente?.id ?? null}
           onElegirCliente={() => setPicker(true)}
-          montoCalculado={cantidadLineas(lineas) > 0 ? totalLineas(lineas) : null}
+          montoCalculado={cantidadLineas(lineas) > 0 ? totalesLineas(lineas).total : null}
           updatedAt={op?.updated_at ?? null}
           seccionesPagina={
             <>
-              <LineasOportunidad lineas={lineas} onCambiar={setLineas} moneda={moneda.paraDocumento(op?.currency)} deshabilitado={ocupado} />
+              <LineasOportunidad lineas={lineas} onCambiar={setLineas} moneda={moneda.paraDocumento(op?.currency)} deshabilitado={ocupado} contexto={op?.name} usuarios={cat.usuarios} />
               <OrigenComisionSeccion valor={oc} onCambiar={setOc} deshabilitado={ocupado} />
             </>
           }

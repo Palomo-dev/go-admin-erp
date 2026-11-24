@@ -30,6 +30,15 @@ import {
 } from './automation/conditionsDsl';
 import { emptyRuleContext, loadRuleContext, type RuleContext } from './automation/ruleContext';
 import { defaultEventFor } from './automation/ruleCatalog';
+import {
+  ACCIONES_DE_ENVIO,
+  RESUMEN_VACIO,
+  filtroHistorialAConsulta,
+  ultimoEstadoPorRegla,
+  type FiltroHistorial,
+  type ResumenAutomatizaciones,
+} from './automation/automationListaLogica';
+import { ventanaLey2300Abierta } from './voiceAgent/ley2300';
 
 /** Evento por defecto según el disparador. Vive en `ruleCatalog` (puro) para que el editor use la misma función. */
 export { defaultEventFor };
@@ -66,6 +75,8 @@ export interface AutomationRule {
   cooldown_hours: number;
   version: number;
   template_key: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
   last_run_at: string | null;
   runs_count: number;
   created_at: string;
@@ -115,8 +126,23 @@ export interface AutomationRunFilters {
   rule_id?: string;
   status?: AutomationRunStatus;
   trigger_type?: string;
+  /** Chip del historial (Figma 1373:1161): ejecutadas, omitidas, con error, prueba en seco. */
+  resultado?: FiltroHistorial;
+  /** ISO: solo ejecuciones desde / hasta este instante. */
+  since?: string;
+  until?: string;
   limit?: number;
   offset?: number;
+}
+
+/** Fila del historial con el nombre de la regla y el registro sobre el que actuó. */
+export interface AutomationRunHistorial extends AutomationRun {
+  dry_run: boolean;
+  rule_version: number | null;
+  actions_plan: unknown;
+  rule_name: string | null;
+  opportunity_name: string | null;
+  customer_name: string | null;
 }
 
 export interface ExecuteRuleOptions {
@@ -270,6 +296,22 @@ export async function updateAutomationRule(
   if (data.cooldown_hours !== undefined) updateData.cooldown_hours = data.cooldown_hours;
   if (data.updated_by !== undefined) updateData.updated_by = data.updated_by;
 
+  // «Guardar crea una versión nueva» (Figma 1375:17): cualquier cambio que no
+  // sea solo encender o apagar sube `version`; las ejecuciones guardan
+  // `rule_version`, así el historial dice con qué versión corrió cada una.
+  const cambiaContenido = Object.keys(data).some((k) => !['is_active', 'updated_by', 'id'].includes(k));
+  if (cambiaContenido) {
+    const { data: actual, error: errVersion } = await supabase
+      .from('automation_rules')
+      .select('version')
+      .eq('id', id)
+      .eq('organization_id', orgId)
+      .maybeSingle();
+    if (errVersion) throw errVersion;
+    // Sin fila (otra organización o borrada) el UPDATE de abajo no toca nada y devuelve null.
+    if (actual) updateData.version = ((actual as { version: number | null }).version ?? 1) + 1;
+  }
+
   const { data: result, error } = await supabase
     .from('automation_rules')
     .update(updateData)
@@ -356,14 +398,15 @@ export function reglaCoincideConEvento(
  * `executeAutomationRule` y la prueba en seco retroactiva.
  */
 export async function motivoParaNoAplicar(
-  rule: Pick<AutomationRule, 'conditions' | 'run_once_per_opportunity' | 'cooldown_hours'>,
+  rule: Pick<AutomationRule, 'conditions' | 'run_once_per_opportunity' | 'cooldown_hours'> & Partial<Pick<AutomationRule, 'trigger_config' | 'actions'>>,
   ctx: RuleContext,
   opportunityId: string | null,
   now: Date,
   haCorrido: (desdeIso?: string) => Promise<boolean>,
-): Promise<{ motivo: 'conditions_not_met' | 'run_once_per_opportunity' | 'cooldown' | null; trace: ReturnType<typeof evaluateConditionTree>['trace'] }> {
+): Promise<{ motivo: 'conditions_not_met' | 'run_once_per_opportunity' | 'cooldown' | 'fuera_horario_ley2300' | null; trace: ReturnType<typeof evaluateConditionTree>['trace'] }> {
   const evaluated = evaluateConditionTree(rule.conditions, ctx);
   if (!evaluated.result) return { motivo: 'conditions_not_met', trace: evaluated.trace };
+  if (fueraDeHorarioLey2300(rule, now)) return { motivo: 'fuera_horario_ley2300', trace: evaluated.trace };
   if (opportunityId && rule.run_once_per_opportunity && (await haCorrido())) {
     return { motivo: 'run_once_per_opportunity', trace: evaluated.trace };
   }
@@ -372,6 +415,21 @@ export async function motivoParaNoAplicar(
     if (await haCorrido(since)) return { motivo: 'cooldown', trace: evaluated.trace };
   }
   return { motivo: null, trace: evaluated.trace };
+}
+
+/**
+ * «Solo en horario Ley 2300 (acciones de contacto)» (Figma 1375:17, panel
+ * Límites): se guarda en `trigger_config.solo_horario_ley2300`. Si la regla
+ * contacta al cliente (correo, WhatsApp, SMS, agente IA) y la ventana legal
+ * está cerrada en Colombia, la ejecución se omite con su motivo.
+ */
+export function fueraDeHorarioLey2300(
+  rule: Partial<Pick<AutomationRule, 'trigger_config' | 'actions'>>,
+  now: Date,
+): boolean {
+  if (rule.trigger_config?.solo_horario_ley2300 !== true) return false;
+  const contacta = (rule.actions ?? []).some((a) => ACCIONES_DE_ENVIO.includes(String(a?.type)));
+  return contacta && !ventanaLey2300Abierta(now);
 }
 
 /** Coincidencia del ámbito de la regla (etapa / pipeline / campo / evento). */
@@ -646,16 +704,23 @@ export async function getAutomationRuns(
   orgId: number,
   supabase: SupabaseClient,
   filters?: AutomationRunFilters,
-): Promise<{ data: AutomationRun[]; count: number }> {
+): Promise<{ data: AutomationRunHistorial[]; count: number }> {
   let query = supabase
     .from('automation_runs')
-    .select('*', { count: 'exact' })
+    .select('*, automation_rules(name), opportunities(name, customers(full_name))', { count: 'exact' })
     .eq('organization_id', orgId)
     .order('created_at', { ascending: false });
 
   if (filters?.rule_id) query = query.eq('automation_rule_id', filters.rule_id);
   if (filters?.status) query = query.eq('status', filters.status);
   if (filters?.trigger_type) query = query.eq('trigger_type', filters.trigger_type);
+  if (filters?.resultado) {
+    const r = filtroHistorialAConsulta(filters.resultado);
+    if (r.dry_run !== undefined) query = query.eq('dry_run', r.dry_run);
+    if (r.statuses) query = query.in('status', r.statuses);
+  }
+  if (filters?.since) query = query.gte('created_at', filters.since);
+  if (filters?.until) query = query.lte('created_at', filters.until);
 
   const limit = Math.min(Math.max(filters?.limit ?? 50, 1), 200);
   const offset = Math.max(filters?.offset ?? 0, 0);
@@ -663,5 +728,104 @@ export async function getAutomationRuns(
 
   const { data, error, count } = await query;
   if (error) throw new Error(`getAutomationRuns: ${error.message}`);
-  return { data: (data || []) as AutomationRun[], count: count || 0 };
+  const filas = (data || []).map((row) => {
+    const r = row as AutomationRun & {
+      dry_run?: boolean;
+      rule_version?: number | null;
+      actions_plan?: unknown;
+      automation_rules?: { name?: string | null } | null;
+      opportunities?: { name?: string | null; customers?: { full_name?: string | null } | null } | null;
+    };
+    const { automation_rules: regla, opportunities: oportunidad, ...resto } = r;
+    return {
+      ...resto,
+      dry_run: !!r.dry_run,
+      rule_version: r.rule_version ?? null,
+      actions_plan: r.actions_plan ?? [],
+      rule_name: regla?.name ?? null,
+      opportunity_name: oportunidad?.name ?? null,
+      customer_name: oportunidad?.customers?.full_name ?? null,
+    } as AutomationRunHistorial;
+  });
+  return { data: filas, count: count || 0 };
+}
+
+/**
+ * KPIs del listado (Figma 1373:17): ejecuciones, omitidas y errores de los
+ * últimos 7 días (sin pruebas en seco), la semana anterior para la variación
+ * y el último estado de cada regla («Con error» y el subtítulo de la fila).
+ */
+export async function getAutomationRunsSummary(
+  orgId: number,
+  supabase: SupabaseClient,
+  ahora: Date = new Date(),
+): Promise<ResumenAutomatizaciones> {
+  const dia = 86_400_000;
+  const hace7 = new Date(ahora.getTime() - 7 * dia).toISOString();
+  const hace14 = new Date(ahora.getTime() - 14 * dia).toISOString();
+  const hace30 = new Date(ahora.getTime() - 30 * dia).toISOString();
+
+  const contar = async (statuses: string[], desde: string, hasta?: string): Promise<number> => {
+    let q = supabase
+      .from('automation_runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', orgId)
+      .eq('dry_run', false)
+      .in('status', statuses)
+      .gte('created_at', desde);
+    if (hasta) q = q.lt('created_at', hasta);
+    const { count, error } = await q;
+    if (error) throw new Error(`getAutomationRunsSummary: ${error.message}`);
+    return count ?? 0;
+  };
+
+  const reales = ['completed', 'failed', 'running', 'pending'];
+  const [ejecuciones, ejecucionesPrevias, omitidas, errores, ultimas] = await Promise.all([
+    contar(reales, hace7),
+    contar(reales, hace14, hace7),
+    contar(['skipped'], hace7),
+    contar(['failed'], hace7),
+    supabase
+      .from('automation_runs')
+      .select('automation_rule_id, status, error_message, skip_reason, created_at')
+      .eq('organization_id', orgId)
+      .eq('dry_run', false)
+      .gte('created_at', hace30)
+      .order('created_at', { ascending: false })
+      .limit(2000),
+  ]);
+  if (ultimas.error) throw new Error(`getAutomationRunsSummary: ${ultimas.error.message}`);
+  return {
+    ...RESUMEN_VACIO,
+    ejecuciones,
+    ejecucionesPrevias,
+    omitidas,
+    errores,
+    ultimoEstado: ultimoEstadoPorRegla((ultimas.data ?? []) as Parameters<typeof ultimoEstadoPorRegla>[0]),
+  };
+}
+
+/** Una regla con el nombre de quien la editó por última vez (cabecera del constructor). */
+export async function getAutomationRule(
+  id: string,
+  orgId: number,
+  supabase: SupabaseClient,
+): Promise<(AutomationRule & { editor_name: string | null }) | null> {
+  const { data, error } = await supabase
+    .from('automation_rules')
+    .select('*')
+    .eq('id', id)
+    .eq('organization_id', orgId)
+    .maybeSingle();
+  if (error) throw new Error(`getAutomationRule: ${error.message}`);
+  if (!data) return null;
+  const rule = data as AutomationRule;
+  const editorId = rule.updated_by ?? rule.created_by ?? null;
+  let editor_name: string | null = null;
+  if (editorId) {
+    const { data: perfil } = await supabase.from('profiles').select('first_name, last_name, email').eq('id', editorId).maybeSingle();
+    const p = perfil as { first_name?: string | null; last_name?: string | null; email?: string | null } | null;
+    editor_name = [p?.first_name, p?.last_name].filter(Boolean).join(' ').trim() || p?.email || null;
+  }
+  return { ...rule, editor_name };
 }

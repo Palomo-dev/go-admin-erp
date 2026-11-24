@@ -82,3 +82,26 @@ export async function getLeadAssignmentConfig(
   }
   return parseLeadAssignmentConfig(data?.settings);
 }
+
+/**
+ * Guarda la configuración de la organización (pantalla «Asignación
+ * automática», Figma CRM 1412:837868). Upsert sobre `(organization_id, key)`
+ * con el cliente que reciba (la ruta pasa el de la sesión, con RLS). Quien
+ * llama ya validó el permiso (solo admin) y que el equipo es de la
+ * organización. Se escribe la configuración completa, ya normalizada.
+ */
+export async function saveLeadAssignmentConfig(
+  organizationId: number,
+  config: LeadAssignmentConfig,
+  supabase: SupabaseClient,
+): Promise<LeadAssignmentConfig> {
+  const settings = parseLeadAssignmentConfig(config);
+  const { error } = await supabase
+    .from('organization_settings')
+    .upsert(
+      { organization_id: organizationId, key: LEAD_ASSIGNMENT_SETTINGS_KEY, settings, updated_at: new Date().toISOString() },
+      { onConflict: 'organization_id,key' },
+    );
+  if (error) throw error;
+  return settings;
+}

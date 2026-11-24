@@ -98,7 +98,7 @@ export function SelectorPipelineMovil(p: SelectorPipelineMovilProps) {
       <div role="separator" className="h-px bg-line" />
       <ul className="-mx-2 flex flex-col gap-1">
         <FilaAccion icono={Plus} etiqueta={t('nuevo')} detalle={p.puedeGestionar ? t('nuevoDetalle') : t('sinPermiso')} deshabilitada={!p.puedeGestionar} onClick={tras(p.onNuevo)} />
-        <FilaAccion icono={Pencil} etiqueta={t('editarEtapas')} detalle={!p.puedeGestionarEtapas ? t('sinPermiso') : undefined} deshabilitada={!p.puedeGestionarEtapas || !actual} onClick={tras(p.onEditarEtapas)} />
+        <FilaAccion icono={Pencil} etiqueta={actual ? t('editarEtapasDe', { nombre: actual.name }) : t('editarEtapas')} detalle={!p.puedeGestionarEtapas ? t('sinPermiso') : t('editarEtapasDetalle')} deshabilitada={!p.puedeGestionarEtapas || !actual} onClick={tras(p.onEditarEtapas)} />
         <FilaAccion
           icono={Star}
           etiqueta={t('usarDefecto', { nombre: actual?.name ?? '' })}

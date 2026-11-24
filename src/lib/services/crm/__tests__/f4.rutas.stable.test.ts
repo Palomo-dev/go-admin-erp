@@ -146,9 +146,16 @@ describe('CONTRATOS sobre las rutas: la guarda va en los DOS caminos (sync y col
   });
 
   it('E3/D5/W5 · los DOS paneles leen `deduped` y `dedupe_checked`, y el texto degradado no promete lo que no se pudo comprobar', () => {
+    // Desde 2026-11-15 la lectura de `deduped` / `dedupe_checked` vive en UN
+    // solo módulo (`accionesInteligencia.ts`), que usan los dos paneles del
+    // timeline y el detalle de la llamada (Figma 1363:20).
+    const acciones = SRC('src/components/crm/calls/accionesInteligencia.ts');
+    expect(acciones).toContain('data.deduped === true');
+    expect(acciones).toContain('data.dedupe_checked === false');
     for (const p of [SRC(PANEL_T), SRC(PANEL_A)]) {
-      expect(p).toContain('json.data?.deduped');
-      expect(p).toContain('json.data?.dedupe_checked');
+      expect(p).toContain("from './accionesInteligencia'");
+      expect(p).toContain("r === 'reutilizado'");
+      expect(p).toContain("r === 'sinComprobar'");
       expect(p).toMatch(/ya (hab[íi]a|hay)/i);
       expect(p).toContain('No se pudo comprobar');
     }

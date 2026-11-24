@@ -4,7 +4,7 @@
  */
 import type { FilterRule } from '../types';
 
-export const ESPERA_CONTEO_MS = 600;
+export const ESPERA_CONTEO_MS = 400;
 
 /** Una regla lista para contar: tiene campo y operador, y valor si el operador lo pide. */
 export function reglaCompleta(r: FilterRule): boolean {

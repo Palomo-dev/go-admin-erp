@@ -1,40 +1,52 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Check } from 'lucide-react';
+import { cn } from '@/utils/Utils';
+import { EmptyState } from '@/components/kit/EmptyState';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { formatMoneda } from '@/lib/utils/moneda';
 import type { OportunidadDetalleApi } from './apiOportunidades';
-import { cantidadLineas, lineasDesdeApi, subtotal, totalLineas } from './lineasLogica';
+import { conteoFiltros, FILTROS_LINEAS, lineasDesdeApi, totalesLineas, type FiltroLineas } from './lineasLogica';
+import { LineaOportunidad } from './lineas/LineaOportunidad';
+import { TotalesLineas } from './lineas/TotalesLineas';
+import { useFilasLineas } from './lineas/useFilasLineas';
 
 /**
- * Pestaña «Líneas» del detalle (Figma 775:473076): productos, espacios y
- * conceptos de la oportunidad con su total (cálculo único de `lineasLogica`).
- * Se editan en «Editar» (formulario en página).
+ * Pestaña «Líneas» del detalle (Figma 1785:897367 «Detalle de la
+ * oportunidad: líneas con variante, modificadores, servicio y hospedaje»):
+ * la misma fila `LineaOportunidad` y los mismos totales con impuestos que el
+ * formulario, con filtro por tipo. Se editan en «Editar».
  */
-export function LineasResumen({ op }: { op: OportunidadDetalleApi }) {
+export function LineasResumen({ op, editarHref }: { op: OportunidadDetalleApi; editarHref?: string }) {
   const t = useTranslations('crm.oportunidad.lineas');
   const moneda = useMonedaOrganizacion().paraDocumento(op.currency);
-  const l = lineasDesdeApi(op);
-  if (cantidadLineas(l) === 0) return <p className="py-6 text-center text-sm text-fg-secondary">{t('sinLineas')}</p>;
-  const filas = [
-    ...l.products.map((x) => ({ clave: x.id ?? `p${x.product_id}`, nombre: x.nombre ?? t('producto'), detalle: t('detalleCantidad', { n: x.quantity, precio: formatMoneda(x.unit_price, moneda) }), total: subtotal(x.quantity, x.unit_price) })),
-    ...l.spaces.map((x) => ({ clave: x.id ?? `s${x.space_id}`, nombre: x.nombre ?? t('espacio'), detalle: t('detalleNoches', { n: x.nights, precio: formatMoneda(x.unit_price, moneda) }), total: subtotal(x.nights, x.unit_price) })),
-    ...l.custom.map((x, i) => ({ clave: x.id ?? `c${i}`, nombre: x.concept, detalle: t('detalleCantidad', { n: x.quantity, precio: formatMoneda(x.unit_price, moneda) }), total: subtotal(x.quantity, x.unit_price) })),
-  ];
+  const l = useMemo(() => lineasDesdeApi(op), [op]);
+  const filas = useFilasLineas(l, moneda);
+  const [filtro, setFiltro] = useState<FiltroLineas>('todas');
+  const conteo = conteoFiltros(l);
+  if (conteo.todas === 0) {
+    return <EmptyState variante="empty" titulo={t('sinLineasTitulo')} descripcion={t('sinLineas')} accion={editarHref ? { etiqueta: t('agregarLineas'), href: editarHref } : undefined} compacto />;
+  }
+  const visibles = filas.filter(({ fila }) => filtro === 'todas' || (filtro === 'productos' ? fila.clase === 'producto' : filtro === 'servicios' ? fila.clase === 'servicio' : filtro === 'hospedaje' ? fila.clase === 'hospedaje' : fila.clase === 'concepto'));
   return (
-    <div className="flex flex-col gap-2">
-      <ul className="flex flex-col divide-y divide-line">
-        {filas.map((f) => (
-          <li key={f.clave} className="flex items-center gap-3 py-2">
-            <div className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm font-medium text-fg">{f.nombre}</span>
-              <span className="text-xs text-fg-secondary">{f.detalle}</span>
-            </div>
-            <span className="text-sm tabular-nums text-fg">{formatMoneda(f.total, moneda)}</span>
-          </li>
+    <div className="flex flex-col gap-3">
+      <div role="group" aria-label={t('filtrar')} className="flex flex-wrap gap-2">
+        {FILTROS_LINEAS.filter((f) => f === 'todas' || conteo[f] > 0).map((f) => (
+          <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)} className={cn('flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium', filtro === f ? 'border-brand bg-brand-tint text-brand-deep' : 'border-line text-fg-secondary hover:bg-hover')}>
+            {filtro === f && <Check aria-hidden="true" className="size-3.5" />}
+            {t(`filtros.${f}`, { n: conteo[f] })}
+          </button>
+        ))}
+      </div>
+      <ul className="flex flex-col gap-2">
+        {visibles.map(({ fila }) => (
+          <LineaOportunidad key={fila.clave} fila={fila} moneda={moneda} compacta />
         ))}
       </ul>
-      <p className="self-end text-sm font-semibold text-fg">{t('totalGeneral', { total: formatMoneda(totalLineas(l), moneda) })}</p>
+      <div className="flex justify-end">
+        <TotalesLineas totales={totalesLineas(l)} moneda={moneda} />
+      </div>
     </div>
   );
 }

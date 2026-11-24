@@ -399,6 +399,7 @@ export async function updateTeamMember(
   if (data.quota_amount !== undefined) updateData.quota_amount = data.quota_amount;
   if (data.quota_currency !== undefined) updateData.quota_currency = data.quota_currency;
   if (data.is_active !== undefined) updateData.is_active = data.is_active;
+  if (data.territory_id !== undefined) updateData.territory_id = data.territory_id;
 
   const { data: result, error } = await supabase
     .from('sales_team_members')

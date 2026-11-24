@@ -112,8 +112,11 @@ describe('Leads · calificar en lote', () => {
     fireEvent.change(within(paso1).getByPlaceholderText(/cotización de 200 uniformes/), { target: { value: 'Uniformes' } });
     fireEvent.click(within(paso1).getByRole('button', { name: /Continuar/ }));
 
-    const paso2 = await screen.findByRole('dialog', { name: /oportunidad/i });
-    expect(within(paso2).getByText(/Se crearán 2 oportunidades · \{cliente\} se reemplaza/)).toBeTruthy();
+    const paso2 = await screen.findByRole('dialog', { name: /oportunidades · paso 2 de 2/i });
+    // Figma 1524:122419: contexto del lote, cliente de cada lead y vista previa de los nombres.
+    expect(within(paso2).getByText('Desde 2 leads · calificados hoy')).toBeTruthy();
+    expect(within(paso2).getByText('El de cada lead (2 clientes distintos)')).toBeTruthy();
+    expect(within(paso2).getByText('Uniformes · Ana Gómez')).toBeTruthy();
     expect((within(paso2).getByDisplayValue('Uniformes · {cliente}') as HTMLInputElement).value).toBe('Uniformes · {cliente}');
     await act(async () => {
       fireEvent.click(within(paso2).getByRole('button', { name: /^Crear/ }));
@@ -134,8 +137,8 @@ describe('Leads · calificar en lote', () => {
     expect(cuerpo.plantilla).not.toHaveProperty('amount');
     expect(cuerpo.plantilla).toMatchObject({ pipeline_id: 'p1', stage_id: 's1', discovery_data: { necesidad: 'Uniformes' } });
 
-    const resultado = await screen.findByRole('dialog', { name: 'Calificar en lote' });
-    await within(resultado).findByText('Se creó 1 oportunidad');
+    const resultado = await screen.findByRole('dialog', { name: 'Calificación en lote terminada' });
+    await within(resultado).findByText(/Se creó 1 oportunidad\./);
     expect(within(resultado).getByText('Jorge Méndez')).toBeTruthy();
     expect(within(resultado).getByText(/Ya no está en etapa lead/)).toBeTruthy();
     fireEvent.click(within(resultado).getByRole('button', { name: 'Ver en el pipeline' }));

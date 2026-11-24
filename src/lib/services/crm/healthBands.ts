@@ -40,6 +40,12 @@ export interface HealthIndicatorJson {
   weight: number;
   direction: 'higher_better' | 'lower_better';
   thresholds: HealthThresholdJson[];
+  /**
+   * Interruptor de «Configuración de factores» (Figma 1424:932). `false` =
+   * apagado: se conserva con sus umbrales pero no puntúa. Ausente = encendido
+   * (las configs anteriores no lo traen).
+   */
+  enabled?: boolean;
 }
 
 export interface HealthBandsJson {
@@ -57,7 +63,35 @@ export const DEFAULT_BANDS: HealthBandsJson = { green: 70, yellow: 40, red: 0 };
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-export function parseHealthConfig(json: unknown): HealthConfigJson | null {
+function parseIndicator(item: unknown): HealthIndicatorJson | null {
+  if (!item || typeof item !== 'object') return null;
+  const i = item as Record<string, unknown>;
+  const key = typeof i.key === 'string' ? i.key.trim() : '';
+  const weight = num(i.weight);
+  const direction = i.direction === 'lower_better' ? 'lower_better' : i.direction === 'higher_better' ? 'higher_better' : null;
+  const thresholds = Array.isArray(i.thresholds)
+    ? (i.thresholds as unknown[])
+      .map((t) => (t && typeof t === 'object' ? (t as Record<string, unknown>) : null))
+      .filter((t): t is Record<string, unknown> => !!t && num(t.score) !== null)
+      .map((t) => ({ ...(num(t.min) !== null ? { min: num(t.min)! } : {}), ...(num(t.max) !== null ? { max: num(t.max)! } : {}), score: num(t.score)! }))
+    : [];
+  if (!key || weight === null || weight < 0 || !direction || thresholds.length === 0) return null;
+  return {
+    key,
+    label: typeof i.label === 'string' && i.label ? i.label : key,
+    weight,
+    direction,
+    thresholds,
+    ...(i.enabled === false ? { enabled: false } : {}),
+  };
+}
+
+/**
+ * Config tal como se edita (Figma 1424:932): conserva los indicadores
+ * apagados (`enabled: false`) y los de peso 0, para que el interruptor no
+ * pierda los umbrales. Para puntuar, `parseHealthConfig`.
+ */
+export function parseHealthConfigEditable(json: unknown): HealthConfigJson | null {
   if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
   const raw = json as { bands?: unknown; indicators?: unknown };
   if (raw.indicators !== undefined && !Array.isArray(raw.indicators)) return null;
@@ -69,21 +103,59 @@ export function parseHealthConfig(json: unknown): HealthConfigJson | null {
   };
   const indicators: HealthIndicatorJson[] = [];
   for (const item of (raw.indicators ?? []) as unknown[]) {
-    if (!item || typeof item !== 'object') continue;
-    const i = item as Record<string, unknown>;
-    const key = typeof i.key === 'string' ? i.key.trim() : '';
-    const weight = num(i.weight);
-    const direction = i.direction === 'lower_better' ? 'lower_better' : i.direction === 'higher_better' ? 'higher_better' : null;
-    const thresholds = Array.isArray(i.thresholds)
-      ? (i.thresholds as unknown[])
-        .map((t) => (t && typeof t === 'object' ? (t as Record<string, unknown>) : null))
-        .filter((t): t is Record<string, unknown> => !!t && num(t.score) !== null)
-        .map((t) => ({ ...(num(t.min) !== null ? { min: num(t.min)! } : {}), ...(num(t.max) !== null ? { max: num(t.max)! } : {}), score: num(t.score)! }))
-      : [];
-    if (!key || weight === null || weight <= 0 || !direction || thresholds.length === 0) continue;
-    indicators.push({ key, label: typeof i.label === 'string' && i.label ? i.label : key, weight, direction, thresholds });
+    const ind = parseIndicator(item);
+    if (ind) indicators.push(ind);
   }
   return { bands, indicators };
+}
+
+/** Config para puntuar: solo indicadores encendidos y con peso > 0. */
+export function parseHealthConfig(json: unknown): HealthConfigJson | null {
+  const editable = parseHealthConfigEditable(json);
+  if (!editable) return null;
+  return { bands: editable.bands, indicators: editable.indicators.filter((i) => i.enabled !== false && i.weight > 0) };
+}
+
+/** Claves que `indicatorSourceValue` sabe leer de `fn_customer_health`. */
+export const HEALTH_SOURCE_KEYS: readonly string[] = [
+  'recency', 'days_since_last_invoice', 'frequency', 'invoices_12m', 'ltv', 'revenue_12m', 'avg_ticket',
+  'activity', 'days_since_last_activity', 'receivables', 'overdue', 'overdue_ratio', 'overdue_balance',
+];
+
+/**
+ * Propuesta inicial de «Configuración de factores» cuando la organización aún
+ * no tiene fila en `health_score_configs` (Figma 1424:932: cinco factores con
+ * pesos 30/25/20/15/10). Los umbrales de ingresos son un punto de partida en
+ * la moneda de la organización: se ajustan al guardar.
+ */
+export const DEFAULT_HEALTH_CONFIG: HealthConfigJson = {
+  bands: { green: 70, yellow: 45, red: 0 },
+  indicators: [
+    { key: 'days_since_last_invoice', label: 'Días desde la última compra', weight: 30, direction: 'lower_better', thresholds: [{ max: 30, score: 100 }, { max: 90, score: 50 }, { min: 91, score: 0 }] },
+    { key: 'overdue_ratio', label: 'Cartera vencida (% del saldo)', weight: 25, direction: 'lower_better', thresholds: [{ max: 0, score: 100 }, { max: 0.1, score: 60 }, { max: 0.2, score: 30 }, { min: 0.2, score: 0 }] },
+    { key: 'invoices_12m', label: 'Compras en 12 meses', weight: 20, direction: 'higher_better', thresholds: [{ min: 12, score: 100 }, { min: 6, score: 60 }, { min: 0, score: 20 }] },
+    { key: 'days_since_last_activity', label: 'Días desde la última actividad', weight: 15, direction: 'lower_better', thresholds: [{ max: 14, score: 100 }, { max: 45, score: 50 }, { min: 46, score: 0 }] },
+    { key: 'revenue_12m', label: 'Ingresos 12 meses', weight: 10, direction: 'higher_better', thresholds: [{ min: 100_000_000, score: 100 }, { min: 30_000_000, score: 50 }, { min: 0, score: 0 }] },
+  ],
+};
+
+export type ErrorConfigSalud = 'sinIndicadores' | 'pesos' | 'clave' | 'bandas';
+
+/**
+ * Reglas de «Guardar» (anotación 1424:1606): los pesos de los indicadores
+ * encendidos suman 100, cada clave existe en `fn_customer_health` y las
+ * bandas son 0 ≤ amarillo < verde ≤ 100.
+ */
+export function validateHealthConfig(config: HealthConfigJson): ErrorConfigSalud[] {
+  const errores: ErrorConfigSalud[] = [];
+  const activos = config.indicators.filter((i) => i.enabled !== false);
+  if (activos.length === 0) errores.push('sinIndicadores');
+  const suma = activos.reduce((s, i) => s + i.weight, 0);
+  if (activos.length > 0 && Math.round(suma * 100) / 100 !== 100) errores.push('pesos');
+  if (config.indicators.some((i) => !HEALTH_SOURCE_KEYS.includes(i.key))) errores.push('clave');
+  const { green, yellow } = config.bands;
+  if (!(yellow >= 0 && green <= 100 && yellow < green)) errores.push('bandas');
+  return errores;
 }
 
 /** Valor de la dimensión `key` a partir de los campos reales de la RPC. */

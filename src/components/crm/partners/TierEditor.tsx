@@ -1,117 +1,139 @@
 'use client';
 
 /**
- * Tiers de partner en hoja lateral (sembrados por `fn_crm_seed_defaults`):
+ * Niveles de partner en hoja lateral («Editar» de la tarjeta Niveles,
+ * «Configurar niveles» del estado vacío, Figma 1319:94585 y 1411:41956):
  * umbrales (`min_deals`, `min_revenue`), tasa y beneficios, edición en su
- * sitio, alta y borrado con confirmación que nombra el tier (409 si está en
- * uso). La promoción automática usa exactamente estos umbrales.
+ * sitio, alta y borrado con confirmación (409 si está en uso). La promoción
+ * automática usa exactamente estos umbrales (`partnerTierFor`).
+ *
+ * F12-misc: crear/editar/borrar solo con `canManage` (el booleano que el GET
+ * de partners calcula en el servidor); un Empleado solo lee.
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Award, Plus, Trash2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from '@/components/ui/use-toast';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
+import { clasesBoton } from '@/components/kit/botonClases';
 import type { PartnerTier } from '@/lib/services/crm/partnerService';
 import { formatRate } from '@/lib/services/crm/partnerModel';
+import { rankTiers } from '@/lib/services/crm/partnerTierFor';
 import { cn } from '@/utils/Utils';
 import { TierForm } from './TierForm';
+import { beneficiosNivel } from './redPartnersLogica';
+import { claveErrorPartners } from './redPartnersErrores';
 
 interface Props {
-  open: boolean;
+  abierto: boolean;
   tiers: PartnerTier[];
-  /** F12-misc: mismo booleano que `PartnerList` (`can_manage` del GET de partners); un Empleado solo lee. */
+  /** F12-misc: mismo booleano que el directorio (`can_manage` del GET de partners); un Empleado solo lee. */
   canManage: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (payload: Record<string, unknown>, id?: string) => Promise<unknown>;
-  onDelete: (id: string) => Promise<void>;
-  returnFocusFallback: () => HTMLElement | null;
+  onAbiertoChange: (abierto: boolean) => void;
+  onGuardar: (payload: Record<string, unknown>, id?: string) => Promise<unknown>;
+  onBorrar: (id: string) => Promise<void>;
 }
 
-export function TierEditor({ open, tiers, canManage, onOpenChange, onSave, onDelete, returnFocusFallback }: Props) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<PartnerTier | null>(null);
-  const newButtonRef = useRef<HTMLButtonElement>(null);
-  const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
-  const onDeleteClose = useReturnFocus(deleteTarget !== null, () => newButtonRef.current);
+export function TierEditor({ abierto, tiers, canManage, onAbiertoChange, onGuardar, onBorrar }: Props) {
+  const t = useTranslations('crm.redPartners');
+  const idioma = useLocale();
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [creando, setCreando] = useState(false);
+  const [aBorrar, setABorrar] = useState<PartnerTier | null>(null);
+  const [borrando, setBorrando] = useState(false);
+  const nuevoRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    setEditingId(null);
-    setCreating(canManage && tiers.length === 0);
-  }, [open, canManage, tiers.length]);
+    if (!abierto) return;
+    setEditandoId(null);
+    setCreando(canManage && tiers.length === 0);
+  }, [abierto, canManage, tiers.length]);
 
-  const remove = async () => {
-    if (!deleteTarget) return;
+  const borrar = async () => {
+    if (!aBorrar) return;
+    setBorrando(true);
     try {
-      await onDelete(deleteTarget.id);
-      toast({ title: `Tier «${deleteTarget.name}» eliminado` });
-    } catch (err) {
-      toast({ title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+      await onBorrar(aBorrar.id);
+      toast({ title: t('niveles.borrado', { nombre: aBorrar.name }) });
+      setABorrar(null);
+    } catch (e) {
+      toast({ title: t('niveles.errorBorrar'), description: t(claveErrorPartners(e)), variant: 'destructive' });
+    } finally {
+      setBorrando(false);
     }
   };
 
+  const ordenados = rankTiers(tiers);
+  const entero = (n: number | string) => new Intl.NumberFormat(idioma).format(Number(n));
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">Tiers de partner</SheetTitle>
-          <SheetDescription className="text-gray-600 dark:text-gray-400">Un partner sube de tier automáticamente al registrar un deal si cumple los deals y el revenue mínimos. Nunca baja solo.</SheetDescription>
+    <Sheet open={abierto} onOpenChange={onAbiertoChange}>
+      <SheetContent side="right" className="flex w-full flex-col gap-0 overflow-y-auto bg-canvas p-0 sm:max-w-xl">
+        <SheetHeader className="text-left border-b border-line bg-surface px-6 pr-8 py-4">
+          <SheetTitle className="text-fg">{t('niveles.titulo')}</SheetTitle>
+          <SheetDescription className="text-fg-secondary">{t('niveles.descripcion')}</SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-6 py-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{tiers.length} tier{tiers.length === 1 ? '' : 's'}, de menor a mayor</h3>
+            <h3 className="text-sm font-semibold text-fg">{t('niveles.cuantos', { n: tiers.length })}</h3>
             {canManage && (
-              <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditingId(null); setCreating(true); }}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Nuevo tier
-              </Button>
+              <button ref={nuevoRef} type="button" className={clasesBoton({ variante: creando ? 'tinte' : 'secundario', tamano: 'sm' })} onClick={() => { setEditandoId(null); setCreando(true); }}>
+                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} /> {t('niveles.nuevo')}
+              </button>
             )}
           </div>
-          {canManage && creating && (
-            <section aria-label="Nuevo tier" className="rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
-              <TierForm tier={null} onSave={onSave} onCancel={() => setCreating(false)} />
+          {canManage && creando && (
+            <section aria-label={t('niveles.nuevo')} className="rounded-xl border border-line-brand bg-surface p-4">
+              <TierForm tier={null} onGuardar={onGuardar} onCancelar={() => setCreando(false)} />
             </section>
           )}
-          <ol className="space-y-2" aria-label="Tiers">
-            {tiers.map((t) => {
-              const isEditing = editingId === t.id;
-              const benefits = Array.isArray(t.benefits) ? (t.benefits as unknown[]).filter((b): b is string => typeof b === 'string') : [];
+          <ol className="space-y-2" aria-label={t('niveles.titulo')}>
+            {ordenados.map((x) => {
+              const editando = editandoId === x.id;
+              const beneficios = beneficiosNivel(x.benefits);
               return (
-                <li key={t.id} className={cn('rounded-xl border bg-white p-4 dark:bg-gray-900', isEditing ? 'border-blue-300 dark:border-blue-800' : 'border-gray-200 dark:border-gray-800')}>
+                <li key={x.id} className={cn('rounded-xl border bg-surface p-4', editando ? 'border-line-brand' : 'border-line')}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="flex items-center gap-1.5 font-medium text-gray-900 dark:text-gray-100"><Award className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" />{t.name} · {formatRate(t.commission_rate)}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">Desde {t.min_deals} deal{Number(t.min_deals) === 1 ? '' : 's'} y {new Intl.NumberFormat('es-CO').format(Number(t.min_revenue))} de revenue</p>
-                      {benefits.length > 0 && <p className="mt-1 text-xs text-gray-700 dark:text-gray-300">{benefits.join(' · ')}</p>}
+                      <p className="flex items-center gap-1.5 font-medium text-fg">
+                        <Award aria-hidden="true" className="size-4 shrink-0 text-warning-text" strokeWidth={1.5} />
+                        {x.name} · {formatRate(x.commission_rate)}
+                      </p>
+                      <p className="text-xs text-fg-secondary">{t('niveles.umbral', { deals: entero(x.min_deals), monto: entero(x.min_revenue) })}</p>
+                      {beneficios.length > 0 && <p className="mt-1 text-xs text-fg">{beneficios.join(' · ')}</p>}
                     </div>
-                    {/* F12-misc: PATCH/DELETE de tier exige admin/manager; a un Empleado los botones solo le darían un 403. */}
                     {canManage && (
                       <div className="flex shrink-0 gap-1">
-                        <Button type="button" size="sm" variant={isEditing ? 'secondary' : 'outline'} aria-expanded={isEditing} onClick={() => { setCreating(false); setEditingId(isEditing ? null : t.id); }}>{isEditing ? 'Cerrar' : 'Editar'}</Button>
-                        <Button type="button" size="icon" variant="ghost" aria-label={`Eliminar tier ${t.name}`} className="text-red-700 hover:text-red-800 dark:text-red-300" onClick={() => setDeleteTarget(t)}>
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        </Button>
+                        <button type="button" aria-expanded={editando} className={clasesBoton({ variante: editando ? 'tinte' : 'secundario', tamano: 'sm' })} onClick={() => { setCreando(false); setEditandoId(editando ? null : x.id); }}>
+                          {editando ? t('niveles.cerrar') : t('niveles.editar')}
+                        </button>
+                        <button type="button" aria-label={t('niveles.eliminarAria', { nombre: x.name })} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'size-8 px-0 text-danger-text' })} onClick={() => setABorrar(x)}>
+                          <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                        </button>
                       </div>
                     )}
                   </div>
-                  {canManage && isEditing && <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800"><TierForm tier={t} onSave={onSave} onCancel={() => setEditingId(null)} /></div>}
+                  {canManage && editando && (
+                    <div className="mt-4 border-t border-line pt-4">
+                      <TierForm tier={x} onGuardar={onGuardar} onCancelar={() => setEditandoId(null)} />
+                    </div>
+                  )}
                 </li>
               );
             })}
           </ol>
         </div>
         <ConfirmDialog
-          open={deleteTarget !== null}
-          onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
-          title="Eliminar tier"
-          description={`Se eliminará el tier «${deleteTarget?.name ?? ''}». Si algún partner lo tiene asignado, no se podrá borrar hasta moverlo a otro.`}
-          confirmLabel="Eliminar"
-          variant="destructive"
-          onConfirm={remove}
-          onCloseAutoFocus={onDeleteClose}
+          abierto={aBorrar !== null}
+          onAbiertoChange={(a) => { if (!a && !borrando) setABorrar(null); }}
+          titulo={t('niveles.eliminarTitulo')}
+          descripcion={t('niveles.eliminarDescripcion', { nombre: aBorrar?.name ?? '' })}
+          textoConfirmar={t('niveles.eliminar')}
+          tono="peligro"
+          onConfirmar={borrar}
+          cargando={borrando}
         />
       </SheetContent>
     </Sheet>

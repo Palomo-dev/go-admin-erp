@@ -19,10 +19,12 @@ interface TerritoryDialogProps {
   onSave: () => void;
   saving: boolean;
   criteriaError: string | null;
+  /** Solo al editar: «Eliminar» en el pie (la tarjeta solo lleva el lápiz, Figma 1411:838455). */
+  onEliminar?: () => void;
 }
 
 export function TerritoryDialog({
-  open, onOpenChange, editing, form, onFormChange, onSave, saving, criteriaError,
+  open, onOpenChange, editing, form, onFormChange, onSave, saving, criteriaError, onEliminar,
 }: TerritoryDialogProps) {
   const t = useTranslations('crm.equipo');
   return (
@@ -52,7 +54,7 @@ export function TerritoryDialog({
               className="font-mono text-xs"
               placeholder='{"country": "CO"}'
             />
-            {criteriaError && <p className="text-xs text-red-500">{criteriaError}</p>}
+            {criteriaError && <p className="text-xs text-danger-text">{criteriaError}</p>}
           </div>
           <div className="flex items-center justify-between">
             <Label>{t('teamDialog.activo')}</Label>
@@ -63,6 +65,11 @@ export function TerritoryDialog({
           </div>
         </div>
         <DialogFooter>
+          {editing && onEliminar && (
+            <Button variant="ghost" className="text-danger-text sm:mr-auto" onClick={onEliminar}>
+              {t('deleteConfirmDialog.eliminar')}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t('memberDialog.cancelar')}</Button>
           <Button onClick={onSave} disabled={saving}>{saving ? t('teamDialog.guardando') : t('teamDialog.guardar')}</Button>
         </DialogFooter>

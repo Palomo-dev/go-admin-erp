@@ -20,7 +20,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import { Stepper } from "@/components/kit/Stepper";
 import { AvisoTonal } from "@/components/kit/AvisoTonal";
 import { clasesBoton } from "@/components/kit/botonClases";
@@ -34,6 +34,7 @@ import { AgentVoiceTab } from "./editor/AgentVoiceTab";
 import { AgentToolsTab } from "./editor/AgentToolsTab";
 import { AgentComplianceCards } from "./editor/AgentComplianceCards";
 import { AgentTestStep, type EtapaPrueba } from "./editor/AgentTestStep";
+import { PasosEditorPildoras } from "./editor/PasosEditorPildoras";
 import { PASOS_EDITOR, faltantesPaso, pasoAnterior, pasoSiguiente, type PasoEditor } from "./editor/pasosEditorLogica";
 
 export type { AgentDraft } from "./editor/useAgentForm";
@@ -44,14 +45,16 @@ interface Props {
   onSaved: () => void;
   /** Cierra el editor y lleva a la pestaña «Voces» de la página (estado vacío del paso Voz). */
   onGoToVoices?: () => void;
+  /** Paso con el que abre («Probar un agente» y «Probar conversación» abren en «probar»). */
+  pasoInicial?: PasoEditor;
 }
 
-export function AgentEditorDialog({ draft, onClose, onSaved, onGoToVoices }: Props) {
+export function AgentEditorDialog({ draft, onClose, onSaved, onGoToVoices, pasoInicial = "proposito" }: Props) {
   const t = useTranslations("crm.agentesIa.editor");
   const { form, patch, loading, saving, save } = useAgentForm(draft);
   // Mismo catálogo (y mismo estado de credencial) que la pestaña «Voces».
   const catalog = useVoiceCatalog();
-  const [paso, setPaso] = useState<PasoEditor>("proposito");
+  const [paso, setPaso] = useState<PasoEditor>(pasoInicial);
   const [intentoSalir, setIntentoSalir] = useState(false);
   const [etapas, setEtapas] = useState<EtapaPrueba[]>([]);
   const agentId = draft.mode === "edit" ? draft.id : null;
@@ -106,13 +109,24 @@ export function AgentEditorDialog({ draft, onClose, onSaved, onGoToVoices }: Pro
             </SheetDescription>
           </div>
           {!loading && (
-            <Stepper
-              variante="segmentos"
-              etiqueta={t("ariaPasos")}
-              pasos={pasos}
-              actual={paso}
-              resumenMovil={(n, total, etiqueta) => t("pasoDe", { n, total, etiqueta })}
-            />
+            <>
+              <PasosEditorPildoras
+                className="hidden sm:flex"
+                etiqueta={t("ariaPasos")}
+                pasos={pasos}
+                actual={paso}
+                resumen={t("pasoCorto", { n: PASOS_EDITOR.indexOf(paso) + 1, total: PASOS_EDITOR.length })}
+                onIr={ir}
+              />
+              <Stepper
+                className="sm:hidden"
+                variante="segmentos"
+                etiqueta={t("ariaPasos")}
+                pasos={pasos}
+                actual={paso}
+                resumenMovil={(n, total, etiqueta) => t("pasoDe", { n, total, etiqueta })}
+              />
+            </>
           )}
         </SheetHeader>
 
@@ -148,9 +162,12 @@ export function AgentEditorDialog({ draft, onClose, onSaved, onGoToVoices }: Pro
         <div className="flex flex-col gap-2 border-t border-line bg-surface px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:px-6">
           <p className="hidden min-w-0 flex-1 text-[13px] text-fg-secondary sm:block">{t("pie")}</p>
           <div className="flex gap-2">
-            <button type="button" className={`${clasesBoton({ variante: "secundario" })} flex-1 sm:flex-none`} onClick={onClose}>
-              {t("cancelar")}
-            </button>
+            {/* Figma: «Cancelar» solo en el primer paso; después, «Atrás». */}
+            {!anterior && (
+              <button type="button" className={`${clasesBoton({ variante: "secundario" })} flex-1 sm:flex-none`} onClick={onClose}>
+                {t("cancelar")}
+              </button>
+            )}
             {anterior && (
               <button type="button" className={`${clasesBoton({ variante: "secundario" })} flex-1 sm:flex-none`} onClick={() => ir(anterior)} disabled={loading}>
                 <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={1.5} />
@@ -164,7 +181,7 @@ export function AgentEditorDialog({ draft, onClose, onSaved, onGoToVoices }: Pro
               </button>
             ) : (
               <button type="button" className={`${clasesBoton()} flex-1 sm:flex-none`} onClick={() => void submit()} disabled={saving || loading}>
-                {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
+                {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" strokeWidth={1.5} />}
                 {saving ? t("guardando") : t("guardar")}
               </button>
             )}

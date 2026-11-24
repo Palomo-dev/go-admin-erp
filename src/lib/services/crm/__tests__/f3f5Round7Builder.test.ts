@@ -259,13 +259,15 @@ describe('VOZR7B-U · unverified_announcement', () => {
     const player = src('src/components/voice/CallPlayer.tsx');
     expect(player).toContain('UnverifiedConsentBadge');
     expect(player).toMatch(/consents/); // relee la acta del detalle
-    for (const f of ['src/components/voice/CallRowDetail.tsx', 'src/components/crm/timeline/entries/CallEntry.tsx']) {
-      expect(src(f)).toContain('consentMethod={call.consent_method}');
-    }
+    expect(src('src/components/crm/timeline/entries/CallEntry.tsx')).toContain('consentMethod={call.consent_method}');
+    // El detalle de la llamada (página propia desde 2026-11-15, Figma 1363:20)
+    // pasa la acta de grabación al reproductor.
+    expect(src('src/components/voice/detalle/LlamadaDetalle.tsx')).toContain("consents.find((c) => c.consent_type === 'recording')");
+    expect(src('src/components/voice/detalle/TarjetasLlamada.tsx')).toContain('consentMethod={consentMethod}');
     // La fila del listado (kit) ya no incrusta el reproductor: «Oír» abre el
     // detalle (con CallPlayer) y la fila marca el aviso con el mismo distintivo.
     expect(src('src/components/voice/CallRow.tsx')).toContain('<UnverifiedConsentBadge method={call.consent_method} />');
-    for (const f of ['src/components/voice/ConsentBadge.tsx', 'src/components/voice/CallPlayer.tsx', 'src/components/voice/CallRow.tsx', 'src/components/voice/CallRowDetail.tsx']) {
+    for (const f of ['src/components/voice/ConsentBadge.tsx', 'src/components/voice/CallPlayer.tsx', 'src/components/voice/CallRow.tsx', 'src/components/voice/detalle/TarjetasLlamada.tsx']) {
       expect(src(f).split(/\r?\n/).length).toBeLessThanOrEqual(300);
     }
   });

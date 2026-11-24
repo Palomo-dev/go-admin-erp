@@ -134,7 +134,7 @@ describe('F10 guardarraíles', () => {
   });
 
   it('el cierre «al ganar» no lee la tabla inventory (no existe) y el modal no creció', () => {
-    expect(read('src/lib/services/crm/wonCloseSteps.ts')).not.toMatch(/from\('inventory'\)|'stock'/);
+    for (const f of ['src/lib/services/crm/wonCloseSteps.ts', 'src/lib/services/crm/wonCloseStepsLineas.ts']) expect(read(f)).not.toMatch(/from\('inventory'\)|'stock'/);
     expect(read('src/components/crm/pipeline/WonCloseModal.tsx')).not.toMatch(/from\('inventory'\)|executeStock/);
     expect(lines('src/components/crm/pipeline/WonCloseModal.tsx')).toBeLessThanOrEqual(300);
     // r3: el modal cablea cada paso por su id, tal cual, y le pasa (opp, deps); sin RTL esto es lo que impide un cruce de ejecutores.
@@ -143,7 +143,9 @@ describe('F10 guardarraíles', () => {
     expect(modal).toMatch(/await executor\(opp, deps\)/);
     expect(modal).toMatch(/useState<CloseStep\[\]>\(buildInitialSteps\)/);
     expect(modal).toMatch(/setSteps\(buildInitialSteps\(\)\)/);
+    // Los pasos de «Ganar» por líneas (reservas, emitir, cupo, cita) viven en wonCloseStepsLineas.ts para respetar el tope.
     expect(lines('src/lib/services/crm/wonCloseSteps.ts')).toBeLessThanOrEqual(300);
+    expect(lines('src/lib/services/crm/wonCloseStepsLineas.ts')).toBeLessThanOrEqual(300);
   });
 
   it('el webhook de Stripe: 23505 tratado como duplicado, moneda contrastada con la factura, actividad en los rechazos, enlace de un solo uso y desactivado', () => {

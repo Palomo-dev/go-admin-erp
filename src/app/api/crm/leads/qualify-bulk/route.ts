@@ -28,7 +28,8 @@ import { LARGO_MAXIMO_NOMBRE, MAX_LOTE_CALIFICAR } from '@/lib/services/crm/cali
  *     organización sale en `fallidas` con `no_encontrado`, nunca se crea.
  * 400 cuerpo inválido · 403 sin permiso u organización ajena en el body.
  */
-const plantillaSchema = oportunidadAltaSchema.omit({ name: true, customer_id: true, origen: true, origen_ref: true });
+// Sin hospedaje: en lote cada reserva tendría fechas y huéspedes propios (Figma 1768:890014).
+const plantillaSchema = oportunidadAltaSchema.omit({ name: true, customer_id: true, origen: true, origen_ref: true, spaces: true });
 
 const bodySchema = z
   .object({

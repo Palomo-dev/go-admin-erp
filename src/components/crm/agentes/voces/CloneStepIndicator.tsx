@@ -12,28 +12,36 @@ export type CloneStep = 1 | 2 | 3 | 4;
 
 export function CloneStepIndicator({ step }: { step: CloneStep }) {
   const t = useTranslations("crm.agentesIa");
+  // Píldoras del Figma (1672:127218): hecho con ✓ en verde, actual en marca y
+  // pendiente neutro; «Paso N de 4» al final.
   return (
-    <ol className="flex flex-wrap items-center gap-2 text-xs" aria-label={t("cloneStepIndicator.pasosClonarVoz")}>
-      {([1, 2, 3, 4] as CloneStep[]).map((n) => {
-        const state = n < step ? "done" : n === step ? "current" : "todo";
-        return (
-          <li key={n} className="flex items-center gap-2" aria-current={state === "current" ? "step" : undefined}>
-            <span
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                state === "done" ? "bg-green-600 text-white" : state === "current" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+    <div className="flex flex-wrap items-center gap-2">
+      <ol className="flex flex-wrap items-center gap-2 text-xs" aria-label={t("cloneStepIndicator.pasosClonarVoz")}>
+        {([1, 2, 3, 4] as CloneStep[]).map((n) => {
+          const state = n < step ? "done" : n === step ? "current" : "todo";
+          return (
+            <li
+              key={n}
+              aria-current={state === "current" ? "step" : undefined}
+              className={`flex h-7 items-center gap-1.5 rounded-full border px-2.5 ${
+                state === "current" ? "border-line-brand bg-brand-tint font-medium text-brand-deep" : "border-line bg-surface text-fg-secondary"
               }`}
-              aria-hidden="true"
             >
-              {state === "done" ? "✓" : n}
-            </span>
-            <span className={state === "current" ? "font-semibold text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"}>
+              <span
+                aria-hidden="true"
+                className={`flex size-[18px] items-center justify-center rounded-full text-[11px] font-semibold ${
+                  state === "done" ? "text-success-text" : state === "current" ? "bg-brand text-fg-on-brand" : "bg-subtle text-fg-secondary"
+                }`}
+              >
+                {state === "done" ? "✓" : n}
+              </span>
               {t(`cloneStepIndicator.titulos.${n}`)}
               <span className="sr-only">{state === "done" ? t("cloneStepIndicator.completado") : state === "current" ? t("cloneStepIndicator.pasoActual") : ""}</span>
-            </span>
-            {n < 4 && <span className="hidden h-px w-6 bg-gray-300 sm:block dark:bg-gray-600" aria-hidden="true" />}
-          </li>
-        );
-      })}
-    </ol>
+            </li>
+          );
+        })}
+      </ol>
+      <span className="text-xs text-fg-muted">{t("cloneStepIndicator.pasoDe", { n: step, total: 4 })}</span>
+    </div>
   );
 }

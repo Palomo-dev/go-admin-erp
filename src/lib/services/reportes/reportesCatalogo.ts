@@ -19,6 +19,7 @@ import { finanzasReports } from './modulos/finanzasReports';
 import { contabilidadReports } from './modulos/contabilidadReports';
 import { inventarioReports } from './modulos/inventarioReports';
 import { crmReports } from './modulos/crmReports';
+import { crmIngresosReports } from './modulos/crmIngresosReports';
 import { hrmReports } from './modulos/hrmReports';
 import { pmsReports } from './modulos/pmsReports';
 import { parkingReports } from './modulos/parkingReports';
@@ -213,6 +214,33 @@ const META: Record<string, MetaReporte> = {
   'crm-actividades': { grupo: 'clientes', filtros: 'c s f' },
   'crm-campanas': { grupo: 'clientes', filtros: 'c f' },
   'crm-clientes': { grupo: 'clientes', filtros: 'c f' },
+  // Antes «Pronóstico › Análisis» (tablero Revenue OS de /app/crm/pronostico/analisis,
+  // retirado el 2026-11-24: todo reporte vive en /app/reportes). Cada sección es un
+  // reporte (`modulos/crmIngresosReports.ts`); el cálculo sigue en `revenueOsService`.
+  // - Resumen → `crm-ingresos-mensual`. Cohortes → `crm-cohortes-retencion`.
+  //   Matemática comercial → `crm-matematica-comercial`.
+  // - Embudo → `crm-conversion-embudo` (foto de hoy, sin periodo). Cantidad y monto
+  //   por etapa de lo abierto en el periodo ya los daba `crm-funnel`; lo nuevo es la
+  //   conversión acumulada etapa→etapa por pipeline.
+  // - Forecast → `crm-escenarios-forecast` (mejor / esperado / peor por pipeline y por
+  //   mes de cierre esperado). El ponderado por etapa ya lo da `crm-forecast` y el
+  //   ganado / compromiso / mejor caso por mes del trimestre, la propia página
+  //   Pronóstico («Por mes»); no se duplican.
+  // No encajaron como reporte y no se forzaron:
+  // - El formulario de insumos de la matemática comercial (gasto de adquisición y
+  //   margen bruto, `PUT /api/crm/revenue/inputs`, solo administradores): es una
+  //   edición, no una lectura. El reporte los lee y avisa cuando faltan; el formulario
+  //   queda pendiente de ubicarse en el diálogo de Configuración (Figma primero).
+  // - El progreso «ganado vs. meta» por pipeline: comparaba el ganado de toda la
+  //   historia con una meta periódica. La meta se muestra como columna en
+  //   `crm-escenarios-forecast`; cuota vs. ganado vive en la página Pronóstico.
+  // - El rango libre por meses y el selector de pipeline: los reemplazan el periodo
+  //   del visor y la columna «Pipeline».
+  'crm-ingresos-mensual': { grupo: 'clientes', filtros: 'c', nuevo: true },
+  'crm-conversion-embudo': { grupo: 'clientes', filtros: '', nuevo: true },
+  'crm-escenarios-forecast': { grupo: 'clientes', filtros: '', nuevo: true },
+  'crm-cohortes-retencion': { grupo: 'clientes', filtros: '', nuevo: true },
+  'crm-matematica-comercial': { grupo: 'clientes', filtros: 'c', nuevo: true },
   // Atención y mensajería
   'chat-volumen': { grupo: 'atencion', filtros: 'c s f' },
   'chat-sla': { grupo: 'atencion', filtros: 'c f' },
@@ -275,7 +303,7 @@ const CATALOGO: Record<string, ReportDefinition[]> = Object.fromEntries(
     pos: ventasReports,
     finance: [...finanzasReports, ...tesoreriaReports, ...contabilidadReports, ...estadosFinancierosReports, ...comprasFinanzasReports],
     inventory: [...inventarioReports, ...serialTrackingReports, ...comprasInventarioReports],
-    crm: crmReports,
+    crm: [...crmReports, ...crmIngresosReports],
     hrm: hrmReports,
     pms_hotel: pmsReports,
     parking: parkingReports,

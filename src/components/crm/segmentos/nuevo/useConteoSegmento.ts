@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Conteo en vivo del constructor: cada cambio de reglas, tras 600 ms sin
+ * Conteo en vivo del constructor: cada cambio de reglas, tras 400 ms sin
  * escribir, pide el conteo al SERVIDOR (`POST /api/crm/segments/preview`) y
  * cancela la petición anterior. Nunca cuenta en el navegador.
  */

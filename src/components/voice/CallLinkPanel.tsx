@@ -4,7 +4,7 @@
  * CallLinkPanel — acciones para vincular/crear cliente y oportunidad
  * en una llamada que no los tenía registrados.
  *
- * Se muestra en CallRowDetail cuando:
+ * Se muestra en «Vinculada a» del detalle de la llamada (`TarjetasLlamada`) cuando:
  * - No hay customer_id → "Vincular cliente" o "Crear cliente"
  * - Hay cliente pero no opportunity_id → "Crear oportunidad"
  */
@@ -167,25 +167,25 @@ export function CallLinkPanel({
   if (customerId && opportunityId) return null;
 
   return (
-    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+    <div className="rounded-lg border border-line bg-subtle p-3">
       {/* Resumen de estado */}
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="font-medium text-blue-800 dark:text-blue-300">Vinculación:</span>
+        <span className="font-medium text-fg">Vinculación:</span>
         {customerId ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success-subtle px-2 py-0.5 text-success-text">
             <Check size={10} /> {customerName || 'Cliente vinculado'}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-warning-text">
             <X size={10} /> Sin cliente
           </span>
         )}
         {opportunityId ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success-subtle px-2 py-0.5 text-success-text">
             <Check size={10} /> Oportunidad
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-warning-text">
             <X size={10} /> Sin oportunidad
           </span>
         )}
@@ -241,22 +241,22 @@ export function CallLinkPanel({
                   type="button"
                   onClick={() => linkExisting(c.id)}
                   disabled={submitting}
-                  className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-white px-2 py-1.5 text-left text-xs hover:bg-blue-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-blue-950/30"
+                  className="flex w-full items-center justify-between rounded-md border border-line bg-surface px-2 py-1.5 text-left text-xs hover:bg-hover"
                 >
                   <div>
-                    <span className="font-medium text-gray-900 dark:text-gray-100">
+                    <span className="font-medium text-fg">
                       {[c.first_name, c.last_name].filter(Boolean).join(' ') || 'Sin nombre'}
                     </span>
-                    {c.phone && <span className="ml-2 font-mono text-gray-500 dark:text-gray-400">{c.phone}</span>}
+                    {c.phone && <span className="ml-2 font-mono text-fg-secondary">{c.phone}</span>}
                   </div>
-                  <ChevronRight size={12} className="text-gray-400" />
+                  <ChevronRight size={12} className="text-fg-muted" />
                 </button>
               ))}
             </div>
           )}
           {searchResults.length === 0 && searchQuery && !searching && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Sin resultados. <button onClick={() => setMode('create')} className="text-blue-600 underline">Crear cliente nuevo</button>
+            <p className="text-xs text-fg-secondary">
+              Sin resultados. <button onClick={() => setMode('create')} className="text-link underline">Crear cliente nuevo</button>
             </p>
           )}
         </div>
@@ -322,7 +322,7 @@ export function CallLinkPanel({
           <div>
             <Label className="text-xs">Pipeline</Label>
             {lookupsLoading ? (
-              <p className="text-xs text-gray-500">Cargando pipelines…</p>
+              <p className="text-xs text-fg-secondary">Cargando pipelines…</p>
             ) : (
               <EntitySelect
                 value={oppPipelineId}
@@ -340,7 +340,7 @@ export function CallLinkPanel({
             <div>
               <Label className="text-xs">Etapa</Label>
               {lookupsLoading ? (
-                <p className="text-xs text-gray-500">Cargando etapas…</p>
+                <p className="text-xs text-fg-secondary">Cargando etapas…</p>
               ) : (
                 <EntitySelect
                   value={oppStageId}
@@ -369,7 +369,7 @@ export function CallLinkPanel({
       )}
 
       {error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="mt-2 text-xs text-danger-text">{error}</p>
       )}
     </div>
   );

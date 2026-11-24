@@ -40153,11 +40153,13 @@
       "entregadoSinHora": "Delivered",
       "cancelado": "Cancelled {hora}",
       "canceladoSinHora": "Cancelled",
-      "haceSinPromesa": "{n} min ago · no promise",
-      "faltan": "{n} min left",
-      "retraso": "+{n} min late",
+      "haceSinPromesa": "{tiempo} ago · no promise",
+      "faltan": "{tiempo} left",
+      "retraso": "+{tiempo} late",
       "aTiempo": "on time",
-      "antes": "{n} min early"
+      "antes": "{tiempo} early",
+      "manana": "tomorrow {hora}",
+      "otroDia": "{fecha} {hora}"
     },
     "filaAcciones": {
       "ver": "View details",
@@ -40237,6 +40239,11 @@
       "precio": "Price",
       "notas": "Notes",
       "fecha": "Date"
+    },
+    "duracion": {
+      "min": "{n} min",
+      "h": "{n} h",
+      "dias": "{n, plural, one {# day} other {# days}}"
     }
   },
   "pmsParking": {

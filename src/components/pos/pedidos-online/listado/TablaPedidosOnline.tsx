@@ -5,14 +5,14 @@
  * origen, cliente, estado, entrega, «A tiempo» contra lo prometido, pago,
  * total y las acciones rápidas del paso siguiente. En móvil, tarjetas.
  */
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Check, ChefHat, CircleCheck, Eye, Package, Printer, Truck, XCircle, type LucideIcon } from 'lucide-react';
 import { DataTable, ListCard, StatusBadge, type AccionFila, type ColumnaTabla, type ContextoTarjeta, type EstadoTabla, type TonoBadge } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { estimacionEnZona, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { esDomicilio, mesaCortaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
-import { origenDelPedido, promesaDelPedido, type TonoPromesa } from '@/lib/pos/pedidosWeb/listadoPedidos';
+import { duracionPromesa, origenDelPedido, promesaDelPedido, type TonoPromesa } from '@/lib/pos/pedidosWeb/listadoPedidos';
 import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
 
@@ -95,6 +95,19 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
   const t = useTranslations('pedidosOnlineListado');
   const { formatear } = useMonedaOrganizacion();
   const hora = (iso?: string | null) => (iso ? formatTimeInTz(iso, timezone) : '');
+  const idioma = useLocale();
+  /** Hora de la promesa: sola si es hoy; «mañana 10:17» o «mié 26 nov 10:17» si no. */
+  const horaPromesa = (iso: string) => {
+    const e = estimacionEnZona(iso, timezone, ahora);
+    if (!e || e.relativo === 'hoy') return hora(iso);
+    if (e.relativo === 'mañana') return t('promesa.manana', { hora: e.hora });
+    const fecha = new Intl.DateTimeFormat(idioma, { timeZone: timezone, weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(iso));
+    return t('promesa.otroDia', { fecha, hora: e.hora });
+  };
+  const duracion = (minutos: number) => {
+    const d = duracionPromesa(minutos);
+    return t(`duracion.${d.clave}`, { n: d.n });
+  };
 
   const origen = (o: WebOrder) => {
     const r = origenDelPedido(o);
@@ -125,9 +138,9 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
       p.clave === 'sinConfirmar'
         ? t('promesa.sinConfirmar')
         : p.hora
-          ? t(`promesa.${p.clave}`, { hora: hora(p.hora) })
+          ? t(`promesa.${p.clave}`, { hora: horaPromesa(p.hora) })
           : t(`promesa.${p.clave}SinHora`);
-    const detalle = p.detalle ? t(`promesa.${p.detalle.clave}`, { n: p.detalle.minutos }) : null;
+    const detalle = p.detalle ? t(`promesa.${p.detalle.clave}`, { tiempo: duracion(p.detalle.minutos) }) : null;
     return { titulo, detalle, tono: p.tono };
   };
 

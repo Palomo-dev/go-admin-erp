@@ -40151,11 +40151,13 @@
       "entregadoSinHora": "Entregado",
       "cancelado": "Cancelado {hora}",
       "canceladoSinHora": "Cancelado",
-      "haceSinPromesa": "hace {n} min · sin promesa",
-      "faltan": "faltan {n} min",
-      "retraso": "+{n} min de retraso",
+      "haceSinPromesa": "hace {tiempo} · sin promesa",
+      "faltan": "faltan {tiempo}",
+      "retraso": "+{tiempo} de retraso",
       "aTiempo": "a tiempo",
-      "antes": "{n} min antes"
+      "antes": "{tiempo} antes",
+      "manana": "mañana {hora}",
+      "otroDia": "{fecha} {hora}"
     },
     "filaAcciones": {
       "ver": "Ver detalle",
@@ -40235,6 +40237,11 @@
       "precio": "Precio",
       "notas": "Notas",
       "fecha": "Fecha"
+    },
+    "duracion": {
+      "min": "{n} min",
+      "h": "{n} h",
+      "dias": "{n, plural, one {# día} other {# días}}"
     }
   },
   "pmsParking": {

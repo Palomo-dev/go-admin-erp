@@ -1,4 +1,5 @@
 import {
+  duracionPromesa,
   cumplioPromesa,
   origenDelPedido,
   porcentajeATiempo,
@@ -90,5 +91,16 @@ describe('variacionPct y origen', () => {
   it('el QR de mesa se marca en el origen', () => {
     expect(origenDelPedido({ source: 'website', delivery_type: 'dine_in' })).toEqual({ clave: 'website', qrMesa: true });
     expect(origenDelPedido({ source: 'mobile_app', delivery_type: 'pickup' })).toEqual({ clave: 'mobile_app', qrMesa: false });
+  });
+});
+
+describe('duracionPromesa', () => {
+  it('minutos hasta 59, horas hasta 47 y días desde ahí', () => {
+    expect(duracionPromesa(12)).toEqual({ clave: 'min', n: 12 });
+    expect(duracionPromesa(59)).toEqual({ clave: 'min', n: 59 });
+    expect(duracionPromesa(1377)).toEqual({ clave: 'h', n: 23 });
+    expect(duracionPromesa(47 * 60)).toEqual({ clave: 'h', n: 47 });
+    expect(duracionPromesa(5 * 1440)).toEqual({ clave: 'dias', n: 5 });
+    expect(duracionPromesa(-3)).toEqual({ clave: 'min', n: 0 });
   });
 });

@@ -35253,7 +35253,9 @@
           },
           "sinOpciones": "Aún no hay registros activos para la vista: el lienzo muestra el listado de la tienda.",
           "publicada": "El lienzo muestra la versión publicada de esta plantilla: tus cambios se ven aquí después de publicar.",
-          "borrador": "Se ve con tu borrador: cada vez que se guarda, la vista se actualiza con los cambios."
+          "borrador": "Se ve con tu borrador: cada vez que se guarda, la vista se actualiza con los cambios.",
+          "buscar": "Buscar producto, SKU o código…",
+          "sinResultados": "Ningún resultado"
         }
       },
       "inspector": {
@@ -36849,6 +36851,39 @@
         "enlaceEstiloTarjeta": "Colores y textos en Estilo de tarjeta",
         "restablecer": "Volver al aspecto de hoy",
         "ayudaRestablecer": "Quita las opciones de etiquetas de este bloque: la ficha se pinta como antes."
+      },
+      "avisoContraentrega": {
+        "titulo": "Aviso de contraentrega",
+        "ayuda": "Recuerda al cliente que puede pagar al recibir. Solo sale si la sede ofrece contraentrega; si no la ofrece, no se ve aunque esté marcado.",
+        "mostrar": "Mostrar el aviso",
+        "casilla": {
+          "carrito": {
+            "titulo": "En el carrito",
+            "ayuda": "Una línea pequeña debajo del total, sin recuadro."
+          },
+          "ficha": {
+            "titulo": "En la ficha del producto",
+            "ayuda": "Una línea pequeña debajo del precio."
+          }
+        },
+        "vistaPrevia": {
+          "etiqueta": "Vista previa",
+          "donde": {
+            "carrito": "Carrito · debajo del total",
+            "ficha": "Ficha del producto · debajo del precio"
+          },
+          "linea": {
+            "carrito": "Contraentrega disponible: pagas al recibir.",
+            "ficha": "Contraentrega disponible · pagas al recibir"
+          }
+        },
+        "enlaceCondiciones": "Condiciones en Ventas en línea › Pago contra entrega",
+        "soloBorrador": "Se guarda cuando el sitio pasa al borrador nuevo; mientras tanto se ve en la vista previa.",
+        "ficha": {
+          "titulo": "Aviso de contraentrega",
+          "ayuda": "Una línea pequeña debajo del precio. Solo sale si la sede ofrece contraentrega.",
+          "mismoDato": "Es la misma opción de Encabezado › Carrito › «En la ficha del producto»."
+        }
       }
     },
     "paginas": {
@@ -68898,7 +68933,9 @@
       "ayuda": "Confirma que el pedido va en serio. El resto se paga al recibir.",
       "pedir": "Pedir un anticipo en línea",
       "envio": "El valor del envío",
-      "envioAyuda": "El cliente paga hoy el domicilio y el resto al recibir. Ej.: hoy {anticipo} y al recibir {resto}.",
+      "envioAyuda": "El cliente paga hoy lo que cueste el domicilio de su pedido (según su zona) y el resto al recibir.",
+      "envioAyudaUno": "El cliente paga hoy el domicilio, {valor}, y el resto al recibir.",
+      "envioAyudaRango": "El cliente paga hoy el domicilio de su zona, entre {min} y {max}, y el resto al recibir.",
       "porcentaje": "Un porcentaje del pedido",
       "porcentajeAyuda": "Del total con envío.",
       "fijo": "Un valor fijo",
@@ -69095,6 +69132,25 @@
       "nota": "{numero} · Anticipo de {monto} ya pagado con {pasarela}: no se cobra en la puerta.",
       "enLinea": "pago en línea",
       "explicacion": "«Esperado» suma solo lo que el domiciliario cobra en la puerta (total − anticipo). Los anticipos entran por la pasarela y se concilian en Finanzas › Procesadores de pago."
+    }
+  },
+  "barraPagoMovil": {
+    "etiqueta": "Barra de pago en celular",
+    "ayuda": "Cómo se ve la barra fija con el botón de pagar en el checkout desde el celular. En computador no cambia.",
+    "porDefecto": "por defecto",
+    "estilos": {
+      "dos_filas": {
+        "titulo": "Dos filas",
+        "descripcion": "Los montos arriba y un botón corto a todo el ancho."
+      },
+      "dos_lineas": {
+        "titulo": "Botón de dos líneas",
+        "descripcion": "Arriba el total; el botón dice qué pagas y con qué pasarela."
+      },
+      "partido": {
+        "titulo": "Botón partido",
+        "descripcion": "La acción a la izquierda y el monto siempre a la derecha."
+      }
     }
   }
 }

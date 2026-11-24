@@ -62,6 +62,7 @@ import {
 } from '@/lib/website/v2/cabeceraTienda';
 import { EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion, TituloBloque } from './PartesZonaGlobal';
 import { DibujoIcono } from './VistaIconosCabecera';
+import { GrupoAvisoContraentrega } from './AvisoContraentregaEditor';
 import {
   botonEnModo,
   cambioBotonCarrito,
@@ -805,6 +806,9 @@ export function VistaCarrito({ ajustes: a, cambiar, enBorrador }: { ajustes: Aju
           onCambiar={(v) => parte('envioGratis', { logrado: v })}
         />
       </section>
+
+      {/* Aviso de contraentrega (Figma 3071:82659 / 3071:83099): debajo de «Envío gratis». */}
+      <GrupoAvisoContraentrega ajustes={a} cambiar={cambiar} enBorrador={enBorrador} />
 
       <section className="flex flex-col gap-3 border-t border-line pt-3">
         <TituloBloque>{t('carrito.otros')}</TituloBloque>

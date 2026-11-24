@@ -113,7 +113,10 @@ describe('MuestraPlantillaLienzo', () => {
     const selector = screen.getByRole('combobox', { name: 'Ver con el producto' });
     expect(selector.textContent).toContain('Camisa azul (SKU-1)');
     expect(screen.getByText(/Se ve con tu borrador/)).toBeTruthy();
-    fireEvent.keyDown(selector, { key: 'Enter' });
+    // Buscador (SearchSelect): se abre con clic y se filtra escribiendo.
+    fireEvent.click(selector);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'gor' } });
+    expect(screen.queryByRole('option', { name: 'Camisa azul (SKU-1)' })).toBeNull();
     fireEvent.click(screen.getByRole('option', { name: 'Gorra' }));
     expect(onCambiar).toHaveBeenCalledWith('u2');
   });

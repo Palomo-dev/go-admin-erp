@@ -226,6 +226,24 @@ describe('chat-widget · mensajes que ve el visitante', () => {
     expect(JSON.stringify(m)).not.toMatch(/secreto|context_used|emailFromChat|stock/);
   });
 
+  it('conserva ?metodo= del checkoutUrl (medio de pago elegido en el chat) junto a cart y customer', () => {
+    const m = mensajeParaVisitante({
+      ...base,
+      role: 'ai',
+      metadata: {
+        order_action: {
+          type: 'checkout_redirect', checkoutUrl: 'https://demo.goadmin.io/checkout?metodo=cash',
+          cartItems: [{ productId: 7, name: 'Tenis', price: 120000, quantity: 1 }], paymentMethodCode: 'cash',
+        },
+      },
+    });
+    const u = new URL(m!.pedido!.url);
+    expect(u.pathname).toBe('/checkout');
+    expect(u.searchParams.get('metodo')).toBe('cash');
+    expect(u.searchParams.getAll('metodo')).toHaveLength(1);
+    expect(JSON.parse(u.searchParams.get('cart')!)).toHaveLength(1);
+  });
+
   it('un checkout que no es https no genera botón', () => {
     const m = mensajeParaVisitante({ ...base, role: 'ai', metadata: { order_action: { type: 'checkout_redirect', checkoutUrl: 'javascript:alert(1)' } } });
     expect(m?.pedido).toBeNull();

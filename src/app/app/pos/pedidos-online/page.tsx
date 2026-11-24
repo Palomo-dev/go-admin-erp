@@ -91,7 +91,7 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { estimacionEnZona, formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz } from '@/lib/utils/dateCore';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
-import { esPedidoContraentrega, porCobrarAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { esPedidoContraentrega, porCobrarAlEntregar, seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 import { useTiemposPedidos } from '@/components/pos/pedidos-online/tiempos/useTiemposPedidos';
 import { aMs, aTiempoDialogo, resolverTiempos, verticalDeTipo } from '@/lib/pos/pedidosWeb/tiemposPedidos';
 
@@ -376,7 +376,10 @@ export default function PedidosOnlinePage() {
         : [tPedido('confirmacion.ventaCreada'), tPedido('confirmacion.comandaEnviada'), listo];
       if (esDomicilio(order.delivery_type) && transitTime.value > 0) parts.push(tPedido('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime, tPedido) }));
       if (result.cobro) parts.push(tPedido('cobro.hecho'));
-      else if (markAsPaid && !result.cobroPendiente) parts.push(tPedido('confirmacion.marcadoPagado'));
+      else if (markAsPaid && !seCobraAlEntregar(order) && !result.cobroPendiente) parts.push(tPedido('confirmacion.marcadoPagado'));
+      else {
+        // Sin «Marcar como pagado», o contraentrega con anticipo (se cobra al entregar): nada que decir.
+      }
       if (result.couponRedemptionId) parts.push(tPedido('confirmacion.cuponRedimido'));
       toast({
         title: result.completadoAhora ? tPedido('confirmacion.completada') : tPedido('confirmacion.confirmado'),

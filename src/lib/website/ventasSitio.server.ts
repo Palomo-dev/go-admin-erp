@@ -41,6 +41,7 @@ import {
   COLUMNAS_PENDIENTES_CHECKOUT,
   TIPOS_ENTREGA,
   filaDeCambios,
+  normalizarBarraPago,
   ordenarTablero,
   progresoVentas,
   tarjetaCheckout,
@@ -50,6 +51,7 @@ import {
   tarjetaPasarela,
   tarjetaPedidos,
   tarjetaReservas,
+  type BarraPagoMovil,
   type CambiosCheckout,
   type EnlaceVenta,
   type EntradaTablero,
@@ -86,6 +88,8 @@ export interface AjustesCheckout {
   envioActivo: boolean;
   tarifaPlana: number | null;
   envioGratisDesde: number | null;
+  /** Barra fija del pago en celular de la tienda (A/B/C). Sin elegir = C (`partido`). */
+  barraPago: BarraPagoMovil;
   /** Compra como invitado y pedido mínimo esperan la migración `sitio_web_ventas_sedes`. */
   pendienteMigracion: boolean;
 }
@@ -150,7 +154,7 @@ async function rutasVisibles(ctx: Ctx): Promise<Set<string>> {
 // ─── Lectura de website_settings ─────────────────────────────────────────────
 
 const COLUMNAS_BASE =
-  'checkout_mode, available_delivery_types, enable_shipping, checkout_show_trust_badges, checkout_trust_badges, checkout_show_payment_logos, enable_online_ordering, shipping_flat_rate, free_shipping_threshold, is_published';
+  'checkout_mode, available_delivery_types, enable_shipping, checkout_show_trust_badges, checkout_trust_badges, checkout_show_payment_logos, enable_online_ordering, shipping_flat_rate, free_shipping_threshold, is_published, checkout_mobile_bar_style';
 
 interface FilaAjustes {
   checkout_mode: string | null;
@@ -163,6 +167,7 @@ interface FilaAjustes {
   shipping_flat_rate: number | string | null;
   free_shipping_threshold: number | string | null;
   is_published: boolean | null;
+  checkout_mobile_bar_style: string | null;
 }
 
 /** Códigos de «la columna no existe» (Postgres y PostgREST). */
@@ -229,6 +234,7 @@ async function leerAjustes(ctx: Ctx): Promise<AjustesCheckout | null> {
     envioActivo: f.enable_shipping !== false,
     tarifaPlana: numero(f.shipping_flat_rate),
     envioGratisDesde: numero(f.free_shipping_threshold),
+    barraPago: normalizarBarraPago(f.checkout_mobile_bar_style),
     pendienteMigracion,
   };
 }

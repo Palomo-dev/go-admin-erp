@@ -35265,7 +35265,9 @@
           },
           "sinOpciones": "Ainda não há registros ativos para a prévia: a tela mostra a listagem da loja.",
           "publicada": "A tela mostra a versão publicada deste modelo: suas alterações aparecem aqui depois de publicar.",
-          "borrador": "Mostrando o seu rascunho: a cada salvamento, a visualização é atualizada."
+          "borrador": "Mostrando o seu rascunho: a cada salvamento, a visualização é atualizada.",
+          "buscar": "Buscar produto, SKU ou código…",
+          "sinResultados": "Nenhum resultado"
         }
       },
       "inspector": {
@@ -36861,6 +36863,39 @@
         "enlaceEstiloTarjeta": "Cores e textos em Estilo do cartão",
         "restablecer": "Voltar ao visual de hoje",
         "ayudaRestablecer": "Remove as opções de etiquetas deste bloco: a página do produto aparece como antes."
+      },
+      "avisoContraentrega": {
+        "titulo": "Aviso de pagamento na entrega",
+        "ayuda": "Lembra ao cliente que pode pagar ao receber. Só aparece se a filial oferece pagamento na entrega; caso contrário, não aparece mesmo marcado.",
+        "mostrar": "Mostrar o aviso",
+        "casilla": {
+          "carrito": {
+            "titulo": "No carrinho",
+            "ayuda": "Uma linha pequena abaixo do total, sem caixa."
+          },
+          "ficha": {
+            "titulo": "Na página do produto",
+            "ayuda": "Uma linha pequena abaixo do preço."
+          }
+        },
+        "vistaPrevia": {
+          "etiqueta": "Pré-visualização",
+          "donde": {
+            "carrito": "Carrinho · abaixo do total",
+            "ficha": "Página do produto · abaixo do preço"
+          },
+          "linea": {
+            "carrito": "Pagamento na entrega disponível: você paga ao receber.",
+            "ficha": "Pagamento na entrega disponível · você paga ao receber"
+          }
+        },
+        "enlaceCondiciones": "Condições em Vendas online › Pagamento na entrega",
+        "soloBorrador": "É salvo quando o site passa para o novo rascunho; enquanto isso, aparece na pré-visualização.",
+        "ficha": {
+          "titulo": "Aviso de pagamento na entrega",
+          "ayuda": "Uma linha pequena abaixo do preço. Só aparece se a filial oferece pagamento na entrega.",
+          "mismoDato": "É a mesma opção de Cabeçalho › Carrinho › «Na página do produto»."
+        }
       }
     },
     "paginas": {
@@ -68910,7 +68945,9 @@
       "ayuda": "Confirma que o pedido é sério. O restante é pago ao receber.",
       "pedir": "Pedir um sinal online",
       "envio": "O valor do frete",
-      "envioAyuda": "O cliente paga hoje a entrega e o restante ao receber. Ex.: hoje {anticipo} e ao receber {resto}.",
+      "envioAyuda": "O cliente paga hoje o valor da entrega do pedido (conforme a zona) e o restante ao receber.",
+      "envioAyudaUno": "O cliente paga hoje a entrega, {valor}, e o restante ao receber.",
+      "envioAyudaRango": "O cliente paga hoje a entrega da sua zona, entre {min} e {max}, e o restante ao receber.",
       "porcentaje": "Uma porcentagem do pedido",
       "porcentajeAyuda": "Do total com frete.",
       "fijo": "Um valor fixo",
@@ -69107,6 +69144,25 @@
       "nota": "{numero} · Sinal de {monto} já pago com {pasarela}: não se cobra na porta.",
       "enLinea": "pagamento online",
       "explicacion": "«Esperado» soma só o que o entregador cobra na porta (total − sinal). Os sinais entram pela plataforma de pagamento e são conciliados em Finanças › Processadores de pagamento."
+    }
+  },
+  "barraPagoMovil": {
+    "etiqueta": "Barra de pagamento no celular",
+    "ayuda": "Como fica a barra fixa com o botão de pagar no checkout pelo celular. No computador não muda.",
+    "porDefecto": "padrão",
+    "estilos": {
+      "dos_filas": {
+        "titulo": "Duas linhas",
+        "descripcion": "Os valores em cima e um botão curto em toda a largura."
+      },
+      "dos_lineas": {
+        "titulo": "Botão de duas linhas",
+        "descripcion": "O total em cima; o botão diz o que você paga e com qual gateway."
+      },
+      "partido": {
+        "titulo": "Botão dividido",
+        "descripcion": "A ação à esquerda e o valor sempre à direita."
+      }
     }
   }
 }

@@ -35255,7 +35255,9 @@
           },
           "sinOpciones": "There are no active records to preview yet: the canvas shows the store listing.",
           "publicada": "The canvas shows the published version of this template: your changes appear here after you publish.",
-          "borrador": "Showing your draft: each time it saves, the preview updates with your changes."
+          "borrador": "Showing your draft: each time it saves, the preview updates with your changes.",
+          "buscar": "Search product, SKU or code…",
+          "sinResultados": "No results"
         }
       },
       "inspector": {
@@ -36851,6 +36853,39 @@
         "enlaceEstiloTarjeta": "Colors and texts in Card style",
         "restablecer": "Back to today's look",
         "ayudaRestablecer": "Removes the label options from this block: the product page renders as before."
+      },
+      "avisoContraentrega": {
+        "titulo": "Cash on delivery notice",
+        "ayuda": "Reminds customers they can pay on delivery. It only shows if the branch offers cash on delivery; otherwise it stays hidden even if checked.",
+        "mostrar": "Show the notice",
+        "casilla": {
+          "carrito": {
+            "titulo": "In the cart",
+            "ayuda": "A small line below the total, without a box."
+          },
+          "ficha": {
+            "titulo": "On the product page",
+            "ayuda": "A small line below the price."
+          }
+        },
+        "vistaPrevia": {
+          "etiqueta": "Preview",
+          "donde": {
+            "carrito": "Cart · below the total",
+            "ficha": "Product page · below the price"
+          },
+          "linea": {
+            "carrito": "Cash on delivery available: pay when you receive it.",
+            "ficha": "Cash on delivery available · pay on delivery"
+          }
+        },
+        "enlaceCondiciones": "Conditions in Online sales › Cash on delivery",
+        "soloBorrador": "It is saved once the site moves to the new draft; meanwhile you can see it in the preview.",
+        "ficha": {
+          "titulo": "Cash on delivery notice",
+          "ayuda": "A small line below the price. It only shows if the branch offers cash on delivery.",
+          "mismoDato": "Same option as Header › Cart › “On the product page”."
+        }
       }
     },
     "paginas": {
@@ -68900,7 +68935,9 @@
       "ayuda": "Confirms the order is serious. The rest is paid on delivery.",
       "pedir": "Ask for an online deposit",
       "envio": "The shipping cost",
-      "envioAyuda": "The customer pays the delivery today and the rest on delivery. E.g.: today {anticipo} and on delivery {resto}.",
+      "envioAyuda": "The customer pays the delivery cost of their order today (based on their zone) and the rest on delivery.",
+      "envioAyudaUno": "The customer pays the delivery fee, {valor}, today and the rest on delivery.",
+      "envioAyudaRango": "The customer pays their zone delivery fee today, between {min} and {max}, and the rest on delivery.",
       "porcentaje": "A percentage of the order",
       "porcentajeAyuda": "Of the total including shipping.",
       "fijo": "A fixed amount",
@@ -69097,6 +69134,25 @@
       "nota": "{numero} · {monto} deposit already paid with {pasarela}: not collected at the door.",
       "enLinea": "online payment",
       "explicacion": "\"Expected\" only adds what the courier collects at the door (total − deposit). Deposits come in through the gateway and are reconciled in Finance › Payment processors."
+    }
+  },
+  "barraPagoMovil": {
+    "etiqueta": "Mobile payment bar",
+    "ayuda": "How the sticky bar with the pay button looks at checkout on phones. Desktop does not change.",
+    "porDefecto": "default",
+    "estilos": {
+      "dos_filas": {
+        "titulo": "Two rows",
+        "descripcion": "Amounts on top and a short full-width button."
+      },
+      "dos_lineas": {
+        "titulo": "Two-line button",
+        "descripcion": "Total on top; the button says what you pay and with which gateway."
+      },
+      "partido": {
+        "titulo": "Split button",
+        "descripcion": "The action on the left and the amount always on the right."
+      }
     }
   }
 }

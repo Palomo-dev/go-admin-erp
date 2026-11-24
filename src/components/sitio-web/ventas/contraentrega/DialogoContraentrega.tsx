@@ -63,6 +63,19 @@ export function envioGratisDeSede(datos: RespuestaContraentrega, branchId: numbe
   return valores.length > 0 ? Math.min(...valores) : null;
 }
 
+/**
+ * Valores reales del domicilio de la sede (sus zonas activas y las de toda la organización) para
+ * la ayuda de «El valor del envío». `null` si la sede no tiene zonas con valor.
+ */
+export function domicilioDeSede(datos: RespuestaContraentrega, branchId: number | null): { min: number; max: number } | null {
+  const valores = datos.zonas
+    .filter((z) => z.branchId === null || z.branchId === branchId)
+    .map((z) => z.domicilio)
+    .filter((v): v is number => typeof v === 'number' && v > 0);
+  if (valores.length === 0) return null;
+  return { min: Math.min(...valores), max: Math.max(...valores) };
+}
+
 export interface DialogoContraentregaProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
@@ -123,6 +136,7 @@ export function DialogoContraentrega({ abierto, onAbiertoChange, datos, sedeInic
   const nombres = useMemo(() => nombresDe(datos, elegidos), [datos, elegidos]);
   const zonasSede = datos.zonas.filter((z) => z.branchId === null || z.branchId === sede);
   const envioGratis = envioGratisDeSede(datos, sede);
+  const domicilio = domicilioDeSede(datos, sede);
   const errores = erroresCondiciones(form);
   const tieneEfectivo = datos.efectivo.existe;
   const hayCambios = JSON.stringify(form) !== JSON.stringify(condicionesIniciales(guardadas)) || !guardadas;
@@ -361,7 +375,13 @@ export function DialogoContraentrega({ abierto, onAbiertoChange, datos, sedeInic
           {conAnticipo && (
             <>
               <RadioGroup value={form.anticipo.tipo} onValueChange={(v) => ponerAnticipo('tipo', v as CondicionesContraentrega['anticipo']['tipo'])} className="flex flex-col gap-2">
-                <OpcionAnticipo valor="envio" elegida={form.anticipo.tipo === 'envio'} titulo={t('anticipo.envio')} ayuda={t('anticipo.envioAyuda', { anticipo: fmt(9000), resto: fmt(142000) })} />
+                <OpcionAnticipo valor="envio" elegida={form.anticipo.tipo === 'envio'} titulo={t('anticipo.envio')} ayuda={
+                    domicilio === null
+                      ? t('anticipo.envioAyuda')
+                      : domicilio.min === domicilio.max
+                        ? t('anticipo.envioAyudaUno', { valor: fmt(domicilio.min) })
+                        : t('anticipo.envioAyudaRango', { min: fmt(domicilio.min), max: fmt(domicilio.max) })
+                  } />
                 <OpcionAnticipo
                   valor="porcentaje"
                   elegida={form.anticipo.tipo === 'porcentaje'}

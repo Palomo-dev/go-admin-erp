@@ -35255,7 +35255,9 @@
           },
           "sinOpciones": "Aucun enregistrement actif pour l'aperçu : le canevas affiche la liste de la boutique.",
           "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication.",
-          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour."
+          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour.",
+          "buscar": "Rechercher un produit, SKU ou code…",
+          "sinResultados": "Aucun résultat"
         }
       },
       "inspector": {
@@ -36851,6 +36853,39 @@
         "enlaceEstiloTarjeta": "Couleurs et textes dans Style de carte",
         "restablecer": "Revenir à l'aspect d'aujourd'hui",
         "ayudaRestablecer": "Retire les options d'étiquettes de ce bloc : la fiche s'affiche comme avant."
+      },
+      "avisoContraentrega": {
+        "titulo": "Avis de paiement à la livraison",
+        "ayuda": "Rappelle au client qu’il peut payer à la réception. Il n’apparaît que si le point de vente propose le paiement à la livraison ; sinon il reste masqué même coché.",
+        "mostrar": "Afficher l’avis",
+        "casilla": {
+          "carrito": {
+            "titulo": "Dans le panier",
+            "ayuda": "Une petite ligne sous le total, sans encadré."
+          },
+          "ficha": {
+            "titulo": "Sur la fiche produit",
+            "ayuda": "Une petite ligne sous le prix."
+          }
+        },
+        "vistaPrevia": {
+          "etiqueta": "Aperçu",
+          "donde": {
+            "carrito": "Panier · sous le total",
+            "ficha": "Fiche produit · sous le prix"
+          },
+          "linea": {
+            "carrito": "Paiement à la livraison disponible : vous payez à la réception.",
+            "ficha": "Paiement à la livraison disponible · vous payez à la réception"
+          }
+        },
+        "enlaceCondiciones": "Conditions dans Ventes en ligne › Paiement à la livraison",
+        "soloBorrador": "Enregistré lorsque le site passe au nouveau brouillon ; en attendant, visible dans l’aperçu.",
+        "ficha": {
+          "titulo": "Avis de paiement à la livraison",
+          "ayuda": "Une petite ligne sous le prix. N’apparaît que si le point de vente propose le paiement à la livraison.",
+          "mismoDato": "Même option que En-tête › Panier › « Sur la fiche produit »."
+        }
       }
     },
     "paginas": {
@@ -68900,7 +68935,9 @@
       "ayuda": "Confirme que la commande est sérieuse. Le reste se paie à la réception.",
       "pedir": "Demander un acompte en ligne",
       "envio": "Le montant de la livraison",
-      "envioAyuda": "Le client paie aujourd’hui la livraison et le reste à la réception. Ex. : aujourd’hui {anticipo} et à la réception {resto}.",
+      "envioAyuda": "Le client paie aujourd'hui le coût de livraison de sa commande (selon sa zone) et le reste à la réception.",
+      "envioAyudaUno": "Le client paie aujourd'hui la livraison, {valor}, et le reste à la réception.",
+      "envioAyudaRango": "Le client paie aujourd'hui la livraison de sa zone, entre {min} et {max}, et le reste à la réception.",
       "porcentaje": "Un pourcentage de la commande",
       "porcentajeAyuda": "Du total livraison comprise.",
       "fijo": "Un montant fixe",
@@ -69097,6 +69134,25 @@
       "nota": "{numero} · Acompte de {monto} déjà payé avec {pasarela} : ne pas l'encaisser à la porte.",
       "enLinea": "paiement en ligne",
       "explicacion": "« Attendu » ne compte que ce que le livreur encaisse à la porte (total − acompte). Les acomptes passent par la passerelle et sont rapprochés dans Finances › Processeurs de paiement."
+    }
+  },
+  "barraPagoMovil": {
+    "etiqueta": "Barre de paiement sur mobile",
+    "ayuda": "L’apparence de la barre fixe avec le bouton de paiement au checkout sur téléphone. Rien ne change sur ordinateur.",
+    "porDefecto": "par défaut",
+    "estilos": {
+      "dos_filas": {
+        "titulo": "Deux lignes de montants",
+        "descripcion": "Les montants en haut et un bouton court sur toute la largeur."
+      },
+      "dos_lineas": {
+        "titulo": "Bouton sur deux lignes",
+        "descripcion": "Le total en haut ; le bouton indique ce que vous payez et avec quelle passerelle."
+      },
+      "partido": {
+        "titulo": "Bouton divisé",
+        "descripcion": "L’action à gauche et le montant toujours à droite."
+      }
     }
   }
 }

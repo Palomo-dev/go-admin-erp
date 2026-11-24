@@ -22,7 +22,7 @@ import {
   type ResultadoConfirmacionCompleta,
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
-import { bloqueoConfirmarPorAnticipo } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { bloqueoConfirmarPorAnticipo, seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 import {
   debeCobrarseEnCaja,
   esMetodoCobroEnCaja,
@@ -228,12 +228,21 @@ class WebOrderConfirmationService {
    */
   async confirmOrder(
     order: WebOrder,
-    options: {
+    opcionesPedidas: {
       prepMs: number;
       transitMs?: number;
       markAsPaid?: boolean;
     }
   ): Promise<ConfirmOrderResult> {
+    // Contraentrega con anticipo (condiciones de la sede): el resto se cobra al ENTREGAR
+    // (domiciliario / Cuadres, o «Cobrar» si paga en la tienda). «Marcar como pagado» no cobra en
+    // caja al confirmar (antes: aviso rojo «La sede no tiene caja abierta», 2026-11-24).
+    let options = opcionesPedidas;
+    if (opcionesPedidas.markAsPaid && seCobraAlEntregar(order)) {
+      options = { ...opcionesPedidas, markAsPaid: false };
+    } else {
+      // Efectivo sin anticipo, pasarela o ya pagado: como siempre.
+    }
     const userId = await getCurrentUserId();
     if (!userId) throw new Error('No se pudo obtener el usuario actual');
     // Contraentrega con anticipo pendiente (Figma 3014:194407 › 06 B): no se confirma hasta que

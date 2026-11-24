@@ -22,9 +22,9 @@ function datos(extra: Partial<RespuestaContraentrega> = {}): RespuestaContraentr
     ],
     condiciones: {},
     zonas: [
-      { id: 'z1', nombre: 'Chapinero', branchId: 1, envioGratisDesde: 150000 },
-      { id: 'z2', nombre: 'Zona Norte', branchId: 2, envioGratisDesde: null },
-      { id: 'z3', nombre: 'Zona Centro', branchId: null, envioGratisDesde: null },
+      { id: 'z1', nombre: 'Chapinero', branchId: 1, envioGratisDesde: 150000, domicilio: null },
+      { id: 'z2', nombre: 'Zona Norte', branchId: 2, envioGratisDesde: null, domicilio: null },
+      { id: 'z3', nombre: 'Zona Centro', branchId: null, envioGratisDesde: null, domicilio: null },
     ],
     pasarelas: [{ codigo: 'wompi_co', nombre: 'Wompi' }],
     categorias: [{ id: 7, nombre: 'Licores', descripcion: 'vinos, cervezas y aguardientes' }],

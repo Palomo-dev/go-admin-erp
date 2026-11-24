@@ -395,6 +395,21 @@ export interface SelloConfianza {
   texto: string;
 }
 
+/**
+ * Barra fija del pago en celular de la tienda (Figma «16 Sitio web» 3059:80757, aprobada el
+ * 2026-11-24): A `dos_filas`, B `dos_lineas`, C `partido`. Columna
+ * `website_settings.checkout_mobile_bar_style` (migración 20261124235500); NULL = C.
+ * goadmin-websites lee el mismo valor en components/site/checkout/barraPago.ts.
+ */
+export const BARRAS_PAGO_MOVIL = ['dos_filas', 'dos_lineas', 'partido'] as const;
+export type BarraPagoMovil = (typeof BARRAS_PAGO_MOVIL)[number];
+export const BARRA_PAGO_POR_DEFECTO: BarraPagoMovil = 'partido';
+
+/** Valor guardado → estilo; NULL, ausente o desconocido = C (lo que pinta la tienda). */
+export function normalizarBarraPago(valor: unknown): BarraPagoMovil {
+  return typeof valor === 'string' && (BARRAS_PAGO_MOVIL as readonly string[]).includes(valor) ? (valor as BarraPagoMovil) : BARRA_PAGO_POR_DEFECTO;
+}
+
 export interface CambiosCheckout {
   modo?: 'steps' | 'one_page';
   tiposEntrega?: TipoEntrega[];
@@ -407,6 +422,7 @@ export interface CambiosCheckout {
   envioActivo?: boolean;
   tarifaPlana?: number | null;
   envioGratisDesde?: number | null;
+  barraPago?: BarraPagoMovil;
 }
 
 export const MAX_IMPORTE = 999_999_999_999;
@@ -437,6 +453,10 @@ export function validarCambiosCheckout(raw: unknown): { ok: true; cambios: Cambi
   if ('modo' in b) {
     if (b.modo === 'steps' || b.modo === 'one_page') c.modo = b.modo;
     else campos.push('modo');
+  }
+  if ('barraPago' in b) {
+    if (typeof b.barraPago === 'string' && (BARRAS_PAGO_MOVIL as readonly string[]).includes(b.barraPago)) c.barraPago = b.barraPago as BarraPagoMovil;
+    else campos.push('barraPago');
   }
   if ('tiposEntrega' in b) {
     const v = b.tiposEntrega;
@@ -471,7 +491,7 @@ export function validarCambiosCheckout(raw: unknown): { ok: true; cambios: Cambi
   importe('pedidoMinimo');
   importe('tarifaPlana');
   importe('envioGratisDesde');
-  const conocidas = new Set(['modo', 'tiposEntrega', 'invitado', 'pedidoMinimo', 'sellos', 'listaSellos', 'logosPago', 'ventaEnLinea', 'envioActivo', 'tarifaPlana', 'envioGratisDesde']);
+  const conocidas = new Set(['modo', 'tiposEntrega', 'invitado', 'pedidoMinimo', 'sellos', 'listaSellos', 'logosPago', 'ventaEnLinea', 'envioActivo', 'tarifaPlana', 'envioGratisDesde', 'barraPago']);
   for (const k of Object.keys(b)) if (!conocidas.has(k)) campos.push(k);
   return campos.length > 0 ? { ok: false, campos } : { ok: true, cambios: c };
 }
@@ -489,6 +509,7 @@ export const COLUMNAS_CHECKOUT: Readonly<Record<keyof CambiosCheckout, string>> 
   envioActivo: 'enable_shipping',
   tarifaPlana: 'shipping_flat_rate',
   envioGratisDesde: 'free_shipping_threshold',
+  barraPago: 'checkout_mobile_bar_style',
 };
 
 /** Columnas que agrega la migración pendiente `sitio_web_ventas_sedes`. */

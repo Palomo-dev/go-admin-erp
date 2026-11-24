@@ -218,7 +218,7 @@ export function DomiciliariosPantalla() {
     );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4 pb-28 sm:p-6 sm:pb-28 lg:gap-5">
       <PageHeader
         titulo={t('titulo')}
         subtitulo={t('subtitulo')}

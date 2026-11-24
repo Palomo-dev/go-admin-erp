@@ -36567,7 +36567,7 @@
           "ayudaDescripcion": "Apágala para dejar solo el título",
           "espacio": "Espacio entre ítems",
           "lista": "Beneficios ({n} de {max})",
-          "ayudaLista": "Arrastra para ordenar. Abre uno para editarlo: cada uno tiene su propio ícono.",
+          "ayudaLista": "Toca un beneficio para cambiar su ícono, su título, su descripción y su color. Arrastra para ordenar. El fondo, la forma y el tamaño de todos los íconos están en la pestaña Estilo.",
           "sinTitulo": "Sin título",
           "nuevo": "Nuevo beneficio",
           "anadir": "Añadir beneficio",
@@ -36616,7 +36616,12 @@
           "tarjeta": "Tarjeta de cada ítem",
           "ayudaTarjeta": "Solo en «Tarjetas» e «Insignias».",
           "fondoTarjeta": "Fondo de la tarjeta",
-          "avisoSolido": "Si el color es muy claro, el ícono sobre fondo sólido pasa solo a negro o blanco para que se lea (igual que los botones)."
+          "avisoSolido": "Si el color es muy claro, el ícono sobre fondo sólido pasa solo a negro o blanco para que se lea (igual que los botones).",
+          "ayudaColumnasCelular": "Se ve en la vista «Celular» del lienzo; en computador mandan las columnas en escritorio.",
+          "ayudaEstiloIconos": "Para los íconos de todos los beneficios: color, fondo, forma y tamaño. El ícono y el color de cada beneficio se eligen en Contenido.",
+          "formaSinFondo": "Con «Sin fondo» la forma no se ve: elige «Suave» o «Sólido».",
+          "colorItemSinEfecto": "Ahora todos los íconos usan «{modo}» (pestaña Estilo › Color de los íconos). Para que cada beneficio tenga su color, usa «Multicolor».",
+          "usarMulticolor": "Usar «Multicolor»"
         },
         "resenas": {
           "estilos": {
@@ -36674,7 +36679,8 @@
           "resumen": "Resumen de calificación",
           "avatar": "Avatar con la inicial",
           "ayudaAvatar": "Toma el color de la tienda",
-          "tamanoTitulo": "Tamaño del título"
+          "tamanoTitulo": "Tamaño del título",
+          "ayudaTituloCompacta": "En «Compacta» el título solo sale mientras el producto no tiene opiniones."
         },
         "relacionados": {
           "estilos": {
@@ -36772,7 +36778,8 @@
           "todoAncho": "Todo el ancho",
           "tamanoTexto": "Tamaño del texto",
           "normal": "Normal"
-        }
+        },
+        "ocultasPorEstilo": "Con «{estilo}» no se usan: {opciones}. Cambia de estilo para verlas."
       },
       "etiquetasFicha": {
         "titulo": "Etiquetas",

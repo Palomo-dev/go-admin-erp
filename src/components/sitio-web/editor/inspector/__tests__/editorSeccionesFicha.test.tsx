@@ -56,6 +56,80 @@ describe('Beneficios', () => {
   });
 });
 
+describe('Beneficios: cada opción se ve solo donde la tienda la usa (reporte del 2026-11-24)', () => {
+  test('Insignias: sin columnas, líneas ni descripción, y lo dice', () => {
+    render(<PanelSeccionFicha tipo="product_benefits" pestana="diseno" contenido={{ benefits_style: 'insignias' }} onCambiar={jest.fn()} />);
+    expect(screen.queryByText('Columnas en escritorio')).toBeNull();
+    expect(screen.queryByText('Columnas en celular')).toBeNull();
+    expect(screen.queryByText('Líneas entre ítems')).toBeNull();
+    expect(screen.queryByText('Mostrar la descripción')).toBeNull();
+    expect(screen.getByText(/Con «Insignias» no se usan: Columnas en escritorio, Columnas en celular, Líneas entre ítems, Mostrar la descripción/)).toBeTruthy();
+    // Espacio por defecto de Insignias: 12 px (el que pinta la tienda).
+    expect(screen.getByRole('radio', { name: '12 px' }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  test('Lista: columnas en celular con su ayuda; elegir 1 columna la escribe', () => {
+    const onCambiar = jest.fn();
+    render(<PanelSeccionFicha tipo="product_benefits" pestana="diseno" contenido={{}} onCambiar={onCambiar} />);
+    expect(screen.getByText(/vista «Celular» del lienzo/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: '1 columna' }));
+    expect(ultimo(onCambiar)).toEqual({ benefits_style: 'lista', columns_mobile: 1 });
+    expect(document.querySelector('[data-no-se-usan]')).toBeNull();
+  });
+
+  test('Estilo: la tarjeta de cada ítem solo en Tarjetas e Insignias; la forma sin fondo lo explica', () => {
+    const { rerender } = render(<PanelSeccionFicha tipo="product_benefits" pestana="estilo" contenido={{ benefits_style: 'lista', icon_bg: 'ninguno' }} onCambiar={jest.fn()} />);
+    expect(screen.queryByText('Tarjeta de cada ítem')).toBeNull();
+    expect(screen.getByText(/no se usan: Tarjeta de cada ítem, Fondo de la tarjeta/)).toBeTruthy();
+    expect(screen.getByText(/la forma no se ve/)).toBeTruthy();
+    expect(screen.getByText(/Para los íconos de todos los beneficios/)).toBeTruthy();
+    rerender(<PanelSeccionFicha tipo="product_benefits" pestana="estilo" contenido={{ benefits_style: 'tarjetas' }} onCambiar={jest.fn()} />);
+    expect(screen.getByText('Tarjeta de cada ítem')).toBeTruthy();
+  });
+
+  test('Contenido: el color de un ítem fija el estilo y conserva el id', () => {
+    const onCambiar = jest.fn();
+    const items = [{ id: 'a1', icon: 'Truck', title: 'Envío', description: 'Gratis' }];
+    render(<PanelSeccionFicha tipo="product_benefits" pestana="contenido" contenido={{ items }} onCambiar={onCambiar} />);
+    // El título también abre el beneficio.
+    fireEvent.click(screen.getByRole('button', { name: 'Envío' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Uno propio' }));
+    expect(ultimo(onCambiar)).toEqual({ benefits_style: 'lista', items: [{ id: 'a1', icon: 'Truck', title: 'Envío', description: 'Gratis', color: '#16A34A' }] });
+  });
+
+  test('Contenido: con «De la marca» el color del ítem no se usa, lo dice y ofrece «Multicolor»', () => {
+    const onCambiar = jest.fn();
+    const items = [{ icon: 'Truck', title: 'Envío', description: 'Gratis' }];
+    render(<PanelSeccionFicha tipo="product_benefits" pestana="contenido" contenido={{ items, icon_color_mode: 'marca' }} onCambiar={onCambiar} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Editar «Envío»' }));
+    expect(screen.getByText(/Ahora todos los íconos usan «De la marca»/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Usar «Multicolor»' }));
+    expect(ultimo(onCambiar)).toEqual({ items, icon_color_mode: 'multicolor', benefits_style: 'lista' });
+  });
+});
+
+describe('Opciones que el estilo no usa: Reseñas, Relacionados y Descripción', () => {
+  test('Reseñas «Compacta»: sin filtros', () => {
+    render(<PanelSeccionFicha tipo="product_reviews" pestana="diseno" contenido={{ reviews_style: 'compacta' }} onCambiar={jest.fn()} />);
+    expect(screen.queryByText('Filtros que ve el cliente')).toBeNull();
+    expect(screen.getByText(/Con «Compacta» no se usan: Filtros que ve el cliente/)).toBeTruthy();
+  });
+
+  test('Relacionados «Rejilla»: sin flechas, puntos ni «En celular»', () => {
+    render(<PanelSeccionFicha tipo="related_products" pestana="diseno" contenido={{ related_style: 'rejilla' }} onCambiar={jest.fn()} />);
+    expect(screen.queryByText('Flechas')).toBeNull();
+    expect(screen.queryByText('Puntos')).toBeNull();
+    expect(screen.queryByText('En celular')).toBeNull();
+    expect(screen.getByText('Columnas en escritorio')).toBeTruthy();
+  });
+
+  test('Descripción «Ficha en tabla»: sin líneas antes de «Ver más»', () => {
+    render(<PanelSeccionFicha tipo="product_description" pestana="diseno" contenido={{ description_style: 'tabla' }} onCambiar={jest.fn()} />);
+    expect(screen.queryByText('Líneas antes de «Ver más»')).toBeNull();
+    expect(screen.getByText(/no se usan: Abierta al cargar, Líneas antes de «Ver más», En celular, Permitir varias abiertas/)).toBeTruthy();
+  });
+});
+
 describe('Reseñas', () => {
   test('Contenido: fuente «Como el sitio» no escribe; «Reales» escribe reviews_source', () => {
     const onCambiar = jest.fn();

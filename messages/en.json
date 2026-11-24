@@ -36569,7 +36569,7 @@
           "ayudaDescripcion": "Turn it off to keep only the title",
           "espacio": "Space between items",
           "lista": "Benefits ({n} of {max})",
-          "ayudaLista": "Drag to reorder. Open one to edit it: each has its own icon.",
+          "ayudaLista": "Tap a benefit to change its icon, title, description and color. Drag to reorder. The background, shape and size of all icons are in the Style tab.",
           "sinTitulo": "Untitled",
           "nuevo": "New benefit",
           "anadir": "Add benefit",
@@ -36618,7 +36618,12 @@
           "tarjeta": "Card of each item",
           "ayudaTarjeta": "Only in «Cards» and «Badges».",
           "fondoTarjeta": "Card background",
-          "avisoSolido": "If the color is very light, the icon on a solid background switches to black or white so it stays readable (like buttons)."
+          "avisoSolido": "If the color is very light, the icon on a solid background switches to black or white so it stays readable (like buttons).",
+          "ayudaColumnasCelular": "Shows in the canvas «Mobile» view; on desktop the desktop columns apply.",
+          "ayudaEstiloIconos": "For the icons of all benefits: color, background, shape and size. Each benefit’s icon and color are chosen in Content.",
+          "formaSinFondo": "With «None» the shape is not visible: choose «Soft» or «Solid».",
+          "colorItemSinEfecto": "All icons now use «{modo}» (Style tab › Icon color). To give each benefit its own color, use «Multicolor».",
+          "usarMulticolor": "Use «Multicolor»"
         },
         "resenas": {
           "estilos": {
@@ -36676,7 +36681,8 @@
           "resumen": "Rating summary",
           "avatar": "Avatar with initial",
           "ayudaAvatar": "Uses the store color",
-          "tamanoTitulo": "Title size"
+          "tamanoTitulo": "Title size",
+          "ayudaTituloCompacta": "In «Compact» the title only shows while the product has no reviews."
         },
         "relacionados": {
           "estilos": {
@@ -36774,7 +36780,8 @@
           "todoAncho": "Full width",
           "tamanoTexto": "Text size",
           "normal": "Normal"
-        }
+        },
+        "ocultasPorEstilo": "Not used with «{estilo}»: {opciones}. Change the style to see them."
       },
       "etiquetasFicha": {
         "titulo": "Labels",

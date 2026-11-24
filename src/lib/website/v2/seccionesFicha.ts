@@ -219,6 +219,72 @@ export const MEDIDAS_ICONO: Readonly<Record<TamanoIcono, { caja: number; icono: 
   lg: { caja: 48, icono: 24 },
 };
 
+/** En «Insignias» el ícono va dentro de la pastilla: un punto más chico (md = 32/16, el de siempre). */
+export const MEDIDAS_ICONO_INSIGNIA: Readonly<Record<TamanoIcono, { caja: number; icono: number }>> = {
+  sm: { caja: 24, icono: 14 },
+  md: { caja: 32, icono: 16 },
+  lg: { caja: 40, icono: 20 },
+};
+
+/** Espacio entre ítems si no se eligió: 16 px (hoy, `gap-4`); en «Insignias», 12 px. */
+export function espacioBeneficios(o: Pick<OpcionesBeneficios, 'gap' | 'estilo'>): number {
+  return o.gap ?? (o.estilo === 'insignias' ? 12 : 16);
+}
+
+/** ¿Algún beneficio trae su propio color? (no existía antes: enciende el pintado con opciones) */
+export function beneficiosConColorPropio(contenido: Contenido): boolean {
+  return leerItemsBeneficios(contenido).some((b) => b.color !== null);
+}
+
+// ─── Qué opción se usa en cada estilo ──────────────────────────────────────────────────────
+//
+// Las opciones que solo se usan en algunos estilos. El panel oculta las demás y dice cuáles no se
+// usan con el estilo elegido (nunca una opción sin efecto en silencio); las pruebas comparan esto
+// con lo que pinta la tienda. Opción sin entrada = se usa en todos los estilos.
+
+export const SOLO_EN_ESTILOS_BENEFICIOS: Readonly<Record<string, readonly EstiloBeneficios[]>> = {
+  columnas: ['lista', 'tarjetas'],
+  columnasCelular: ['lista', 'tarjetas'],
+  lineas: ['lista', 'franja'],
+  mostrarDescripcion: ['lista', 'tarjetas', 'franja'],
+  borde: ['tarjetas', 'insignias'],
+  fondoItem: ['tarjetas', 'insignias'],
+};
+
+export const SOLO_EN_ESTILOS_RESENAS: Readonly<Record<string, readonly EstiloResenas[]>> = {
+  filtros: ['clasico'],
+  colorBarras: ['clasico'],
+  resumen: ['clasico'],
+  // «Compacta» no lleva título salvo en el estado vacío: el título y su tamaño no se ocultan (el
+  // panel lo explica).
+};
+
+export const SOLO_EN_ESTILOS_RELACIONADOS: Readonly<Record<string, readonly EstiloRelacionados[]>> = {
+  columnas: ['carrusel', 'rejilla'],
+  celular: ['carrusel'],
+  cantidad: ['carrusel', 'rejilla', 'lista'],
+  flechas: ['carrusel'],
+  puntos: ['carrusel'],
+  verTodos: ['carrusel', 'rejilla'],
+  formaFlechas: ['carrusel'],
+  cajaTotal: ['juntos'],
+};
+
+export const SOLO_EN_ESTILOS_DESCRIPCION: Readonly<Record<string, readonly EstiloDescripcion[]>> = {
+  abierta: ['pestanas', 'acordeon'],
+  lineas: ['ver_mas'],
+  celular: ['pestanas'],
+  variasAbiertas: ['acordeon'],
+  colorPestana: ['pestanas'],
+  ancho: ['ver_mas', 'pestanas', 'acordeon'],
+};
+
+/** ¿`opcion` se usa con `estilo`? (sin entrada en el mapa: en todos) */
+export function seUsaEnEstilo<E extends string>(mapa: Readonly<Record<string, readonly E[]>>, opcion: string, estilo: E): boolean {
+  const estilos = mapa[opcion];
+  return !estilos || estilos.includes(estilo);
+}
+
 // ─── Reseñas (`product_reviews`) ───────────────────────────────────────────────────────────
 
 export const ESTILOS_RESENAS = ['clasico', 'carrusel', 'compacta', 'fotos'] as const;

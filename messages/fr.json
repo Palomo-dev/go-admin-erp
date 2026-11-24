@@ -36569,7 +36569,7 @@
           "ayudaDescripcion": "Désactivez-la pour ne garder que le titre",
           "espacio": "Espace entre les éléments",
           "lista": "Avantages ({n} sur {max})",
-          "ayudaLista": "Glissez pour réordonner. Ouvrez-en un pour le modifier : chacun a sa propre icône.",
+          "ayudaLista": "Touchez un avantage pour changer son icône, son titre, sa description et sa couleur. Glissez pour réordonner. Le fond, la forme et la taille de toutes les icônes sont dans l’onglet Style.",
           "sinTitulo": "Sans titre",
           "nuevo": "Nouvel avantage",
           "anadir": "Ajouter un avantage",
@@ -36618,7 +36618,12 @@
           "tarjeta": "Carte de chaque élément",
           "ayudaTarjeta": "Seulement en « Cartes » et « Badges ».",
           "fondoTarjeta": "Fond de la carte",
-          "avisoSolido": "Si la couleur est très claire, l’icône sur fond plein passe en noir ou blanc pour rester lisible (comme les boutons)."
+          "avisoSolido": "Si la couleur est très claire, l’icône sur fond plein passe en noir ou blanc pour rester lisible (comme les boutons).",
+          "ayudaColumnasCelular": "Visible dans la vue « Mobile » du canevas ; sur ordinateur, ce sont les colonnes ordinateur qui s’appliquent.",
+          "ayudaEstiloIconos": "Pour les icônes de tous les avantages : couleur, fond, forme et taille. L’icône et la couleur de chaque avantage se choisissent dans Contenu.",
+          "formaSinFondo": "Avec « Aucun », la forme ne se voit pas : choisissez « Doux » ou « Plein ».",
+          "colorItemSinEfecto": "Toutes les icônes utilisent maintenant « {modo} » (onglet Style › Couleur des icônes). Pour donner sa couleur à chaque avantage, utilisez « Multicolore ».",
+          "usarMulticolor": "Utiliser « Multicolore »"
         },
         "resenas": {
           "estilos": {
@@ -36676,7 +36681,8 @@
           "resumen": "Résumé de la note",
           "avatar": "Avatar avec l’initiale",
           "ayudaAvatar": "Prend la couleur de la boutique",
-          "tamanoTitulo": "Taille du titre"
+          "tamanoTitulo": "Taille du titre",
+          "ayudaTituloCompacta": "En « Compacte », le titre n’apparaît que tant que le produit n’a pas d’avis."
         },
         "relacionados": {
           "estilos": {
@@ -36774,7 +36780,8 @@
           "todoAncho": "Pleine largeur",
           "tamanoTexto": "Taille du texte",
           "normal": "Normal"
-        }
+        },
+        "ocultasPorEstilo": "Non utilisées avec « {estilo} » : {opciones}. Changez de style pour les voir."
       },
       "etiquetasFicha": {
         "titulo": "Étiquettes",

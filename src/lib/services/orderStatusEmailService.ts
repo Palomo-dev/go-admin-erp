@@ -445,6 +445,39 @@ ${boton}
  * (`logistica_registrar_novedad` devuelve `aviso: 'novedad'`). Organización de la sesión o del
  * pedido, nunca de un body. Devuelve si salió el correo. Nunca lanza.
  */
+/**
+ * Aviso de «pedido confirmado» cuando lo confirma la pasarela (`/auto-confirm`), no una persona.
+ *
+ * Hasta el 2026-11-24 este camino no avisaba nada: los pedidos pagados con Mercado Pago, Bold o
+ * Wompi se confirmaban solos y el cliente no recibía el aviso del ERP. El correo no se repite: la
+ * tienda web ya manda «Pago confirmado» desde el webhook (`web_order_email_log`, tipo
+ * `pedido_pagado`); aquí salen los demás canales (WhatsApp, según los ajustes de avisos).
+ * Una sola vez por pedido (los webhooks se reintentan): si ya hay un aviso «confirmado» registrado,
+ * no se manda otro. La organización sale del propio pedido. Nunca lanza.
+ */
+export async function avisarPagoConfirmadoPasarela(db: SupabaseClient, orderId: string): Promise<void> {
+  try {
+    const { data: pedido } = await db
+      .from('web_orders')
+      .select('id, organization_id, status, payment_status')
+      .eq('id', orderId)
+      .maybeSingle();
+    if (!pedido?.organization_id || pedido.payment_status !== 'paid' || pedido.status !== 'confirmed') return;
+    const organizationId = Number(pedido.organization_id);
+    const { data: previos } = await db
+      .from('web_order_notices')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('web_order_id', orderId)
+      .eq('moment', 'confirmado')
+      .limit(1);
+    if (previos && previos.length > 0) return;
+    await enviarCorreoEstadoPedido(db, organizationId, orderId, { soloCanal: 'whatsapp' });
+  } catch (err) {
+    console.warn('[orderStatusEmail] No se pudo avisar la confirmación por pasarela', { orderId, err: err instanceof Error ? err.message : err });
+  }
+}
+
 export async function enviarAvisoNovedadPedido(
   db: SupabaseClient,
   organizationId: number,

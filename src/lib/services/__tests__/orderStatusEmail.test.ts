@@ -24,6 +24,7 @@ import { getMasterResend, getMasterResendKey, getResendClient } from '@/lib/serv
 import { resolveSender } from '@/lib/services/crm/email/domainsService';
 import {
   armarCorreoEstado,
+  avisarPagoConfirmadoPasarela,
   enviarAvisoEstado,
   esEstadoConAviso,
   logoPublico,
@@ -271,5 +272,45 @@ describe('remitente del aviso de estado (dominio verificado de la org)', () => {
     const r = await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: null, responderA: null }, mensaje);
     warn.mockRestore();
     expect(r).toEqual({ ok: false, error: 'sin_proveedor' });
+  });
+});
+
+describe('aviso de confirmación por pasarela (/auto-confirm)', () => {
+  /** Cliente falso por tabla: anota qué tablas se leyeron. */
+  function dbPorTabla(pedido: Record<string, unknown> | null, avisosPrevios: unknown[]) {
+    const tablas: string[] = [];
+    const cadena = (tabla: string) => {
+      const q: Record<string, unknown> = {};
+      q.select = () => q;
+      q.eq = () => q;
+      q.limit = async () => ({ data: tabla === 'web_order_notices' ? avisosPrevios : [], error: null });
+      q.maybeSingle = async () => ({ data: tabla === 'web_orders' ? pedido : null, error: null });
+      return q;
+    };
+    const db = { from: (t: string) => { tablas.push(t); return cadena(t); } } as unknown as SupabaseClient;
+    return { db, tablas };
+  }
+
+  it('un pedido sin pagar o sin confirmar no avisa nada', async () => {
+    for (const p of [
+      { id: 'o1', organization_id: 900, status: 'pending', payment_status: 'pending' },
+      { id: 'o1', organization_id: 900, status: 'confirmed', payment_status: 'pending' },
+      null,
+    ]) {
+      const { db, tablas } = dbPorTabla(p, []);
+      await avisarPagoConfirmadoPasarela(db, 'o1');
+      expect(tablas).toEqual(['web_orders']);
+    }
+  });
+
+  it('si ya hubo un aviso «confirmado» (reintento del webhook) no lo repite', async () => {
+    const { db, tablas } = dbPorTabla({ id: 'o1', organization_id: 900, status: 'confirmed', payment_status: 'paid' }, [{ id: 'a1' }]);
+    await avisarPagoConfirmadoPasarela(db, 'o1');
+    expect(tablas).toEqual(['web_orders', 'web_order_notices']);
+  });
+
+  it('nunca lanza aunque la base falle', async () => {
+    const db = { from: () => { throw new Error('sin red'); } } as unknown as SupabaseClient;
+    await expect(avisarPagoConfirmadoPasarela(db, 'o1')).resolves.toBeUndefined();
   });
 });

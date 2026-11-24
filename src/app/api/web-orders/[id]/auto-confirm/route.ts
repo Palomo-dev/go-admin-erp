@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webhookSignatures';
 import { webOrderServerConfirmation } from '@/lib/services/webOrderServerConfirmation';
+import { avisarPagoConfirmadoPasarela } from '@/lib/services/orderStatusEmailService';
+import { getServiceClient } from '@/lib/supabase/server-service';
 
 /**
  * POST /api/web-orders/[id]/auto-confirm
@@ -43,6 +45,11 @@ export async function POST(
     }
 
     const result = await webOrderServerConfirmation.autoConfirmPaidOrder(orderId);
+
+    // Aviso al cliente de que su pedido quedó confirmado (best-effort, nunca
+    // falla la confirmación). El correo «Pago confirmado» lo manda la tienda
+    // web desde el webhook; aquí sale lo demás (WhatsApp) una sola vez.
+    await avisarPagoConfirmadoPasarela(getServiceClient(), orderId);
 
     return NextResponse.json({
       success: true,

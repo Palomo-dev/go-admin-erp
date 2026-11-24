@@ -22,8 +22,7 @@ import {
   Route,
   FileText
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface DriverHistoryDialogProps {
   open: boolean;
@@ -144,7 +143,7 @@ export function DriverHistoryDialog({
                     <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <p className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(trip.trip_date), 'dd MMM yyyy', { locale: es })}
+                        {formatPlainDate(trip.trip_date, { day: '2-digit', month: 'short', year: 'numeric' })}
                       </p>
                       {trip.scheduled_departure && (
                         <p className="flex items-center gap-1">
@@ -197,7 +196,7 @@ export function DriverHistoryDialog({
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
                 <p><strong>Licencia:</strong> {driver.license_number}</p>
                 <p><strong>Categoría:</strong> {driver.license_category}</p>
-                <p><strong>Vencimiento:</strong> {format(new Date(driver.license_expiry), 'dd/MM/yyyy')}</p>
+                <p><strong>Vencimiento:</strong> {formatPlainDate(driver.license_expiry) || '—'}</p>
                 {driver.metadata?.certifications && driver.metadata.certifications.length > 0 && (
                   <div className="pt-1">
                     <p className="font-medium">Certificaciones:</p>

@@ -21,8 +21,7 @@ import {
   Loader2,
   History as HistoryIcon
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 
 interface VehicleHistoryDialogProps {
   open: boolean;
@@ -119,7 +118,7 @@ export function VehicleHistoryDialog({
                       <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(trip.trip_date), 'dd/MM/yyyy', { locale: es })}
+                          {formatPlainDate(trip.trip_date)}
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />

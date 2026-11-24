@@ -66375,5 +66375,249 @@
       "alDia": "Nothing to handle: no blocked dispatches and no expired documents.",
       "notaReportes": "Cost and performance details are in Reports."
     }
+  },
+  "catalogoComun": {
+    "comun": {
+      "migas": {
+        "logistica": "Logistics",
+        "transporte": "Transport"
+      },
+      "docs": {
+        "vencido": "Expired",
+        "por_vencer": "Expiring soon",
+        "vigente": "Valid",
+        "sin_fecha": "No date"
+      },
+      "externo": "External",
+      "todos": "All",
+      "actualizar": "Refresh",
+      "importar": "Import",
+      "limpiarTodo": "Clear all",
+      "cancelar": "Cancel"
+    },
+    "vehiculos": {
+      "titulo": "Vehicles",
+      "subtitulo": "Shared catalog · {n} vehicles",
+      "subtituloVacio": "No vehicles registered yet",
+      "nuevo": "New vehicle",
+      "tabla": "Vehicles",
+      "capacidad": {
+        "kg": "{n} kg",
+        "m3": "{n} m³",
+        "pasajeros": "{count, plural, one {# passenger} other {# passengers}}",
+        "o": "or {carga}"
+      },
+      "toast": {
+        "errorHistorial": "The history could not be loaded",
+        "actualizado": "Vehicle updated",
+        "creado": "Vehicle created",
+        "errorGuardar": "The vehicle could not be saved",
+        "estado": "Status updated",
+        "errorEstado": "The status could not be changed",
+        "conductorAsignado": "Driver assigned",
+        "conductorQuitado": "Driver removed",
+        "errorConductor": "The driver could not be assigned",
+        "eliminado": "Vehicle {placa} deleted",
+        "errorEliminar": "The vehicle could not be deleted",
+        "sinOrganizacion": "No active organization"
+      },
+      "columnas": {
+        "vehiculo": "Vehicle",
+        "marcaModelo": "Make and model",
+        "tipo": "Type",
+        "capacidad": "Capacity",
+        "conductor": "Driver",
+        "documentos": "Documents",
+        "estado": "Status",
+        "transportadora": "Carrier",
+        "sede": "Branch"
+      },
+      "estados": {
+        "available": "Available",
+        "in_use": "In use",
+        "maintenance": "Maintenance",
+        "inactive": "Inactive"
+      },
+      "acciones": {
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "cambiarEstado": "Change status",
+        "cambiarConductor": "Change driver",
+        "asignarConductor": "Assign driver",
+        "subirDocumento": "Upload document",
+        "historial": "View trip history",
+        "eliminar": "Delete"
+      },
+      "conductorDesconocido": "Assigned (no driver record)",
+      "sinAsignar": "Unassigned",
+      "filtros": {
+        "tipo": "Type",
+        "estado": "Status",
+        "transportadora": "Carrier",
+        "documentos": "Documents",
+        "chipTipo": "Type: {tipo}",
+        "chipEstado": "Status: {estado}",
+        "chipTransportadora": "Carrier: {nombre}",
+        "chipDocumentos": "Documents: {estado}",
+        "verN": "{count, plural, one {View # vehicle} other {View # vehicles}}"
+      },
+      "exportarTodo": "Export the list",
+      "sinFilas": "There are no vehicles in the list",
+      "irDocumentos": "Documents and expirations",
+      "irConductores": "Drivers and couriers",
+      "sustantivo": {
+        "singular": "vehicle",
+        "plural": "vehicles"
+      },
+      "vacio": {
+        "titulo": "No vehicles yet",
+        "descripcion": "Register your first motorcycle, car, truck, bus or boat to assign drivers, schedule trips and dispatches, and track its documents.",
+        "importar": "Import from Excel"
+      },
+      "kpis": {
+        "etiqueta": "Vehicle summary",
+        "vehiculos": "Vehicles",
+        "vehiculosDetalle": "All active",
+        "vehiculosInactivos": "{n} inactive",
+        "disponibles": "Available",
+        "disponiblesDetalle": "Ready to go",
+        "disponiblesBloqueados": "{n} with expired documents: they cannot leave",
+        "enUso": "In use",
+        "enUsoDetalle": "On route or delivering",
+        "mantenimiento": "In maintenance",
+        "mantenimientoVacio": "None in the shop"
+      },
+      "buscar": {
+        "placeholder": "Search by plate, make or driver…",
+        "etiqueta": "Search vehicles"
+      },
+      "sinResultados": "No vehicle matches the search or the filters.",
+      "errorCarga": "The vehicles could not be loaded",
+      "masivo": {
+        "exportar": "Export"
+      },
+      "eliminar": {
+        "titulo": "Delete vehicle {placa}?",
+        "descripcion": "It is removed from the Logistics and Transport catalog. This action cannot be undone.",
+        "confirmar": "Delete vehicle"
+      }
+    },
+    "conductores": {
+      "titulo": "Drivers and couriers",
+      "subtitulo": "Shared catalog · {n} people",
+      "subtituloVacio": "No people registered yet",
+      "nuevo": "New person",
+      "tabla": "Drivers and couriers",
+      "sinNombre": "No name",
+      "sinCargo": "No position",
+      "sinVehiculo": "Unassigned",
+      "licenciaVence": "License expires on {fecha}",
+      "categorias": {
+        "A1": "motorcycles up to 125 cc",
+        "A2": "motorcycles over 125 cc",
+        "B1": "cars and SUVs",
+        "B2": "rigid trucks and buses",
+        "B3": "articulated vehicles",
+        "C1": "public service cars",
+        "C2": "public service trucks and buses",
+        "C3": "public service articulated vehicles"
+      },
+      "toast": {
+        "errorHistorial": "The history could not be loaded",
+        "actualizado": "Person updated",
+        "creado": "Person created",
+        "errorGuardar": "The person could not be saved",
+        "activado": "Person activated",
+        "desactivado": "Person deactivated",
+        "errorEstado": "The status could not be changed",
+        "eliminado": "{nombre} was deleted",
+        "errorEliminar": "The person could not be deleted",
+        "sinOrganizacion": "No active organization"
+      },
+      "columnas": {
+        "persona": "Person",
+        "documento": "ID document",
+        "cargo": "Position",
+        "licencia": "License",
+        "vence": "Expires",
+        "examen": "Medical exam",
+        "vehiculo": "Assigned vehicle",
+        "estado": "Status"
+      },
+      "estados": {
+        "activo": "Active",
+        "inactivo": "Inactive"
+      },
+      "acciones": {
+        "editar": "Edit",
+        "editarEnDomiciliarios": "Edit in Couriers",
+        "duplicar": "Duplicate",
+        "desactivar": "Deactivate",
+        "activar": "Activate",
+        "subirDocumento": "Upload document",
+        "historial": "View trip history",
+        "eliminar": "Delete"
+      },
+      "filtros": {
+        "cargo": "Position",
+        "estado": "Status",
+        "categoria": "License category",
+        "documentos": "Documents",
+        "vehiculo": "Vehicle",
+        "chipCargo": "Position: {cargo}",
+        "chipCategoria": "License {categoria}",
+        "chipDocumentos": "Documents: {estado}",
+        "vehiculo_con": "With an assigned vehicle",
+        "vehiculo_sin": "Without an assigned vehicle",
+        "verN": "{count, plural, one {View # person} other {View # people}}"
+      },
+      "exportarTodo": "Export the list",
+      "sinFilas": "There are no people in the list",
+      "irDocumentos": "Documents and expirations",
+      "irVehiculos": "Vehicles",
+      "irDomiciliarios": "Couriers",
+      "sustantivo": {
+        "singular": "person",
+        "plural": "people"
+      },
+      "vacio": {
+        "titulo": "No drivers or couriers yet",
+        "descripcion": "Register the people who drive the vehicles or make the deliveries to assign them vehicles, trips and shipments and track their license.",
+        "domiciliario": "Register courier",
+        "importar": "Import from Excel"
+      },
+      "kpis": {
+        "etiqueta": "People summary",
+        "personas": "People",
+        "activas": "{n} active",
+        "externas": "{n} external",
+        "documentos": "Personal documents",
+        "documentosDetalle": "{vencidos} expired · {porVencer} expiring soon",
+        "documentosVacio": "Licenses and exams up to date",
+        "conVehiculo": "With an assigned vehicle",
+        "sinVehiculo": "{n} active without a vehicle",
+        "sinLicencia": "No license on file",
+        "sinLicenciaDetalle": "They cannot be dispatched",
+        "sinLicenciaVacio": "Everyone has a license"
+      },
+      "buscar": {
+        "placeholder": "Search by name, ID or vehicle…",
+        "etiqueta": "Search people"
+      },
+      "sinResultados": "No person matches the search or the filters.",
+      "errorCarga": "The drivers and couriers could not be loaded",
+      "sinPermiso": {
+        "titulo": "You do not have access to this list",
+        "descripcion": "Ask an administrator for the Transport or Logistics permission."
+      },
+      "masivo": {
+        "exportar": "Export"
+      },
+      "eliminar": {
+        "titulo": "Delete {nombre}?",
+        "descripcion": "Their license and driver data are deleted. Their job in Human resources does not change. This action cannot be undone.",
+        "confirmar": "Delete"
+      }
+    }
   }
 }

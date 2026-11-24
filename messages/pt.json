@@ -66385,5 +66385,249 @@
       "alDia": "Nada a atender: nenhum despacho bloqueado nem documentos vencidos.",
       "notaReportes": "O detalhe de custos e desempenho está em Relatórios."
     }
+  },
+  "catalogoComun": {
+    "comun": {
+      "migas": {
+        "logistica": "Logística",
+        "transporte": "Transporte"
+      },
+      "docs": {
+        "vencido": "Vencido",
+        "por_vencer": "A vencer",
+        "vigente": "Vigente",
+        "sin_fecha": "Sem data"
+      },
+      "externo": "Externo",
+      "todos": "Todos",
+      "actualizar": "Atualizar",
+      "importar": "Importar",
+      "limpiarTodo": "Limpar tudo",
+      "cancelar": "Cancelar"
+    },
+    "vehiculos": {
+      "titulo": "Veículos",
+      "subtitulo": "Catálogo comum · {n} veículos",
+      "subtituloVacio": "Ainda não há veículos cadastrados",
+      "nuevo": "Novo veículo",
+      "tabla": "Veículos",
+      "capacidad": {
+        "kg": "{n} kg",
+        "m3": "{n} m³",
+        "pasajeros": "{count, plural, one {# passageiro} other {# passageiros}}",
+        "o": "ou {carga}"
+      },
+      "toast": {
+        "errorHistorial": "Não foi possível carregar o histórico",
+        "actualizado": "Veículo atualizado",
+        "creado": "Veículo criado",
+        "errorGuardar": "Não foi possível salvar o veículo",
+        "estado": "Status atualizado",
+        "errorEstado": "Não foi possível alterar o status",
+        "conductorAsignado": "Motorista atribuído",
+        "conductorQuitado": "Motorista removido",
+        "errorConductor": "Não foi possível atribuir o motorista",
+        "eliminado": "O veículo {placa} foi excluído",
+        "errorEliminar": "Não foi possível excluir o veículo",
+        "sinOrganizacion": "Nenhuma organização ativa"
+      },
+      "columnas": {
+        "vehiculo": "Veículo",
+        "marcaModelo": "Marca e modelo",
+        "tipo": "Tipo",
+        "capacidad": "Capacidade",
+        "conductor": "Motorista",
+        "documentos": "Documentos",
+        "estado": "Status",
+        "transportadora": "Transportadora",
+        "sede": "Filial"
+      },
+      "estados": {
+        "available": "Disponível",
+        "in_use": "Em uso",
+        "maintenance": "Manutenção",
+        "inactive": "Inativo"
+      },
+      "acciones": {
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "cambiarEstado": "Alterar status",
+        "cambiarConductor": "Trocar motorista",
+        "asignarConductor": "Atribuir motorista",
+        "subirDocumento": "Enviar documento",
+        "historial": "Ver histórico de viagens",
+        "eliminar": "Excluir"
+      },
+      "conductorDesconocido": "Atribuído (sem ficha de motorista)",
+      "sinAsignar": "Sem atribuição",
+      "filtros": {
+        "tipo": "Tipo",
+        "estado": "Status",
+        "transportadora": "Transportadora",
+        "documentos": "Documentos",
+        "chipTipo": "Tipo: {tipo}",
+        "chipEstado": "Status: {estado}",
+        "chipTransportadora": "Transportadora: {nombre}",
+        "chipDocumentos": "Documentos: {estado}",
+        "verN": "{count, plural, one {Ver # veículo} other {Ver # veículos}}"
+      },
+      "exportarTodo": "Exportar a lista",
+      "sinFilas": "Não há veículos na lista",
+      "irDocumentos": "Documentos e vencimentos",
+      "irConductores": "Motoristas e entregadores",
+      "sustantivo": {
+        "singular": "veículo",
+        "plural": "veículos"
+      },
+      "vacio": {
+        "titulo": "Ainda não há veículos",
+        "descripcion": "Cadastre sua primeira moto, carro, caminhão, ônibus ou lancha para atribuir motoristas, programar viagens e despachos e acompanhar seus documentos.",
+        "importar": "Importar do Excel"
+      },
+      "kpis": {
+        "etiqueta": "Resumo de veículos",
+        "vehiculos": "Veículos",
+        "vehiculosDetalle": "Todos ativos",
+        "vehiculosInactivos": "{n} inativos",
+        "disponibles": "Disponíveis",
+        "disponiblesDetalle": "Prontos para sair",
+        "disponiblesBloqueados": "{n} com documentos vencidos: não saem",
+        "enUso": "Em uso",
+        "enUsoDetalle": "Em rota ou em entrega",
+        "mantenimiento": "Em manutenção",
+        "mantenimientoVacio": "Nenhum na oficina"
+      },
+      "buscar": {
+        "placeholder": "Buscar por placa, marca ou motorista…",
+        "etiqueta": "Buscar veículos"
+      },
+      "sinResultados": "Nenhum veículo corresponde à busca ou aos filtros.",
+      "errorCarga": "Não foi possível carregar os veículos",
+      "masivo": {
+        "exportar": "Exportar"
+      },
+      "eliminar": {
+        "titulo": "Excluir o veículo {placa}?",
+        "descripcion": "Ele sai do catálogo de Logística e Transporte. Esta ação não pode ser desfeita.",
+        "confirmar": "Excluir veículo"
+      }
+    },
+    "conductores": {
+      "titulo": "Motoristas e entregadores",
+      "subtitulo": "Catálogo comum · {n} pessoas",
+      "subtituloVacio": "Ainda não há pessoas cadastradas",
+      "nuevo": "Nova pessoa",
+      "tabla": "Motoristas e entregadores",
+      "sinNombre": "Sem nome",
+      "sinCargo": "Sem cargo",
+      "sinVehiculo": "Sem atribuição",
+      "licenciaVence": "A habilitação vence em {fecha}",
+      "categorias": {
+        "A1": "motos até 125 cc",
+        "A2": "motos acima de 125 cc",
+        "B1": "carros e utilitários",
+        "B2": "caminhões e ônibus",
+        "B3": "veículos articulados",
+        "C1": "carros de serviço público",
+        "C2": "caminhões e ônibus de serviço público",
+        "C3": "articulados de serviço público"
+      },
+      "toast": {
+        "errorHistorial": "Não foi possível carregar o histórico",
+        "actualizado": "Pessoa atualizada",
+        "creado": "Pessoa criada",
+        "errorGuardar": "Não foi possível salvar a pessoa",
+        "activado": "Pessoa ativada",
+        "desactivado": "Pessoa desativada",
+        "errorEstado": "Não foi possível alterar o status",
+        "eliminado": "{nombre} foi excluído(a)",
+        "errorEliminar": "Não foi possível excluir a pessoa",
+        "sinOrganizacion": "Nenhuma organização ativa"
+      },
+      "columnas": {
+        "persona": "Pessoa",
+        "documento": "Documento",
+        "cargo": "Cargo",
+        "licencia": "Habilitação",
+        "vence": "Vence",
+        "examen": "Exame médico",
+        "vehiculo": "Veículo atribuído",
+        "estado": "Status"
+      },
+      "estados": {
+        "activo": "Ativo",
+        "inactivo": "Inativo"
+      },
+      "acciones": {
+        "editar": "Editar",
+        "editarEnDomiciliarios": "Editar em Entregadores",
+        "duplicar": "Duplicar",
+        "desactivar": "Desativar",
+        "activar": "Ativar",
+        "subirDocumento": "Enviar documento",
+        "historial": "Ver histórico de viagens",
+        "eliminar": "Excluir"
+      },
+      "filtros": {
+        "cargo": "Cargo",
+        "estado": "Status",
+        "categoria": "Categoria da habilitação",
+        "documentos": "Documentos",
+        "vehiculo": "Veículo",
+        "chipCargo": "Cargo: {cargo}",
+        "chipCategoria": "Habilitação {categoria}",
+        "chipDocumentos": "Documentos: {estado}",
+        "vehiculo_con": "Com veículo atribuído",
+        "vehiculo_sin": "Sem veículo atribuído",
+        "verN": "{count, plural, one {Ver # pessoa} other {Ver # pessoas}}"
+      },
+      "exportarTodo": "Exportar a lista",
+      "sinFilas": "Não há pessoas na lista",
+      "irDocumentos": "Documentos e vencimentos",
+      "irVehiculos": "Veículos",
+      "irDomiciliarios": "Entregadores",
+      "sustantivo": {
+        "singular": "pessoa",
+        "plural": "pessoas"
+      },
+      "vacio": {
+        "titulo": "Ainda não há motoristas nem entregadores",
+        "descripcion": "Cadastre as pessoas que dirigem os veículos ou fazem as entregas para atribuir veículos, viagens e envios e acompanhar a habilitação.",
+        "domiciliario": "Cadastrar entregador",
+        "importar": "Importar do Excel"
+      },
+      "kpis": {
+        "etiqueta": "Resumo de pessoas",
+        "personas": "Pessoas",
+        "activas": "{n} ativas",
+        "externas": "{n} externas",
+        "documentos": "Documentos pessoais",
+        "documentosDetalle": "{vencidos} vencidos · {porVencer} a vencer",
+        "documentosVacio": "Habilitações e exames em dia",
+        "conVehiculo": "Com veículo atribuído",
+        "sinVehiculo": "{n} ativas sem veículo",
+        "sinLicencia": "Sem habilitação cadastrada",
+        "sinLicenciaDetalle": "Não podem ser despachadas",
+        "sinLicenciaVacio": "Todos têm habilitação"
+      },
+      "buscar": {
+        "placeholder": "Buscar por nome, documento ou veículo…",
+        "etiqueta": "Buscar pessoas"
+      },
+      "sinResultados": "Nenhuma pessoa corresponde à busca ou aos filtros.",
+      "errorCarga": "Não foi possível carregar os motoristas e entregadores",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso a esta lista",
+        "descripcion": "Peça a um administrador a permissão de Transporte ou Logística."
+      },
+      "masivo": {
+        "exportar": "Exportar"
+      },
+      "eliminar": {
+        "titulo": "Excluir {nombre}?",
+        "descripcion": "A habilitação e os dados de motorista são excluídos. O vínculo em Recursos humanos não muda. Esta ação não pode ser desfeita.",
+        "confirmar": "Excluir"
+      }
+    }
   }
 }

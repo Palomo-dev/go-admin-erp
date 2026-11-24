@@ -619,3 +619,141 @@ export function filasParaGuardar(filas: readonly { nombre: string; valor: string
   const limpias = leerFilasPropias(filas);
   return limpias.length > 0 ? limpias : null;
 }
+
+// ─── Etiquetas de la ficha (`product_info`) ─────────────────────────────────────────────────
+//
+// Figma «16 Sitio web», sección 3036:78040 (aprobada por el dueño el 2026-11-24): las etiquetas de
+// la tarjeta de producto también en la ficha. A = sobre la foto (esquinas de la galería); B = una
+// fila junto al título y el precio, donde «2 X 1» y «Precio por volumen» se tocan para explicarse.
+// El dueño aprobó las dos: se elige A, B o ambas.
+//
+// Viven en el contenido del bloque `product_info` (Información del producto). Sin `labels_show:
+// true` la ficha se pinta EXACTAMENTE como hoy. Cuándo sale cada etiqueta, su texto y su color los
+// decide la misma regla de la tarjeta (`etiquetasProducto.ts` en la tienda): una etiqueta apagada
+// en «Estilo de tarjeta › Etiquetas» tampoco sale en la ficha. Aquí solo se elige dónde, cuáles,
+// en qué orden y esquina, y el estilo (forma, relleno, tamaño y colores propios opcionales).
+// `labels_custom` (etiquetas propias de la ficha) tiene la forma de `labels_custom` del estilo de
+// tarjeta y se normaliza con `tarjetaProducto.ts`; sin lista, la ficha usa las del sitio.
+
+export const TIPOS_ETIQUETA_FICHA = ['free_shipping', 'discount', 'promotion', 'volume', 'sales_count', 'new', 'sold_out', 'custom'] as const;
+export type TipoEtiquetaFicha = (typeof TIPOS_ETIQUETA_FICHA)[number];
+
+/** `foto` = A (sobre la foto), `titulo` = B (junto al título), `ambas` = A y B. */
+export const UBICACIONES_ETIQUETAS_FICHA = ['foto', 'titulo', 'ambas'] as const;
+export type UbicacionEtiquetasFicha = (typeof UBICACIONES_ETIQUETAS_FICHA)[number];
+
+export const ESQUINAS_ETIQUETA_FICHA = ['top_left', 'top_right', 'bottom_left', 'bottom_right'] as const;
+export type EsquinaEtiquetaFicha = (typeof ESQUINAS_ETIQUETA_FICHA)[number];
+
+/** `tarjeta` = la forma o el relleno de «Estilo de tarjeta › Etiquetas». */
+export const FORMAS_ETIQUETA_FICHA = ['tarjeta', 'pill', 'rounded', 'semi', 'square'] as const;
+export type FormaEtiquetaFicha = (typeof FORMAS_ETIQUETA_FICHA)[number];
+export const RELLENOS_ETIQUETA_FICHA = ['tarjeta', 'solid', 'soft', 'outline'] as const;
+export type RellenoEtiquetaFicha = (typeof RELLENOS_ETIQUETA_FICHA)[number];
+export const TAMANOS_ETIQUETA_FICHA = ['sm', 'md'] as const;
+export type TamanoEtiquetaFicha = (typeof TAMANOS_ETIQUETA_FICHA)[number];
+
+export const CLAVES_ETIQUETAS_FICHA = {
+  mostrar: 'labels_show',
+  ubicacion: 'labels_placement',
+  items: 'labels_items',
+  forma: 'labels_shape',
+  relleno: 'labels_style',
+  tamano: 'labels_size',
+  propias: 'labels_custom',
+} as const;
+export const CLAVES_NUEVAS_ETIQUETAS: readonly string[] = Object.values(CLAVES_ETIQUETAS_FICHA);
+
+/** Esquina de cada etiqueta en A (Figma 3037:78060). Las propias usan la suya. */
+export const ESQUINA_ETIQUETA_POR_DEFECTO: Readonly<Record<TipoEtiquetaFicha, EsquinaEtiquetaFicha>> = {
+  free_shipping: 'top_left',
+  discount: 'top_left',
+  promotion: 'top_right',
+  volume: 'top_right',
+  sales_count: 'bottom_left',
+  new: 'top_left',
+  sold_out: 'top_left',
+  custom: 'top_right',
+};
+
+export interface EtiquetaFichaItem {
+  id: TipoEtiquetaFicha;
+  visible: boolean;
+  /** Esquina en A (B es una fila: solo cuenta el orden). */
+  esquina: EsquinaEtiquetaFicha;
+  /** Colores propios de la ficha; null = los de la tarjeta. */
+  bg: string | null;
+  text: string | null;
+}
+
+export interface OpcionesEtiquetasFicha {
+  /** `labels_show === true`. Sin él, la ficha de hoy. */
+  mostrar: boolean;
+  ubicacion: UbicacionEtiquetasFicha;
+  /** Los 8 tipos, en el orden guardado (los que falten, al final en el orden por defecto). */
+  items: EtiquetaFichaItem[];
+  forma: FormaEtiquetaFicha;
+  relleno: RellenoEtiquetaFicha;
+  tamano: TamanoEtiquetaFicha;
+  /** `labels_custom` tal cual (lo normaliza `tarjetaProducto.ts`); null = las del sitio. */
+  propias: unknown[] | null;
+}
+
+export const UBICACION_ETIQUETAS_POR_DEFECTO: UbicacionEtiquetasFicha = 'titulo';
+
+/** ¿La ubicación pinta A (foto) o B (título)? */
+export function etiquetasEn(ubicacion: UbicacionEtiquetasFicha, donde: 'foto' | 'titulo'): boolean {
+  return ubicacion === 'ambas' || ubicacion === donde;
+}
+
+/** Lista de etiquetas de la ficha: orden guardado y, al final, las que falten (visibles). */
+export function leerItemsEtiquetasFicha(valor: unknown): EtiquetaFichaItem[] {
+  const vistos = new Set<string>();
+  const items: EtiquetaFichaItem[] = [];
+  if (Array.isArray(valor)) {
+    for (const crudo of valor) {
+      if (!crudo || typeof crudo !== 'object') continue;
+      const o = crudo as Record<string, unknown>;
+      const id = typeof o.id === 'string' && (TIPOS_ETIQUETA_FICHA as readonly string[]).includes(o.id) ? (o.id as TipoEtiquetaFicha) : null;
+      if (!id || vistos.has(id)) continue;
+      vistos.add(id);
+      items.push({
+        id,
+        visible: o.visible !== false,
+        esquina: uno(o.corner, ESQUINAS_ETIQUETA_FICHA, ESQUINA_ETIQUETA_POR_DEFECTO[id]),
+        bg: hexValido(o.bg),
+        text: hexValido(o.text),
+      });
+    }
+  }
+  for (const id of TIPOS_ETIQUETA_FICHA) {
+    if (!vistos.has(id)) items.push({ id, visible: true, esquina: ESQUINA_ETIQUETA_POR_DEFECTO[id], bg: null, text: null });
+  }
+  return items;
+}
+
+/** Lo que se guarda en `labels_items` (solo lo que difiere de lo de por defecto en cada item). */
+export function itemsEtiquetasParaGuardar(items: readonly EtiquetaFichaItem[]): Array<Record<string, unknown>> {
+  return items.map((i) => {
+    const fila: Record<string, unknown> = { id: i.id };
+    if (!i.visible) fila.visible = false;
+    if (i.esquina !== ESQUINA_ETIQUETA_POR_DEFECTO[i.id]) fila.corner = i.esquina;
+    if (i.bg) fila.bg = i.bg;
+    if (i.text) fila.text = i.text;
+    return fila;
+  });
+}
+
+export function leerOpcionesEtiquetasFicha(contenido: Contenido): OpcionesEtiquetasFicha {
+  const c = (contenido && typeof contenido === 'object' ? contenido : {}) as Record<string, unknown>;
+  const k = CLAVES_ETIQUETAS_FICHA;
+  return {
+    mostrar: c[k.mostrar] === true,
+    ubicacion: uno(c[k.ubicacion], UBICACIONES_ETIQUETAS_FICHA, UBICACION_ETIQUETAS_POR_DEFECTO),
+    items: leerItemsEtiquetasFicha(c[k.items]),
+    forma: uno(c[k.forma], FORMAS_ETIQUETA_FICHA, 'tarjeta'),
+    relleno: uno(c[k.relleno], RELLENOS_ETIQUETA_FICHA, 'tarjeta'),
+    tamano: uno(c[k.tamano], TAMANOS_ETIQUETA_FICHA, 'md'),
+    propias: Array.isArray(c[k.propias]) ? (c[k.propias] as unknown[]) : null,
+  };
+}

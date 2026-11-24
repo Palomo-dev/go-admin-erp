@@ -7,6 +7,7 @@ import { clasesBoton } from '@/components/kit';
 import { cobroDelPedido } from './cobroPedido';
 import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
 import { esComerAqui, esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { bloqueoConfirmarPorAnticipo } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 import { 
   CheckCircle, 
   XCircle, 
@@ -79,6 +80,9 @@ export function OrderActions({
   // Vencido (expire_pending_web_orders): «Confirmar pedido» lo reactiva y confirma como un pendiente,
   // con la misma casilla «Marcar como pagado» (la base re-reserva el stock, todo o nada).
   const puedeConfirmar = isPending || isExpired;
+  // Contraentrega con anticipo pendiente (Figma 3014:194407 › 06 B): aún no se puede confirmar.
+  const tCod = useTranslations('contraentregaPedidos');
+  const faltaAnticipo = bloqueoConfirmarPorAnticipo(order) !== null;
   // Recoger y «Comer aquí» no salen a domicilio: de «Listo» pasan a «Entregado».
   const isPickup = !esDomicilio(order.delivery_type);
   // Cancelar también a partir de «Preparando» (Figma 449:208178 y 1981:175699).
@@ -100,7 +104,7 @@ export function OrderActions({
       <div className="flex gap-2">
         {puedeConfirmar && (
           <>
-            <Button size="sm" onClick={onConfirm} disabled={isLoading}>
+            <Button size="sm" onClick={onConfirm} disabled={isLoading || faltaAnticipo} title={faltaAnticipo ? tCod('detalle.faltaAnticipo') : undefined}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
             </Button>
             {isPending && (
@@ -139,7 +143,7 @@ export function OrderActions({
       {/* Acciones principales según estado */}
       {puedeConfirmar && (
         <div className="flex gap-2">
-          <Button className="flex-1" onClick={onConfirm} disabled={isLoading}>
+          <Button className="flex-1" onClick={onConfirm} disabled={isLoading || faltaAnticipo} title={faltaAnticipo ? tCod('detalle.faltaAnticipo') : undefined}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -154,6 +158,9 @@ export function OrderActions({
             </Button>
           )}
         </div>
+      )}
+      {puedeConfirmar && faltaAnticipo && (
+        <p className="text-xs text-warning-text">{tCod('detalle.faltaAnticipo')}</p>
       )}
 
       {isConfirmed && (

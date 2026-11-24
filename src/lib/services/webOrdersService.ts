@@ -96,6 +96,12 @@ export interface WebOrder {
   restaurant_table_id?: string | null;
   /** Sesión de mesa del POS a la que se agregó el pedido (E3). */
   table_session_id?: string | null;
+  /** Contraentrega con anticipo (20261124230000): valor que se paga en línea; NULL = sin anticipo. */
+  advance_amount?: number | string | null;
+  advance_status?: 'pending' | 'paid' | 'expired' | null;
+  advance_due_at?: string | null;
+  advance_reference?: string | null;
+  advance_gateway?: string | null;
   created_at: string;
   updated_at: string;
   // Relaciones

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { AvisoTonal } from '@/components/kit';
 import { useTranslations } from 'next-intl';
 
 export type TimeUnit = 'minutes' | 'hours' | 'days';
@@ -46,6 +47,8 @@ interface ConfirmOrderDialogProps {
   isLoading?: boolean;
   /** Ya se pagó en línea: se explica por qué no se puede quitar la promoción. */
   yaPagado?: boolean;
+  /** «Vienen de Configuración › Punto de venta › Pedidos online (Sede X)…» (Figma T4); sin tiempos guardados, nada. */
+  avisoTiempos?: string | null;
 }
 
 
@@ -80,6 +83,7 @@ export function ConfirmOrderDialog({
   onMarkAsPaidChange,
   isLoading = false,
   yaPagado = false,
+  avisoTiempos = null,
 }: ConfirmOrderDialogProps) {
   const t = useTranslations('pedidoWeb');
   return (
@@ -161,6 +165,8 @@ export function ConfirmOrderDialog({
               </p>
             </div>
           )}
+
+          {avisoTiempos && <AvisoTonal tono="informacion" titulo={avisoTiempos} compacto />}
 
           <p className="text-sm text-muted-foreground dark:text-gray-400">
             {t('confirmOrderDialog.clienteRecibiraNotificacionEstos')}

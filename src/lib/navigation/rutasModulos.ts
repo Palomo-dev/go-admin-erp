@@ -44,6 +44,7 @@ export const RUTAS_MODULOS: readonly RutasModulo[] = [
       '/app/pos/cargos-servicio',
       '/app/pos/cupones',
       '/app/pos/promociones',
+      '/app/pos/listas-precios',
     ],
   },
   {

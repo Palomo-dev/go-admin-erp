@@ -74,6 +74,8 @@ import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import type { CartItem } from '@/components/pos/types';
 import { ElegirCliente, type ClienteDocumento } from '@/components/finanzas/documento/terceros';
+import { useListaPreciosDocumento } from '@/components/listasPrecios/documentos/useListaPreciosDocumento';
+import { AvisoListaDocumento, useInsigniasListaDocumento } from '@/components/listasPrecios/documentos/AvisoListaDocumento';
 import { AgregarProductosDocumento } from '@/components/finanzas/documento/productos';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
@@ -260,6 +262,10 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
 
   const ctxMoneda = moneda.paraDocumento(codigoMoneda || null);
   const formatear = useMemo(() => crearFormateadorMoneda(ctxMoneda), [ctxMoneda]);
+  // Listas de precios (Figma «05 POS y ventas» 08): el unitario de la línea ES el de la lista del
+  // cliente (a la DIAN va ese); la promoción sale aparte como descuento de la línea.
+  const listaPrecios = useListaPreciosDocumento({ clienteId: cliente?.id ?? null, sucursal, lineas, setLineas, listo: modo.tipo === 'editable' });
+  const insigniasLista = useInsigniasListaDocumento();
   const nombreSucursal = branches.find((b) => b.id === sucursal)?.name ?? null;
   const opcionesImpuesto: OpcionImpuesto[] = useMemo(() => {
     const base: OpcionImpuesto[] = impuestos.map((i) => ({ id: i.id, codigo: i.codigo, nombre: i.nombre, tarifa: i.tarifa, predeterminado: i.predeterminado }));
@@ -465,7 +471,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
         // categoría y por variante.
         const r = await promotionEngine.evaluate({
           channel: 'finances',
-          items: lineas.map((l) => ({ product_id: l.product_id || 0, quantity: Number(l.cantidad) || 0, unit_price: Number(l.precio) || 0 })),
+          items: lineas.map((l) => ({ product_id: l.product_id || 0, quantity: Number(l.cantidad) || 0, unit_price: Number(l.precio) || 0, price_list_id: listaPrecios.info(l).lista ? listaPrecios.listaId : null })),
           organization_id: getOrganizationId(),
           branch_id: sucursal,
         });
@@ -595,7 +601,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       const { promotionEngine } = await import('@/lib/services/promotionEngine');
       const r = await promotionEngine.evaluate({
         channel: 'finances',
-        items: ls.map((l) => ({ product_id: l.product_id || 0, quantity: Number(l.cantidad) || 0, unit_price: Number(l.precio) || 0 })),
+        items: ls.map((l) => ({ product_id: l.product_id || 0, quantity: Number(l.cantidad) || 0, unit_price: Number(l.precio) || 0, price_list_id: listaPrecios.info(l).lista ? listaPrecios.listaId : null })),
         organization_id: getOrganizationId(),
         branch_id: sucursal as number,
       });
@@ -752,6 +758,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     const falta = faltanteLinea(l, l.product_id ? pedido.get(l.product_id) : undefined);
     const insignias: InsigniaLinea[] = [];
     if (l.manual) insignias.push({ texto: tk('lineas.itemManual') });
+    else insignias.push(...insigniasLista(listaPrecios.info(l), l.precio, formatear));
     if (l.product_id && l.controlaStock && l.stock !== null) {
       insignias.push(falta > 0 ? { texto: t('lineas.faltan', { n: falta }), tono: 'advertencia' } : { texto: t('lineas.stock', { n: l.stock }), tono: 'exito' });
     }
@@ -1117,6 +1124,15 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
             aria-invalid={!!errores.cliente}
           />
           {errores.cliente && <p className="text-sm text-danger-text">{errores.cliente}</p>}
+          <AvisoListaDocumento
+            listaNombre={listaPrecios.listaNombre}
+            usarNormal={listaPrecios.usarNormal}
+            onUsarNormal={(v) => {
+              marcar();
+              listaPrecios.setUsarNormal(v);
+            }}
+            documento="factura"
+          />
           {cliente && (
             <dl className="grid grid-cols-2 gap-2 text-[13px]">
               <div className="flex flex-col">

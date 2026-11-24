@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { Copy, Edit, Tag, Trash2 } from 'lucide-react';
+import { Copy, Edit, Pause, Play, Tag, Trash2 } from 'lucide-react';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -22,7 +22,12 @@ import { localeIntl } from '@/components/kit/idioma';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
 import { usePuedeGestionarPromociones } from '@/components/pos/promociones/usePuedeGestionarPromociones';
-import { PromotionWizard } from '@/components/pos/promociones/nuevo';
+import { PromocionFormulario } from '@/components/pos/promociones/formulario/PromocionFormulario';
+import { VistaPreviaCliente } from '@/components/pos/promociones/formulario/VistaPreviaCliente';
+import { diaEnPalabras, textoEnPalabras } from '@/components/pos/promociones/formulario/textoEnPalabras';
+import { KpiStrip } from '@/components/kit/KpiStrip';
+import { StatCard } from '@/components/kit/StatCard';
+import { normalizarEscalones } from '@/lib/promotions/precioVolumen';
 import { Promotion } from '@/components/pos/promociones/types';
 import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
 import { diasDelIdioma } from '@/components/pos/promociones/diasPromocion';
@@ -34,6 +39,18 @@ import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
+import { plainDayOfInstant } from '@/lib/services/businessInstant';
+import {
+  cargarEstadisticasPromocion,
+  limitesMesActual,
+  type EstadisticasPromocion,
+  type VentaRecientePromocion,
+} from '@/components/pos/promociones/estadisticasPromociones';
+
+/** Día de la organización de un timestamptz (o el día tal cual si ya viene así). */
+function plainDayOfInstantSeguro(valor: string, timezone: string): string {
+  return valor.length <= 10 ? valor : plainDayOfInstant(valor, timezone);
+}
 
 function textoPlano(valor: string): string {
   return valor.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
@@ -60,6 +77,32 @@ export default function PromocionDetallePage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [segmentoNombre, setSegmentoNombre] = useState<string | null>(null);
+  // Cifras de sale_promotions (Figma 3003:193974). null = cargando o sin datos: el resto de la página no espera.
+  const [estadisticas, setEstadisticas] = useState<EstadisticasPromocion | null>(null);
+
+  useEffect(() => {
+    const id = promotion?.customer_segment_id;
+    if (!id) {
+      setSegmentoNombre(null);
+      return;
+    }
+    PromotionsService.getSegmentos()
+      .then((lista) => setSegmentoNombre(lista.find((s) => s.id === id)?.name ?? null))
+      .catch(() => setSegmentoNombre(null));
+  }, [promotion?.customer_segment_id]);
+
+  useEffect(() => {
+    if (!promotionId || !timezone) return;
+    let vigente = true;
+    cargarEstadisticasPromocion(promotionId, timezone)
+      .then((e) => { if (vigente) setEstadisticas(e); })
+      .catch((error: unknown) => {
+        console.warn('[promociones] No se pudieron cargar las cifras de la promoción:', error);
+        if (vigente) setEstadisticas(null);
+      });
+    return () => { vigente = false; };
+  }, [promotionId, timezone]);
 
   const loadPromotion = useCallback(async () => {
     if (!promotionId) return;
@@ -128,6 +171,13 @@ export default function PromocionDetallePage() {
           : formatear(promo.discount_value || 0);
       case 'buy_x_get_y':
         return t('detalle.compraLleva', { x: promo.buy_quantity ?? 0, y: promo.get_quantity ?? 0 });
+      case 'volume_tiers': {
+        const primero = normalizarEscalones(promo.tiers ?? [])[0];
+        if (!primero) return '-';
+        return primero.precioUnidad !== null
+          ? t('v2.lista.volumenPrecio', { n: primero.desde, precio: formatear(primero.precioUnidad) })
+          : t('v2.lista.volumenPorcentaje', { n: primero.desde, pct: primero.porcentaje ?? 0 });
+      }
       case 'bundle': {
         const base = (promo.bundle_price ?? 0) > 0
           ? formatear(promo.bundle_price || 0)
@@ -183,6 +233,58 @@ export default function PromocionDetallePage() {
   }
 
   const minimoUnidades = cantidadMinimaEfectiva(promotion);
+  // Escalones con su rango (fila «precio normal» primero) y precio de ejemplo de la vista previa.
+  const escalones = normalizarEscalones(promotion.tiers ?? []);
+  const precioEjemplo = 10000;
+  const nombreSegmento = segmentoNombre;
+  // Cifras del mes (zona de la organización) desde sale_promotions.
+  const mesActual = formatDateInTz(limitesMesActual(timezone).desde, timezone, { locale: localeIntl(locale), month: 'long' });
+  const esVolumen = promotion.promotion_type === 'volume_tiers';
+  const rangoEscalon = (desde: number): string => {
+    const i = escalones.findIndex((e) => e.desde === desde);
+    const siguiente = i >= 0 ? escalones[i + 1] : undefined;
+    return siguiente
+      ? t('v2.vista.rango', { desde, hasta: siguiente.desde - 1 })
+      : t('v2.vista.oMasCorto', { n: desde });
+  };
+  const unidadesPorEscalon = estadisticas
+    ? escalones
+        .filter((e) => (estadisticas.porEscalon[String(e.desde)]?.unidades ?? 0) > 0)
+        .map((e) => t('v2.estadisticas.enEscalon', {
+          n: estadisticas.porEscalon[String(e.desde)].unidades,
+          rango: rangoEscalon(e.desde),
+        }))
+        .join(' · ')
+    : '';
+  const unidadesEnEscalon = estadisticas
+    ? Object.values(estadisticas.porEscalon).reduce((suma, x) => suma + x.unidades, 0)
+    : null;
+  const canalVenta = (v: VentaRecientePromocion): string =>
+    v.canal === 'web'
+      ? t('v2.estadisticas.canalWeb')
+      : v.canal === 'mesa'
+        ? t('v2.estadisticas.canalMesa', { sucursal: v.sucursal ?? '' }).trim()
+        : t('v2.estadisticas.canalPos', { sucursal: v.sucursal ?? '' }).trim();
+  const enPalabras = textoEnPalabras(
+    {
+      ...promotion,
+      start_date: plainDayOfInstantSeguro(promotion.start_date, timezone),
+      end_date: promotion.end_date ? plainDayOfInstantSeguro(promotion.end_date, timezone) : undefined,
+    },
+    promotion.tiers ?? [],
+    {
+      t,
+      formatear,
+      fecha: (dia) => diaEnPalabras(dia, localeIntl(locale)),
+      nombresAlcance: (promotion.rules || [])
+        .filter((r) => r.rule_type.startsWith('include'))
+        .map((r) => r.product?.name ?? r.category?.name ?? r.brand ?? '')
+        .filter(Boolean),
+      sucursales: [],
+      segmento: nombreSegmento,
+      unir: (xs) => new Intl.ListFormat(localeIntl(locale), { style: 'long', type: 'conjunction' }).format([...xs]),
+    },
+  );
 
   if (isEditMode) {
     return (
@@ -200,8 +302,11 @@ export default function PromocionDetallePage() {
               { etiqueta: t('detalle.editar') },
             ]}
           />
-          <PromotionWizard
+          <PromocionFormulario
             promotionId={promotionId}
+            nombresProductos={Object.fromEntries(
+              (promotion.rules || []).filter((r) => r.product_id != null && r.product?.name).map((r) => [r.product_id as number, r.product!.name]),
+            )}
             initialData={{
               name: promotion.name,
               description: promotion.description,
@@ -227,6 +332,8 @@ export default function PromocionDetallePage() {
               is_active: promotion.is_active,
               usage_limit: promotion.usage_limit,
               is_combinable: promotion.is_combinable,
+              // Listas de precios (20261124213000): «No aplica a clientes con lista de precios».
+              applies_with_price_lists: promotion.applies_with_price_lists !== false,
               priority: promotion.priority,
               // Estos campos NO se pasaban. Al editar, el formulario arrancaba sin
               // días, sin canales, sin sucursales y sin reglas; y al guardar,
@@ -237,11 +344,18 @@ export default function PromocionDetallePage() {
               applies_to_pos: promotion.applies_to_pos,
               applies_to_web: promotion.applies_to_web,
               applies_to_finances: promotion.applies_to_finances,
+              // Promociones V2 (20261124200000): escalones, modo de conteo, grupo de clientes y usos por cliente.
+              tiers: promotion.tiers ?? [],
+              tiers_count_mode: promotion.tiers_count_mode ?? 'promotion_mix',
+              customer_segment_id: promotion.customer_segment_id ?? null,
+              usage_limit_per_customer: promotion.usage_limit_per_customer ?? null,
               rules: (promotion.rules || []).map((r) => ({
                 rule_type: r.rule_type,
                 product_id: r.product_id ?? undefined,
                 category_id: r.category_id ?? undefined,
                 quantity: r.quantity ?? null,
+                brand: r.brand ?? null,
+                tier_group: r.tier_group ?? null,
               })),
             }}
           />
@@ -289,6 +403,19 @@ export default function PromocionDetallePage() {
           ]}
           acciones={
             !puedeGestionar ? undefined : <>
+              <button
+                type="button"
+                onClick={handleToggleActive}
+                disabled={toggling}
+                className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
+              >
+                {promotion.is_active ? <Pause className="size-4" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}
+                {promotion.is_active ? t('v2.detalle.pausar') : t('v2.detalle.reanudar')}
+              </button>
+              <button type="button" onClick={handleDuplicate} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                <Copy className="size-4" aria-hidden="true" />
+                {t('detalle.duplicar')}
+              </button>
               <Link
                 href={`/app/pos/promociones/${promotionId}?edit=true`}
                 className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
@@ -296,10 +423,6 @@ export default function PromocionDetallePage() {
                 <Edit className="size-4" aria-hidden="true" />
                 {t('detalle.editar')}
               </Link>
-              <button type="button" onClick={handleDuplicate} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-                <Copy className="size-4" aria-hidden="true" />
-                {t('detalle.duplicar')}
-              </button>
               <button
                 type="button"
                 onClick={() => setShowDeleteDialog(true)}
@@ -313,8 +436,87 @@ export default function PromocionDetallePage() {
           movil={{ accion: puedeGestionar ? <RowActionsMenu acciones={accionesMenu} titulo={promotion.name} tamano="md" orientacion="horizontal" /> : undefined }}
         />
 
+        <div className="flex flex-wrap gap-2">
+          {promotion.applies_to_web !== false && <Badge tono="neutro" apariencia="contorno" tamano="sm">{t('v2.donde.web')}</Badge>}
+          {promotion.applies_to_pos !== false && <Badge tono="neutro" apariencia="contorno" tamano="sm">{t('v2.donde.pos')}</Badge>}
+          {promotion.applies_to_finances === true && <Badge tono="neutro" apariencia="contorno" tamano="sm">{t('v2.donde.facturas')}</Badge>}
+          {promotion.customer_segment_id && (
+            <Badge tono="marca" apariencia="suave" tamano="sm">
+              {nombreSegmento ? t('v2.detalle.soloGrupo', { grupo: nombreSegmento }) : t('v2.detalle.soloUnGrupo')}
+            </Badge>
+          )}
+        </div>
+
+        <KpiStrip columnas={4} etiqueta={t('detalle.estadisticas')}>
+          <StatCard
+            etiqueta={t('v2.estadisticas.ventasCon')}
+            valor={estadisticas ? estadisticas.ventas : '—'}
+            detalle={t('v2.estadisticas.enMes', { mes: mesActual })}
+          />
+          <StatCard
+            etiqueta={t('v2.estadisticas.ahorroDado')}
+            valor={estadisticas ? formatear(estadisticas.ahorro) : '—'}
+            detalle={t('v2.estadisticas.ahorroDadoDetalle')}
+          />
+          <StatCard
+            etiqueta={esVolumen ? t('v2.estadisticas.unidadesEscalon') : t('v2.estadisticas.unidadesDescuento')}
+            valor={estadisticas ? (esVolumen ? unidadesEnEscalon ?? 0 : estadisticas.unidades) : '—'}
+            detalle={esVolumen && unidadesPorEscalon ? unidadesPorEscalon : t('v2.estadisticas.enMes', { mes: mesActual })}
+          />
+          <StatCard
+            etiqueta={t('detalle.usos')}
+            valor={promotion.usage_count}
+            detalle={[
+              promotion.usage_limit != null ? t('v2.detalle.deLimite', { n: promotion.usage_limit }) : t('v2.detalle.sinLimite'),
+              promotion.usage_limit_per_customer ? t('v2.detalle.porCliente', { n: promotion.usage_limit_per_customer }) : null,
+            ].filter(Boolean).join(' · ')}
+          />
+        </KpiStrip>
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Tarjeta titulo={t('detalle.titulo')} icono={Tag} className="lg:col-span-2">
+          <div className="flex flex-col gap-4 lg:col-span-2">
+          <Tarjeta titulo={t('v2.palabras.titulo')}>
+            <p className="text-sm text-fg" data-testid="promo-en-palabras">{enPalabras}</p>
+          </Tarjeta>
+
+          {escalones.length > 0 && (
+            <Tarjeta titulo={t('v2.escalones.titulo')} sinRelleno>
+              <table className="w-full text-sm">
+                <thead className="bg-subtle text-left text-xs font-medium text-fg-secondary">
+                  <tr>
+                    <th className="px-4 py-2">{t('v2.detalle.cantidad')}</th>
+                    <th className="px-4 py-2">{t('v2.escalones.precioUnidad')}</th>
+                    <th className="px-4 py-2">{t('v2.escalones.ahorro')}</th>
+                    <th className="px-4 py-2 text-right">{t('v2.estadisticas.ventasColumna')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {escalones.map((e, i) => {
+                    const siguiente = escalones[i + 1];
+                    const rango = siguiente
+                      ? t('v2.vista.rango', { desde: e.desde, hasta: siguiente.desde - 1 })
+                      : t('v2.vista.oMasCorto', { n: e.desde });
+                    return (
+                      <tr key={e.desde} className="border-t border-line">
+                        <td className="px-4 py-2 text-fg">{rango}</td>
+                        <td className="px-4 py-2 tabular-nums text-fg">
+                          {e.precioUnidad !== null ? formatear(e.precioUnidad) : `−${e.porcentaje} %`}
+                        </td>
+                        <td className="px-4 py-2 tabular-nums text-fg-secondary">
+                          {e.porcentaje !== null ? `${e.porcentaje} %` : t('v2.detalle.segunPrecio')}
+                        </td>
+                        <td className="px-4 py-2 text-right tabular-nums text-fg">
+                          {estadisticas?.porEscalon[String(e.desde)]?.ventas || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Tarjeta>
+          )}
+
+          <Tarjeta titulo={t('detalle.titulo')} icono={Tag}>
             <div className="flex flex-col gap-4">
               {textoPlano(promotion.description || '') && (
                 <div>
@@ -409,8 +611,42 @@ export default function PromocionDetallePage() {
               )}
             </div>
           </Tarjeta>
+          </div>
 
           <div className="flex flex-col gap-4">
+            <Tarjeta titulo={t('v2.vista.titulo')}>
+              <VistaPreviaCliente
+                datos={{ ...promotion, start_date: promotion.start_date }}
+                tiers={promotion.tiers ?? []}
+                producto={{ nombre: t('v2.vista.productoEjemplo'), precio: precioEjemplo }}
+                t={t}
+                formatear={formatear}
+              />
+            </Tarjeta>
+
+            <Tarjeta titulo={t('v2.estadisticas.recientesTitulo')}>
+              {estadisticas && estadisticas.recientes.length > 0 ? (
+                <ul className="flex flex-col gap-3" data-testid="promo-ventas-recientes">
+                  {estadisticas.recientes.map((v) => (
+                    <li key={v.saleId} className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link href={`/app/pos/ventas/${v.saleId}`} className="text-sm font-medium text-fg hover:underline">
+                          {(v.numero ?? t('v2.estadisticas.sinNumero')) + ' · ' + canalVenta(v)}
+                        </Link>
+                        {v.resumen && <p className="truncate text-xs text-fg-secondary">{v.resumen}</p>}
+                      </div>
+                      <span className="shrink-0 text-sm tabular-nums text-fg">− {formatear(v.descuento)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-fg-secondary">{t('v2.estadisticas.recientesVacio')}</p>
+              )}
+              <Link href="/app/pos/ventas" className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'mt-3' })}>
+                {t('v2.estadisticas.verTodas')}
+              </Link>
+            </Tarjeta>
+
             <Tarjeta titulo={t('detalle.estado')}>
               <SettingGroup>
                 <SettingRow titulo={t('detalle.estado')} descripcion={<StatusBadge estado={estadoDePromocion(promotion, new Date(), timezone)} />}>
@@ -430,7 +666,6 @@ export default function PromocionDetallePage() {
                     </span>
                   }
                 />
-                <FilaDato etiqueta={t('detalle.prioridad')} valor={<span className="tabular-nums">{promotion.priority}</span>} />
                 <FilaDato etiqueta={t('detalle.combinable')} valor={promotion.is_combinable ? t('detalle.si') : t('detalle.no')} />
               </ListaDatos>
             </Tarjeta>

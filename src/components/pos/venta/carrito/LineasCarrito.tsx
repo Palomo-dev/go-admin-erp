@@ -30,6 +30,7 @@ import { calcularLineaDelCarrito } from '@/lib/pos/venta/calculoLineaCarrito';
 import type { ContextoMoneda } from '@/lib/utils/moneda';
 import { EditorDescuentoLinea } from './EditorDescuentoLinea';
 import { EditorNotaLinea } from './EditorNotaLinea';
+import { EtiquetaListaLinea } from '@/components/listasPrecios/pos/EtiquetaListaLinea';
 
 /**
  * Líneas del carrito del POS con `CartLine` del kit (paso 6 del plan,
@@ -254,6 +255,9 @@ export function LineasCarrito({
         </CartTag>,
       );
     }
+
+    // Lista de precios del cliente: insignia con el precio normal tachado (Figma 07).
+    if (item.price_list_id) etiquetas.push(<EtiquetaListaLinea key="lista-precios" item={item} formatear={formatear} />);
 
     // Modificadores elegidos: «{nombre} (+$X)».
     (item.modifiers ?? []).forEach((mod, i) => {

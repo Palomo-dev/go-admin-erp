@@ -81,7 +81,13 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
   const contenidoRef = useRef<HTMLDivElement>(null);
 
   const etiquetaEntrada = (id: string) => (t.has(`entradas.${id}`) ? t(`entradas.${id}`) : tu(`modulos.${id}`));
+  const tk = useTranslations('kit');
   const etiquetaPestana = (clave: string) => (t.has(`pestanas.${clave}`) ? t(`pestanas.${clave}`) : tu(`secciones.${clave}.titulo`));
+  const opcionPestana = (s: { id: string; clave: string; nueva?: boolean }) => ({
+    valor: s.id,
+    etiqueta: etiquetaPestana(s.clave),
+    ...(s.nueva ? { insignia: tk('estados.nuevo') } : {}),
+  });
 
   const secciones = useMemo(() => permitidas.secciones.map((p) => p.seccion), [permitidas.secciones]);
   const menu = useMemo(() => construirMenu(secciones), [secciones]);
@@ -268,7 +274,7 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
               ))}
               <SegmentedControl
                 etiqueta={t('pestanasAria', { entrada: tituloEntrada })}
-                opciones={entrada.secciones.map((s) => ({ valor: s.id, etiqueta: etiquetaPestana(s.clave) }))}
+                opciones={entrada.secciones.map(opcionPestana)}
                 valor={actual.seccion.id}
                 onValorChange={(id) => onNavegar({ seccionId: id })}
                 className="bg-transparent p-0"
@@ -280,7 +286,7 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
             <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0">
               <SegmentedControl
                 etiqueta={t('pestanasAria', { entrada: tituloEntrada })}
-                opciones={entrada.secciones.map((s) => ({ valor: s.id, etiqueta: etiquetaPestana(s.clave) }))}
+                opciones={entrada.secciones.map(opcionPestana)}
                 valor={actual.seccion.id}
                 onValorChange={(id) => onNavegar({ seccionId: id })}
                 anchoCompleto={!esEscritorio && entrada.secciones.length <= 3}

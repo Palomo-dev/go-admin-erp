@@ -39,6 +39,7 @@ import {
   type MotivoDiferencia,
 } from '@/lib/logistica/cuadresVista';
 import { CuadreError, abrirCuadre, recibirYCerrarCuadre } from '@/lib/services/logistica/cuadresDomiciliarioService';
+import { AnticiposCuadre } from './AnticiposCuadre';
 import { cn } from '@/utils/Utils';
 
 /** Línea para la hoja: la del cuadre o, antes de abrirlo, el envío cobrado. */
@@ -324,6 +325,9 @@ export function RecibirDineroHoja({ abierta, onAbiertaChange, fila, organization
             <p className="text-xs text-fg-secondary">{t('diferencia.sinAsiento')}</p>
           </section>
         )}
+
+        {/* Contraentrega con anticipo (Figma 3014:194407 › 07): lo ya pagado en línea, aparte. */}
+        <AnticiposCuadre organizationId={organizationId} shipmentIds={lineas.map((l) => l.shipment_id)} />
 
         <section className="flex flex-col gap-2">
           <h3 className="text-base font-semibold text-fg">{t('envios', { n: lineas.length })}</h3>

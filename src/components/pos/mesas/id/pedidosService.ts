@@ -566,7 +566,7 @@ export class PedidosService {
     try {
       const { data: venta, error: eVenta } = await supabase
         .from('sales')
-        .select('id, organization_id, branch_id, status')
+        .select('id, organization_id, branch_id, status, customer_id')
         .eq('id', saleId)
         .eq('organization_id', organizationId)
         .maybeSingle();
@@ -593,6 +593,8 @@ export class PedidosService {
         organization_id: organizationId,
         branch_id: venta.branch_id ?? undefined,
         payment_methods: opciones?.metodosPago ? [...opciones.metodosPago] : [],
+        // Grupo de clientes y usos por cliente: el cliente de la cuenta.
+        customer_id: venta.customer_id ?? null,
         items: lineas.map((l) => ({
           product_id: Number(l.product_id),
           parent_product_id: l.product?.parent_product_id ?? null,

@@ -68,6 +68,8 @@ export interface SeccionConfig {
    * se muestran como entradas propias; «Telefonía y voz» reúne dos de CRM.
    */
   entrada?: string;
+  /** Pestaña recién estrenada: lleva la insignia «Nuevo» junto a su nombre. */
+  nueva?: boolean;
 }
 
 export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
@@ -113,6 +115,9 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'hrm.registro-accesos', modulo: 'hrm', seccion: 'registro-accesos', clave: 'hrmRegistroAccesos', permiso: 'hr.access_log.view', estadosPropios: true, ajustes: [] },
   { id: 'pms.general', modulo: 'pms', seccion: 'general', clave: 'pmsGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'pos.general', modulo: 'pos', seccion: 'general', clave: 'posGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
+  // Tiempos de los pedidos online por tipo de entrega y por sede (Figma pág. 10, sección
+  // 3011:35924; 2026-11-24): `tiemposPedidos.ts`. Mismo permiso que `PUT /api/pos/pedidos-online-tiempos`.
+  { id: 'pos.pedidos-online', modulo: 'pos', seccion: 'pedidos-online', clave: 'posPedidosOnline', permiso: PERMISO_ADMIN, ajustes: [], nueva: true },
   // Se queda en POS › Reservas de mesas: el módulo Sitio web la enlaza como «Reservas web»
   // y ese flujo no se toca (decisión del dueño, 2026-10-07). Aquí, solo el enlace.
   { id: 'pos.reservas-mesas', modulo: 'pos', seccion: 'reservas-mesas', clave: 'posReservasMesas', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/pos/reservas-mesas?tab=configuracion' },

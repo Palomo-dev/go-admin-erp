@@ -4412,6 +4412,7 @@
       "pos_cargos-servicio": "Cargos de servicio",
       "pos_cupones": "Cupones",
       "pos_promociones": "Promociones",
+      "pos_listas-precios": "Listas de precios",
       "clientes": "Clientes",
       "chat_bandeja": "Bandeja",
       "chat_canales": "Canales",
@@ -36770,6 +36771,84 @@
           "tamanoTexto": "Tamaño del texto",
           "normal": "Normal"
         }
+      },
+      "etiquetasFicha": {
+        "titulo": "Etiquetas",
+        "mostrar": "Mostrar etiquetas en la ficha",
+        "ayudaMostrar": "Las mismas de la tarjeta de producto, con sus colores. Apagado: la ficha queda como hoy.",
+        "dondeSeVen": "Dónde se ven",
+        "ubicaciones": {
+          "foto": "Sobre la foto",
+          "titulo": "Junto al título",
+          "ambas": "Ambas"
+        },
+        "ayudaUbicacionFoto": "Sobre la foto no salen si la Galería tiene apagado «Etiquetas sobre la foto».",
+        "cuales": "Cuáles",
+        "tipos": {
+          "free_shipping": "Envío gratis",
+          "discount": "Descuento",
+          "promotion": "Promociones (2 X 1, 3 X 2…)",
+          "volume": "Precio por volumen",
+          "sales_count": "Unidades vendidas",
+          "new": "Nuevo",
+          "sold_out": "Agotado",
+          "custom": "Etiquetas propias"
+        },
+        "muestras": {
+          "free_shipping": "Envío gratis",
+          "discount": "-20 %",
+          "promotion": "2 X 1",
+          "volume": "Desde 3: −10 %",
+          "sales_count": "776 vendidos",
+          "new": "Nuevo",
+          "sold_out": "Agotado",
+          "custom": "Originales"
+        },
+        "mostrarTipo": "Mostrar «{nombre}»",
+        "abrir": "Opciones de «{nombre}»",
+        "subir": "Subir",
+        "bajar": "Bajar",
+        "esquina": "Esquina sobre la foto",
+        "esquinas": {
+          "top_left": "Arriba izquierda",
+          "top_right": "Arriba derecha",
+          "bottom_left": "Abajo izquierda",
+          "bottom_right": "Abajo derecha"
+        },
+        "ayudaEsquina": "Junto al título solo cuenta el orden.",
+        "ayudaEsquinaSinFoto": "Solo cuenta cuando las etiquetas salen sobre la foto.",
+        "fondo": "Fondo",
+        "texto": "Texto",
+        "deLaTarjeta": "De la tarjeta",
+        "ayudaFilaPropias": "Cada etiqueta propia trae su esquina y sus colores: se editan abajo, en «Etiquetas propias».",
+        "ayudaCuales": "Una etiqueta apagada en la tarjeta (Estilo de tarjeta › Etiquetas) tampoco sale aquí. Las promociones salen solas cuando el producto está en una promoción web vigente; las de un grupo de clientes, solo a quien pertenece al grupo.",
+        "estilo": "Estilo",
+        "forma": "Forma",
+        "formas": {
+          "tarjeta": "De la tarjeta",
+          "pill": "Píldora",
+          "rounded": "Redonda",
+          "semi": "Semi",
+          "square": "Cuadrada"
+        },
+        "relleno": "Relleno",
+        "rellenos": {
+          "tarjeta": "De la tarjeta",
+          "solid": "Sólido",
+          "soft": "Suave",
+          "outline": "Contorno"
+        },
+        "tamano": "Tamaño",
+        "tamanos": {
+          "sm": "Chico",
+          "md": "Mediano"
+        },
+        "propias": "Etiquetas propias",
+        "usarDelEstilo": "Usar las del estilo de tarjeta",
+        "ayudaUsarDelEstilo": "Apagado: la ficha lleva su propia lista, que arranca con una copia de las del sitio.",
+        "enlaceEstiloTarjeta": "Colores y textos en Estilo de tarjeta",
+        "restablecer": "Volver al aspecto de hoy",
+        "ayudaRestablecer": "Quita las opciones de etiquetas de este bloque: la ficha se pinta como antes."
       }
     },
     "paginas": {
@@ -41072,6 +41151,11 @@
         "titulo": "Transporte",
         "descripcion": "Retención del puesto, cambios y anulaciones, liquidación, tipos de vehículo, motivos de novedad y excepciones de despacho",
         "palabras": "transporte, pasajes, retención, puesto, cambios, anulación, reembolso, liquidación, afiliados, propietarios, RNDC, manifiesto, tipos de vehículo, lancha, yate, motivos de novedad, incidentes, excepción, despacho, PIN, supervisor"
+      },
+      "posPedidosOnline": {
+        "titulo": "Pedidos online",
+        "descripcion": "Tiempos de alistar y entregar por tipo de entrega y por sede",
+        "palabras": "pedidos online, pedidos en línea, tiempos, listo aprox, entrega aprox, alistar, preparar, domicilio, transportadora, recoger, confirmación automática, sede"
       }
     },
     "ajustes": {
@@ -41153,16 +41237,18 @@
       "rules": "Reglas"
     },
     "tipos": {
-      "percentage": "Porcentaje",
-      "fixed_amount": "Monto Fijo",
-      "buy_x_get_y": "Compra X Lleva Y",
-      "bundle": "Bundle",
-      "free_shipping": "Envío Gratis"
+      "percentage": "% de descuento",
+      "fixed_amount": "Valor fijo",
+      "buy_x_get_y": "Lleva N, paga M",
+      "bundle": "Combo",
+      "free_shipping": "Envío gratis",
+      "volume_tiers": "Precio por volumen"
     },
     "aplicaA": {
       "all": "Todos los productos",
       "products": "Productos específicos",
-      "categories": "Categorías específicas"
+      "categories": "Categorías específicas",
+      "brands": "Marcas"
     },
     "formulario": {
       "nombre": "Nombre de la Promoción *",
@@ -41175,7 +41261,7 @@
       "combinableAyuda": "Permitir con otras promociones",
       "solapamientoTitulo": "Solo se aplicará una por producto",
       "solapamientoDetalle": "Estas promociones se solapan y ninguna permite combinarse. En cada producto se aplicará una sola.",
-      "solapamientoAccion": "Activa «Permitir con otras promociones» o sube la prioridad de la que debe ganar.",
+      "solapamientoAccion": "Si chocan y no se suman, el cliente recibe la que más le ahorra. Elige «Sí, se suma» en Opciones avanzadas si deben sumarse.",
       "solapamientoVer": "Ver {nombre}",
       "tipo": "Tipo de Promoción",
       "porcentaje": "Porcentaje de Descuento",
@@ -41455,6 +41541,264 @@
       "errorSinFranjas": "Agrega al menos una franja.",
       "errorDemasiadasFranjas": "Como máximo {max} franjas por promoción.",
       "errorRevisar": "Revisa cuándo está activa la promoción."
+    },
+    "v2": {
+      "estadisticas": {
+        "ahorroMes": "Ahorro del mes",
+        "ahorroMesDetalle": "en {n, plural, one {# venta} other {# ventas}}",
+        "ventasCon": "Ventas con la promoción",
+        "enMes": "en {mes}",
+        "ahorroDado": "Ahorro dado a clientes",
+        "ahorroDadoDetalle": "sale de las ventas, no es gasto aparte",
+        "unidadesEscalon": "Unidades en escalón",
+        "unidadesDescuento": "Unidades con descuento",
+        "enEscalon": "{n} en «{rango}»",
+        "ventasColumna": "Ventas",
+        "recientesTitulo": "Ventas recientes con esta promoción",
+        "recientesVacio": "Todavía no hay ventas con esta promoción.",
+        "verTodas": "Ver todas en Ventas",
+        "canalWeb": "Tienda web",
+        "canalPos": "POS {sucursal}",
+        "canalMesa": "Mesas {sucursal}",
+        "sinNumero": "Venta sin número"
+      },
+      "subtitulo": "Todo en una pantalla. Lo avanzado va plegado al final.",
+      "pie": "Todo cabe en esta pantalla. Puedes guardar apenas tengas nombre, tipo y descuento.",
+      "crear": "Crear promoción",
+      "guardarCambios": "Guardar cambios",
+      "esencial": {
+        "titulo": "Lo esencial",
+        "descripcion": "Nombre y tipo. Con esto ya se puede guardar.",
+        "nombre": "Nombre que ve el cliente",
+        "nombreAyuda": "Sale en la insignia del producto, en el carrito y en el recibo.",
+        "activa": "Activa",
+        "tipo": "¿Qué tipo de promoción?",
+        "nuevo": "Nuevo",
+        "envioGratis": "El envío gratis se configura en Logística › Tarifas.",
+        "irTarifas": "Ir a Tarifas"
+      },
+      "tiposEjemplo": {
+        "percentage": "Ej.: 20 % en toda la tienda",
+        "fixed_amount": "Ej.: $ 10.000 menos por unidad o por compra",
+        "buy_x_get_y": "Ej.: 2×1 o lleva 3, paga 2",
+        "volume_tiers": "Ej.: 6 o más a $ 9.500 c/u. Precios al por mayor",
+        "bundle": "Ej.: hamburguesa + papas + gaseosa a $ 25.000",
+        "free_shipping": "Ya no se crea aquí: va en Logística › Tarifas"
+      },
+      "tiposAyuda": {
+        "percentage": "Para rebajas generales: «20 % en toda la tienda» o en una categoría.",
+        "fixed_amount": "Para un monto exacto: «$ 10.000 menos». Nunca deja el total por debajo de cero.",
+        "buy_x_get_y": "El clásico 2×1 o «lleva 3, paga 2». Sale gratis la unidad más barata.",
+        "bundle": "Varios productos juntos a un precio.",
+        "free_shipping": "El envío gratis se configura en Logística › Tarifas.",
+        "volume_tiers": "Precios al por mayor."
+      },
+      "descuento": {
+        "titulo": "El descuento",
+        "porcentaje": "Porcentaje",
+        "cuanto": "Cuánto se descuenta",
+        "tope": "Tope (opcional)",
+        "sinTope": "Sin tope",
+        "topeAyuda": "El tope evita descuentos muy grandes en compras grandes.",
+        "seAplica": "Se aplica",
+        "unaVez": "Una vez por compra",
+        "cadaN": "Cada N unidades",
+        "lleva": "Lleva",
+        "paga": "Paga",
+        "precioCombo": "Precio del combo"
+      },
+      "escalones": {
+        "titulo": "Escalones de precio",
+        "descripcion": "Mientras más unidades lleve, menos paga por cada una. El precio del escalón se aplica a todas las unidades de la línea.",
+        "comoBaja": "Cómo baja el precio:",
+        "precioFijo": "Precio fijo por unidad",
+        "porcentaje": "% de descuento",
+        "desde": "Desde",
+        "hasta": "Hasta",
+        "precioUnidad": "Precio por unidad",
+        "descuento": "Descuento",
+        "ahorro": "Ahorro",
+        "quitar": "Quitar",
+        "quitarN": "Quitar escalón {n}",
+        "unidades": "{n} u.",
+        "oMas": "o más",
+        "precioNormal": "Precio normal",
+        "desdeN": "Desde (escalón {n})",
+        "valorN": "Valor (escalón {n})",
+        "ahorra": "Ahorra {n} %",
+        "agregar": "Agregar escalón",
+        "hastaAyuda": "«Hasta» se llena solo con el siguiente escalón."
+      },
+      "conteo": {
+        "titulo": "Cómo se cuentan las unidades",
+        "promotion_mix": "Todo lo de la promoción suma junto",
+        "promotion_mixAyuda": "Si lleva 3 gaseosas de cola y 3 de limón, cuenta como 6 y le aplica el escalón de 6.",
+        "same_product": "Cada producto por separado (sus variantes suman)",
+        "same_productAyuda": "Cada producto cuenta aparte; las tallas o sabores de un mismo producto sí suman entre sí.",
+        "same_variant": "Cada variante por separado",
+        "same_variantAyuda": "Solo cuenta la misma variante exacta: 6 de cola sí llegan al escalón; 3 de cola + 3 de limón no.",
+        "product_group": "Por grupos que tú armas",
+        "product_groupAyuda": "Elige los productos en «¿A qué productos aplica?» y ponle un grupo a cada uno. Los del mismo grupo suman juntos.",
+        "grupoN": "Grupo {n}",
+        "grupoDe": "Grupo de {nombre}",
+        "gruposAyuda": "Los productos del mismo grupo suman unidades juntos; cada grupo cuenta aparte."
+      },
+      "alcance": {
+        "titulo": "¿A qué productos aplica?",
+        "descripcion": "Elige uno. Puedes quitar productos sueltos al final.",
+        "todos": "Todos",
+        "categorias": "Categorías",
+        "productos": "Productos",
+        "marcas": "Marcas",
+        "quitar": "Quitar {nombre}",
+        "sinMarcas": "Tus productos aún no tienen marca. Agrégala en Inventario › Productos.",
+        "excluir": "Excluir algunos productos (opcional)",
+        "ninguno": "ninguno",
+        "nExcluidos": "{n, plural, one {# excluido} other {# excluidos}}",
+        "excluirCategorias": "Categorías que no entran",
+        "excluirProductos": "Productos que no entran"
+      },
+      "donde": {
+        "titulo": "¿Dónde y cuándo?",
+        "descripcion": "Las horas son las de la organización ({zona}).",
+        "web": "Tienda web",
+        "webAyuda": "Pedidos en línea",
+        "pos": "Punto de venta",
+        "posAyuda": "Mostrador, mesas",
+        "facturas": "Facturas",
+        "facturasAyuda": "Y cotizaciones",
+        "desde": "Desde",
+        "hasta": "Hasta (opcional)",
+        "hastaAyuda": "Vacío = sin fecha de fin.",
+        "todasSucursales": "Todas las sucursales",
+        "algunasSucursales": "Algunas sucursales",
+        "horario": "Horario"
+      },
+      "avanzadas": {
+        "titulo": "Opciones avanzadas",
+        "nCambiados": "{n, plural, one {# cambiado} other {# cambiados}}",
+        "resumenGrupo": "Solo clientes del grupo «{grupo}»",
+        "resumenUsos": "máx. {n} usos",
+        "resumenSinLimite": "sin límite de usos",
+        "resumenSeSuma": "se suma con otras promociones",
+        "resumenNoSeSuma": "no se suma con otras promociones",
+        "resumenMinimo": "compra mínima {monto}",
+        "resumenSinMinimo": "sin compra mínima",
+        "quien": "¿Quién la recibe?",
+        "todosClientes": "Todos los clientes",
+        "unGrupo": "Un grupo de clientes",
+        "grupo": "Grupo de clientes",
+        "elegirGrupo": "Elige un grupo",
+        "grupoConteo": "{nombre} · {n, plural, one {# cliente} other {# clientes}}",
+        "grupoAyuda": "Los grupos salen de CRM › Segmentos (listas fijas). En la tienda web el cliente debe iniciar sesión para ver este precio.",
+        "sinGrupos": "Aún no tienes grupos de clientes con lista fija.",
+        "irSegmentos": "Ir a Segmentos",
+        "limites": "Límites",
+        "usosTotal": "Usos en total",
+        "usosTotalAyuda": "Al llegar al límite deja de aplicarse.",
+        "usosCliente": "Usos por cliente",
+        "usosClienteAyuda": "Cuenta pedidos y ventas del mismo cliente. Sin cliente identificado, no aplica.",
+        "tope": "Descuento máximo por compra",
+        "compraMinima": "Compra mínima",
+        "desde": "Desde",
+        "sinMinimo": "$ 0 · sin mínimo",
+        "seCuentaSobre": "Se cuenta sobre",
+        "loQueEntra": "Lo que entra en la promoción",
+        "todoElCarrito": "Todo el carrito",
+        "seSuma": "¿Se puede sumar con otras promociones?",
+        "noSeSuma": "No, se aplica sola (recomendado)",
+        "noSeSumaAyuda": "Si al cliente le sirven varias, recibe la que más le ahorra. Así nunca se regala de más.",
+        "siSeSuma": "Sí, se suma",
+        "siSeSumaAyuda": "Se suma con las otras que también digan «sí». Ej.: 10 % de descuento + 2×1 en la misma compra.",
+        "mediosPago": "Solo con estos medios de pago",
+        "sinMedios": "No hay medios de pago activos.",
+        "cualquierMedio": "Aplica con cualquier medio de pago.",
+        "soloMedios": "Solo aplica cuando el cobro usa uno de estos medios.",
+        "nota": "Nota interna (no la ve el cliente)",
+        "notaPlaceholder": "Ej.: precio para tenderos, acordado en noviembre",
+        "sinPrioridad": "Ya no se pide «Prioridad». Si dos promociones chocan y no se suman, gana la que más ahorra al cliente. El campo sigue en la base para no romper nada.",
+        "listasPrecios": "Clientes con lista de precios",
+        "listasPreciosCasilla": "No aplica a clientes con lista de precios",
+        "listasPreciosAyuda": "El cliente con lista paga su precio de lista y no recibe esta promoción. Sin marcar, la promoción se calcula sobre el precio de la lista.",
+        "resumenSinListas": "no aplica con listas de precios"
+      },
+      "vista": {
+        "titulo": "Así lo ve tu cliente",
+        "productoEjemplo": "Producto de ejemplo",
+        "sinNombre": "Tu promoción",
+        "cu": "c/u",
+        "oMas": "{n} o más: {precio}",
+        "compraMas": "Compra más, paga menos",
+        "rango": "{desde} a {hasta} unidades",
+        "oMasCorto": "{n} o más",
+        "precioCu": "{precio} c/u",
+        "enCarrito": "En el carrito",
+        "ahorras": "{nombre} · ahorras {monto}",
+        "agrega": "Agrega {n} más y cada una te queda en {precio}.",
+        "notaPos": "En el POS la línea muestra «{nombre}» y el precio baja solo al llegar a {n} unidades.",
+        "carrito": "Carrito: «{nombre} · {insignia}»",
+        "insigniaLleva": "Lleva {x}, paga {y}",
+        "insigniaCombo": "Combo {precio}",
+        "insigniaVolumen": "Desde {desde}: −{pct} %"
+      },
+      "palabras": {
+        "titulo": "En palabras",
+        "vigencia": "{cuando}, en {canales} de {donde}.",
+        "delAl": "Del {desde} al {hasta}",
+        "desdeSinFin": "Desde el {desde}, sin fecha de fin",
+        "canalWeb": "la tienda web",
+        "canalPos": "el punto de venta",
+        "canalFacturas": "las facturas",
+        "sedes": "las sedes {sedes}",
+        "todasLasSedes": "todas las sedes",
+        "alcance": "{alcance}: {descuento}.",
+        "todosLosProductos": "Todos los productos",
+        "nElementos": "{n} elementos",
+        "porcentaje": "{n} % de descuento",
+        "valorFijo": "{monto} menos",
+        "llevaPaga": "lleva {x} y paga {y}",
+        "combo": "el combo a {precio}",
+        "comboPorcentaje": "{n} % en el combo",
+        "sinEscalones": "sin escalones todavía",
+        "escalonRango": "de {desde} a {hasta} unidades a {valor}",
+        "escalonDesde": "desde {desde} a {valor}",
+        "precioUnidad": "{precio} c/u",
+        "porcentajeMenos": "{n} % menos",
+        "soloGrupo": "Solo clientes del grupo «{grupo}».",
+        "usosCliente": "Máximo {n, plural, one {# uso} other {# usos}} por cliente.",
+        "seSuma": "Se suma con otras promociones.",
+        "noSeSuma": "No se suma con otras promociones."
+      },
+      "lista": {
+        "tipo": "Tipo:",
+        "volumenPrecio": "{n}+ a {precio} c/u",
+        "volumenPorcentaje": "{n}+ −{pct} %"
+      },
+      "detalle": {
+        "pausar": "Pausar",
+        "reanudar": "Reanudar",
+        "soloGrupo": "Solo grupo «{grupo}»",
+        "soloUnGrupo": "Solo un grupo de clientes",
+        "deLimite": "de {n}",
+        "sinLimite": "sin límite",
+        "porCliente": "máx. {n} por cliente",
+        "ganaLaQueMasAhorra": "Si hay varias, gana la que más ahorra",
+        "cantidad": "Cantidad",
+        "segunPrecio": "según el precio"
+      },
+      "errores": {
+        "escalonesVacios": "Agrega al menos un escalón",
+        "escalonDesde": "Cada escalón empieza desde 2 unidades o más",
+        "escalonesOrden": "Cada escalón debe empezar en más unidades que el anterior",
+        "escalonValor": "Escribe el precio o el porcentaje de cada escalón",
+        "escalonPorcentaje": "El porcentaje debe ser entre 1 y 100",
+        "gruposProductos": "Para contar por grupos, elige los productos en «¿A qué productos aplica?»",
+        "alcanceProductos": "Elige al menos un producto",
+        "alcanceCategorias": "Elige al menos una categoría",
+        "alcanceMarcas": "Elige al menos una marca",
+        "canales": "Elige al menos un canal: tienda web, punto de venta o facturas",
+        "grupoClientes": "Elige el grupo de clientes"
+      }
     }
   },
   "pedidosManuales": {
@@ -67925,6 +68269,832 @@
         "examen": "Examen: {estado}",
         "sinRol": "No se crea un rol nuevo: lo que puede hacer en Logística o Transporte sale del cargo."
       }
+    }
+  },
+  "pedidosOnlineTiempos": {
+    "cargando": "Cargando los tiempos…",
+    "errorCargar": "No se pudieron cargar los tiempos de los pedidos online",
+    "guardado": "Tiempos guardados",
+    "errorGuardar": "No se pudieron guardar los tiempos",
+    "soloLectura": "Solo administración puede cambiar estos tiempos.",
+    "porDefecto": {
+      "titulo": "Tiempos por defecto",
+      "descripcion": "Se usan al confirmar un pedido para calcular «Listo aprox.» y «Entrega aprox.». Al confirmar a mano los puedes cambiar en ese pedido."
+    },
+    "tabla": {
+      "tipo": "Tipo de entrega",
+      "alistar": "Alistar o preparar",
+      "entrega": "Entrega",
+      "noAplica": "No aplica",
+      "valor": "{campo} · {tipo}: cantidad",
+      "unidad": "{campo} · {tipo}: unidad"
+    },
+    "tipos": {
+      "domicilio": {
+        "titulo": "Domicilio propio",
+        "descripcion": "Lo lleva tu equipo."
+      },
+      "transportadora": {
+        "titulo": "Transportadora",
+        "descripcion": "Si la tarifa tiene «días de tránsito», manda la tarifa."
+      },
+      "recoger": {
+        "titulo": "Recoger en la tienda",
+        "descripcion": "El cliente pasa por el pedido."
+      }
+    },
+    "unidades": {
+      "minutos": "minutos",
+      "horas": "horas",
+      "dias": "días"
+    },
+    "corto": {
+      "minutos": "{n} min",
+      "horas": "{n} h",
+      "dias": "{n, plural, one {# día} other {# días}}"
+    },
+    "fabrica": {
+      "nota": "Valores de fábrica: comercio, alistar 1 día y entregar 5 días; restaurante, 30 min y 30 min. Son los mismos que hoy, así que nada cambia hasta que los edites.",
+      "restablecer": "Restablecer"
+    },
+    "automatica": {
+      "titulo": "Confirmación automática",
+      "descripcion": "Cuando un pedido se paga en línea, se confirma solo.",
+      "usar": {
+        "titulo": "Usar estos tiempos al confirmarse solo",
+        "descripcion": "Hoy un pedido pagado por pasarela se confirma con 1 día fijo. Con esto toma el tiempo del tipo de entrega y de la sede."
+      },
+      "apertura": {
+        "titulo": "Si llega con la tienda cerrada, contar desde la apertura",
+        "descripcion": "Un pedido de las 11:00 p. m. se cuenta desde que abre la sede al otro día. Usa el horario de la sede: si no tiene uno revisado, se cuenta desde que llega."
+      }
+    },
+    "sedes": {
+      "titulo": "Por sede",
+      "descripcion": "Si una sede es más rápida o más lenta, ponle sus propios tiempos. Las demás usan los de arriba.",
+      "generales": "Usa los tiempos generales",
+      "igualesGenerales": "Sus tiempos son iguales a los generales",
+      "propios": "Propios",
+      "personalizar": "Personalizar",
+      "editar": "Editar",
+      "personalizarAria": "Personalizar los tiempos de {sede}",
+      "editarAria": "Editar los tiempos de {sede}",
+      "vacio": "No hay sedes activas.",
+      "resumen": {
+        "domicilio": "Domicilio: alistar {alistar} · entregar {entrega}",
+        "transportadora": "Transportadora: alistar {alistar} · entregar {entrega}",
+        "recoger": "Recoger: {alistar}"
+      }
+    },
+    "dialogoSede": {
+      "titulo": "Tiempos de {sede}",
+      "usarGenerales": {
+        "titulo": "Usar los tiempos generales",
+        "descripcion": "Apágalo para ponerle a esta sede sus propios tiempos."
+      },
+      "cancelar": "Cancelar",
+      "guardar": "Guardar"
+    },
+    "confirmar": {
+      "origen": "Vienen de Configuración › Punto de venta › Pedidos online ({sede}). Cambiarlos aquí solo afecta este pedido.",
+      "origenSinSede": "Vienen de Configuración › Punto de venta › Pedidos online. Cambiarlos aquí solo afecta este pedido.",
+      "lote": "Cada pedido toma los tiempos de su sede y de su tipo de entrega (Configuración › Punto de venta › Pedidos online). Si los cambias aquí, se usan los mismos para todos.",
+      "hoy": "hoy, {hora}",
+      "manana": "mañana, {hora}"
+    }
+  },
+  "listasPrecios": {
+    "titulo": "Listas de precios",
+    "subtitulo": "Precios propios por cliente o grupo · {total, plural, one {# lista} other {# listas}} · {activas, plural, one {# activa} other {# activas}}",
+    "subtituloCorto": "Precios propios por cliente o grupo",
+    "cargando": "Cargando…",
+    "actualizar": "Actualizar",
+    "importar": {
+      "titulo": "Importar precios a «{nombre}»",
+      "paso1": "Paso 1 de 2 · Sube el Excel o CSV con SKU, precio y, si hay escalones, desde qué cantidad.",
+      "paso2": "Paso 2 de 2 · Revisa antes de importar. Nada cambia hasta que confirmes.",
+      "pasoSubir": "Sube el archivo",
+      "pasoRevisar": "Revisa y confirma",
+      "formatos": "Excel (.xlsx) o CSV",
+      "filasLeidas": "{n, plural, one {# fila leída} other {# filas leídas}}",
+      "lista": "Lista",
+      "soltar": "Arrastra el archivo aquí o haz clic para elegirlo",
+      "columnasEsperadas": "Columnas: SKU (o código de barras), precio y, opcional, desde cantidad",
+      "elegirArchivo": "Elegir archivo",
+      "sinColumnas": "No se encontraron las columnas SKU y precio. Usa la plantilla.",
+      "resumenArchivo": "{n, plural, one {# fila} other {# filas}} · columnas: {columnas}",
+      "cambiarArchivo": "Cambiar archivo",
+      "nuevos": "{n, plural, one {# nuevo} other {# nuevos}}",
+      "cambian": "{n, plural, one {# cambia de precio} other {# cambian de precio}}",
+      "conError": "{n, plural, one {# con error} other {# con error}}",
+      "igualesSeQuedan": "Los que no cambian se dejan igual.",
+      "col": {
+        "fila": "Fila",
+        "sku": "SKU",
+        "producto": "Producto",
+        "desde": "Desde",
+        "hoy": "Hoy",
+        "nuevo": "Nuevo",
+        "estado": "Estado"
+      },
+      "noEncontrado": "No encontrado",
+      "unidades": "{n} u.",
+      "estados": {
+        "igual": "Igual",
+        "nuevo": "Nuevo",
+        "escalon_nuevo": "Escalón nuevo",
+        "cambia": "Cambia",
+        "no_existe": "No existe ese SKU",
+        "precio_invalido": "Precio no válido",
+        "cantidad_invalida": "Cantidad no válida",
+        "duplicado": "Repetido en el archivo"
+      },
+      "vista": {
+        "todas": "Ver las {n} filas",
+        "errores": "solo errores",
+        "cambios": "solo cambios"
+      },
+      "reemplazar": "Reemplazar toda la lista",
+      "reemplazarAyuda": "Quita los precios fijos que no vienen en el archivo. Hoy {n, plural, =0 {todos vienen} one {hay # que no viene} other {hay # que no vienen}}.",
+      "filasConError": "{n, plural, one {La fila {filas} no se importa} other {Las filas {filas} no se importan}}. Corrígelas en el archivo y súbelo otra vez, o sigue sin ellas. La plantilla trae las columnas y un ejemplo.",
+      "confirmar": "{n, plural, =0 {Nada que importar} one {Importar # precio} other {Importar # precios}}",
+      "nadaQueImportar": "No hay precios nuevos ni cambios.",
+      "atras": "Atrás",
+      "listo": "{n, plural, one {# precio importado} other {# precios importados}}",
+      "plantilla": {
+        "descargar": "Descargar plantilla",
+        "archivo": "plantilla-lista-de-precios.csv",
+        "sku": "SKU",
+        "precio": "precio",
+        "cantidad": "desde cantidad"
+      }
+    },
+    "nueva": "Nueva lista",
+    "buscar": "Buscar lista…",
+    "copiaDe": "{nombre} (copia)",
+    "clientesN": "{n, plural, one {# cliente} other {# clientes}}",
+    "pie": "{n, plural, one {# lista} other {# listas}}",
+    "pieOrden": "Arrastra para ordenar: con dos grupos, gana la lista de más arriba",
+    "kpi": {
+      "etiqueta": "Resumen de listas de precios",
+      "activas": "Listas activas",
+      "activasDetalle": "de {creadas} creadas · {programadas, plural, one {# programada} other {# programadas}}",
+      "clientes": "Clientes con lista",
+      "clientesDetalle": "{grupo} por grupo · {directos} uno a uno",
+      "productos": "Productos con precio fijo",
+      "productosDetalle": "el resto usa la regla en %",
+      "ventas": "Ventas netas con lista",
+      "ventasDetalle": "este mes · {n, plural, one {# venta} other {# ventas}} · sin IVA"
+    },
+    "filtros": {
+      "estado": "Estado:",
+      "todas": "Todas",
+      "activas": "Activas",
+      "programadas": "Programadas",
+      "vencidas": "Vencidas",
+      "inactivas": "Inactivas"
+    },
+    "columnas": {
+      "lista": "Lista",
+      "como": "Cómo se define",
+      "clientes": "Clientes",
+      "vigencia": "Vigencia",
+      "productos": "Productos",
+      "canales": "Canales",
+      "estado": "Estado"
+    },
+    "estado": {
+      "activa": "Activa",
+      "programada": "Programada",
+      "vencida": "Vencida",
+      "inactiva": "Inactiva",
+      "sin_clientes": "Sin clientes"
+    },
+    "como": {
+      "menos": "{n} % menos",
+      "mas": "{n} % más",
+      "fijos": "fijos",
+      "precioFijo": "Precio fijo",
+      "volumen": "volumen",
+      "porCategoria": "Por categoría",
+      "sinReglas": "Sin reglas"
+    },
+    "canales": {
+      "pos": "POS",
+      "web": "Web",
+      "documentos": "Fact.",
+      "ninguno": "Ninguno",
+      "posLargo": "POS",
+      "webLargo": "tienda web",
+      "documentosLargo": "cotizaciones y facturas"
+    },
+    "productos": {
+      "todos": "Todos",
+      "categorias": "{n, plural, one {# categoría} other {# categorías}}",
+      "marcas": "{n, plural, one {# marca} other {# marcas}}"
+    },
+    "vigencia": {
+      "sinFin": "Sin fecha de fin",
+      "desde": "Desde {fecha}",
+      "rango": "{desde} – {hasta}"
+    },
+    "acciones": {
+      "ver": "Ver lista",
+      "editar": "Editar",
+      "clientes": "Ver clientes",
+      "importar": "Importar precios",
+      "duplicar": "Duplicar",
+      "borrar": "Borrar lista"
+    },
+    "borrar": {
+      "titulo": "¿Borrar «{nombre}»?",
+      "descripcion": "{n, plural, =0 {Nadie tiene esta lista.} one {# cliente deja de tener esta lista y paga el precio normal.} other {# clientes dejan de tener esta lista y pagan el precio normal.}} Las ventas ya hechas conservan sus precios.",
+      "confirmar": "Borrar lista"
+    },
+    "toast": {
+      "orden": "Orden guardado",
+      "duplicada": "Lista duplicada (inactiva, sin clientes)",
+      "borrada": "Lista borrada"
+    },
+    "vacio": {
+      "titulo": "Aún no hay listas de precios",
+      "descripcion": "Crea una lista para que mayoristas, empleados o un grupo del CRM paguen sus propios precios."
+    },
+    "error": {
+      "titulo": "No se pudieron cargar las listas",
+      "descripcion": "Revisa la conexión y vuelve a intentarlo."
+    },
+    "sinPermiso": {
+      "titulo": "Sin acceso a las listas de precios",
+      "descripcion": "Pide a un administrador que te dé acceso."
+    },
+    "errores": {
+      "sin_permiso": "No tienes permiso para gestionar listas de precios.",
+      "no_encontrada": "La lista no existe o es de otra organización.",
+      "no_encontrado": "El cliente no existe o es de otra organización.",
+      "nombre_requerido": "Escribe el nombre de la lista.",
+      "nombre_duplicado": "Ya hay una lista con ese nombre.",
+      "datos_invalidos": "Revisa los datos de la lista.",
+      "sede_invalida": "Una de las sedes no es de la organización.",
+      "regla_duplicada": "Hay dos excepciones para la misma categoría o marca.",
+      "regla_invalida": "Revisa las excepciones: cada una necesita un % o «Sin descuento».",
+      "escalon_duplicado": "Un producto tiene dos precios desde la misma cantidad.",
+      "precio_invalido": "Hay un precio o una cantidad no válidos.",
+      "archivo_invalido": "No se pudo leer el archivo.",
+      "demasiados_clientes": "Agrega hasta 1.000 clientes a la vez.",
+      "error_desconocido": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "editor": {
+      "tituloNueva": "Nueva lista de precios",
+      "tituloEditar": "Editar lista · {nombre}",
+      "subtitulo": "Todo en una pantalla. Con el nombre y una regla ya se puede guardar.",
+      "estaLista": "esta lista",
+      "errorNombre": "Escribe el nombre de la lista",
+      "guardada": "Lista guardada",
+      "guardar": "Guardar lista",
+      "cancelar": "Cancelar",
+      "pieAviso": "Los cambios aplican a ventas nuevas. Las cotizaciones ya enviadas conservan su precio.",
+      "ultimoCambio": "Último cambio",
+      "esencial": {
+        "titulo": "Lo esencial",
+        "descripcion": "Nombre, moneda y vigencia.",
+        "nombre": "Nombre de la lista",
+        "nombreAyuda": "Lo ve el cajero en la insignia del POS. El cliente en la tienda ve «Tu precio especial».",
+        "activa": "Activa",
+        "moneda": "Moneda",
+        "monedaAyuda": "La de la organización.",
+        "desde": "Desde",
+        "desdeAyuda": "Día de la organización.",
+        "hasta": "Hasta (opcional)",
+        "hastaAyuda": "Al vencer, vuelve el precio normal.",
+        "sinFin": "Sin fecha de fin"
+      },
+      "como": {
+        "titulo": "¿Cómo se define el precio?",
+        "descripcion": "Una regla general y, si quieres, excepciones. Gana lo más específico: precio fijo del producto › marca › categoría › regla general.",
+        "base": "Base:",
+        "porcentaje": "% sobre el precio normal",
+        "soloFijos": "Solo precios fijos",
+        "todoCatalogo": "Todo el catálogo:",
+        "bajar": "Bajar",
+        "subir": "Subir",
+        "porcentajeEtiqueta": "Porcentaje",
+        "sobreNormal": "% sobre el precio normal",
+        "ejemplo": "Ej.: {antes} → {despues}",
+        "avisoSubir": "Con «Subir», estos clientes pagan más que el precio normal. Se permite; revísalo antes de guardar."
+      },
+      "excepciones": {
+        "titulo": "Excepciones por categoría o marca",
+        "aplicaA": "Aplica a",
+        "ajuste": "Ajuste",
+        "categoria": "Categoría",
+        "marca": "Marca",
+        "menos": "menos",
+        "mas": "más",
+        "sinDescuento": "Sin descuento",
+        "quitar": "Quitar excepción",
+        "agregarCategoria": "Agregar categoría",
+        "agregarMarca": "Agregar marca"
+      },
+      "fijos": {
+        "titulo": "Precios fijos por producto",
+        "descripcion": "Para los productos con un precio acordado. Escríbelo aquí o impórtalo desde Excel. Con escalones, el precio baja según la cantidad que lleve.",
+        "importar": "Importar",
+        "exportar": "Exportar",
+        "buscar": "Buscar por nombre o SKU…",
+        "producto": "Producto",
+        "normal": "Precio normal",
+        "enLista": "Precio en la lista",
+        "diferencia": "Diferencia",
+        "porCantidad": "Por cantidad",
+        "quitar": "Quitar producto",
+        "agregar": "Agregar producto",
+        "conteo": "{n, plural, one {# producto con precio fijo} other {# productos con precio fijo}}",
+        "escalones": "{n, plural, one {# escalón} other {# escalones}}",
+        "agregarEscalon": "Agregar",
+        "escalonesAyuda": "Escalones en esta lista · cuentan las unidades de la línea",
+        "desde": "Desde",
+        "unidades": "u.",
+        "precioEscalon": "Precio del escalón",
+        "quitarEscalon": "Quitar escalón",
+        "escalon": "Escalón",
+        "precioDe": "Precio de {nombre} en la lista",
+        "csv": {
+          "sku": "SKU",
+          "precio": "precio",
+          "cantidad": "desde cantidad",
+          "producto": "producto"
+        }
+      },
+      "redondeo": {
+        "titulo": "Redondeo",
+        "descripcion": "Solo para los precios calculados con %. Los precios fijos se respetan tal cual.",
+        "a": "Redondear a:",
+        "no": "No",
+        "hacia": "Hacia:",
+        "modos": {
+          "down": "Abajo",
+          "nearest": "Al más cercano",
+          "up": "Arriba"
+        },
+        "ejemplo": "Ej.: $ 9.137 → $ 9.100 hacia abajo, a favor del cliente."
+      },
+      "aplica": {
+        "titulo": "¿Dónde aplica?",
+        "descripcion": "El cliente con esta lista paga estos precios en los canales encendidos. En los apagados paga el precio normal.",
+        "pos": "Punto de venta",
+        "posAyuda": "Mostrador, mesas y domicilios",
+        "web": "Tienda web",
+        "webAyuda": "Con la sesión del cliente iniciada",
+        "documentos": "Cotizaciones y facturas",
+        "documentosAyuda": "Documentos hechos a mano en Ventas",
+        "sedes": "Sedes",
+        "sedesAyuda": "Si una sede tiene precio propio del producto, el % se calcula sobre ese precio.",
+        "todasSedes": "Todas las sedes"
+      },
+      "clientes": {
+        "titulo": "Clientes",
+        "descripcion": "Cada cliente tiene una sola lista. Asigna un grupo del CRM, clientes sueltos o ambos.",
+        "grupo": "Grupo «{nombre}» · {n, plural, one {# cliente} other {# clientes}}",
+        "directos": "{n, plural, one {# cliente uno a uno} other {# clientes uno a uno}}",
+        "asignar": "Asignar clientes",
+        "despues": "Guarda la lista y después asigna clientes o un grupo del CRM."
+      },
+      "palabras": {
+        "titulo": "En palabras",
+        "general": "Los clientes de «{nombre}» pagan {ajuste} en todo.",
+        "soloFijos": "Los clientes de «{nombre}» pagan solo los precios fijos de la lista.",
+        "regla": "{quien}: {ajuste}.",
+        "sinDescuento": "{quien}: sin descuento (precio normal).",
+        "fijos": "{n, plural, one {# producto tiene precio fijo.} other {# productos tienen precio fijo.}}",
+        "vigenciaHasta": "Rige hasta el {hasta}.",
+        "sinFin": "Sin fecha de fin.",
+        "redondeo": "Los precios con % se redondean a {paso} ({modo}).",
+        "promociones": "Las promociones se aplican encima."
+      },
+      "avisoCaro": {
+        "titulo": "Precios más caros que el normal",
+        "linea": "{nombre}: {lista} contra {normal}",
+        "pie": "¿Es a propósito? Se puede guardar igual."
+      }
+    },
+    "detalle": {
+      "volver": "Volver a las listas",
+      "duplicar": "Duplicar",
+      "editar": "Editar lista",
+      "enTodo": "{ajuste} en todo",
+      "preciosFijos": "{n, plural, one {# precio fijo} other {# precios fijos}}",
+      "canales": "Canales: {canales}",
+      "sinDescuento": "sin descuento",
+      "kpi": {
+        "etiqueta": "Cifras de la lista",
+        "clientes": "Clientes en la lista",
+        "clientesDetalle": "{grupo} por grupo · {directos} uno a uno",
+        "ventas": "Ventas netas con la lista",
+        "ventasDetalle": "este mes · {n, plural, one {# venta} other {# ventas}} · sin IVA",
+        "ahorro": "Ahorro de estos clientes",
+        "ahorroDetalle": "este mes, contra el precio normal"
+      },
+      "pestanas": {
+        "precios": "Precios",
+        "clientes": "Clientes"
+      },
+      "precios": {
+        "producto": "Producto",
+        "normal": "Precio normal",
+        "enLista": "Precio en la lista",
+        "diferencia": "Diferencia",
+        "porCantidad": "Por cantidad",
+        "escalon": "{n}+ a {precio}",
+        "vacioTitulo": "Sin precios fijos",
+        "vacioDescripcion": "Esta lista usa sus reglas en %. Agrega precios fijos desde «Editar lista» o impórtalos."
+      },
+      "clientes": {
+        "buscar": "Buscar cliente por nombre o documento…",
+        "agregar": "Agregar clientes",
+        "agregarGrupo": "Agregar grupo",
+        "gruposCrm": "Grupos del CRM",
+        "grupoDetalle": "CRM › Segmentos · {n, plural, one {# cliente} other {# clientes}} · quien entra al grupo entra a la lista",
+        "dinamico": "Dinámico",
+        "fijo": "Fijo",
+        "verCrm": "Ver en CRM",
+        "quitarGrupo": "Quitar",
+        "grupoQuitado": "Grupo quitado de la lista",
+        "cliente": "Cliente",
+        "documento": "Documento",
+        "comoLlego": "Cómo llegó",
+        "porGrupo": "Grupo «{grupo}»",
+        "unoAUno": "Uno a uno",
+        "ultimaCompra": "Última compra",
+        "sinCompras": "Sin compras",
+        "ventasMes": "Ventas netas · mes",
+        "ahorroMes": "Ahorro · mes",
+        "ver": "Ver cliente",
+        "quitar": "Quitar de la lista",
+        "quitado": "Cliente quitado de la lista",
+        "vacioTitulo": "Nadie tiene esta lista todavía",
+        "vacioDescripcion": "Agrega clientes uno a uno o un grupo del CRM.",
+        "singular": "cliente",
+        "plural": "clientes",
+        "regla": "Un cliente tiene una sola lista. Lo asignado uno a uno gana sobre el grupo. Quitar a alguien de aquí no lo saca del grupo del CRM: queda «sin lista» y paga el precio normal."
+      }
+    },
+    "agregar": {
+      "titulo": "Agregar clientes a «{nombre}»",
+      "descripcion": "Uno a uno o un grupo del CRM. Un cliente solo puede tener una lista.",
+      "pestanaClientes": "Clientes",
+      "pestanaGrupo": "Grupo del CRM",
+      "buscar": "Buscar por nombre, documento o teléfono…",
+      "sinLista": "Sin lista",
+      "hoy": "Hoy: {lista}",
+      "yaEsta": "Ya está en esta lista",
+      "sinResultados": "Sin resultados",
+      "cambiaUno": "{nombre} pasa de «{antes}» a «{despues}». Desde su próxima compra paga los precios de esta lista.",
+      "cambianVarios": "{n} clientes cambian de lista y pasan a «{despues}» desde su próxima compra.",
+      "seleccionados": "{n, plural, =0 {Ninguno seleccionado} one {# seleccionado} other {# seleccionados}}",
+      "agregarN": "{n, plural, =0 {Agregar clientes} one {Agregar # cliente} other {Agregar # clientes}}",
+      "eligeAlguno": "Elige al menos un cliente",
+      "grupoAyuda": "Vienen de CRM › Segmentos. Los clientes que entren o salgan del grupo cambian de lista solos.",
+      "grupoDetalle": "{n, plural, one {# cliente} other {# clientes}} · {tipo}",
+      "dinamico": "se actualiza solo",
+      "fijo": "fijo",
+      "asignado": "Asignado",
+      "sinGrupos": "No hay grupos en el CRM",
+      "grupoConDirectos": "{n, plural, one {# cliente} other {# clientes}} de «{grupo}» tienen lista asignada uno a uno («{lista}»). Se quedan con la suya: lo asignado uno a uno gana sobre el grupo.",
+      "cambianAGrupo": "{n, plural, one {# cliente cambia} other {# clientes cambian}} a esta lista",
+      "agregarGrupo": "Agregar grupo",
+      "eligeGrupo": "Elige un grupo",
+      "listoClientes": "{n, plural, one {# cliente agregado} other {# clientes agregados}}",
+      "listoGrupo": "Grupo «{nombre}» agregado"
+    },
+    "ficha": {
+      "titulo": "Lista de precios",
+      "verLista": "Ver lista",
+      "resumen": "{resumen}. En {canales}.",
+      "reglaEn": "{ajuste} en {quien}",
+      "sinDescuentoEn": "sin descuento en {quien}",
+      "fijosEn": "precio fijo en {n, plural, one {# producto} other {# productos}}",
+      "porGrupo": "Por el grupo «{grupo}» del CRM",
+      "unoAUno": "Asignada uno a uno",
+      "ahorroMes": "Ahorro este mes",
+      "ahorroDetalle": "contra el precio normal, en {n, plural, one {# compra} other {# compras}}",
+      "sinLista": "Sin lista: paga el precio normal.",
+      "sinListaExplicita": "Sin lista (quitada a mano): paga el precio normal aunque esté en un grupo con lista.",
+      "cambiar": "Cambiar lista",
+      "opcionSinLista": "Sin lista · paga el precio normal",
+      "avisoCambio": "Si eliges otra, queda asignada uno a uno y gana sobre el grupo. Aplica desde la próxima venta.",
+      "cambiada": "Lista del cliente actualizada"
+    },
+    "pos": {
+      "aviso": "Lista «{lista}» · ahorra {ahorro} frente al precio normal",
+      "quitada": "Precio normal en esta venta (lista «{lista}» quitada)",
+      "usarNormal": "Usar precio normal",
+      "volverALista": "Volver a la lista",
+      "error": "No se pudo cambiar el precio del carrito.",
+      "linea": "Lista {lista} · {detalle}",
+      "lineaSola": "Lista {lista}",
+      "normalTitulo": "Precio normal {precio}",
+      "detalle": {
+        "escalon": "{n}+"
+      },
+      "supervisor": {
+        "titulo": "Pide a un supervisor",
+        "descripcion": "Usar el precio normal en una venta de cliente con lista pide el permiso «Cambiar precios en la venta». Pide a un supervisor que lo haga desde su sesión.",
+        "entendido": "Entendido"
+      }
+    },
+    "documentos": {
+      "selector": "Lista de precios",
+      "delCliente": "{lista} (la del cliente)",
+      "precioNormal": "Precio normal",
+      "aviso": "Lista «{lista}». Si cambias de cliente o de lista, los precios se recalculan. Los que escribiste a mano se respetan.",
+      "avisoNormal": "Precio normal en este documento. Si vuelves a la lista del cliente, los precios se recalculan.",
+      "avisoFactura": "En la factura el precio unitario es el de la lista; la promoción sale como descuento de la línea.",
+      "lista": "Lista",
+      "escalon": "{n}+",
+      "normal": "normal {precio}",
+      "aMano": "A mano"
+    }
+  },
+  "contraentregaCondiciones": {
+    "fila": {
+      "titulo": "Pago contra entrega",
+      "conCondiciones": "Con condiciones",
+      "sinCondiciones": "Sin condiciones",
+      "apagada": "Apagada a domicilio",
+      "sinEfectivo": "Sin el método Efectivo",
+      "condiciones": "Condiciones",
+      "nuevo": "Nuevo",
+      "sedeResumen": "{sede}: {resumen}",
+      "masSedes": "y {n} sedes más con condiciones",
+      "cargando": "Cargando condiciones…",
+      "errorCarga": "No pudimos leer las condiciones de la contraentrega."
+    },
+    "dialogo": {
+      "titulo": "Pago contra entrega",
+      "descripcion": "Sitio web › Ventas en línea › Métodos de pago · el cliente paga cuando recibe el pedido",
+      "guardar": "Guardar cambios",
+      "pie": "Los cambios se ven en la tienda al guardar. Los pedidos ya hechos no cambian.",
+      "guardado": "Condiciones guardadas",
+      "error": "No se pudo guardar: {mensaje}",
+      "sede": "Sede",
+      "sedeAyuda": "Cada sede tiene sus condiciones: manda la sede que despacha el pedido.",
+      "sedeConCondiciones": "{sede} · con condiciones",
+      "quitarCondiciones": "Quitar condiciones de esta sede",
+      "quitadas": "Condiciones quitadas: la contraentrega funciona como antes en esta sede",
+      "sinEfectivoTitulo": "Tu organización no tiene el método Efectivo",
+      "sinEfectivoDescripcion": "La contraentrega es el método Efectivo con condiciones. Actívalo primero en Finanzas › Métodos de pago.",
+      "irFinanzas": "Ir a Finanzas › Métodos de pago",
+      "efectivoOculto": "El método Efectivo está oculto en la web: las condiciones se guardan, pero la tienda no lo ofrece hasta que lo muestres en Finanzas › Métodos de pago.",
+      "sinSedes": "Tu organización no tiene sedes activas."
+    },
+    "ofrecer": {
+      "titulo": "Ofrecer pago contra entrega en la tienda",
+      "ayuda": "El cliente paga cuando recibe el pedido. Solo aplica a «Domicilio»: con «Recoger en la tienda» paga al recoger."
+    },
+    "monto": {
+      "titulo": "Monto del pedido",
+      "ayuda": "Se cuenta el valor de los productos con descuentos, sin el envío. Vacío = sin límite.",
+      "minimo": "Pedido mínimo",
+      "maximo": "Pedido máximo",
+      "errorRango": "El mínimo no puede ser mayor que el máximo."
+    },
+    "zonas": {
+      "titulo": "Dónde se ofrece",
+      "ayuda": "Zonas de Logística › Zonas.",
+      "todas": "En todas las zonas de domicilio",
+      "algunas": "Solo en estas zonas",
+      "sinZonas": "Esta sede no tiene zonas de domicilio activas. Créalas en Logística › Zonas para limitar dónde se ofrece.",
+      "errorVacias": "Elige al menos una zona.",
+      "transportadora": "También con transportadora (envío nacional)",
+      "transportadoraAyuda": "La transportadora cobra al entregar y te lo gira. Apágalo si solo quieres contraentrega con tus domiciliarios."
+    },
+    "productos": {
+      "titulo": "A qué productos aplica",
+      "ayuda": "Si el carrito tiene un producto que no aplica, la tienda le dice al cliente cuál es y le deja quitarlo o pagar todo en línea.",
+      "todos": "Todos",
+      "solo": "Solo algunos",
+      "excepto": "Todos menos algunos",
+      "agregar": "Agregar categoría o producto",
+      "buscar": "Buscar categoría o producto",
+      "buscarAyuda": "Escribe al menos 2 letras",
+      "categoria": "Categoría",
+      "producto": "Producto",
+      "quitar": "Quitar {nombre}",
+      "sinResultados": "Sin resultados",
+      "errorVacios": "Agrega al menos una categoría o un producto."
+    },
+    "medios": {
+      "titulo": "Con qué puede pagar al recibir",
+      "ayuda": "El domiciliario registra el medio al entregar y le llega a su cuadre.",
+      "cash": "Efectivo",
+      "card": "Datáfono",
+      "transfer": "Transferencia",
+      "qr": "Nequi o transferencia (QR)",
+      "errorVacios": "Elige al menos un medio."
+    },
+    "anticipo": {
+      "titulo": "Anticipo para confirmar el pedido",
+      "ayuda": "Confirma que el pedido va en serio. El resto se paga al recibir.",
+      "pedir": "Pedir un anticipo en línea",
+      "envio": "El valor del envío",
+      "envioAyuda": "El cliente paga hoy el domicilio y el resto al recibir. Ej.: hoy {anticipo} y al recibir {resto}.",
+      "porcentaje": "Un porcentaje del pedido",
+      "porcentajeAyuda": "Del total con envío.",
+      "fijo": "Un valor fijo",
+      "fijoAyuda": "Igual para todos los pedidos.",
+      "errorPorcentaje": "Escribe un porcentaje entre 1 y 100.",
+      "errorFijo": "Escribe un valor mayor que cero.",
+      "envioGratisAviso": "Tu tienda tiene envío gratis desde {monto}. En esos pedidos el anticipo «el valor del envío» sería {cero}. ¿Qué hacemos?",
+      "envioGratisAvisoSinMonto": "Si un pedido sale con envío gratis, el anticipo «el valor del envío» sería {cero}. ¿Qué hacemos?",
+      "envioGratisNoPedir": "No pedir anticipo en esos pedidos",
+      "envioGratisFijo": "Pedir un valor fijo de",
+      "errorEnvioGratis": "Escribe el valor fijo para los pedidos con envío gratis.",
+      "seCobraCon": "Se cobra con",
+      "cualquiera": "Cualquiera de las activas (el cliente elige)",
+      "conectada": "{nombre} · conectada",
+      "sinPasarela": "No tienes una pasarela conectada: sin ella el anticipo no se puede cobrar y la contraentrega no se ofrece. Conéctala en Integraciones.",
+      "plazo": "Plazo para pagarlo",
+      "plazoMinutos": "{n} minutos",
+      "siNoRecibe": "Si el cliente no recibe el pedido",
+      "devolver": "Devolver el anticipo",
+      "retener": "La tienda se lo queda para cubrir el envío",
+      "siNoRecibeAyuda": "Se muestra en el checkout en una línea: «{linea}».",
+      "lineaDevolver": "Si no recibes el pedido, te devolvemos el anticipo.",
+      "lineaRetener": "Si no recibes el pedido, el anticipo cubre el envío y no se devuelve.",
+      "avisoPlazo": "Si no lo paga en {n} minutos, el pedido se cancela solo y los productos vuelven al inventario, igual que un pago en línea que no se completó."
+    },
+    "quien": {
+      "titulo": "Quién puede usarla",
+      "soloEntregados": "Solo clientes con pedidos entregados",
+      "soloEntregadosAyuda": "Mínimo 1 pedido entregado. Los demás ven «Disponible desde tu segunda compra» y pagan en línea.",
+      "sinRechazos": "No ofrecerla a quien rechazó un pedido en la puerta",
+      "sinRechazosAyuda": "Si un cliente no recibió un pedido contra entrega, la próxima vez paga en línea."
+    },
+    "texto": {
+      "titulo": "Texto que ve el cliente",
+      "ayuda": "Va debajo de la opción en el checkout.",
+      "porDefecto": "Paga en efectivo, con datáfono o Nequi cuando recibas tu pedido.",
+      "porDefectoAnticipo": "Paga en efectivo, con datáfono o Nequi cuando recibas tu pedido. Para confirmarlo, hoy pagas solo el envío.",
+      "contador": "{n} / {max}"
+    },
+    "cliente": {
+      "titulo": "Así lo ve tu cliente",
+      "opcion": "Pago contra entrega",
+      "hoyEnLinea": "Hoy, en línea ({base})",
+      "alRecibir": "Al recibir",
+      "baseEnvio": "envío",
+      "basePorcentaje": "anticipo",
+      "baseFijo": "anticipo",
+      "sinAnticipo": "Pagas {total} al recibir.",
+      "noDisponibleEjemplo": "Con un pedido de {total} no se ofrece: revisa las condiciones.",
+      "motivosTitulo": "Si no cumple una condición, la opción se ve apagada con el motivo:",
+      "motivoMinimo": "Disponible desde {minimo} — te faltan {faltan}",
+      "motivoMaximo": "Solo para pedidos hasta {maximo}",
+      "motivoProductos": "No disponible para {n} productos de tu carrito · Ver cuáles",
+      "motivoZona": "No llega a tu dirección: solo {zonas}",
+      "motivoTransportadora": "No disponible con transportadora",
+      "motivoPrimeraCompra": "Disponible desde tu segunda compra",
+      "motivoRechazo": "Para esta compra el pago es en línea",
+      "apagada": "La tienda no ofrece pago contra entrega a domicilio en esta sede.",
+      "resumenTitulo": "Resumen de las reglas"
+    },
+    "resumen": {
+      "sinCondiciones": "Sin condiciones: se cobra todo al recibir",
+      "apagada": "Apagada a domicilio",
+      "montoEntre": "Desde {minimo} hasta {maximo}",
+      "montoDesde": "Desde {minimo}",
+      "montoHasta": "Hasta {maximo}",
+      "nZonas": "{n} zonas",
+      "sinTransportadora": "sin transportadora",
+      "soloProductos": "solo {lista}",
+      "todoMenos": "todo menos {lista}",
+      "uno": "{primero}",
+      "primeroYMas": "{primero} y {n} más",
+      "nElementos": "{n} elementos",
+      "anticipoEnvio": "anticipo: el envío",
+      "anticipoPorcentaje": "anticipo: {porcentaje} %",
+      "anticipoFijo": "anticipo: {valor}",
+      "soloConEntregas": "solo clientes con entregas",
+      "sinRechazos": "no a quien rechazó"
+    },
+    "reglas": {
+      "apagada": "No se ofrece a domicilio",
+      "cualquierMonto": "Cualquier monto",
+      "montoEntre": "Pedidos de {minimo} a {maximo}",
+      "montoDesde": "Pedidos desde {minimo}",
+      "montoHasta": "Pedidos hasta {maximo}",
+      "zonas": "{zonas}",
+      "nZonas": "{n} zonas",
+      "todasLasZonas": "Todas las zonas de domicilio",
+      "conTransportadora": "También con transportadora",
+      "sinTransportadora": "Sin transportadora",
+      "todosLosProductos": "Todos los productos",
+      "anticipoCon": "Anticipo: {anticipo}, con {pasarela}, {minutos} min",
+      "anticipoCualquiera": "Anticipo: {anticipo}, con la pasarela que elija el cliente, {minutos} min",
+      "sinAnticipo": "Sin anticipo: todo se cobra al recibir",
+      "baseEnvio": "el envío",
+      "basePorcentaje": "{porcentaje} %",
+      "baseFijo": "{valor}",
+      "soloConEntregas": "Solo clientes con pedidos entregados",
+      "sinRechazos": "No a quien rechazó un pedido en la puerta"
+    }
+  },
+  "contraentregaPedidos": {
+    "lista": {
+      "insignia": "Contraentrega",
+      "cobrar": "Cobrar {valor}",
+      "anticipoVence": "Anticipo vence {hora}",
+      "kpi": "Por cobrar al entregar",
+      "kpiDetalle": "{n, plural, =0 {Ningún pedido en la calle} one {# pedido contraentrega} other {# pedidos contraentrega}}"
+    },
+    "filtro": {
+      "etiqueta": "Pago al recibir",
+      "solo": "Solo contraentrega",
+      "chip": "Pago: contraentrega"
+    },
+    "estados": {
+      "sin_anticipo": "Sin anticipo",
+      "pendiente": "Anticipo pendiente",
+      "pagado": "Anticipo pagado",
+      "vencido": "Anticipo vencido"
+    },
+    "medios": {
+      "cash": "Efectivo",
+      "card": "Datáfono",
+      "transfer": "Transferencia",
+      "qr": "Nequi o QR"
+    },
+    "detalle": {
+      "titulo": "Pago contra entrega",
+      "faltaAnticipo": "Aún no se puede confirmar: falta el anticipo.",
+      "aviso": "El anticipo de {monto} vence a las {hora} (en {min} min). Si no se paga, el pedido se cancela solo y se libera la reserva de stock.",
+      "anticipoEnvio": "Anticipo (el envío)",
+      "anticipo": "Anticipo",
+      "cobrarAlEntregar": "Cobrar al entregar",
+      "medios": "Medios al recibir",
+      "notaSinAnticipo": "La tienda no pide anticipo (o el envío fue gratis). Todo se cobra en la puerta.",
+      "seCobraCon": "Se cobra con",
+      "vence": "Vence",
+      "venceValor": "{hora} · faltan {min} min",
+      "alEntregar": "Al entregar",
+      "notaPendiente": "Aún no se puede confirmar: falta el anticipo. La reserva de stock sigue activa hasta que venza.",
+      "enviarEnlace": "Enviar enlace de pago por WhatsApp",
+      "marcarRecibido": "Marcar anticipo recibido…",
+      "referencia": "Referencia",
+      "notaPagado": "Ya se puede confirmar. El domiciliario cobra {monto}; el anticipo se concilia en Procesadores de pago.",
+      "estadoPedido": "Estado del pedido",
+      "canceladoSinCobro": "Cancelado · sin cobro",
+      "vencio": "Venció",
+      "stock": "Stock",
+      "stockLiberado": "Liberado {hora}",
+      "notaVencido": "El cliente no pagó el anticipo a tiempo. Nada que devolver.",
+      "escribirCliente": "Escribir al cliente",
+      "mensajeWhatsApp": "Hola, para confirmar tu pedido {numero} paga el anticipo de {monto} antes de las {hora}: {url}",
+      "mensajeVencido": "Hola, tu pedido {numero} se canceló porque el anticipo no se pagó a tiempo. Si quieres, te ayudamos a hacerlo de nuevo.",
+      "sinTelefono": "El pedido no tiene un teléfono válido para WhatsApp.",
+      "cobraAlEntregar": "Cobra al entregar",
+      "notaEntrega": "Al asignar el domiciliario, {monto} pasa a su envío y a su cuadre en Logística › Cuadres.",
+      "chip": {
+        "pendiente": "Contraentrega · anticipo pendiente",
+        "pagado": "Contraentrega · anticipo pagado",
+        "vencido": "Contraentrega · anticipo vencido"
+      },
+      "fecha": "Fecha",
+      "verAnticipo": "Ver el anticipo",
+      "registrarCobro": "Registrar cobro"
+    },
+    "marcar": {
+      "titulo": "Marcar anticipo recibido",
+      "descripcion": "El cliente pagó {monto} por otro medio. Pide el comprobante: queda en el historial quién lo marcó.",
+      "confirmar": "Marcar recibido",
+      "medio": "Medio",
+      "comprobante": "Comprobante o referencia",
+      "comprobanteAyuda": "Número de la transferencia o del recibo.",
+      "motivo": "Nota (opcional)",
+      "yaPagado": "El anticipo ya estaba pagado.",
+      "hecho": "Anticipo de {monto} marcado como recibido",
+      "errores": {
+        "SIN_PERMISO": "No tienes permiso para marcar pagos de pedidos web.",
+        "COMPROBANTE_REQUERIDO": "Escribe el comprobante o la referencia.",
+        "PEDIDO_CERRADO": "El pedido ya está cerrado (vencido o cancelado).",
+        "METODO_INVALIDO": "Ese medio de pago no está activo.",
+        "SIN_ANTICIPO": "Este pedido no tiene anticipo.",
+        "SESION_REQUERIDA": "Tu sesión terminó. Vuelve a entrar.",
+        "OTRO": "No se pudo marcar el anticipo. Intenta de nuevo."
+      }
+    },
+    "totales": {
+      "anticipoPagadoEnvio": "Anticipo pagado en línea (envío)",
+      "anticipoPagado": "Anticipo pagado en línea",
+      "anticipoPendiente": "Anticipo pendiente",
+      "porCobrar": "Por cobrar al entregar"
+    },
+    "cuadre": {
+      "yaPagado": "Ya pagado en línea",
+      "nota": "{numero} · Anticipo de {monto} ya pagado con {pasarela}: no se cobra en la puerta.",
+      "enLinea": "pago en línea",
+      "explicacion": "«Esperado» suma solo lo que el domiciliario cobra en la puerta (total − anticipo). Los anticipos entran por la pasarela y se concilian en Finanzas › Procesadores de pago."
     }
   }
 }

@@ -15,6 +15,7 @@ import { todayInTz, toPlainDate } from '@/lib/utils/dateCore';
 import { mesaCortaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
+import { ChipContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
 
 interface OrderHeaderProps {
   order: WebOrder;
@@ -155,6 +156,8 @@ export function OrderHeader({
         {porCobrarEnCaja && (
           <Badge tono="neutro" apariencia="contorno" className={chip}>{t('detalle.porCobrar')}</Badge>
         )}
+        {/* Contraentrega y estado del anticipo (Figma 3014:194407 › 05). Sin contraentrega no pinta nada. */}
+        <ChipContraentrega order={order} className={chip} />
         <Badge tono="neutro" apariencia="contorno" icono={Globe} className={chip}>
           {t('detalle.origen', { canal, numero: order.order_number })}
         </Badge>

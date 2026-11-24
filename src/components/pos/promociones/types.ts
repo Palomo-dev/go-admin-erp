@@ -3,7 +3,9 @@ import type { FranjaSemanal } from '@/lib/promotions/vigencia';
 
 /**
  * Los valores DEBEN coincidir con el CHECK `promotions_promotion_type_check`
- * de la base: ('percentage','fixed_amount','buy_x_get_y','bundle','free_shipping').
+ * de la base: ('percentage','fixed_amount','buy_x_get_y','bundle','free_shipping',
+ * 'volume_tiers'). «Envío gratis» sigue en la base pero ya no se ofrece al crear:
+ * el envío gratis se configura en Logística › Tarifas (decisión del 2026-11-24).
  * Antes aquí decía 'fixed', que Postgres rechaza: por eso crear una promoción
  * de monto fijo fallaba siempre con violación de constraint.
  */
@@ -12,8 +14,21 @@ export type PromotionType =
   | 'fixed_amount'
   | 'buy_x_get_y'
   | 'bundle'
-  | 'free_shipping';
-export type AppliesTo = 'all' | 'products' | 'categories';
+  | 'free_shipping'
+  | 'volume_tiers';
+/** `brands` ya lo admitía el CHECK de la base; desde Promociones V2 la pantalla lo ofrece. */
+export type AppliesTo = 'all' | 'products' | 'categories' | 'brands';
+/** Cómo se cuentan las unidades del precio por volumen (`precioVolumen.ModoConteoEscalones`). */
+export type TiersCountMode = 'same_product' | 'promotion_mix' | 'same_variant' | 'product_group';
+
+/** Fila de `promotion_tiers`: desde `min_quantity`, precio fijo por unidad O porcentaje. */
+export interface PromotionTier {
+  id?: string;
+  min_quantity: number;
+  unit_price: number | null;
+  discount_percent: number | null;
+  sort_order?: number;
+}
 /** `eligible`: subtotal de las líneas de la promo. `cart`: toda la cuenta. */
 export type MinPurchaseScope = 'eligible' | 'cart';
 export type RuleType = 'include' | 'exclude';
@@ -52,6 +67,11 @@ export interface Promotion {
   usage_limit?: number;
   usage_count: number;
   is_combinable: boolean;
+  /**
+   * Listas de precios (20261124213000): false = «No aplica a clientes con lista de precios»; el
+   * cliente con lista no la recibe y paga su precio de lista. Default true.
+   */
+  applies_with_price_lists?: boolean;
   priority: number;
   branches?: number[];
   /** Métodos de pago con los que aplica (20261028180000). NULL/vacío = cualquiera. */
@@ -72,6 +92,13 @@ export interface Promotion {
   schedule_windows?: FranjaSemanal[] | null;
   /** Precio del paquete. Si está puesto, manda sobre el porcentaje. */
   bundle_price?: number | null;
+  /** Precio por volumen (20261124200000). */
+  tiers_count_mode?: TiersCountMode | null;
+  tiers?: PromotionTier[];
+  /** Solo clientes de este segmento del CRM. */
+  customer_segment_id?: string | null;
+  /** Máximo de usos por cliente. */
+  usage_limit_per_customer?: number | null;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -86,6 +113,10 @@ export interface PromotionRule {
   category_id?: number;
   /** Unidades de este producto en un paquete. Nulo = 1. */
   quantity?: number | null;
+  /** Reglas de marca: `products.brand`. */
+  brand?: string | null;
+  /** Precio por volumen por grupos: grupo de conteo del producto. */
+  tier_group?: number | null;
   created_at: string;
   product?: {
     id: number;
@@ -116,6 +147,8 @@ export interface CreatePromotionData {
   is_active?: boolean;
   usage_limit?: number;
   is_combinable?: boolean;
+  /** false = «No aplica a clientes con lista de precios» (ver `Promotion`). */
+  applies_with_price_lists?: boolean;
   priority?: number;
   branches?: number[];
   /** Métodos de pago con los que aplica (20261028180000). NULL/vacío = cualquiera. */
@@ -131,6 +164,11 @@ export interface CreatePromotionData {
   /** Franjas semanales (ver `Promotion.schedule_windows`). */
   schedule_windows?: FranjaSemanal[] | null;
   bundle_price?: number | null;
+  tiers_count_mode?: TiersCountMode | null;
+  /** Escalones de `volume_tiers`. Se reemplazan completos al guardar. */
+  tiers?: PromotionTier[];
+  customer_segment_id?: string | null;
+  usage_limit_per_customer?: number | null;
   rules?: CreatePromotionRuleData[];
 }
 
@@ -140,6 +178,8 @@ export interface CreatePromotionRuleData {
   category_id?: number;
   /** Unidades en el paquete. Solo se guarda en un producto incluido. */
   quantity?: number | null;
+  brand?: string | null;
+  tier_group?: number | null;
 }
 
 export interface UpdatePromotionData extends Partial<CreatePromotionData> {}
@@ -154,17 +194,28 @@ export interface PromotionFilters {
 }
 
 export const PROMOTION_TYPE_LABELS: Record<PromotionType, string> = {
-  percentage: 'Porcentaje',
-  fixed_amount: 'Monto Fijo',
-  buy_x_get_y: 'Compra X Lleva Y',
-  bundle: 'Bundle',
-  free_shipping: 'Envío Gratis'
+  percentage: '% de descuento',
+  fixed_amount: 'Valor fijo',
+  buy_x_get_y: 'Lleva N, paga M',
+  bundle: 'Combo',
+  free_shipping: 'Envío gratis',
+  volume_tiers: 'Precio por volumen',
 };
+
+/** Tipos que se ofrecen al crear (sin «Envío gratis»: va en Logística › Tarifas). */
+export const TIPOS_SELECTOR: readonly PromotionType[] = [
+  'percentage',
+  'fixed_amount',
+  'buy_x_get_y',
+  'volume_tiers',
+  'bundle',
+];
 
 export const APPLIES_TO_LABELS: Record<AppliesTo, string> = {
   all: 'Todos los productos',
   products: 'Productos específicos',
-  categories: 'Categorías específicas'
+  categories: 'Categorías específicas',
+  brands: 'Marcas',
 };
 
 // Días de la semana para applicable_days

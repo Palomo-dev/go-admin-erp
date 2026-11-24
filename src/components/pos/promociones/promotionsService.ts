@@ -9,6 +9,7 @@ import {
   UpdatePromotionData,
   PromotionFilters,
   CreatePromotionRuleData,
+  PromotionTier,
 } from './types';
 
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
@@ -35,6 +36,45 @@ import type { ColumnasHorario } from '@/lib/promotions/horarioPromocion';
 // Regla: el dia de inicio empieza a las 00:00 de la zona de la organizacion y
 // el dia de fin termina a las 23:59:59.999 de esa misma zona.
 // ============================================================
+
+/** Escalones de la fila embebida (`promotion_tiers`), en orden de cantidad. */
+export function escalonesDeFila(filas: unknown): PromotionTier[] {
+  if (!Array.isArray(filas)) return [];
+  return filasDeEscalones(
+    (filas as Array<Record<string, unknown>>).map((f) => ({
+      id: f.id == null ? undefined : String(f.id),
+      min_quantity: Number(f.min_quantity),
+      unit_price: f.unit_price == null ? null : Number(f.unit_price),
+      discount_percent: f.discount_percent == null ? null : Number(f.discount_percent),
+      sort_order: f.sort_order == null ? undefined : Number(f.sort_order),
+    })),
+  );
+}
+
+/**
+ * Escalones válidos para guardar: cantidad entera >= 1, un solo valor (precio >= 0 o
+ * porcentaje en (0, 100]), sin cantidades repetidas, ordenados de menor a mayor.
+ */
+export function filasDeEscalones(tiers: readonly PromotionTier[]): PromotionTier[] {
+  const vistos = new Set<number>();
+  const out: PromotionTier[] = [];
+  const normalizados = tiers
+    .map((t) => {
+      const precio = t.unit_price != null && Number.isFinite(Number(t.unit_price)) && Number(t.unit_price) >= 0 ? Number(t.unit_price) : null;
+      const pct = t.discount_percent != null && Number(t.discount_percent) > 0 && Number(t.discount_percent) <= 100
+        ? Number(t.discount_percent)
+        : null;
+      return { ...t, min_quantity: Math.trunc(Number(t.min_quantity)), unit_price: precio, discount_percent: precio != null ? null : pct };
+    })
+    .filter((t) => Number.isFinite(t.min_quantity) && t.min_quantity >= 1 && (t.unit_price != null || t.discount_percent != null))
+    .sort((a, b) => a.min_quantity - b.min_quantity);
+  for (const t of normalizados) {
+    if (vistos.has(t.min_quantity)) continue;
+    vistos.add(t.min_quantity);
+    out.push(t);
+  }
+  return out;
+}
 
 /** Dia calendario 'YYYY-MM-DD' de un valor que puede venir ya como instante. */
 function diaDe(valor: string, timezone: string): string {
@@ -190,7 +230,16 @@ export class PromotionsService {
             product_id,
             category_id,
             quantity,
+            brand,
+            tier_group,
             created_at
+          ),
+          promotion_tiers (
+            id,
+            min_quantity,
+            unit_price,
+            discount_percent,
+            sort_order
           )
         `)
         .eq('organization_id', organizationId)
@@ -236,7 +285,8 @@ export class PromotionsService {
 
       return (data || []).map(promo => ({
         ...promo,
-        rules: promo.promotion_rules || []
+        rules: promo.promotion_rules || [],
+        tiers: escalonesDeFila(promo.promotion_tiers),
       }));
     } catch (error) {
       console.error('Error in getAll:', error);
@@ -261,7 +311,16 @@ export class PromotionsService {
             product_id,
             category_id,
             quantity,
+            brand,
+            tier_group,
             created_at
+          ),
+          promotion_tiers (
+            id,
+            min_quantity,
+            unit_price,
+            discount_percent,
+            sort_order
           )
         `)
         .eq('id', id)
@@ -299,6 +358,7 @@ export class PromotionsService {
 
       return {
         ...data,
+        tiers: escalonesDeFila(data.promotion_tiers),
         rules: rules.map((rule: any) => ({
           ...rule,
           product: products.find(p => p.id === rule.product_id),
@@ -319,7 +379,7 @@ export class PromotionsService {
       const organizationId = this.getOrganizationId();
       const { data: userData } = await supabase.auth.getUser();
 
-      const { rules, ...promotionData } = data;
+      const { rules, tiers, ...promotionData } = data;
       const limpia = prepararPromocion(limpiarFranjaYPaquete(promotionData));
       const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
@@ -347,6 +407,9 @@ export class PromotionsService {
       if (rules && rules.length > 0) {
         await this.createRules(result.id, rules, data.promotion_type);
       }
+      if (data.promotion_type === 'volume_tiers' && tiers && tiers.length > 0) {
+        await this.reemplazarEscalones(result.id, organizationId, tiers);
+      }
 
       avisarCambioPromociones();
       return result;
@@ -362,7 +425,7 @@ export class PromotionsService {
   static async update(id: string, data: UpdatePromotionData): Promise<Promotion> {
     try {
       const organizationId = this.getOrganizationId();
-      const { rules, ...promotionData } = data;
+      const { rules, tiers, ...promotionData } = data;
       const limpia = prepararPromocion(limpiarFranjaYPaquete(promotionData));
       const vigencia = await vigenciaEnInstantes(organizationId, limpia);
 
@@ -397,6 +460,16 @@ export class PromotionsService {
         }
       }
 
+      // Escalones: con el tipo en el update, se reemplazan (otro tipo = sin escalones).
+      // Un update parcial (activar/desactivar) no trae tipo ni escalones y no los toca.
+      if (data.promotion_type !== undefined) {
+        await this.reemplazarEscalones(
+          id,
+          organizationId,
+          data.promotion_type === 'volume_tiers' ? (tiers ?? []) : [],
+        );
+      }
+
       avisarCambioPromociones();
       return result;
     } catch (error) {
@@ -419,6 +492,8 @@ export class PromotionsService {
       product_id: rule.product_id || null,
       category_id: rule.category_id || null,
       quantity: cantidadDeRegla(rule, tipo),
+      brand: rule.brand?.trim() ? rule.brand.trim() : null,
+      tier_group: tipo === 'volume_tiers' && rule.tier_group != null && rule.tier_group > 0 ? Math.trunc(rule.tier_group) : null,
     }));
 
     const { error } = await supabase
@@ -429,6 +504,87 @@ export class PromotionsService {
       console.error('Error creating promotion rules:', error);
       throw new Error(`Error al crear reglas: ${error.message}`);
     }
+  }
+
+  /** Reemplaza los escalones de una promoción (borra y escribe). */
+  private static async reemplazarEscalones(
+    promotionId: string,
+    organizationId: number,
+    tiers: PromotionTier[],
+  ): Promise<void> {
+    const { error: errBorrar } = await supabase
+      .from('promotion_tiers')
+      .delete()
+      .eq('promotion_id', promotionId)
+      .eq('organization_id', organizationId);
+    if (errBorrar) throw new Error(`Error al guardar los escalones: ${errBorrar.message}`);
+    const filas = filasDeEscalones(tiers).map((t, i) => ({
+      promotion_id: promotionId,
+      organization_id: organizationId,
+      min_quantity: t.min_quantity,
+      unit_price: t.unit_price,
+      discount_percent: t.discount_percent,
+      sort_order: i,
+    }));
+    if (filas.length === 0) return;
+    const { error } = await supabase.from('promotion_tiers').insert(filas);
+    if (error) throw new Error(`Error al guardar los escalones: ${error.message}`);
+  }
+
+  /**
+   * Grupos de clientes (segmentos del CRM) para «Solo para clientes del grupo».
+   * Solo los estáticos: su lista de miembros (`segment_members`) es la que el
+   * POS y la tienda consultan. Un dinámico no tiene lista guardada.
+   */
+  static async getSegmentos(): Promise<{ id: string; name: string; customer_count: number | null }[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('segments')
+      .select('id, name, customer_count, is_dynamic')
+      .eq('organization_id', organizationId)
+      .order('name');
+    if (error) {
+      console.error('Error loading segments:', error);
+      return [];
+    }
+    return ((data ?? []) as { id: string; name: string; customer_count: number | null; is_dynamic: boolean | null }[])
+      .filter((s) => s.is_dynamic !== true)
+      .map((s) => ({ id: s.id, name: s.name, customer_count: s.customer_count }));
+  }
+
+  /** Marcas usadas en los productos activos de la organización (`products.brand`), sin repetir. */
+  static async getMarcas(): Promise<string[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('products')
+      .select('brand')
+      .eq('organization_id', organizationId)
+      .eq('status', 'active')
+      .not('brand', 'is', null)
+      .limit(2000);
+    if (error) return [];
+    const vistas = new Map<string, string>();
+    for (const f of (data ?? []) as { brand: string | null }[]) {
+      const marca = String(f.brand ?? '').trim();
+      if (!marca) continue;
+      const clave = marca.toLocaleLowerCase('es');
+      if (!vistas.has(clave)) vistas.set(clave, marca);
+    }
+    return Array.from(vistas.values()).sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  /** Precio vigente de un producto (para la vista previa «Así lo ve tu cliente»). */
+  static async getPrecioVigente(productId: number): Promise<number | null> {
+    const { data, error } = await supabase
+      .from('product_prices')
+      .select('price, effective_from')
+      .eq('product_id', productId)
+      .is('effective_to', null)
+      .order('effective_from', { ascending: false })
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    const n = Number((data[0] as { price: unknown }).price);
+    return Number.isFinite(n) && n > 0 ? n : null;
   }
 
   /**
@@ -469,18 +625,23 @@ export class PromotionsService {
       const original = await this.getById(id);
       if (!original) throw new Error('Promoción no encontrada');
 
-      const { id: _, created_at, updated_at, usage_count, rules, ...data } = original;
-      const copia = copiaDePromocion(data);
+      const { id: _, created_at, updated_at, usage_count, rules, tiers, ...data } = original;
+      const { promotion_tiers: _escalones, ...sinEscalones } = data as typeof data & { promotion_tiers?: unknown };
+      void _escalones;
+      const copia = copiaDePromocion(sinEscalones);
 
       return this.create({
         ...copia,
         name: `${data.name} (Copia)`,
         is_active: false,
+        tiers,
         rules: rules?.map(r => ({
           rule_type: r.rule_type,
           product_id: r.product_id,
           category_id: r.category_id,
           quantity: r.quantity,
+          brand: r.brand ?? null,
+          tier_group: r.tier_group ?? null,
         }))
       });
     } catch (error) {

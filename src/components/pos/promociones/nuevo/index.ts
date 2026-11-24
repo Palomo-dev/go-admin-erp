@@ -1,1 +1,2 @@
-export { PromotionWizard } from './PromotionWizard';
+export { PromocionFormulario } from '../formulario/PromocionFormulario';
+export { AvisoSolapamiento } from './AvisoSolapamiento';

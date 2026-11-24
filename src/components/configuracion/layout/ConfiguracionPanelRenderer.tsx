@@ -56,6 +56,7 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   'hrm.registro-accesos': dynamic(() => import('../panels/hrm/RegistroAccesosPanel').then((m) => m.RegistroAccesosPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pms.general': dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pos.general': dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'pos.pedidos-online': dynamic(() => import('@/components/pos/pedidos-online/tiempos/TiemposPedidosPanel').then((m) => m.TiemposPedidosPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pos.avisos-cliente': dynamic(
     () => import('@/components/pos/pedidos-online/avisos/AvisosClientePage').then((m) => function AvisosCliente() { return <m.AvisosClientePage incrustado />; }),
     { loading: () => <LoadingSkeleton />, ssr: false },

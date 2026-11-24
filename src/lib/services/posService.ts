@@ -44,6 +44,8 @@ import { cuadrarDescuentoCabecera } from '@/lib/pos/venta/descuentoCabecera';
 import { filasDeSede, type FilaPrecioSede } from '@/lib/services/inventario/preciosSede';
 import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
+import { aplicarListaALineas, type PrecioClienteFila } from '@/lib/listasPrecios/precioLista';
+import { resolverPreciosCliente } from '@/lib/services/listasPreciosService';
 import {
   calcularLineaDelCarrito,
   impuestosQueAplican,
@@ -1494,6 +1496,11 @@ export class POSService {
         cart.customer = undefined;
       }
 
+      // Otro cliente, otra lista de precios: se vuelven a resolver los precios (y con ellos las
+      // promociones, que se calculan sobre ese precio). «Usar precio normal» era de la venta anterior.
+      cart.price_list_cache = null;
+      cart.price_list_override = false;
+      if (cart.items.length > 0) await this.calculateCartTotals(cart);
       cart.updated_at = new Date().toISOString();
 
       // Guardar carrito actualizado
@@ -2502,6 +2509,70 @@ export class POSService {
   }
 
   /**
+   * Listas de precios por cliente (Figma «05 POS y ventas» 07): con cliente, cada línea toma el
+   * precio de SU lista (`resolve_customer_prices`, la única regla, en la base) y guarda el normal
+   * para tacharlo. Los precios se guardan en el carrito por producto (`price_list_cache`): sin red
+   * se usan los que ya haya; un producto sin fila paga el normal. «Usar precio normal»
+   * (`price_list_override`) quita la lista en esta venta. El servidor vuelve a validar el precio
+   * (`fn_pos_validar_linea_venta`) y marca `sale_items.price_list_id`.
+   */
+  private static async aplicarListaDePrecios(cart: Cart): Promise<void> {
+    const cliente = cart.customer_id ?? null;
+    if (!cliente) {
+      cart.price_list_cache = null;
+      if (cart.items.some((i) => i.price_list_id)) cart.items = aplicarListaALineas(cart.items, new Map(), true);
+      return;
+    }
+    let cache = cart.price_list_cache && cart.price_list_cache.customer_id === cliente
+      ? cart.price_list_cache
+      : { customer_id: cliente, filas: {} as Record<string, PrecioClienteFila> };
+    const faltan = Array.from(new Set(cart.items.map((i) => i.product_id).filter((id) => id > 0 && !(String(id) in cache.filas))));
+    if (faltan.length > 0 && !this.usesLocalCatalog()) {
+      try {
+        const filas = await resolverPreciosCliente({
+          organizationId: cart.organization_id,
+          customerId: cliente,
+          productIds: faltan,
+          canal: 'pos',
+          branchId: cart.branch_id ?? null,
+        });
+        const nuevas: Record<string, PrecioClienteFila> = {};
+        for (const id of faltan) {
+          // Sin fila (sin precio vigente): se recuerda como «sin lista» para no volver a pedirlo.
+          nuevas[String(id)] = filas.find((f) => f.product_id === id) ?? {
+            product_id: id, normal_price: null, list_price: null, price_list_id: null, price_list_name: null,
+            source: null, rule_percent: null, rule_label: null, rule_price: null, tiers: [], no_discount: false,
+          };
+        }
+        cache = { customer_id: cliente, filas: { ...cache.filas, ...nuevas } };
+      } catch (err) {
+        console.warn('[posService] No se pudieron leer los precios de la lista del cliente:', err);
+      }
+    }
+    cart.price_list_cache = cache;
+    const mapa = new Map(Object.values(cache.filas).map((f) => [f.product_id, f] as const));
+    cart.items = aplicarListaALineas(cart.items, mapa, cart.price_list_override === true);
+  }
+
+  /**
+   * «Usar precio normal» (o volver a la lista) en esta venta. Quién puede lo resuelve el servidor
+   * (`pos.precios.cambiar_en_venta`): la pantalla solo ofrece el botón a quien lo tiene y
+   * `pos_checkout_v1` lo rechaza si no (`notes.lista_quitada`).
+   */
+  static async usarPrecioNormal(cartId: string, usar: boolean): Promise<Cart> {
+    const carts = this.readAllCarts();
+    const cartIndex = this.indexOfLiveCart(carts, cartId);
+    if (cartIndex === -1) throw new Error('Carrito no encontrado');
+    const cart = carts[cartIndex];
+    cart.price_list_override = usar;
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    carts[cartIndex] = cart;
+    this.saveCartsToStorage(carts);
+    return cart;
+  }
+
+  /**
    * Evalúa las promociones sobre el carrito COMPLETO y deja en cada línea su
    * descuento: el manual del cajero si lo tiene (no se pisa) y, si no, el de
    * promoción de ESA línea (`lineDiscounts[idx]`; `itemDiscounts` es la suma
@@ -2527,6 +2598,8 @@ export class POSService {
           // «Lleve X pague Y» no aplica a productos por peso o medida.
           sale_mode: i.product?.sale_mode,
           promo_excluded: i.promo_excluded === true,
+          // Precio ya resuelto por la lista del cliente (`aplicarListaDePrecios`).
+          price_list_id: i.price_list_id ?? null,
         })),
         organization_id: cart.organization_id,
         branch_id: cart.branch_id,
@@ -2548,6 +2621,8 @@ export class POSService {
               promotion_id: a.promotion_id,
               promotion_name: a.promotion_name,
               discount_amount: a.discount_amount,
+              ...(a.montos_linea && a.montos_linea[idx] !== undefined ? { monto_linea: a.montos_linea[idx] } : {}),
+              ...(a.escalon_linea && a.escalon_linea[idx] ? { escalon: a.escalon_linea[idx] } : {}),
             }));
         } else {
           item.promos_en_linea = [];
@@ -2569,6 +2644,9 @@ export class POSService {
         item.coupon_discount_amount = 0;
       }
     });
+    // Listas de precios: primero el precio de la lista del cliente, después las promociones
+    // (que se calculan sobre ese precio) y al final el cupón.
+    await this.aplicarListaDePrecios(cart);
     await this.aplicarPromociones(cart);
     this.sumarCupon(cart);
 

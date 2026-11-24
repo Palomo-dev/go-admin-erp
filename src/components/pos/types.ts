@@ -1,4 +1,5 @@
 // Tipos para el sistema POS
+import type { FuenteLista, PrecioClienteFila } from '@/lib/listasPrecios/precioLista';
 import type { MembresiaVendida } from '@/lib/pos/venta/membresias';
 import type { Pesaje } from '@/lib/pos/peso/pesada';
 
@@ -132,8 +133,18 @@ export interface CartItem {
   promo_excluded_reason?: string | null;
   /** Promociones que tenía la línea al quitarlas, para la auditoría del cobro. */
   promo_removed?: Array<{ promotion_id: string; promotion_name: string; discount_amount: number }> | null;
-  /** Promociones que el motor dejó en esta línea en la última evaluación. */
-  promos_en_linea?: Array<{ promotion_id: string; promotion_name: string; discount_amount: number }>;
+  /**
+   * Promociones que el motor dejó en esta línea en la última evaluación. `discount_amount` es el
+   * total de la promoción en la cuenta; `monto_linea`, lo que descontó en ESTA línea, y `escalon`,
+   * el escalón de precio por volumen alcanzado (van a `notes.promociones_aplicadas` → `sale_promotions`).
+   */
+  promos_en_linea?: Array<{
+    promotion_id: string;
+    promotion_name: string;
+    discount_amount: number;
+    monto_linea?: number;
+    escalon?: number | null;
+  }>;
   /** Parte del cupón que le tocó a esta línea (ya va dentro de `discount_amount`). */
   coupon_discount_amount?: number;
   tax_amount?: number;
@@ -170,6 +181,16 @@ export interface CartItem {
    * serial en ese momento. El cobro los toma para no volver a preguntar.
    */
   serial_ids?: number[];
+  /**
+   * Listas de precios (`aplicarListaALineas`): la línea va con el precio de esta lista. La marca
+   * definitiva (sale_items.price_list_id) la pone el servidor al cobrar.
+   */
+  price_list_id?: string | null;
+  price_list_name?: string | null;
+  /** Precio normal unitario con extras: se tacha en la línea y vuelve si se quita la lista. */
+  list_base_price?: number | null;
+  /** Insignia de la línea: de dónde salió el precio de la lista. */
+  price_list_detail?: { fuente: FuenteLista; minQty: number | null; porcentaje: number | null; etiqueta: string | null } | null;
   created_at: string;
   updated_at: string;
 }
@@ -178,6 +199,13 @@ export interface Cart {
   id: string;
   /** Métodos de cobro elegidos en el cobro: las promociones limitadas por método se evalúan con ellos. */
   payment_methods?: string[];
+  /**
+   * Precios de la lista del cliente (`resolve_customer_prices`) por producto, para no volver a
+   * pedirlos en cada cambio. Se vacía al cambiar de cliente. Sin red se usan los que haya.
+   */
+  price_list_cache?: { customer_id: string; filas: Record<string, PrecioClienteFila> } | null;
+  /** «Usar precio normal» en esta venta (permiso pos.precios.cambiar_en_venta). */
+  price_list_override?: boolean;
   organization_id: number;
   branch_id: number;
   customer_id?: string;

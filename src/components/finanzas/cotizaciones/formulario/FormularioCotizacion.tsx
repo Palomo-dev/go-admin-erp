@@ -59,6 +59,8 @@ import { ATAJOS_VIGENCIA, TERMINOS_PAGO, atajoVigencia, datosCotizacion, validar
 import { RUTA_COTIZACIONES } from '@/lib/finanzas/ventas/listadoCotizaciones';
 import { crearFormateadorMoneda } from '@/lib/utils/moneda';
 import { useMensajeErrorCotizacion } from '../detalle/useMensajeErrorCotizacion';
+import { useListaPreciosDocumento } from '@/components/listasPrecios/documentos/useListaPreciosDocumento';
+import { AvisoListaDocumento, useInsigniasListaDocumento } from '@/components/listasPrecios/documentos/AvisoListaDocumento';
 
 let secuencia = 0;
 const nuevaClave = () => `c${Date.now().toString(36)}${(secuencia++).toString(36)}`;
@@ -128,6 +130,9 @@ export function FormularioCotizacion({ id }: { id?: string }) {
   const [errorServidor, setErrorServidor] = useState<string | null>(null);
   const [guardando, setGuardando] = useState<null | 'borrador' | 'enviar' | 'salir'>(null);
   const [dlgProductos, setDlgProductos] = useState(false);
+  // Listas de precios (Figma «05 POS y ventas» 08): precio de la lista del cliente en cada línea.
+  const listaPrecios = useListaPreciosDocumento({ clienteId: cliente?.id ?? null, sucursal, lineas, setLineas, listo: modo.tipo === 'editable' });
+  const insigniasLista = useInsigniasListaDocumento();
   const [dlgManual, setDlgManual] = useState(false);
   const [dlgCliente, setDlgCliente] = useState(false);
   const [enviarGuardada, setEnviarGuardada] = useState<{ id: string; numero: string } | null>(null);
@@ -336,7 +341,15 @@ export function FormularioCotizacion({ id }: { id?: string }) {
         lineas,
       );
       const { items, applied_taxes, ...cabecera } = datos;
-      const quotationItems: QuotationItem[] = items.map((i) => ({ ...i, discount_amount: i.discount_amount ?? 0, tax_rate: i.tax_rate ?? 0, tax_included: incluido, total_line: 0 }));
+      const quotationItems: QuotationItem[] = items.map((i, idx) => ({
+        ...i,
+        discount_amount: i.discount_amount ?? 0,
+        tax_rate: i.tax_rate ?? 0,
+        tax_included: incluido,
+        total_line: 0,
+        // Solo para las promociones «no aplica con listas» (no viaja al servidor: la marca la pone la base).
+        price_list_id: lineas[idx] && listaPrecios.info(lineas[idx]).lista ? listaPrecios.listaId : null,
+      }));
       const ctxImpuestos = {
         appliedTaxes: Object.fromEntries((applied_taxes ?? []).map((a) => [a.tax_code, true])),
         appliedTaxTotals: Object.fromEntries((applied_taxes ?? []).map((a) => [a.tax_code, { rate: a.tax_rate, base: 0, amount: 0, name: a.tax_code, included: incluido }])),
@@ -408,7 +421,7 @@ export function FormularioCotizacion({ id }: { id?: string }) {
       impuestosSeleccion: { ids: l.impuestos.map((i) => i.id), incluido },
       descripcionEditable: l.manual,
       error: errores[`linea.${l.clave}`] ? t(`errores.${errores[`linea.${l.clave}`]}` as never) : null,
-      insignias: l.manual ? [{ texto: tk('lineas.itemManual') }] : [],
+      insignias: l.manual ? [{ texto: tk('lineas.itemManual') }] : insigniasLista(listaPrecios.info(l), l.precio, formatear),
       detalleTotal: k.impuesto > 0 ? (incluido ? t('impuestoIncluido', { importe: formatear(k.impuesto) }) : t('impuestoLinea', { importe: formatear(k.impuesto) })) : null,
     };
   });
@@ -655,6 +668,15 @@ export function FormularioCotizacion({ id }: { id?: string }) {
               aria-invalid={!!errores.cliente}
             />
             {errores.cliente && <p className="text-sm text-danger-text">{t('errores.cliente')}</p>}
+            <AvisoListaDocumento
+              listaNombre={listaPrecios.listaNombre}
+              usarNormal={listaPrecios.usarNormal}
+              onUsarNormal={(v) => {
+                marcar();
+                listaPrecios.setUsarNormal(v);
+              }}
+              documento="cotizacion"
+            />
           </FormSection>
         }
         lineas={

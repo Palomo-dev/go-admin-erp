@@ -191,6 +191,38 @@ export interface CheckoutRpcResult {
   membresias: MembresiaVendida[];
 }
 
+/** Lo que una línea del carrito sabe de sus promociones (`CartItem`). */
+interface LineaConPromos {
+  promo_excluded?: boolean;
+  promo_discount_amount?: number;
+  promos_en_linea?: Array<{ promotion_id: string; discount_amount: number; monto_linea?: number; escalon?: number | null }>;
+}
+
+/**
+ * `notes.promociones_aplicadas` de una línea: qué promoción quedó y cuánto descontó EN ESTA línea
+ * (`fn_venta_registrar_promociones` arma `sale_promotions` con esto). Sin promoción final (quitada,
+ * o manda el descuento manual del cajero), vacío. Un carrito guardado antes de `monto_linea`:
+ * una sola promoción se lleva el descuento de promoción de la línea; varias, en partes iguales.
+ */
+export function promocionesAplicadasLinea(
+  item: LineaConPromos,
+): Array<{ promotion_id: string; discount_amount: number; tier?: number }> {
+  const total = Number(item.promo_discount_amount) || 0;
+  const promos = (item.promos_en_linea ?? []).filter((p) => !!p.promotion_id);
+  if (item.promo_excluded || !(total > 0) || promos.length === 0) return [];
+  const sinMonto = promos.some((p) => typeof p.monto_linea !== 'number');
+  return promos
+    .map((p) => {
+      const monto = sinMonto ? total / promos.length : Number(p.monto_linea) || 0;
+      return {
+        promotion_id: p.promotion_id,
+        discount_amount: Math.round(Math.min(monto, total) * 100) / 100,
+        ...(p.escalon && p.escalon > 0 ? { tier: p.escalon } : {}),
+      };
+    })
+    .filter((p) => p.discount_amount > 0);
+}
+
 /** Subconjunto del cliente Supabase que usa este módulo. */
 export interface CheckoutRpcClient {
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
@@ -228,6 +260,11 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     if (item.modifiers && item.modifiers.length > 0) notes.modifiers = item.modifiers;
     // Pesada de la línea por peso: origen, neto, unidad (fn_pos_validar_pesaje la revisa).
     if (item.pesaje) notes.pesaje = item.pesaje;
+    // «Usar precio normal» con cliente de lista: el servidor exige pos.precios.cambiar_en_venta.
+    if (cart.price_list_override === true) notes.lista_quitada = true;
+    // Qué promoción quedó en la línea y cuánto descontó: pos_checkout_v1 → sale_promotions.
+    const promosLinea = promocionesAplicadasLinea(item);
+    if (promosLinea.length > 0) notes.promociones_aplicadas = promosLinea;
     const fallbackNet = (item.unit_price || 0) * (item.quantity || 1) - (item.discount_amount || 0);
     const delCobro = checkout.serial_selections?.[item.product_id];
     const serialIds = delCobro && delCobro.length > 0 ? delCobro : (item.serial_ids ?? []);

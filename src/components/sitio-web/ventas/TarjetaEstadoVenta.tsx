@@ -10,6 +10,7 @@
  *
  * El color nunca va solo: cada estado lleva su texto y cada fila su icono.
  */
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Pencil, RefreshCw, Truck } from 'lucide-react';
@@ -94,6 +95,8 @@ export interface TarjetaEstadoVentaProps {
   reservasOcupado?: boolean;
   /** Sin borde ni título propios (dentro de la hoja de móvil). */
   incrustada?: boolean;
+  /** Métodos de pago: la fila «Pago contra entrega» con sus condiciones (Figma «05 POS y ventas» 01). */
+  extraPagos?: ReactNode;
 }
 
 /** Acción del pie: «Editar opciones», «Ir a …» o «Disponible con …». */
@@ -172,12 +175,14 @@ export function TarjetaEstadoVenta({
   onAlternarReservas,
   reservasOcupado,
   incrustada,
+  extraPagos,
 }: TarjetaEstadoVentaProps) {
   const t = useTextosVentas();
   const contenido = (
     <div className="flex flex-col gap-3">
       <FilasVenta filas={tarjeta.filas} moneda={moneda} />
       {tarjeta.tema === 'reservas' && <InterruptorReservas tarjeta={tarjeta} onAlternar={onAlternarReservas} ocupado={reservasOcupado} />}
+      {tarjeta.tema === 'pagos' && extraPagos}
     </div>
   );
   const pie = (

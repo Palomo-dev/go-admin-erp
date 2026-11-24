@@ -19,8 +19,10 @@ import { FilterPanel } from '@/components/kit/FilterPanel';
 import { FilterChips, type ChipFiltro } from '@/components/kit/FilterChips';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { cn } from '@/utils/Utils';
-import { PromotionFilters, PROMOTION_TYPE_LABELS, type PromotionType } from './types';
+import { ChipsOpcion } from '@/components/kit/ChipsOpcion';
+import { PromotionFilters, PROMOTION_TYPE_LABELS, TIPOS_SELECTOR, type PromotionType } from './types';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 
 interface PromotionsHeaderProps {
   filters: PromotionFilters;
@@ -36,6 +38,11 @@ interface PromotionsHeaderProps {
   sinPermiso?: boolean;
   /** `pos.promociones.gestionar`: sin él no se ofrece «Nueva promoción». */
   puedeGestionar?: boolean;
+  /**
+   * «Ahorro del mes» (Figma 2998:192942): lo que las promociones descontaron este mes, en la zona
+   * de la organización, y en cuántas ventas (`sale_promotions`). null = aún no cargó o falló.
+   */
+  ahorroMes?: { ahorro: number; ventas: number } | null;
 }
 
 export function PromotionsHeader({
@@ -48,9 +55,11 @@ export function PromotionsHeader({
   loading,
   sinPermiso = false,
   puedeGestionar = true,
+  ahorroMes = null,
 }: PromotionsHeaderProps) {
   const t = useTranslations('posPromociones');
   const migaVentas = useMigaVentas();
+  const { formatear } = useMonedaOrganizacion();
 
   const handleSearchChange = (value: string) => {
     onFiltersChange({ ...filters, search: value });
@@ -141,10 +150,16 @@ export function PromotionsHeader({
 
       {!sinPermiso && (
       <>
-      <KpiStrip columnas={3} etiqueta={t('pantalla.titulo')}>
+      <KpiStrip columnas={4} etiqueta={t('pantalla.titulo')}>
         <StatCard etiqueta={t('pantalla.total')} valor={totalPromotions} detalle={t('pantalla.totalDetalle')} tono="marca" icono={Tag} cargando={loading} />
         <StatCard etiqueta={t('pantalla.activasAhora')} valor={activePromotions} detalle={t('pantalla.activasAhoraDetalle')} tono="exito" cargando={loading} />
         <StatCard etiqueta={t('pantalla.programadas')} valor={scheduledPromotions} detalle={t('pantalla.programadasDetalle')} cargando={loading} />
+        <StatCard
+          etiqueta={t('v2.estadisticas.ahorroMes')}
+          valor={ahorroMes ? formatear(ahorroMes.ahorro) : '—'}
+          detalle={ahorroMes ? t('v2.estadisticas.ahorroMesDetalle', { n: ahorroMes.ventas }) : undefined}
+          cargando={loading}
+        />
       </KpiStrip>
 
       <div className="flex gap-2 lg:hidden">
@@ -206,6 +221,20 @@ export function PromotionsHeader({
         }
         chips={<FilterChips chips={chips} onQuitar={quitarFiltro} onLimpiarTodo={limpiarFiltros} />}
       />
+
+      {/* Filtro rápido por tipo (Figma A1 2998:192942). El panel «Filtros» sigue igual. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span id="promo-filtro-tipo" className="text-sm text-fg-secondary">{t('v2.lista.tipo')}</span>
+        <ChipsOpcion
+          aria-labelledby="promo-filtro-tipo"
+          opciones={[
+            { valor: 'all', etiqueta: t('pantalla.todos') },
+            ...TIPOS_SELECTOR.map((tipo) => ({ valor: tipo as string, etiqueta: t(`tipos.${tipo}`) })),
+          ]}
+          valor={tipoValor}
+          onValorChange={(v) => handleTypeChange(v)}
+        />
+      </div>
       </>
       )}
     </div>

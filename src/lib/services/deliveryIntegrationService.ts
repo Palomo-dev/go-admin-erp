@@ -300,7 +300,11 @@ class DeliveryIntegrationService {
       declared_value: Number(webOrder.total) || 0,
       cod_amount,
       cod_status,
-      payment_status: cod_amount > 0 ? 'cod' : webOrder.payment_status === 'paid' ? 'paid' : 'pending',
+      payment_status: cod_amount > 0
+        ? 'cod'
+        : webOrder.payment_status === 'paid' || (webOrder.payment_status === 'partial' && webOrder.advance_status === 'paid')
+          ? 'paid' // anticipo que cubre todo el pedido: nada que cobrar en la puerta
+          : 'pending',
       notes: `Pedido web: ${webOrder.order_number}`,
       metadata: {
         web_order_number: webOrder.order_number,

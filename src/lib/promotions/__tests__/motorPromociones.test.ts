@@ -81,11 +81,11 @@ describe('A · no combinables: gana la que más descuenta en ESTA cuenta', () =>
     expect(r.applied.map((a) => a.promotion_id)).toEqual([alta.id]);
   });
 
-  it('empate en descuento y prioridad: gana la más antigua (created_at), sin importar el orden de llegada', () => {
+  it('empate en descuento y prioridad: gana la MÁS RECIENTE (created_at, diseño Promociones V2), sin importar el orden de llegada', () => {
     const nueva = promo({ created_at: '2026-05-01T00:00:00Z' });
     const vieja = promo({ created_at: '2026-02-01T00:00:00Z' });
-    expect(evaluarPromociones([nueva, vieja], [linea(1001, 1, 10000)], ctx()).applied[0].promotion_id).toBe(vieja.id);
-    expect(evaluarPromociones([vieja, nueva], [linea(1001, 1, 10000)], ctx()).applied[0].promotion_id).toBe(vieja.id);
+    expect(evaluarPromociones([nueva, vieja], [linea(1001, 1, 10000)], ctx()).applied[0].promotion_id).toBe(nueva.id);
+    expect(evaluarPromociones([vieja, nueva], [linea(1001, 1, 10000)], ctx()).applied[0].promotion_id).toBe(nueva.id);
   });
 
   it('una no combinable compite contra la SUMA de las combinables', () => {
@@ -717,11 +717,11 @@ describe('la prioridad gana entre no combinables que compiten', () => {
     expect(r.applied[0].promotion_id).toBe(fija.id);
   });
 
-  it('mismo monto: gana la más antigua, en cualquier orden de llegada', () => {
+  it('mismo monto: gana la MÁS RECIENTE, en cualquier orden de llegada', () => {
     const nueva = promo({ discount_value: 10, priority: 3, created_at: '2026-06-01T00:00:00Z', ...soloProducto(1) });
     const vieja = promo({ discount_value: 10, priority: 3, created_at: '2026-01-01T00:00:00Z', ...soloProducto(1) });
-    expect(evaluarPromociones([nueva, vieja], [linea(1, 1, 2000)], ctx()).applied[0].promotion_id).toBe(vieja.id);
-    expect(evaluarPromociones([vieja, nueva], [linea(1, 1, 2000)], ctx()).applied[0].promotion_id).toBe(vieja.id);
+    expect(evaluarPromociones([nueva, vieja], [linea(1, 1, 2000)], ctx()).applied[0].promotion_id).toBe(nueva.id);
+    expect(evaluarPromociones([vieja, nueva], [linea(1, 1, 2000)], ctx()).applied[0].promotion_id).toBe(nueva.id);
   });
 
   it('la ganadora sigue compitiendo contra la suma de las combinables del mismo producto', () => {

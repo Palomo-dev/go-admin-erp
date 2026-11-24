@@ -33,6 +33,8 @@ import {
   type FilaPromocion,
   type PromocionAplicada,
 } from '@/lib/promotions/motorPromociones';
+import { promocionRequiereCliente, type ClientePromocion } from '@/lib/promotions/precioVolumen';
+import { promocionesConListas } from '@/lib/listasPrecios/promocionesConLista';
 
 // --- Tipos públicos ---
 
@@ -47,7 +49,7 @@ export interface PromotionItem {
    */
   parent_product_id?: number | null;
   category_id?: number | null;
-  brand?: string;
+  brand?: string | null;
   quantity: number;
   unit_price: number;
   /**
@@ -58,6 +60,11 @@ export interface PromotionItem {
   sale_mode?: string | null;
   /** Línea a la que le quitaron la promoción. El motor no la descuenta ni la cuenta. */
   promo_excluded?: boolean | null;
+  /**
+   * Lista de precios con que va la línea (`unit_price` ya es el de la lista). Las promociones con
+   * `applies_with_price_lists = false` no la tocan (`promocionesConListas`).
+   */
+  price_list_id?: string | null;
 }
 
 export interface PromotionContext {
@@ -67,7 +74,17 @@ export interface PromotionContext {
   branch_id?: number;
   /** Métodos de cobro elegidos; una promoción limitada por método solo aplica con uno de ellos. */
   payment_methods?: string[];
-  customer_id?: string;
+  /**
+   * Cliente de la venta. Las promociones «solo para el grupo …» y con «usos por cliente» solo
+   * aplican si viene y cumple (sus segmentos y usos se leen aquí). Sin él, no aplican.
+   */
+  customer_id?: string | null;
+  /**
+   * Promociones cuyo uso por cliente YA cuenta esta misma venta o pedido (se registró al crearlo).
+   * Al recalcularlo, cada una descuenta un uso: si no, un límite «1 por cliente» se caería con su
+   * propio uso.
+   */
+  usos_ya_contados?: readonly string[];
   date?: Date; // Para testing; por defecto now()
   /** Zona IANA de la organización. Si falta, `getOrganizationTimezone`. */
   timezone?: string;
@@ -88,6 +105,10 @@ export interface AppliedPromotion {
   items_affected: number[];
   /** Posiciones (en `ctx.items`) de las líneas que descuenta. */
   lineas: number[];
+  /** Lo que descontó en cada línea (posición → monto). Se registra en `sale_promotions`. */
+  montos_linea?: Record<number, number>;
+  /** Precio por volumen: escalón alcanzado por línea (posición → `desde`). */
+  escalon_linea?: Record<number, number>;
 }
 
 export interface PromotionEvaluationResult {
@@ -130,7 +151,15 @@ class PromotionEngineService {
           product_id,
           category_id,
           quantity,
+          brand,
+          tier_group,
           created_at
+        ),
+        promotion_tiers (
+          min_quantity,
+          unit_price,
+          discount_percent,
+          sort_order
         )
       `,
       )
@@ -172,13 +201,25 @@ class PromotionEngineService {
     };
     if (ctx.items.length === 0) return vacio;
 
-    const promotions = await this.loadActivePromotions(db, ctx.organization_id, ctx.channel, date);
+    // Listas de precios: las promociones «no aplica con listas» no tocan las líneas con lista.
+    const promotions = promocionesConListas(
+      await this.loadActivePromotions(db, ctx.organization_id, ctx.channel, date),
+      ctx.items,
+    );
     if (promotions.length === 0) return vacio;
 
-    const [zonaHoraria, items] = await Promise.all([
+    const [zonaHoraria, items, cliente] = await Promise.all([
       ctx.timezone ? Promise.resolve(ctx.timezone) : getOrganizationTimezone(ctx.organization_id, ctx.db),
       this.completarDatosProducto(db, ctx.organization_id, ctx.items, promotions),
+      this.cargarCliente(db, ctx.organization_id, ctx.customer_id ?? null, promotions),
     ]);
+    if (cliente && ctx.usos_ya_contados && ctx.usos_ya_contados.length > 0) {
+      const usos = { ...cliente.usos };
+      for (const id of new Set(ctx.usos_ya_contados)) {
+        if ((usos[id] ?? 0) > 0) usos[id] = usos[id] - 1;
+      }
+      cliente.usos = usos;
+    }
 
     const r = evaluarPromociones(promotions, items, {
       canal: ctx.channel,
@@ -186,6 +227,7 @@ class PromotionEngineService {
       zonaHoraria,
       sucursalId: ctx.branch_id ?? null,
       metodosPago: ctx.payment_methods ?? null,
+      cliente,
     });
 
     return {
@@ -198,6 +240,53 @@ class PromotionEngineService {
       })),
       items: ctx.items.map((item) => ({ ...item })),
     };
+  }
+
+  /**
+   * Segmentos y usos del cliente, solo si alguna promoción los mira. Sin cliente: null (esas
+   * promociones no aplican). Si la lectura falla, el cliente queda sin segmentos ni usos
+   * registrados: el grupo no aplica (falla cerrado) y el límite por cliente cuenta desde 0.
+   */
+  private async cargarCliente(
+    db: SupabaseClient,
+    organizationId: number,
+    customerId: string | null,
+    promos: FilaPromocion[],
+  ): Promise<ClientePromocion | null> {
+    if (!customerId) return null;
+    const conCliente = promos.filter((p) => promocionRequiereCliente(p));
+    if (conCliente.length === 0) return { id: customerId, segmentos: [], usos: {} };
+    const segmentos = Array.from(new Set(conCliente.map((p) => p.customer_segment_id).filter((s): s is string => !!s)));
+    const conLimite = conCliente.filter((p) => p.usage_limit_per_customer != null).map((p) => p.id);
+    try {
+      const [seg, usos] = await Promise.all([
+        segmentos.length > 0
+          ? db
+              .from('segment_members')
+              .select('segment_id')
+              .eq('organization_id', organizationId)
+              .eq('customer_id', customerId)
+              .in('segment_id', segmentos)
+          : Promise.resolve({ data: [], error: null }),
+        conLimite.length > 0
+          ? db
+              .from('promotion_customer_uses')
+              .select('promotion_id, uses')
+              .eq('organization_id', organizationId)
+              .eq('customer_id', customerId)
+              .in('promotion_id', conLimite)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      const filasSeg = (seg.error ? [] : (seg.data ?? [])) as Array<{ segment_id: string }>;
+      const filasUso = (usos.error ? [] : (usos.data ?? [])) as Array<{ promotion_id: string; uses: number }>;
+      return {
+        id: customerId,
+        segmentos: filasSeg.map((f) => String(f.segment_id)),
+        usos: Object.fromEntries(filasUso.map((f) => [String(f.promotion_id), Number(f.uses) || 0])),
+      };
+    } catch {
+      return { id: customerId, segmentos: [], usos: {} };
+    }
   }
 
   /**
@@ -216,19 +305,27 @@ class PromotionEngineService {
   ): Promise<PromotionItem[]> {
     const usaReglas = promos.some((p) => p.applies_to !== 'all');
     const usaModo = promos.some((p) => p.promotion_type === 'buy_x_get_y');
+    const usaMarca = promos.some((p) => (p.promotion_rules ?? p.rules ?? []).some((r) => !!r.brand));
     const falta = (i: PromotionItem) =>
       (usaReglas && (i.category_id === undefined || i.parent_product_id === undefined)) ||
-      (usaModo && i.sale_mode === undefined);
+      (usaModo && i.sale_mode === undefined) ||
+      (usaMarca && i.brand === undefined);
     const ids = Array.from(new Set(items.filter((i) => i.product_id > 0 && falta(i)).map((i) => i.product_id)));
     if (ids.length === 0) return items;
     try {
       const { data, error } = await db
         .from('products')
-        .select('id, category_id, parent_product_id, sale_mode')
+        .select('id, category_id, parent_product_id, sale_mode, brand')
         .eq('organization_id', organizationId)
         .in('id', ids);
       if (error || !Array.isArray(data)) return items;
-      type Fila = { id: number; category_id?: number | null; parent_product_id?: number | null; sale_mode?: string | null };
+      type Fila = {
+        id: number;
+        category_id?: number | null;
+        parent_product_id?: number | null;
+        sale_mode?: string | null;
+        brand?: string | null;
+      };
       const porId = new Map<number, Fila>((data as Fila[]).map((r) => [Number(r.id), r]));
       return items.map((i) => {
         const f = porId.get(i.product_id);
@@ -238,6 +335,7 @@ class PromotionEngineService {
           category_id: i.category_id === undefined ? (f.category_id ?? null) : i.category_id,
           parent_product_id: i.parent_product_id === undefined ? (f.parent_product_id ?? null) : i.parent_product_id,
           sale_mode: i.sale_mode === undefined ? (f.sale_mode ?? null) : i.sale_mode,
+          brand: i.brand === undefined ? (f.brand ?? null) : i.brand,
         };
       });
     } catch {

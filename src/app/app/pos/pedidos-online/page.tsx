@@ -48,6 +48,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+  AvisoTonal,
   BranchBadgeActiva,
   BulkActionBar,
   CampoFecha,
@@ -87,15 +88,20 @@ import { PERIODOS_LISTADO, rangosDelPeriodo, variacionPct, type PeriodoListado }
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
+import { estimacionEnZona, formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz } from '@/lib/utils/dateCore';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
+import { esPedidoContraentrega, porCobrarAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { useTiemposPedidos } from '@/components/pos/pedidos-online/tiempos/useTiemposPedidos';
+import { aMs, aTiempoDialogo, resolverTiempos, verticalDeTipo } from '@/lib/pos/pedidosWeb/tiemposPedidos';
 
 interface FiltrosListado {
   status?: WebOrderStatus;
   delivery_type?: DeliveryType;
   source?: OrderSource;
   payment_status?: PaymentStatus;
+  /** «Pago: contraentrega» (Figma 3014:194407 › 04). Se aplica sobre lo cargado, no en la consulta. */
+  contraentrega?: boolean;
 }
 
 const ESTADOS_FILTRO: readonly WebOrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready', 'in_delivery', 'delivered', 'cancelled'];
@@ -130,6 +136,7 @@ export default function PedidosOnlinePage() {
   const t = useTranslations('pedidosOnlineListado');
   const tPedido = useTranslations('pedidoWeb');
   const tManual = useTranslations('pedidosManuales');
+  const tCod = useTranslations('contraentregaPedidos');
   const migaVentas = useMigaVentas();
   // Pedido manual y reconstrucción de pedidos pagados (Pedidos online · pagos sin pedido).
   const [manualAbierto, setManualAbierto] = useState(false);
@@ -172,6 +179,14 @@ export default function PedidosOnlinePage() {
   const [prepTime, setPrepTime] = useState<EstimatedTime>(isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' });
   const [transitTime, setTransitTime] = useState<EstimatedTime>(isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' });
   const [actionLoading, setActionLoading] = useState(false);
+  // Tiempos de Configuración › Punto de venta › Pedidos online (`tiemposPedidos.ts`). Sin fila
+  // guardada (`ajustes = null`) el diálogo hace exactamente lo de siempre.
+  const tiemposConfig = useTiemposPedidos();
+  const tTiempos = useTranslations('pedidosOnlineTiempos');
+  /** Aviso «Vienen de Configuración…» del diálogo (null = tiempos de siempre). */
+  const [avisoTiempos, setAvisoTiempos] = useState<string | null>(null);
+  /** En lote con configuración: cada pedido usa los suyos hasta que se toquen los campos. */
+  const [tiemposPorPedido, setTiemposPorPedido] = useState(false);
 
   // El tipo de organización llega después del primer render: los tiempos por
   // defecto se ajustan cuando se conoce (antes quedaban siempre los de comercio).
@@ -179,6 +194,53 @@ export default function PedidosOnlinePage() {
     setPrepTime(isRetail ? { value: 1, unit: 'days' } : { value: 30, unit: 'minutes' });
     setTransitTime(isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' });
   }, [isRetail]);
+
+  const tiemposDelPedido = useCallback(
+    (o: Pick<WebOrder, 'branch_id' | 'delivery_type'>) =>
+      resolverTiempos(tiemposConfig.ajustes, { sedeId: o.branch_id, deliveryType: o.delivery_type, vertical: verticalDeTipo(orgTypeId) }),
+    [tiemposConfig.ajustes, orgTypeId],
+  );
+
+  /** Abre «Confirmar»: con tiempos guardados, los de la sede y el tipo de entrega del pedido. */
+  const abrirConfirmar = (orderIds: string[]) => {
+    if (tiemposConfig.ajustes && orderIds.length === 1) {
+      const pedido = orders.find((o) => o.id === orderIds[0]);
+      if (pedido) {
+        const r = tiemposDelPedido(pedido);
+        setPrepTime(aTiempoDialogo(r.alistar));
+        if (r.entrega) setTransitTime(aTiempoDialogo(r.entrega));
+        const sede = tiemposConfig.sedes.find((s) => s.id === pedido.branch_id)?.nombre;
+        setAvisoTiempos(sede ? tTiempos('confirmar.origen', { sede }) : tTiempos('confirmar.origenSinSede'));
+      } else {
+        setAvisoTiempos(null);
+      }
+      setTiemposPorPedido(false);
+    } else if (tiemposConfig.ajustes && orderIds.length > 1) {
+      setAvisoTiempos(tTiempos('confirmar.lote'));
+      setTiemposPorPedido(true);
+    } else {
+      // Sin configuración guardada: los tiempos de siempre, como antes.
+      setAvisoTiempos(null);
+      setTiemposPorPedido(false);
+    }
+    setConfirmDialog({ open: true, orderIds });
+  };
+  const cambiarPrep = (v: EstimatedTime) => {
+    setTiemposPorPedido(false);
+    setPrepTime(v);
+  };
+  const cambiarTraslado = (v: EstimatedTime) => {
+    setTiemposPorPedido(false);
+    setTransitTime(v);
+  };
+  /** «hoy, 4:30 p. m.» del diálogo (Figma T4), en la zona de la organización. */
+  const cuandoAprox = (ms: number): string => {
+    const e = estimacionEnZona(new Date(ahora.getTime() + ms), timezone, ahora);
+    if (!e) return '';
+    if (e.relativo === 'hoy') return tTiempos('confirmar.hoy', { hora: e.hora });
+    if (e.relativo === 'mañana') return tTiempos('confirmar.manana', { hora: e.hora });
+    return fechaHora(new Date(ahora.getTime() + ms).toISOString());
+  };
 
   // La columna «A tiempo» cuenta minutos: se refresca sola cada 30 s.
   useEffect(() => {
@@ -209,7 +271,8 @@ export default function PedidosOnlinePage() {
         webOrdersService.getOrderStats(actual.from, actual.to, branchFilter ?? undefined),
         anterior ? webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined) : Promise.resolve(null),
       ]);
-      setOrders(ordersData);
+      // «Pago: contraentrega»: filtro sobre lo cargado. Sin él, la lista de siempre.
+      setOrders(filtros.contraentrega ? ordersData.filter(esPedidoContraentrega) : ordersData);
       setStats(statsData);
       setPreviousStats(prevStatsData);
       setErrorCarga(false);
@@ -281,9 +344,19 @@ export default function PedidosOnlinePage() {
   ): Promise<{ ok: boolean; numero: string; sinPagar?: string }> => {
     const order = await webOrdersService.getOrderById(orderId);
     if (!order) throw new Error(tPedido('orderNotFoundState.pedidoNoEncontrado'));
+    let prepMs = timeToMs(prepTime);
+    let transitMs = esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0;
+    if (tiemposPorPedido && tiemposConfig.ajustes) {
+      // Lote con tiempos guardados y sin tocar: los de la sede y el tipo de entrega de cada pedido.
+      const r = tiemposDelPedido(order);
+      prepMs = aMs(r.alistar);
+      transitMs = esDomicilio(order.delivery_type) && r.entrega ? aMs(r.entrega) : 0;
+    } else {
+      // Lo de siempre: los del diálogo para todos.
+    }
     const result = await webOrderConfirmationService.confirmOrder(order, {
-      prepMs: timeToMs(prepTime),
-      transitMs: esDomicilio(order.delivery_type) ? timeToMs(transitTime) : 0,
+      prepMs,
+      transitMs,
       markAsPaid,
     });
     if (!result.yaConfirmado) void webOrdersService.avisarCambioEstado(order.id, 'confirmed');
@@ -557,6 +630,9 @@ export default function PedidosOnlinePage() {
   const handleViewDetails = (orderId: string) => router.push(`/app/pos/pedidos-online/${orderId}`);
 
   // ── Datos derivados ─────────────────────────────────────────────────────
+  // «Por cobrar al entregar»: lo que está en la calle de los pedidos contraentrega cargados.
+  const porCobrar = useMemo(() => porCobrarAlEntregar(orders), [orders]);
+  const hayContraentrega = porCobrar.pedidos > 0 || orders.some(esPedidoContraentrega);
   const pendientesIds = useMemo(() => orders.filter((o) => o.status === 'pending').map((o) => o.id), [orders]);
   const sinConfirmar = stats?.unconfirmed_orders ?? 0;
   const pagina = orders.slice((currentPage - 1) * tamanoPagina, currentPage * tamanoPagina);
@@ -589,6 +665,7 @@ export default function PedidosOnlinePage() {
     filtros.delivery_type ? { clave: 'delivery_type', etiqueta: t('chips.entrega', { valor: t(`entregas.${filtros.delivery_type}`) }) } : null,
     filtros.source ? { clave: 'source', etiqueta: t('chips.origen', { valor: t(`origenes.${filtros.source}`) }) } : null,
     filtros.payment_status ? { clave: 'payment_status', etiqueta: t('chips.pago', { valor: t(`pagos.${filtros.payment_status}`) }) } : null,
+    filtros.contraentrega ? { clave: 'contraentrega', etiqueta: tCod('filtro.chip') } : null,
   ].filter((c): c is ChipFiltro => c !== null && (c.clave !== 'periodo' || periodo !== 'all'));
 
   const quitarChip = (clave: string) => {
@@ -660,7 +737,7 @@ export default function PedidosOnlinePage() {
       // Pendientes y vencidos: un vencido se reactiva al confirmarlo (la base re-reserva el stock, todo o nada).
       deshabilitada: !seleccion.some(esConfirmable),
       motivo: t('masivo.soloPendientes'),
-      onClick: () => setConfirmDialog({ open: true, orderIds: seleccion.filter(esConfirmable).map((o) => o.id) }),
+      onClick: () => abrirConfirmar(seleccion.filter(esConfirmable).map((o) => o.id)),
     },
     { id: 'cobrar', etiqueta: t('masivo.cobrar'), icono: Coins, cargando: bulkActionLoading, onClick: () => void handleBulkMarkPaid() },
     { id: 'imprimir', etiqueta: t('masivo.imprimir'), icono: Printer, onClick: () => imprimirPedidos(seleccion) },
@@ -750,7 +827,7 @@ export default function PedidosOnlinePage() {
             </button>
             <button
               type="button"
-              onClick={() => setConfirmDialog({ open: true, orderIds: pendientesIds })}
+              onClick={() => abrirConfirmar(pendientesIds)}
               disabled={pendientesIds.length === 0}
               className={clasesBoton({ variante: 'primario', tamano: 'md' })}
             >
@@ -781,7 +858,7 @@ export default function PedidosOnlinePage() {
         }
       />
 
-      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={6} className="hidden sm:grid">
+      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={hayContraentrega ? 7 : 6} className="hidden sm:grid">
         <StatCard
           tamano="sm"
           etiqueta={periodo === 'today' ? t('kpis.pedidosHoy') : t('kpis.pedidos')}
@@ -835,6 +912,17 @@ export default function PedidosOnlinePage() {
           valor={stats ? moneda.formatear(stats.total_revenue) : '—'}
           detalle={stats ? t('kpis.ticket', { valor: moneda.formatear(Math.round(stats.avg_order_value)) }) : undefined}
         />
+        {hayContraentrega && (
+          <StatCard
+            tamano="sm"
+            etiqueta={tCod('lista.kpi')}
+            cargando={kpiCargando}
+            valor={moneda.formatear(porCobrar.monto)}
+            detalle={tCod('lista.kpiDetalle', { n: porCobrar.pedidos })}
+            resaltada={!!filtros.contraentrega}
+            onClick={() => setFiltros((f) => ({ ...f, contraentrega: f.contraentrega ? undefined : true }))}
+          />
+        )}
       </KpiStrip>
 
       <ListToolbar
@@ -880,6 +968,7 @@ export default function PedidosOnlinePage() {
             {campoSelect(t('filtros.entrega'), filtros.delivery_type, ENTREGAS_FILTRO, (v) => t(`entregas.${v}`), (v) => setFiltros((f) => ({ ...f, delivery_type: v as DeliveryType | undefined })))}
             {campoSelect(t('filtros.origen'), filtros.source, ORIGENES_FILTRO, (v) => t(`origenes.${v}`), (v) => setFiltros((f) => ({ ...f, source: v as OrderSource | undefined })))}
             {campoSelect(t('filtros.pago'), filtros.payment_status, PAGOS_FILTRO, (v) => t(`pagos.${v}`), (v) => setFiltros((f) => ({ ...f, payment_status: v as PaymentStatus | undefined })))}
+            {campoSelect(tCod('filtro.etiqueta'), filtros.contraentrega ? 'si' : undefined, ['si'], () => tCod('filtro.solo'), (v) => setFiltros((f) => ({ ...f, contraentrega: v ? true : undefined })))}
           </FilterPanel>
         }
         chips={chips.length > 0 ? <FilterChips chips={chips} onQuitar={quitarChip} onLimpiarTodo={limpiarFiltros} /> : undefined}
@@ -894,7 +983,7 @@ export default function PedidosOnlinePage() {
           seleccion={selectedOrders}
           onSeleccionChange={setSelectedOrders}
           onAbrir={(o) => handleViewDetails(o.id)}
-          onConfirmar={(o) => setConfirmDialog({ open: true, orderIds: [o.id] })}
+          onConfirmar={(o) => abrirConfirmar([o.id])}
           onRechazar={(o) => setRejectDialog({ open: true, orderId: o.id })}
           onCambiarEstado={(o, e) => void handleUpdateStatus(o.id, e)}
           onImprimir={(o) => imprimirPedidos([o])}
@@ -936,7 +1025,7 @@ export default function PedidosOnlinePage() {
                   <WebOrderCard
                     key={order.id}
                     order={order}
-                    onConfirm={(id) => setConfirmDialog({ open: true, orderIds: [id] })}
+                    onConfirm={(id) => abrirConfirmar([id])}
                     onReject={(id) => setRejectDialog({ open: true, orderId: id })}
                     onUpdateStatus={handleUpdateStatus}
                     onViewDetails={handleViewDetails}
@@ -1000,11 +1089,11 @@ export default function PedidosOnlinePage() {
                   id="prep-time-list"
                   type="number"
                   value={prepTime.value}
-                  onChange={(e) => setPrepTime({ ...prepTime, value: Number(e.target.value) })}
+                  onChange={(e) => cambiarPrep({ ...prepTime, value: Number(e.target.value) })}
                   min={1}
                   className="flex-1"
                 />
-                <Select value={prepTime.unit} onValueChange={(unit: TimeUnit) => setPrepTime({ ...prepTime, unit })}>
+                <Select value={prepTime.unit} onValueChange={(unit: TimeUnit) => cambiarPrep({ ...prepTime, unit })}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -1014,6 +1103,9 @@ export default function PedidosOnlinePage() {
                     <SelectItem value="days">{t('confirmar.dias')}</SelectItem>
                   </SelectContent>
                 </Select>
+                {avisoTiempos && confirmDialog.orderIds.length === 1 && (
+                  <span className="flex shrink-0 items-center text-sm text-fg-secondary tabular-nums">{cuandoAprox(timeToMs(prepTime))}</span>
+                )}
               </div>
             </div>
             <div>
@@ -1023,11 +1115,11 @@ export default function PedidosOnlinePage() {
                   id="transit-time-list"
                   type="number"
                   value={transitTime.value}
-                  onChange={(e) => setTransitTime({ ...transitTime, value: Number(e.target.value) })}
+                  onChange={(e) => cambiarTraslado({ ...transitTime, value: Number(e.target.value) })}
                   min={0}
                   className="flex-1"
                 />
-                <Select value={transitTime.unit} onValueChange={(unit: TimeUnit) => setTransitTime({ ...transitTime, unit })}>
+                <Select value={transitTime.unit} onValueChange={(unit: TimeUnit) => cambiarTraslado({ ...transitTime, unit })}>
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -1037,9 +1129,13 @@ export default function PedidosOnlinePage() {
                     <SelectItem value="days">{t('confirmar.dias')}</SelectItem>
                   </SelectContent>
                 </Select>
+                {avisoTiempos && confirmDialog.orderIds.length === 1 && esDomicilio(orders.find((o) => o.id === confirmDialog.orderIds[0])?.delivery_type) && (
+                  <span className="flex shrink-0 items-center text-sm text-fg-secondary tabular-nums">{cuandoAprox(timeToMs(prepTime) + timeToMs(transitTime))}</span>
+                )}
               </div>
               <p className="mt-2 text-sm text-fg-secondary">{t('confirmar.trasladoAyuda')}</p>
             </div>
+            {avisoTiempos && <AvisoTonal tono="informacion" titulo={avisoTiempos} compacto />}
             <div className="flex items-center gap-2">
               <Checkbox id="mark-as-paid" checked={markAsPaid} onCheckedChange={(checked) => setMarkAsPaid(checked === true)} />
               <Label htmlFor="mark-as-paid" className="cursor-pointer text-sm font-medium">

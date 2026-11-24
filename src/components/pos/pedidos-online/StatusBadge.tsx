@@ -6,11 +6,13 @@ import {
   Clock, 
   CheckCircle, 
   XCircle, 
-  ChefHat, 
+  Timer, 
   Package, 
   Truck 
 } from 'lucide-react';
 import type { WebOrderStatus } from '@/lib/services/webOrdersService';
+import { claveEstadoPedido } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { ICONO_PREPARAR, useRubroPedidos } from './rubroPedidosUi';
 
 interface StatusBadgeProps {
   status: WebOrderStatus;
@@ -36,7 +38,8 @@ const STATUS_CONFIG: Record<WebOrderStatus, {
   preparing: { 
     label: 'Preparando', 
     color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200', 
-    icon: <ChefHat className="h-3 w-3" /> 
+    // Neutro: el badge pone el del rubro (gorro de chef solo en restaurante).
+    icon: <Timer className="h-3 w-3" /> 
   },
   ready: { 
     label: 'Listo', 
@@ -72,7 +75,11 @@ const STATUS_CONFIG: Record<WebOrderStatus, {
 
 export function StatusBadge({ status, size = 'md', showIcon = true }: StatusBadgeProps) {
   const tEstado = useTranslations('pedidosOnlineListado.estados');
+  const rubro = useRubroPedidos();
   const config = STATUS_CONFIG[status];
+  // «Preparando» lleva gorro de chef solo en restaurante; en una tienda, «Alistando» con la caja abierta.
+  const IconoPreparar = ICONO_PREPARAR[rubro];
+  const icono = status === 'preparing' ? <IconoPreparar className="h-3 w-3" /> : config.icon;
   
   const sizeClasses = {
     sm: 'text-xs px-2 py-0.5',
@@ -82,8 +89,8 @@ export function StatusBadge({ status, size = 'md', showIcon = true }: StatusBadg
 
   return (
     <Badge className={`${config.color} ${sizeClasses[size]} flex items-center gap-1`}>
-      {showIcon && config.icon}
-      {tEstado(status)}
+      {showIcon && icono}
+      {tEstado(claveEstadoPedido(status, rubro))}
     </Badge>
   );
 }

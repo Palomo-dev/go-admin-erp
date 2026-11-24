@@ -26,6 +26,8 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateTimeInTz, formatTimeInTz, toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
 import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
+import { claveEstadoPedido, claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { ICONO_PREPARAR, useRubroPedidos } from './rubroPedidosUi';
 
 interface WebOrderCardProps {
   order: WebOrder;
@@ -110,6 +112,9 @@ export function WebOrderCard({
 }: WebOrderCardProps) {
   const t = useTranslations('pedidoWeb');
   const tEstado = useTranslations('pedidosOnlineListado.estados');
+  // Restaurante «prepara» (reloj, como siempre); una tienda «alista» el empaque.
+  const rubro = useRubroPedidos();
+  const IconoPreparar = rubro === 'restaurante' ? Timer : ICONO_PREPARAR.tienda;
   const { timezone } = useOrgTimezone();
   const statusConfig = STATUS_CONFIG[order.status];
   // «Comer aquí» llega como dine_in (E1) o como pickup con la marca del sitio.
@@ -179,7 +184,7 @@ export function WebOrderCard({
           </div>
           <Badge className={`${statusConfig.color} flex items-center gap-1`}>
             {statusConfig.icon}
-            {tEstado(order.status)}
+            {tEstado(claveEstadoPedido(order.status, rubro))}
           </Badge>
         </div>
 
@@ -287,9 +292,9 @@ export function WebOrderCard({
               className="flex-1"
               onClick={() => onUpdateStatus?.(order.id, 'preparing')}
             >
-              <Timer className="h-4 w-4 mr-1 dark:text-white" />
-              <span className="hidden sm:inline dark:text-white">{t('webOrderCard.iniciarPreparacion')}</span>
-              <span className="sm:hidden dark:text-white">{t('webOrderCard.preparar')}</span>
+              <IconoPreparar className="h-4 w-4 mr-1 dark:text-white" />
+              <span className="hidden sm:inline dark:text-white">{t(claveRubro('webOrderCard.iniciarPreparacion', rubro))}</span>
+              <span className="sm:hidden dark:text-white">{t(claveRubro('webOrderCard.preparar', rubro))}</span>
             </Button>
           )}
 

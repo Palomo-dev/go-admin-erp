@@ -13,7 +13,6 @@ import {
   XCircle, 
   Timer, 
   Package, 
-  ChefHat,
   Truck, 
   Printer,
   Receipt,
@@ -22,6 +21,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
+import { ICONO_PREPARAR, useRubroPedidos } from './rubroPedidosUi';
 
 interface OrderActionsProps {
   order: WebOrder;
@@ -70,6 +71,11 @@ export function OrderActions({
   variant = 'full',
 }: OrderActionsProps) {
   const t = useTranslations('pedidoWeb');
+  // Restaurante prepara (gorro de chef); una tienda alista el empaque.
+  const rubro = useRubroPedidos();
+  const IconoPreparar = ICONO_PREPARAR[rubro];
+  // El botón grande del detalle conserva el reloj en restaurante.
+  const IconoPrepararBoton = rubro === 'restaurante' ? Timer : IconoPreparar;
   const isPending = order.status === 'pending';
   const isConfirmed = order.status === 'confirmed';
   const isPreparing = order.status === 'preparing';
@@ -116,7 +122,7 @@ export function OrderActions({
         )}
         {isConfirmed && (
           <Button size="sm" onClick={onStartPreparing} disabled={isLoading}>
-            <ChefHat className="h-4 w-4" />
+            <IconoPreparar className="h-4 w-4" />
           </Button>
         )}
         {isPreparing && (
@@ -168,9 +174,9 @@ export function OrderActions({
           {isLoading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
-            <Timer className="h-4 w-4 mr-2" />
+            <IconoPrepararBoton className="h-4 w-4 mr-2" />
           )}
-          {t('orderActions.iniciarPreparacion')}
+          {t(claveRubro('orderActions.iniciarPreparacion', rubro))}
         </Button>
       )}
 

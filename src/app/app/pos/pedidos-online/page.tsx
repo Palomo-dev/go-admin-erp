@@ -72,6 +72,8 @@ import { clasesBoton } from '@/components/kit/botonClases';
 import { WebOrderCard } from '@/components/pos/pedidos-online/WebOrderCard';
 import { WebCommerceObservability } from '@/components/pos/pedidos-online/WebCommerceObservability';
 import { TablaPedidosOnline, metodoDePago } from '@/components/pos/pedidos-online/listado/TablaPedidosOnline';
+import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
+import { claveEstadoPedido, claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
 import { DialogoPedidoManual } from '@/components/pos/pedidos-online/manual/DialogoPedidoManual';
 import { DialogoReconstruirPedido } from '@/components/pos/pedidos-online/manual/DialogoReconstruirPedido';
 import {
@@ -150,6 +152,10 @@ export default function PedidosOnlinePage() {
   // Tiempos por defecto según el tipo de organización:
   // restaurante (1) 30 min + 30 min; comercio (3) 1 día de empacado + 5 de entrega.
   const isRetail = orgTypeId === 3;
+  // Vocabulario: restaurante «prepara» y manda la comanda a cocina; una tienda «alista» (solo textos).
+  const rubro = useRubroPedidos();
+  const etiquetaEstado = (status: string) => t(`estados.${claveEstadoPedido(status, rubro)}`);
+  const etiquetaEstadoFiltro = (status: string) => t(`estadosFiltro.${claveEstadoPedido(status, rubro)}`);
 
   const [orders, setOrders] = useState<WebOrder[]>([]);
   const [stats, setStats] = useState<Estadisticas | null>(null);
@@ -373,7 +379,7 @@ export default function PedidosOnlinePage() {
       const listo = tPedido('confirmacion.listo', { tiempo: formatEstimatedTime(prepTime, tPedido) });
       const parts = result.tableSessionId
         ? [tPedido('confirmacion.enLaMesa'), listo]
-        : [tPedido('confirmacion.ventaCreada'), tPedido('confirmacion.comandaEnviada'), listo];
+        : [tPedido('confirmacion.ventaCreada'), tPedido(claveRubro('confirmacion.comandaEnviada', rubro)), listo];
       if (esDomicilio(order.delivery_type) && transitTime.value > 0) parts.push(tPedido('confirmacion.entrega', { tiempo: formatEstimatedTime(transitTime, tPedido) }));
       if (result.cobro) parts.push(tPedido('cobro.hecho'));
       else if (markAsPaid && !seCobraAlEntregar(order) && !result.cobroPendiente) parts.push(tPedido('confirmacion.marcadoPagado'));
@@ -388,7 +394,7 @@ export default function PedidosOnlinePage() {
     }
     if ((result.stockErrors ?? []).length > 0) {
       toast({
-        title: tPedido('confirmacion.stockFallido', { n: result.stockErrors!.length }),
+        title: tPedido(claveRubro('confirmacion.stockFallido', rubro), { n: result.stockErrors!.length }),
         description: result.stockErrors!.slice(0, 3).join(' · '),
         variant: 'destructive',
       });
@@ -462,7 +468,7 @@ export default function PedidosOnlinePage() {
   const handleUpdateStatus = async (orderId: string, status: WebOrderStatus) => {
     try {
       await webOrdersService.updateOrderStatus(orderId, status);
-      toast({ title: t('estadoActualizado', { estado: t(`estados.${status}`) }) });
+      toast({ title: t('estadoActualizado', { estado: etiquetaEstado(status) }) });
       void loadOrders();
     } catch {
       toast({ title: t('estadoError'), variant: 'destructive' });
@@ -483,7 +489,7 @@ export default function PedidosOnlinePage() {
         selected.map((o) => o.id),
         status,
       );
-      const estado = t(`estados.${status}`);
+      const estado = etiquetaEstado(status);
       if (fallidos.length === 0) {
         toast({ title: t('masivo.hecho', { n: cambiados.length, estado }) });
         setSelectedOrders(new Set());
@@ -613,7 +619,7 @@ export default function PedidosOnlinePage() {
       o.customer_name || o.customer?.full_name || '',
       o.customer_email || o.customer?.email || '',
       o.customer_phone || o.customer?.phone || '',
-      t(`estados.${o.status}`),
+      etiquetaEstado(o.status),
       etiquetaEntrega(o),
       o.total.toString(),
       metodoDePago(o),
@@ -664,7 +670,7 @@ export default function PedidosOnlinePage() {
 
   const chips: ChipFiltro[] = [
     { clave: 'periodo', etiqueta: t('chips.periodo', { valor: nombrePeriodo }) },
-    filtros.status ? { clave: 'status', etiqueta: t('chips.estado', { valor: t(`estadosFiltro.${filtros.status}`) }) } : null,
+    filtros.status ? { clave: 'status', etiqueta: t('chips.estado', { valor: etiquetaEstadoFiltro(filtros.status) }) } : null,
     filtros.delivery_type ? { clave: 'delivery_type', etiqueta: t('chips.entrega', { valor: t(`entregas.${filtros.delivery_type}`) }) } : null,
     filtros.source ? { clave: 'source', etiqueta: t('chips.origen', { valor: t(`origenes.${filtros.source}`) }) } : null,
     filtros.payment_status ? { clave: 'payment_status', etiqueta: t('chips.pago', { valor: t(`pagos.${filtros.payment_status}`) }) } : null,
@@ -746,7 +752,7 @@ export default function PedidosOnlinePage() {
     { id: 'imprimir', etiqueta: t('masivo.imprimir'), icono: Printer, onClick: () => imprimirPedidos(seleccion) },
   ];
   const accionesMasivasSecundarias: AccionFila[] = [
-    { id: 'preparar', etiqueta: t('masivo.preparar'), icono: Clock, onSelect: () => void handleBulkStatusChange('preparing') },
+    { id: 'preparar', etiqueta: t(claveRubro('masivo.preparar', rubro)), icono: Clock, onSelect: () => void handleBulkStatusChange('preparing') },
     { id: 'listos', etiqueta: t('masivo.listos'), icono: Package, onSelect: () => void handleBulkStatusChange('ready') },
     { id: 'entregados', etiqueta: t('masivo.entregados'), icono: CheckCircle, onSelect: () => void handleBulkStatusChange('delivered') },
     { id: 'exportar', etiqueta: t('masivo.exportar'), icono: Download, separadorAntes: true, onSelect: () => exportarCsv(seleccion) },
@@ -765,7 +771,7 @@ export default function PedidosOnlinePage() {
   const columnasTablero: { clave: string; titulo: string; pedidos: WebOrder[]; punto: string }[] = [
     { clave: 'pending', titulo: t('estadosFiltro.pending'), pedidos: orders.filter((o) => o.status === 'pending'), punto: 'bg-warning' },
     { clave: 'confirmed', titulo: t('estadosFiltro.confirmed'), pedidos: orders.filter((o) => o.status === 'confirmed'), punto: 'bg-info' },
-    { clave: 'preparing', titulo: t('estadosFiltro.preparing'), pedidos: orders.filter((o) => o.status === 'preparing'), punto: 'bg-warning' },
+    { clave: 'preparing', titulo: etiquetaEstadoFiltro('preparing'), pedidos: orders.filter((o) => o.status === 'preparing'), punto: 'bg-warning' },
     { clave: 'ready', titulo: t('tableroListos'), pedidos: orders.filter((o) => ['ready', 'in_delivery'].includes(o.status)), punto: 'bg-success' },
   ];
 
@@ -967,7 +973,7 @@ export default function PedidosOnlinePage() {
                 <CampoFecha aria-label={t('filtros.hasta')} tamano="sm" valor={customDateTo} onValorChange={setCustomDateTo} />
               </div>
             )}
-            {campoSelect(t('filtros.estado'), filtros.status, ESTADOS_FILTRO, (v) => t(`estadosFiltro.${v}`), (v) => setFiltros((f) => ({ ...f, status: v as WebOrderStatus | undefined })))}
+            {campoSelect(t('filtros.estado'), filtros.status, ESTADOS_FILTRO, (v) => etiquetaEstadoFiltro(v), (v) => setFiltros((f) => ({ ...f, status: v as WebOrderStatus | undefined })))}
             {campoSelect(t('filtros.entrega'), filtros.delivery_type, ENTREGAS_FILTRO, (v) => t(`entregas.${v}`), (v) => setFiltros((f) => ({ ...f, delivery_type: v as DeliveryType | undefined })))}
             {campoSelect(t('filtros.origen'), filtros.source, ORIGENES_FILTRO, (v) => t(`origenes.${v}`), (v) => setFiltros((f) => ({ ...f, source: v as OrderSource | undefined })))}
             {campoSelect(t('filtros.pago'), filtros.payment_status, PAGOS_FILTRO, (v) => t(`pagos.${v}`), (v) => setFiltros((f) => ({ ...f, payment_status: v as PaymentStatus | undefined })))}
@@ -1081,12 +1087,12 @@ export default function PedidosOnlinePage() {
               {confirmDialog.orderIds.length > 1 ? t('confirmarLote.titulo', { n: confirmDialog.orderIds.length }) : t('confirmar.titulo')}
             </DialogTitle>
             <DialogDescription>
-              {confirmDialog.orderIds.length > 1 ? t('confirmarLote.descripcion') : t('confirmar.descripcion')}
+              {confirmDialog.orderIds.length > 1 ? t(claveRubro('confirmarLote.descripcion', rubro)) : t(claveRubro('confirmar.descripcion', rubro))}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="prep-time-list">{t('confirmar.preparacion')}</Label>
+              <Label htmlFor="prep-time-list">{t(claveRubro('confirmar.preparacion', rubro))}</Label>
               <div className="mt-2 flex gap-2">
                 <Input
                   id="prep-time-list"

@@ -6,7 +6,7 @@
  * total y las acciones rápidas del paso siguiente. En móvil, tarjetas.
  */
 import { useLocale, useTranslations } from 'next-intl';
-import { Check, ChefHat, CircleCheck, Eye, Package, Printer, Truck, XCircle, type LucideIcon } from 'lucide-react';
+import { Check, CircleCheck, Eye, Package, Printer, Truck, XCircle, type LucideIcon } from 'lucide-react';
 import { DataTable, ListCard, StatusBadge, type AccionFila, type ColumnaTabla, type ContextoTarjeta, type EstadoTabla, type TonoBadge } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -16,6 +16,8 @@ import { duracionPromesa, origenDelPedido, promesaDelPedido, type TonoPromesa } 
 import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
 import { PagoContraentregaCelda, muestraCeldaContraentrega } from '@/components/pos/pedidos-online/contraentrega/PagoContraentregaCelda';
+import { ICONO_PREPARAR, useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
+import { claveEstadoPedido, claveRubro, type RubroPedidos } from '@/lib/pos/pedidosWeb/rubroPedidos';
 
 export { metodoDePago };
 
@@ -54,12 +56,13 @@ export interface PasoSiguiente {
   estado?: WebOrderStatus;
 }
 
-export function pasoSiguiente(o: WebOrder): PasoSiguiente | null {
+/** `rubro`: el paso «preparar» lleva gorro de chef solo en restaurante; en una tienda, alistar el empaque. */
+export function pasoSiguiente(o: WebOrder, rubro: RubroPedidos = 'tienda'): PasoSiguiente | null {
   switch (o.status) {
     case 'pending':
       return { id: 'confirmar', icono: CircleCheck };
     case 'confirmed':
-      return { id: 'preparar', icono: ChefHat, estado: 'preparing' };
+      return { id: 'preparar', icono: ICONO_PREPARAR[rubro], estado: 'preparing' };
     case 'preparing':
       return { id: 'listo', icono: Package, estado: 'ready' };
     case 'ready':
@@ -94,6 +97,10 @@ export interface TablaPedidosOnlineProps {
 export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
   const { pedidos, estado, timezone, ahora, seleccion, onSeleccionChange, onAbrir, onConfirmar, onRechazar, onCambiarEstado, onImprimir } = props;
   const t = useTranslations('pedidosOnlineListado');
+  const rubro = useRubroPedidos();
+  /** Etiqueta de la acción del paso: «Iniciar preparación» o, en una tienda, «Empezar a alistar». */
+  const etiquetaAccion = (id: PasoSiguiente['id']) => t(`filaAcciones.${id === 'preparar' ? claveRubro(id, rubro) : id}`);
+  const etiquetaEstado = (o: WebOrder) => t(`estados.${claveEstadoPedido(o.status, rubro)}`);
   const { formatear } = useMonedaOrganizacion();
   const hora = (iso?: string | null) => (iso ? formatTimeInTz(iso, timezone) : '');
   const idioma = useLocale();
@@ -145,7 +152,7 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
     return { titulo, detalle, tono: p.tono };
   };
 
-  const etiquetaPaso = (o: WebOrder, paso: PasoSiguiente) => t(`filaAcciones.${paso.id}`) + ' · ' + o.order_number;
+  const etiquetaPaso = (o: WebOrder, paso: PasoSiguiente) => etiquetaAccion(paso.id) + ' · ' + o.order_number;
 
   const ejecutarPaso = (o: WebOrder, paso: PasoSiguiente) => {
     if (paso.id === 'confirmar') onConfirmar(o);
@@ -153,10 +160,10 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
   };
 
   const accionesDe = (o: WebOrder): AccionFila[] => {
-    const paso = pasoSiguiente(o);
+    const paso = pasoSiguiente(o, rubro);
     return [
       { id: 'ver', etiqueta: t('filaAcciones.ver'), icono: Eye, onSelect: () => onAbrir(o) },
-      ...(paso ? [{ id: paso.id, etiqueta: t(`filaAcciones.${paso.id}`), icono: paso.icono, onSelect: () => ejecutarPaso(o, paso) }] : []),
+      ...(paso ? [{ id: paso.id, etiqueta: etiquetaAccion(paso.id), icono: paso.icono, onSelect: () => ejecutarPaso(o, paso) }] : []),
       { id: 'imprimir', etiqueta: t('filaAcciones.imprimir'), icono: Printer, onSelect: () => onImprimir(o) },
       {
         id: 'rechazar',
@@ -198,7 +205,7 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
     {
       id: 'estado',
       encabezado: t('columnas.estado'),
-      celda: (o) => <StatusBadge estado={o.status} etiqueta={t(`estados.${o.status}`)} tono={TONO_ESTADO_PEDIDO[o.status]} tamano="sm" />,
+      celda: (o) => <StatusBadge estado={o.status} etiqueta={etiquetaEstado(o)} tono={TONO_ESTADO_PEDIDO[o.status]} tamano="sm" />,
     },
     {
       id: 'entrega',
@@ -263,7 +270,7 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
           </span>
         }
         valor={formatear(Number(o.total) || 0)}
-        estado={<StatusBadge estado={o.status} etiqueta={t(`estados.${o.status}`)} tono={TONO_ESTADO_PEDIDO[o.status]} tamano="sm" />}
+        estado={<StatusBadge estado={o.status} etiqueta={etiquetaEstado(o)} tono={TONO_ESTADO_PEDIDO[o.status]} tamano="sm" />}
         onClick={() => onAbrir(o)}
         acciones={accionesDe(o)}
         seleccionable={ctx.modoSeleccion}
@@ -288,7 +295,7 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
       etiquetaFila={(o) => o.order_number}
       acciones={accionesDe}
       accionesRapidas={(o) => {
-        const paso = pasoSiguiente(o);
+        const paso = pasoSiguiente(o, rubro);
         const Icono = paso?.icono;
         return (
           <>
@@ -297,7 +304,7 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
                 type="button"
                 className={boton}
                 aria-label={etiquetaPaso(o, paso)}
-                title={t(`filaAcciones.${paso.id}`)}
+                title={etiquetaAccion(paso.id)}
                 onClick={(ev) => {
                   ev.stopPropagation();
                   ejecutarPaso(o, paso);

@@ -114,7 +114,7 @@ const transporte = () =>
       ],
       cumplimiento: new Map([['t1', { tripId: 't1', bloqueos: [{ causa: 'soat', grupo: 'vehiculo', vence: '2026-11-20', excepcion: false }], avisos: [], admiteExcepcion: false, pidePin: true }]]),
       vehiculos: { total: 15, disponibles: 9, enUso: 4, mantenimiento: 2, placasMantenimiento: ['WNP105'] },
-      documentos: { vencidos: 2, porVencer: 5, vigentes: 20, total: 27, sinFecha: 0, primero: null, vencidosEjemplo: [{ nombre: 'WNP104', tipo: 'soat' }] },
+      documentos: { vencidos: 2, porVencer: 5, vigentes: 20, total: 27, sinFecha: 0, sinArchivo: 0, primero: null, vencidosEjemplo: [{ nombre: 'WNP104', tipo: 'soat' }] },
     },
     href: todo,
   });

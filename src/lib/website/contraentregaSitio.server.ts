@@ -37,6 +37,8 @@ export interface ZonaContraentrega {
   nombre: string;
   branchId: number | null;
   envioGratisDesde: number | null;
+  /** Valor del domicilio de la zona (`shipping_zones.fee`): la cifra real del anticipo «el envío». */
+  domicilio: number | null;
 }
 
 export interface RespuestaContraentrega {
@@ -114,7 +116,7 @@ export async function leerContraentrega(ctx: Ctx): Promise<RespuestaContraentreg
       .order('name', { ascending: true }),
     ctx.supabase
       .from('shipping_zones')
-      .select('id, name, branch_id, free_shipping_from, priority')
+      .select('id, name, branch_id, free_shipping_from, priority, fee')
       .eq('organization_id', ctx.organizationId)
       .eq('is_active', true)
       .order('priority', { ascending: true })
@@ -180,11 +182,12 @@ export async function leerContraentrega(ctx: Ctx): Promise<RespuestaContraentreg
     },
     sedes,
     condiciones,
-    zonas: ((zonasRes.data ?? []) as { id: string; name: string; branch_id: number | null; free_shipping_from: number | string | null }[]).map((z) => ({
+    zonas: ((zonasRes.data ?? []) as { id: string; name: string; branch_id: number | null; free_shipping_from: number | string | null; fee: number | string | null }[]).map((z) => ({
       id: z.id,
       nombre: z.name,
       branchId: z.branch_id,
       envioGratisDesde: numero(z.free_shipping_from),
+      domicilio: numero(z.fee),
     })),
     pasarelas: Array.from(pasarelasVistas, ([codigo, nombre]) => ({ codigo, nombre })),
     categorias: ((categoriasRes.data ?? []) as { id: number; name: string | null; description: string | null }[]).map((c) => ({

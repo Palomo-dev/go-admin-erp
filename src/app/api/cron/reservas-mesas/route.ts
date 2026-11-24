@@ -20,6 +20,7 @@ import { withCron } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/resendClient';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
+import { remitenteComprador } from '@/lib/services/remitenteCompradores';
 import {
   correoRecordatorioReserva,
   enlaceGestionReserva,
@@ -73,7 +74,6 @@ async function procesar(): Promise<NextResponse> {
   if (reclamadas.length === 0) return NextResponse.json({ enviados: 0 }, { headers: { 'Cache-Control': 'no-store' } });
 
   const hosts = await hostsDeOrganizaciones(Array.from(new Set(reclamadas.map((r) => r.organization_id))));
-  const remitente = `${process.env.EMAIL_FROM_NAME || 'GO Admin'} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
   let enviados = 0;
   const fallidas: string[] = [];
 
@@ -82,7 +82,8 @@ async function procesar(): Promise<NextResponse> {
     const correo = correoRecordatorioReserva(r, enlace);
     try {
       const { error: errEnvio } = await getMasterResend().emails.send({
-        from: remitente,
+        // El comprador ve el nombre del restaurante, nunca «GO Admin» (lib/services/remitenteCompradores.ts).
+        from: remitenteComprador(r.organizacion),
         to: r.customer_email,
         subject: correo.asunto,
         html: correo.html,

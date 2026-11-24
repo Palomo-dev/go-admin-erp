@@ -209,3 +209,15 @@ export function origenDelPedido(p: { source?: string | null } & Parameters<typeo
   const clave = s === 'website' || s === 'mobile_app' || s === 'whatsapp' || s === 'phone' ? s : 'otro';
   return { clave, qrMesa: esComerAqui(p) };
 }
+
+/**
+ * Cuánto falta o cuánto se pasó, en la unidad que se lee de un vistazo: minutos hasta 59,
+ * horas hasta 47 y días desde ahí. Un comercio confirma con 1 día de alistamiento: «faltan
+ * 1377 min» no se entendía; ahora es «faltan 23 h».
+ */
+export function duracionPromesa(minutos: number): { clave: 'min' | 'h' | 'dias'; n: number } {
+  const m = Math.max(0, Math.round(minutos));
+  if (m < 60) return { clave: 'min', n: m };
+  if (m < 48 * 60) return { clave: 'h', n: Math.round(m / 60) };
+  return { clave: 'dias', n: Math.round(m / 1440) };
+}

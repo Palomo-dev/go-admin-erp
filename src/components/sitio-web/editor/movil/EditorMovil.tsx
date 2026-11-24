@@ -153,6 +153,7 @@ export function EditorMovil({ editor, estado, onPublicar, onVistaPrevia, categor
           host={editor.host}
           dispositivo="celular"
           recarga={editor.previewRefreshKey}
+          recargaSinPuente={editor.recargaSinPuente}
           secciones={editor.seccionesLienzo}
           ajustes={editor.ajustesLienzo}
           seleccion={null}

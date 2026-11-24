@@ -4,7 +4,8 @@
  * Pestañas (Figma `04 Inventario › Producto — …`, PARIDAD-DETALLE-PRODUCTO):
  * Resumen · Inventario (Stock · Lotes · Kardex · Seriales) · Precios y costos ·
  * Variantes y modificadores · Producción (B5, solo si tiene contenido) ·
- * Imágenes · Proveedores y etiquetas · Notas · Historial. Van en la URL
+ * Imágenes · Proveedores y etiquetas · Notas · Tienda (relacionados a mano y ficha técnica de la
+ * tienda web, 2026-11-24) · Historial. Van en la URL
  * (`?tab=inventario&sub=seriales`; Producción guarda la suya en `?psub=`).
  */
 
@@ -17,6 +18,7 @@ export type PestanaDetalle =
   | 'imagenes'
   | 'proveedores'
   | 'notas'
+  | 'tienda'
   | 'historial';
 
 export const PESTANAS_DETALLE: readonly PestanaDetalle[] = [
@@ -28,6 +30,7 @@ export const PESTANAS_DETALLE: readonly PestanaDetalle[] = [
   'imagenes',
   'proveedores',
   'notas',
+  'tienda',
   'historial',
 ];
 

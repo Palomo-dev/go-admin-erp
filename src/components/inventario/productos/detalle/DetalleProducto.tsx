@@ -63,6 +63,7 @@ import { ImagenesProducto } from './imagenes/ImagenesProducto';
 import { ProveedoresProducto } from './proveedores/ProveedoresProducto';
 import { EtiquetasProducto } from './proveedores/EtiquetasProducto';
 import { NotasProducto } from './notas/NotasProducto';
+import { TiendaProducto } from './tienda/TiendaProducto';
 import { HistorialProducto } from './historial/HistorialProducto';
 import { PestanaProduccion, debeMostrarPestanaProduccion } from './produccion';
 
@@ -264,6 +265,8 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
     { valor: 'imagenes', etiqueta: t('pestanas.imagenes'), contador: conteos?.imagenes },
     { valor: 'proveedores', etiqueta: t('pestanas.proveedores'), contador: conteos ? conteos.proveedores + conteos.etiquetas : undefined },
     { valor: 'notas', etiqueta: t('pestanas.notas'), contador: conteos?.notas },
+    // Tienda web: relacionados elegidos a mano y filas propias de la ficha técnica (2026-11-24).
+    { valor: 'tienda', etiqueta: t('pestanas.tienda') },
     { valor: 'historial', etiqueta: t('pestanas.historial') },
   ];
 
@@ -396,6 +399,7 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
           {tab === 'proveedores' && subActual === 'proveedores' && <ProveedoresProducto />}
           {tab === 'proveedores' && subActual === 'etiquetas' && <EtiquetasProducto />}
           {tab === 'notas' && <NotasProducto />}
+          {tab === 'tienda' && <TiendaProducto />}
           {tab === 'historial' && <HistorialProducto />}
         </div>
       </div>

@@ -35,6 +35,7 @@ import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
+import { CAMPOS_CUBIERTOS_FICHA, PanelSeccionFicha, esSeccionFichaConPanel } from './EditorSeccionesFicha';
 import { CLAVES_BARRA_FIJA_EDITOR, EditorBarraFija } from './EditorBarraFija';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
@@ -128,6 +129,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       if (c.key === 'show_pagination' && (TIPOS_PAGINACION as readonly string[]).includes(s.section_type)) return false;
       // «Barra fija en el celular» se pinta dentro de «Barra fija al bajar» (EditorBarraFija, Figma 2859:71538).
       if (s.section_type === 'product_actions' && CLAVES_BARRA_FIJA_EDITOR.includes(c.key)) return false;
+      // Beneficios, reseñas, relacionados y descripción: su panel ya pinta estos campos (Figma 2983:72501).
+      if (esSeccionFichaConPanel(s.section_type) && CAMPOS_CUBIERTOS_FICHA[s.section_type].includes(c.key)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       if (!campoLayoutCategorias(c, contenido, s.section_type)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
@@ -140,6 +143,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
     }).map((c) => campoLayoutCategorias(c, contenido, s.section_type) ?? c);
 
   const disenoVacio =
+    !esSeccionFichaConPanel(s.section_type) &&
     !(definicion && definicion.variants.length > 1) &&
     !esSeccionTarjetaProducto(s.section_type) &&
     s.section_type !== 'promo_banners' &&
@@ -368,6 +372,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             {s.section_type === 'promo_banners' && (
               <InspectorBanners contenido={contenido} onCambiar={onCambiarContenido} />
             )}
+            {/* Beneficios, reseñas, relacionados y descripción de la ficha (Figma 2983:72501). */}
+            {esSeccionFichaConPanel(s.section_type) && (
+              <PanelSeccionFicha tipo={s.section_type} pestana="diseno" contenido={contenido} onCambiar={onCambiarContenido} />
+            )}
             {pintarConBloques(campos('diseno'))}
             {(TIPOS_PAGINACION as readonly string[]).includes(s.section_type) && (
               <PanelPaginacion
@@ -414,8 +422,12 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         {pestana === 'contenido' && s.section_type === 'product_actions' && (
           <EditorAccionesFicha contenido={contenido} onCambiar={onCambiarContenido} numeroWhatsapp={ajustesSitio?.whatsapp_number} />
         )}
+        {pestana === 'contenido' && esSeccionFichaConPanel(s.section_type) && (
+          <PanelSeccionFicha tipo={s.section_type} pestana="contenido" contenido={contenido} onCambiar={onCambiarContenido} />
+        )}
         {pestana === 'contenido' &&
           (campos('contenido').length === 0 ? (
+            esSeccionFichaConPanel(s.section_type) ? null :
             <p className="text-[13px] leading-[18px] text-fg-secondary">{t('inspector.sinContenido')}</p>
           ) : (
             pintarConBloques(campos('contenido'))
@@ -425,6 +437,9 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           <EditorBarraFija contenido={contenido} onCambiar={onCambiarContenido} />
         )}
 
+        {pestana === 'estilo' && esSeccionFichaConPanel(s.section_type) && (
+          <PanelSeccionFicha tipo={s.section_type} pestana="estilo" contenido={contenido} onCambiar={onCambiarContenido} />
+        )}
         {pestana === 'estilo' && (
           <InspectorEstilo
             estilo={estilo}

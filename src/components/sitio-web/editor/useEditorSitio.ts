@@ -92,6 +92,7 @@ import type { DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
 import { cambiosParaFilaLegacy } from './inspector/zonaGlobalLogica';
 import { programarAutoguardado, type Autoguardado } from './useAutoguardado';
+import { cambioPideRecargaLienzo } from './recargaLienzoDetalle';
 import { historialVacio, raicesCambiadas, registrar, reponerRaices, sacarParaDeshacer, sacarParaRehacer, valoresPrevios, type Historial } from './historialEditor';
 
 /**
@@ -190,11 +191,17 @@ export function useEditorSitio() {
   const [previewEntityId, setPreviewEntityId] = useState<string | null>(null);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
   /**
-   * La ficha de producto y la categoría se pintan con el borrador pero sin el puente en vivo de
-   * las secciones (el renderer de la ficha es de servidor): tras cada guardado del borrador el
-   * lienzo se recarga para mostrar lo guardado. Se actualiza en cada render (ver `detalleEnBorrador`).
+   * La ficha de producto y la categoría se pintan con el borrador. La tienda las sirve con el
+   * puente en vivo (como las demás páginas): tras guardar, el lienzo solo se recarga si cambió una
+   * sección que la tienda no puede pintar en vivo (`cambioPideRecargaLienzo`). Se actualiza en
+   * cada render (ver `detalleEnBorrador`).
    */
   const recargarLienzoTrasGuardarRef = useRef(false);
+  /**
+   * Guardados de una plantilla de detalle que no pidieron recarga: el lienzo los pinta en vivo y
+   * solo recarga si la tienda no respondió por el puente (despliegue viejo, `LienzoEditor`).
+   */
+  const [guardadosDetalle, setGuardadosDetalle] = useState(0);
   /** Revalida la tienda pública y recarga la vista previa (datos del Inventario cambiados desde el editor). */
   const refrescarLienzo = useCallback(() => {
     revalidarSitioPublico();
@@ -551,6 +558,8 @@ export function useEditorSitio() {
   const guardarV2 = useCallback(async (): Promise<boolean> => {
     const documento = documentoActual();
     if (!documento || !organizationId) return false;
+    /** Lo guardado antes (lo que ya pinta el lienzo de una plantilla de detalle). */
+    const previo = docLocalRef.current;
     setEstadoGuardado('guardando');
     ultimoGuardadoRef.current = documento;
     const ok = await v2.guardar(() => documento);
@@ -572,7 +581,17 @@ export function useEditorSitio() {
       toast(t('guardado.operacionSoloPrincipal'));
     }
     setDocLocal(documento);
-    if (recargarLienzoTrasGuardarRef.current) setPreviewRefreshKey((k) => k + 1);
+    if (recargarLienzoTrasGuardarRef.current) {
+      // Plantilla de detalle: las secciones ya se ven en vivo por el puente. Solo se recarga si
+      // cambió una sección cuyos datos calcula el servidor de la tienda («Completa el look»).
+      const pagina = currentPageRef.current;
+      const deLaPagina = (d: DocumentoSitio | null) => d?.paginas.find((p) => p.id === pagina?.id);
+      if (pagina && cambioPideRecargaLienzo(pagina.page_type, deLaPagina(previo), deLaPagina(documento))) {
+        setPreviewRefreshKey((k) => k + 1);
+      } else {
+        setGuardadosDetalle((n) => n + 1);
+      }
+    }
     // Si hubo cambios mientras se guardaba, el autoguardado vuelve a programarse solo.
     if (!autoguardadoRef.current?.pendiente()) {
       setHasChanges(false);
@@ -1939,6 +1958,8 @@ export function useEditorSitio() {
     urlLienzo,
     preparandoLienzo,
     previewRefreshKey,
+    /** Guardados de una plantilla de detalle pintados en vivo (el lienzo recarga si no hay puente). */
+    recargaSinPuente: guardadosDetalle,
     refrescarLienzo,
     ajustesLienzo,
     seccionesLienzo,

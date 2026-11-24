@@ -6,8 +6,9 @@
  * persona— y qué versión pinta el lienzo.
  *
  * Ficha de producto y página de categoría: la tienda las sirve con el BORRADOR en la vista previa
- * firmada (`/vista-previa/<token>/productos/<id>`), pero sin el puente en vivo de las secciones:
- * el lienzo se recarga después de cada guardado. La ficha de espacio sigue con la publicada.
+ * firmada (`/vista-previa/<token>/productos/<id>`) y con el puente en vivo de las secciones, como
+ * las demás páginas: el lienzo solo se recarga al guardar un bloque que la tienda no puede pintar
+ * en vivo (`recargaLienzoDetalle.ts`). La ficha de espacio sigue con la publicada.
  */
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTextosEditor } from './textos';

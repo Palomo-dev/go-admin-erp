@@ -740,6 +740,7 @@ function Editor() {
           host={ed.host}
           dispositivo={ed.dispositivo}
           recarga={ed.previewRefreshKey}
+          recargaSinPuente={ed.recargaSinPuente}
           secciones={ed.seccionesLienzo}
           ajustes={ed.ajustesLienzo}
           seleccion={ed.activeSectionId ?? ed.zonaGlobal}

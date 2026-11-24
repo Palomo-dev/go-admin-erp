@@ -33,6 +33,12 @@ export interface LienzoEditorProps {
   host: string | null;
   dispositivo: DispositivoVista;
   recarga: number;
+  /**
+   * Guardados que el sitio pinta en vivo (plantillas de detalle). Cuando sube, el lienzo NO se
+   * recarga si el puente del sitio avisó `goadmin:ready` desde la última carga; si no avisó (una
+   * tienda sin el puente en esa página), recarga como antes para mostrar lo guardado.
+   */
+  recargaSinPuente?: number;
   secciones: readonly WebsitePageSection[];
   ajustes: OpcionesPuente['ajustes'];
   seleccion: string | null;
@@ -83,6 +89,9 @@ export function LienzoEditor(p: LienzoEditorProps) {
   const [ancho, setAncho] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState(false);
+  // Recarga propia: un guardado que el sitio no puede pintar en vivo porque no tiene el puente.
+  const [recargaPropia, setRecargaPropia] = useState(0);
+  const puenteListo = useRef(false);
   const { alCargar } = usePuenteLienzo({
     iframe,
     url: p.url,
@@ -94,7 +103,22 @@ export function LienzoEditor(p: LienzoEditorProps) {
     onQuitar: p.onQuitar,
     cartaSede: p.cartaSede,
     pagina: p.pagina,
+    onListo: () => {
+      puenteListo.current = true;
+    },
   });
+
+  // Cada carga nueva del iframe vuelve a esperar el `goadmin:ready` de su puente.
+  useEffect(() => {
+    puenteListo.current = false;
+  }, [p.recarga, p.url, recargaPropia]);
+
+  const sinPuenteVisto = useRef(p.recargaSinPuente);
+  useEffect(() => {
+    if (p.recargaSinPuente === sinPuenteVisto.current) return;
+    sinPuenteVisto.current = p.recargaSinPuente;
+    if (!puenteListo.current) setRecargaPropia((n) => n + 1);
+  }, [p.recargaSinPuente]);
 
   useEffect(() => {
     const el = contenedor.current;
@@ -107,7 +131,7 @@ export function LienzoEditor(p: LienzoEditorProps) {
   useEffect(() => {
     setCargando(true);
     setFallo(false);
-  }, [p.recarga, p.url]);
+  }, [p.recarga, p.url, recargaPropia]);
 
   const viewport = VIEWPORT_DISPOSITIVO[p.dispositivo];
   const { escala, anchoMarco, alto } = medidasLienzo(p.dispositivo, ancho);
@@ -204,7 +228,7 @@ export function LienzoEditor(p: LienzoEditorProps) {
               )}
               <iframe
                 ref={iframe}
-                key={p.recarga}
+                key={`${p.recarga}:${recargaPropia}`}
                 src={src}
                 title={t('lienzo.iframe')}
                 sandbox="allow-scripts allow-same-origin allow-popups"

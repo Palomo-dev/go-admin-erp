@@ -70,9 +70,11 @@ export interface OpcionesPuente {
   cartaSede?: { branchId: number; cambios: unknown[] } | null;
   /** Tipo y slug de la página: la Carta QR va por pasos (`goadmin:paso`). Ausente = como siempre. */
   pagina?: { tipo?: string | null; slug?: string | null } | null;
+  /** El puente del sitio avisó `goadmin:ready`: esa página pinta los cambios en vivo. */
+  onListo?: () => void;
 }
 
-export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, avisoSeccion, onClic, onQuitar, cartaSede, pagina }: OpcionesPuente) {
+export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, avisoSeccion, onClic, onQuitar, cartaSede, pagina, onListo }: OpcionesPuente) {
   const destinoUrl = origenDe(url);
   // Origen real del iframe (tras redirecciones apex ↔ www), aprendido de sus mensajes.
   const origenReal = useRef<string | null>(null);
@@ -176,6 +178,8 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
   }, [enviarSecciones, enviarAjustes, enviar]);
   const reenviarRef = useRef(reenviarTodo);
   reenviarRef.current = reenviarTodo;
+  const onListoRef = useRef(onListo);
+  onListoRef.current = onListo;
 
   useEffect(() => {
     const alRecibir = (e: MessageEvent) => {
@@ -188,6 +192,7 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
       // El puente del sitio monta después de hidratar: puede estar listo después de `onLoad`.
       // Al avisar `goadmin:ready` se le manda el borrador y la selección.
       if (d.type === 'goadmin:ready') {
+        onListoRef.current?.();
         reenviarRef.current();
         return;
       }

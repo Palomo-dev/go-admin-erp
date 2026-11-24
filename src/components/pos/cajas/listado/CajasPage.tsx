@@ -59,6 +59,7 @@ import { HistorialTab } from './HistorialTab';
 import { MiCajaTab } from './MiCajaTab';
 import { Oculto, esPestanaCajas, useHaceCuanto, type PestanaCajas } from './comunes';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 export function CajasPage() {
   // Moneda base de la organización (fuente única: monedaOrganizacion.ts).
@@ -74,6 +75,7 @@ export function CajasPage() {
   const t = useTranslations('cajas.listado.pagina');
   const tListado = useTranslations('cajas.listado');
   const tError = useTranslations('cajas.errores');
+  const migaVentas = useMigaVentas();
   const mensajeError = useMensajeErrorCaja();
   const localeIntl = useLocaleIntl();
   const haceCuanto = useHaceCuanto();
@@ -331,7 +333,7 @@ export function CajasPage() {
         icono={Banknote}
         subtitulo={subtitulo}
         cargando={refrescando}
-        migas={[{ etiqueta: t('migaPos'), href: '/app/pos' }, { etiqueta: t('titulo') }]}
+        migas={[migaVentas, { etiqueta: t('titulo') }]}
         acciones={
           <>
             <Button

@@ -11,12 +11,14 @@
  *    ausente = activa), por el acceso del cargo y por las capacidades
  *    calculadas en el servidor;
  *  - si no le queda ninguna página, el módulo desaparece;
- *  - su enlace es su primera página visible (así quien solo tiene la bandeja de
+ *  - su enlace es su página de inicio (`ModuloNav.inicio`) o, si no la tiene o
+ *    no la ve, su primera página visible (así quien solo tiene la bandeja de
  *    notificaciones entra directo a la bandeja).
  */
 import {
   CATALOGO_NAV,
   SECCIONES,
+  hrefInicioModulo,
   type CapacidadNav,
   type CodigoSeccion,
   type ModuloNav,
@@ -44,7 +46,7 @@ export interface AccesoNav extends AccesoPaginas {
 export interface ModuloVisible {
   modulo: ModuloNav;
   paginas: PaginaNav[];
-  /** Enlace del módulo: su primera página visible. */
+  /** Enlace del módulo: su página de inicio visible o, si no, la primera visible. */
   href: string;
   /** true si tiene más de una página: abre el panel de submenú en vez de navegar. */
   tieneSubmenu: boolean;
@@ -70,7 +72,13 @@ function paginasVisibles(modulo: ModuloNav, acceso: AccesoNav): PaginaNav[] {
     if (p.enMenu === false) return false;
     // La activación por organización se decide SOLO en `paginaActiva()`. No
     // escribas aquí una comprobación a mano: `paginaActiva.test.ts` la caza.
-    if (!paginaActiva(modulo.codigo, p.href, acceso)) return false;
+    // Una página prestada de otro módulo (Cotizaciones en Ventas) se decide con
+    // el módulo dueño: activo en la organización, no apagada ahí y permitida
+    // por el cargo, igual que en su propio menú.
+    if (p.moduloDueno) {
+      if (!paginaActiva(p.moduloDueno, p.href, acceso)) return false;
+      if (acceso.modulosCargo !== null && !acceso.modulosCargo.includes(p.moduloDueno)) return false;
+    } else if (!paginaActiva(modulo.codigo, p.href, acceso)) return false;
     if (filtrable && acceso.paginasCargo !== null && !acceso.paginasCargo.includes(p.href)) {
       return false;
     }
@@ -86,7 +94,8 @@ function moduloVisible(modulo: ModuloNav, acceso: AccesoNav): ModuloVisible | nu
   }
   const paginas = paginasVisibles(modulo, acceso);
   if (paginas.length === 0) return null;
-  return { modulo, paginas, href: paginas[0].href, tieneSubmenu: paginas.length > 1 };
+  const href = hrefInicioModulo(modulo, paginas.map((p) => p.href)) ?? paginas[0].href;
+  return { modulo, paginas, href, tieneSubmenu: paginas.length > 1 };
 }
 
 /** Secciones con sus módulos visibles, en orden; las secciones vacías no aparecen. */
@@ -124,6 +133,8 @@ export function rutaActiva(pathname: string | null, catalogo: ModuloNav[] = CATA
     for (const pagina of modulo.paginas) {
       // Una página fuera del menú no se resalta: resalta la que la contiene.
       if (pagina.enMenu === false) continue;
+      // Una página prestada (Cotizaciones en Ventas) resalta a su módulo dueño.
+      if (pagina.moduloDueno) continue;
       if (coincide(pathname, pagina.href) && (!mejor || pagina.href.length > mejor.largo)) {
         mejor = { modulo, pagina, largo: pagina.href.length };
       }

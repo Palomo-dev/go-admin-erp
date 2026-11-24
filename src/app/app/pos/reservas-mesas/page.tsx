@@ -43,6 +43,7 @@ import { ReservasConfiguracion } from '@/components/pos/reservas-mesas/ReservasC
 import { SolicitudReservaDialog } from '@/components/pos/reservas-mesas/SolicitudReservaDialog';
 import { RechazarSolicitudDialog } from '@/components/pos/reservas-mesas/RechazarSolicitudDialog';
 import { horaCorta } from '@/components/pos/reservas-mesas/reservasVista';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 type Pestana = 'agenda' | 'lista' | 'configuracion';
 const PESTANAS: readonly Pestana[] = ['agenda', 'lista', 'configuracion'];
@@ -73,6 +74,7 @@ export default function ReservasMesasPage() {
   const { timezone, resolveFor } = useOrgTimezone();
   const t = useTranslations('posReservasMesas');
   const tp = useTranslations('posReservasMesas.pagina');
+  const migaVentas = useMigaVentas();
   const mensajeError = useMensajeErrorReserva();
 
   const hoy = todayInTz(timezone);
@@ -426,7 +428,7 @@ export default function ReservasMesasPage() {
   return (
     <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
       <PageHeader
-        migas={[{ etiqueta: tp('migaPos'), href: '/app/pos' }, { etiqueta: tp('miga') }]}
+        migas={[migaVentas, { etiqueta: tp('miga') }]}
         titulo={tp('titulo')}
         subtitulo={subtitulo}
         icono={CalendarClock}

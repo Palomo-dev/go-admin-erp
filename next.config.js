@@ -51,6 +51,41 @@ const REDIRECCIONES_CONFIGURACION = [
   { source: '/app/finanzas/configuracion/secuencias', destination: '/app/configuracion?modulo=facturacion&seccion=resumen', permanent: true },
 ];
 
+/**
+ * Logística se separó de Transporte (Figma «21 Logística» 2792:17, decisión
+ * del dueño 2026-11-23): lo de envíos con domicilio vive en /app/logistica.
+ * Redirecciones PERMANENTES (308) desde las rutas viejas de Transporte para no
+ * romper favoritos ni enlaces de correos. Las Tarifas de envío pasan a Zonas y
+ * tarifas, el Tracking a Seguimiento y las Transportadoras a Integraciones ›
+ * Conexiones › Logística (los proveedores son conexiones).
+ * Transporte se queda con viajes, rutas, paradas, horarios, boletos, tarifas
+ * de pasajeros, manifiestos, incidentes, conductores y vehículos. Lo verifica
+ * `src/__tests__/logistica/navegacionLogistica.test.ts`.
+ */
+const REDIRECCIONES_LOGISTICA = [
+  { source: '/app/transporte/envios', destination: '/app/logistica/envios', permanent: true },
+  { source: '/app/transporte/envios/:id', destination: '/app/logistica/envios/:id', permanent: true },
+  { source: '/app/transporte/tracking', destination: '/app/logistica/seguimiento', permanent: true },
+  { source: '/app/transporte/tarifas-envio', destination: '/app/logistica/zonas', permanent: true },
+  // Las transportadoras son conexiones (no se duplican): Integraciones › Conexiones › Logística.
+  { source: '/app/transporte/transportadoras', destination: '/app/integraciones/conexiones/logistica', permanent: true },
+  { source: '/app/transporte/etiquetas', destination: '/app/logistica/etiquetas', permanent: true },
+  { source: '/app/transporte/mis-envios', destination: '/app/logistica/mis-envios', permanent: true },
+  { source: '/app/transporte/direcciones-clientes', destination: '/app/logistica/direcciones-clientes', permanent: true },
+];
+
+/**
+ * Transporte (Figma «23 Transporte» 2867:17, lámina 1 · sección 4; 2026-11-23): Paradas, Tarifas
+ * de pasajeros e Incidentes pasan a pestañas de Rutas, Boletos y Viajes. Redirecciones
+ * PERMANENTES (308). El detalle /app/transporte/incidentes/[id] NO redirige (sigue siendo la
+ * página de la novedad). Lo verifica `src/__tests__/transporte/navegacionTransporte.test.ts`.
+ */
+const REDIRECCIONES_TRANSPORTE = [
+  { source: '/app/transporte/paradas', destination: '/app/transporte/rutas?pestana=paradas', permanent: true },
+  { source: '/app/transporte/tarifas-pasajeros', destination: '/app/transporte/boletos?pestana=tarifas', permanent: true },
+  { source: '/app/transporte/incidentes', destination: '/app/transporte/viajes?pestana=novedades', permanent: true },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -144,6 +179,8 @@ const nextConfig = {
       { source: '/gym-display/:deviceId', destination: '/membresias-kiosco/:deviceId', permanent: true },
       ...REDIRECCIONES_SITIO_WEB,
       ...REDIRECCIONES_CONFIGURACION,
+      ...REDIRECCIONES_LOGISTICA,
+      ...REDIRECCIONES_TRANSPORTE,
     ];
   },
   // Sitio web: el editor visual vive en /app/sitio-web/editor/:pageId (bajo la

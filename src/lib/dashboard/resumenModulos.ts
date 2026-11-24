@@ -247,6 +247,10 @@ const REGLAS: Record<string, Regla> = {
     };
   },
 
+  // Logística (2026-11-23): la base solo dice si la fila aparece; badge, línea y
+  // panel los arma `logisticaInicio.ts` con las reglas del módulo.
+  logistica: () => ({ tono: 'neutro', badge: null, resumen: [], kpis: [], usaPeriodo: false }),
+
   transport: (m) => {
     const retrasados = num(m.retrasados);
     return {

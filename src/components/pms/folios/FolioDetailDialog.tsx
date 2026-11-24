@@ -37,7 +37,7 @@ const ORIGEN_CARGO: Record<string, string> = {
   laundry: 'Lavandería',
   spa: 'Spa',
   activities: 'Actividades',
-  pos: 'Punto de venta',
+  pos: 'Ventas (POS)',
   other: 'Otro',
 };
 

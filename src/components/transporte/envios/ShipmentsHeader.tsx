@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, RefreshCw, Download, Upload } from 'lucide-react';
 
@@ -9,9 +10,11 @@ interface ShipmentsHeaderProps {
   onExport?: () => void;
   onImport?: () => void;
   isLoading?: boolean;
+  /** Acción extra antes de «Actualizar» (Logística › Envíos: el atajo «Configurar»). */
+  extra?: ReactNode;
 }
 
-export function ShipmentsHeader({ onNew, onRefresh, onExport, onImport, isLoading }: ShipmentsHeaderProps) {
+export function ShipmentsHeader({ onNew, onRefresh, onExport, onImport, isLoading, extra }: ShipmentsHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4">
       <div>
@@ -33,6 +36,7 @@ export function ShipmentsHeader({ onNew, onRefresh, onExport, onImport, isLoadin
             Exportar
           </Button>
         )}
+        {extra}
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           Actualizar

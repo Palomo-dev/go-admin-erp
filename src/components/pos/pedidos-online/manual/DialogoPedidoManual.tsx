@@ -13,6 +13,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { SelectorProductosPedido, type LineaSeleccionada } from './SelectorProductosPedido';
+import { useCotizacionDomicilio } from '@/components/logistica/cotizar/useCotizacionDomicilio';
+import { AvisoCotizacionDomicilio } from '@/components/logistica/cotizar/AvisoCotizacionDomicilio';
+import { cargoDeCotizacion, estadoCotizacion, nombreZona } from '@/lib/logistica/presentacionEnvio';
 
 interface Props {
   organizationId: number;
@@ -41,7 +44,7 @@ export function DialogoPedidoManual({ organizationId, abierto, onAbiertoChange, 
   const [canal, setCanal] = useState<'whatsapp' | 'phone'>('whatsapp');
   const [entrega, setEntrega] = useState<'pickup' | 'delivery_own'>('pickup');
   const [envio, setEnvio] = useState<number | null>(null);
-  const [cliente, setCliente] = useState({ nombre: '', celular: '', correo: '', direccion: '', ciudad: '' });
+  const [cliente, setCliente] = useState({ nombre: '', celular: '', correo: '', direccion: '', ciudad: '', barrio: '' });
   const [notas, setNotas] = useState('');
   const [lineas, setLineas] = useState<LineaSeleccionada[]>([]);
   const [generarLink, setGenerarLink] = useState(true);
@@ -55,7 +58,7 @@ export function DialogoPedidoManual({ organizationId, abierto, onAbiertoChange, 
     setCanal('whatsapp');
     setEntrega('pickup');
     setEnvio(null);
-    setCliente({ nombre: '', celular: '', correo: '', direccion: '', ciudad: '' });
+    setCliente({ nombre: '', celular: '', correo: '', direccion: '', ciudad: '', barrio: '' });
     setNotas('');
     setLineas([]);
     setGenerarLink(true);
@@ -69,6 +72,26 @@ export function DialogoPedidoManual({ organizationId, abierto, onAbiertoChange, 
   useEffect(() => {
     if (abierto && !sede && branches.length > 0) setSede(String(selectedBranchId ?? branches[0].id));
   }, [abierto, sede, branches, selectedBranchId]);
+
+  // Logística Fase 1 (Figma 2828:305998, «Pedido manual»): el mismo cálculo que la tienda web y el
+  // POS. El servidor vuelve a cotizar al crear; aquí solo se muestra y se llena el envío.
+  const tLog = useTranslations('logistica.cotizar');
+  const subtotalLineas = useMemo(() => lineas.reduce((s, l) => s + Number(l.unit_price ?? 0) * Number(l.quantity ?? 0), 0), [lineas]);
+  const cot = useCotizacionDomicilio({
+    activo: abierto && entrega === 'delivery_own' && !!sede,
+    branchId: sede ? Number(sede) : null,
+    canal: 'manual',
+    subtotal: subtotalLineas,
+    direccion: { ciudad: cliente.ciudad, barrio: cliente.barrio },
+    items: lineas.map((l) => ({ product_id: Number(l.product_id), cantidad: Number(l.quantity ?? 0) })),
+    sondearSinDireccion: true,
+  });
+  const estadoZona = estadoCotizacion(cot.cotizacion);
+  const usaZonas = entrega === 'delivery_own' && estadoZona !== null && estadoZona !== 'sin_zonas';
+  const cargoZona = usaZonas && cot.hayDireccion ? cargoDeCotizacion(cot.cotizacion) : null;
+  useEffect(() => {
+    if (cargoZona !== null) setEnvio(cargoZona);
+  }, [cargoZona]);
 
   const faltante = !sede ? t('faltaSede') : !cliente.nombre.trim() ? t('faltaNombre') : lineas.length === 0 ? t('faltanProductos') : null;
 
@@ -230,11 +253,42 @@ export function DialogoPedidoManual({ organizationId, abierto, onAbiertoChange, 
             )}
           </FormField>
           {entrega === 'delivery_own' && (
-            <FormField etiqueta={t('envio')}>
-              <CampoNumero valor={envio} onValorChange={setEnvio} minimo={0} decimales={0} />
+            <FormField
+              etiqueta={t('envio')}
+              ayuda={
+                usaZonas
+                  ? cot.puedeEditarCargo
+                    ? tLog('manual.envioEditable', { zona: nombreZona(cot.cotizacion) ?? '' })
+                    : tLog('manual.envioBloqueado')
+                  : undefined
+              }
+            >
+              <CampoNumero valor={envio} onValorChange={setEnvio} minimo={0} decimales={0} disabled={usaZonas && !cot.puedeEditarCargo} />
             </FormField>
           )}
         </div>
+        {entrega === 'delivery_own' && (
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FormField etiqueta={tLog('ciudad')}>
+                <Input value={cliente.ciudad} maxLength={80} onChange={(e) => setCliente({ ...cliente, ciudad: e.target.value })} />
+              </FormField>
+              {usaZonas && (
+                <FormField etiqueta={tLog('pos.barrio')}>
+                  <Input value={cliente.barrio} maxLength={80} placeholder={tLog('pos.barrioPlaceholder')} onChange={(e) => setCliente({ ...cliente, barrio: e.target.value })} />
+                </FormField>
+              )}
+            </div>
+            {usaZonas && (
+              <AvisoCotizacionDomicilio
+                estado={cot.hayDireccion ? cot.estado : 'inactivo'}
+                cotizacion={cot.cotizacion}
+                formatear={formatear}
+                onCobrarTarifaGeneral={cot.puedeEditarCargo ? (valor) => setEnvio(valor) : undefined}
+              />
+            )}
+          </div>
+        )}
 
         <div className="space-y-1">
           <p className="text-sm font-medium text-fg">{t('productos')}</p>

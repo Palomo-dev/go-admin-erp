@@ -1,0 +1,53 @@
+/**
+ * Contraentrega y código de entrega (logística Fase 1). Puro.
+ *
+ * Regla única de «¿el pedido web es contraentrega?»: NO está pagado y NO es de pasarela. Es la
+ * misma clasificación del cobro en caja (`pedidoEsDePasarela`, metodosCaja.ts, espejo de
+ * `fn_pedido_web_es_pasarela`): un pedido de pasarela sin pagar es un pago fallido o pendiente en
+ * línea, no un cobro en la puerta. El monto a recaudar es el total del pedido (incluye domicilio y
+ * propina).
+ *
+ * En la venta POS la contraentrega la calcula la base (saldo de la venta) en
+ * `logistica_crear_envio_venta_pos`: nunca un monto del navegador.
+ */
+import { pedidoEsDePasarela } from '@/lib/pos/pedidosWeb/metodosCaja';
+
+export const MEDIOS_COBRO_CONTRAENTREGA = ['cash', 'card', 'transfer', 'qr'] as const;
+export type MedioCobroContraentrega = (typeof MEDIOS_COBRO_CONTRAENTREGA)[number];
+
+export interface PedidoParaContraentrega {
+  total?: number | string | null;
+  payment_status?: string | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+}
+
+export interface Contraentrega {
+  cod_amount: number;
+  cod_status: 'pending' | null;
+}
+
+/** Redondeo a centavos sin arrastre binario. */
+function aCentavos(valor: number): number {
+  return Math.round(valor * 100) / 100;
+}
+
+export function contraentregaDePedidoWeb(pedido: PedidoParaContraentrega): Contraentrega {
+  const total = Number(pedido.total) || 0;
+  if (pedido.payment_status === 'paid' || total <= 0 || pedidoEsDePasarela(pedido)) {
+    return { cod_amount: 0, cod_status: null };
+  }
+  return { cod_amount: aCentavos(total), cod_status: 'pending' };
+}
+
+/** Formato del código de entrega (4 dígitos, CHECK de shipment_delivery_codes). */
+export function esCodigoEntregaValido(codigo: unknown): codigo is string {
+  return typeof codigo === 'string' && /^[0-9]{4}$/.test(codigo.trim());
+}
+
+export function esMedioCobroContraentrega(valor: unknown): valor is MedioCobroContraentrega {
+  return typeof valor === 'string' && (MEDIOS_COBRO_CONTRAENTREGA as readonly string[]).includes(valor);
+}
+
+/** Intentos con código errado antes de bloquear (c_max_intentos en logistica_marcar_entregado). */
+export const MAX_INTENTOS_CODIGO = 5;

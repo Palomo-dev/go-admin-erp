@@ -6,6 +6,7 @@
  * la búsqueda se pegaba sin escapar, V10). Módulo hoja.
  */
 import { ESTADOS_VENTA, ORIGENES_VENTA, type EstadoVenta, type OrigenVenta } from './estadoVenta';
+import { CANALES_VENTA, type CanalVenta } from './canalVenta';
 
 export const CAMPOS_ORDEN_VENTAS = ['fecha', 'total', 'numero', 'cliente'] as const;
 export type CampoOrdenVentas = (typeof CAMPOS_ORDEN_VENTAS)[number];
@@ -19,6 +20,8 @@ export type EstadoPagoVenta = (typeof ESTADOS_PAGO_VENTA)[number];
 export interface FiltrosVentas {
   busqueda: string | null;
   origenes: OrigenVenta[];
+  /** Canal (Figma 24 Ventas): `?canal=pos,tienda_web`. */
+  canales: CanalVenta[];
   estados: EstadoVenta[];
   metodos: string[];
   clienteId: string | null;
@@ -102,6 +105,7 @@ export function filtrosVentas(crudo: Crudo): FiltrosVentas {
   return {
     busqueda: limpiarBusqueda(uno(crudo.q)),
     origenes: lista(crudo.origen).filter((o): o is OrigenVenta => (ORIGENES_VENTA as readonly string[]).includes(o)),
+    canales: lista(crudo.canal).filter((c): c is CanalVenta => (CANALES_VENTA as readonly string[]).includes(c)),
     estados: lista(crudo.estado).filter((e): e is EstadoVenta => (ESTADOS_VENTA as readonly string[]).includes(e)),
     metodos: lista(crudo.metodo).filter((m) => METODO.test(m)),
     clienteId: cliente && UUID.test(cliente) ? cliente.toLowerCase() : null,
@@ -142,6 +146,7 @@ export function parametrosFiltro(f: FiltrosVentas, ctx: ContextoParametros) {
     p_hasta: ctx.hasta,
     p_busqueda: f.busqueda,
     p_origenes: f.origenes.length ? f.origenes : null,
+    p_canales: f.canales.length ? f.canales : null,
     p_estados: f.estados.length ? f.estados : null,
     p_metodos: f.metodos.length ? f.metodos : null,
     p_cliente_id: f.clienteId,
@@ -173,7 +178,7 @@ function diasIncluidos(desde: string, hasta: string): number {
   return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000) + 1;
 }
 
-function sumarDias(fecha: string, dias: number): string {
+export function sumarDias(fecha: string, dias: number): string {
   const [a, m, d] = fecha.split('-').map(Number);
   const x = new Date(Date.UTC(a, m - 1, d + dias));
   return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}-${String(x.getUTCDate()).padStart(2, '0')}`;
@@ -186,4 +191,46 @@ function sumarDias(fecha: string, dias: number): string {
 export function periodoAnterior(desde: string, hasta: string): { desde: string; hasta: string } {
   const n = Math.max(1, diasIncluidos(desde, hasta));
   return { desde: sumarDias(desde, -n), hasta: sumarDias(desde, -1) };
+}
+
+/** El mismo día de la semana anterior («domingo 23» → «domingo 16»): contra él se compara «Ventas de hoy». */
+export function mismoDiaSemanaAnterior(fecha: string): string {
+  return sumarDias(fecha, -7);
+}
+
+/**
+ * Sede pedida por un enlace (`?sucursal=` desde «Ventas por sede» del Inicio):
+ * solo si es una de las sedes que la persona puede ver. La base vuelve a
+ * comprobar el acceso.
+ */
+export function sucursalDeEnlace(valor: string | null | undefined, sedesVisibles: readonly number[]): number | null {
+  if (!valor || !/^\d{1,9}$/.test(valor)) return null;
+  const id = Number(valor);
+  return sedesVisibles.includes(id) ? id : null;
+}
+
+/** ¿El periodo `desde`–`hasta` (días calendario, `hasta` incluido) incluye hoy? */
+export function incluyeHoy(desde: string, hasta: string, hoy: string): boolean {
+  return desde <= hoy && hoy <= hasta;
+}
+
+const MS_DIA = 86_400_000;
+
+/**
+ * Fin del periodo de comparación «a esta misma hora» (decisión del dueño,
+ * 2026-11-23): si el periodo incluye hoy, el anterior se corta en el mismo
+ * instante desplazado `dias` días (hoy a las 15:00 → hace N días a las 15:00),
+ * nunca antes de su inicio ni después de su fin. Si no incluye hoy, el anterior
+ * es de días completos y esta función no se usa.
+ */
+export function finComparacionAEstaHora(inicioAnterior: string, finAnterior: string, dias: number, ahora: Date): string {
+  const corte = ahora.getTime() - dias * MS_DIA;
+  const inicio = Date.parse(inicioAnterior);
+  const fin = Date.parse(finAnterior);
+  return new Date(Math.max(inicio, Math.min(fin, corte))).toISOString();
+}
+
+/** Días del periodo (`hasta` incluido): cuántos días se desplaza la comparación. */
+export function diasDelPeriodo(desde: string, hasta: string): number {
+  return Math.max(1, diasIncluidos(desde, hasta));
 }

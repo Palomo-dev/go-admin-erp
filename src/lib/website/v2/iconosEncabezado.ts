@@ -24,6 +24,13 @@ const COLUMNA: Record<AccionEncabezado, string> = {
 
 const FORMAS = new Set(['shopping-bag', 'shopping-cart']);
 
+/**
+ * Dibujos que se pueden elegir para Buscar (nombres de Lucide en kebab-case). La tienda pinta el
+ * elegido en TODOS sus buscadores: el ícono suelto, el que abre encima, el botón y la lupa de las
+ * barras (visible, compacta, grande y píldora flotante) y el buscador del celular.
+ */
+export const ICONOS_BUSCAR = ['search', 'scan-search', 'text-search', 'search-check', 'zoom-in', 'binoculars'] as const;
+
 export interface IconoResuelto {
   nombre: string;
   url: string | null;

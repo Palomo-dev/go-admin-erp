@@ -3,7 +3,7 @@ import {
   Briefcase,
   Users,
   Bed,
-  ShoppingCart,
+  Receipt,
   MessageSquare,
   Link as LinkIcon,
   Car,
@@ -18,6 +18,8 @@ import {
   Wallet,
   Bot,
   Phone,
+  Truck,
+  Bus,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -64,9 +66,10 @@ export const CONFIG_MODULES: ConfigModule[] = [
   {
     id: 'pos',
     moduleCode: 'pos',
-    title: 'POS',
-    description: 'Punto de venta, impresiones y consecutivos',
-    icon: ShoppingCart,
+    // Módulo «Ventas» desde el 2026-11-23 (Figma 24); dentro conserva la sección «POS».
+    title: 'Ventas',
+    description: 'POS, impresiones y consecutivos',
+    icon: Receipt,
     grupo: 'ventas',
   },
   {
@@ -150,6 +153,29 @@ export const CONFIG_MODULES: ConfigModule[] = [
     title: 'Membresías',
     description: 'Acceso, tolerancias, check-in, clases y notificaciones',
     icon: Dumbbell,
+    grupo: 'operacion',
+  },
+  {
+    // Logística (Fase 1, 2026-11-23): ajustes del módulo. Zonas y reglas son catálogos y siguen
+    // en /app/logistica/zonas y /reglas (con el atajo «Configurar»).
+    id: 'logistica',
+    moduleCode: 'logistica',
+    title: 'Logística',
+    description: 'Sin movimiento, envío gratis, peso por defecto y avisos de entrega',
+    // CATALOGO-ICONOS.md / navigation/catalog.ts: el módulo Logística es `Truck`.
+    icon: Truck,
+    grupo: 'operacion',
+  },
+  {
+    // Transporte (Figma «23 Transporte» › 21b, 2026-11-23): retención del puesto, cambios y
+    // anulaciones, liquidación, tipos de vehículo, motivos de novedad y excepciones al despacho.
+    // Sin página «Configuración» en el módulo: Despachos de hoy, Flota y Boletos llevan el atajo.
+    id: 'transporte',
+    moduleCode: 'transport',
+    title: 'Transporte',
+    description: 'Pasajes, liquidación, tipos de vehículo, novedades y excepciones de despacho',
+    // navigation/catalog.ts: el módulo Transporte es `Bus`.
+    icon: Bus,
     grupo: 'operacion',
   },
   {

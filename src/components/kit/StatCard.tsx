@@ -48,6 +48,11 @@ export interface StatCardProps {
   cargando?: boolean;
   /** `sm`: cifra de 20 px (franjas de 5–6 KPI, Figma `StatCard Size=sm`). Por defecto `md` (28 px). */
   tamano?: 'md' | 'sm';
+  /**
+   * Debajo del detalle, a todo el ancho: la mini-gráfica de la cifra (Figma `KpiModulo` con
+   * serie, 2917:45560 «Ocupación»). Decorativa: la cifra y su variación ya están en texto.
+   */
+  pie?: ReactNode;
   /** La tarjeta entera navega (p. ej. al listado filtrado). */
   href?: string;
   onClick?: () => void;
@@ -65,6 +70,7 @@ export function StatCard({
   icono: Icono,
   cargando,
   tamano = 'md',
+  pie,
   href,
   onClick,
   className,
@@ -113,6 +119,7 @@ export function StatCard({
             <span className="truncate">{detalle}</span>
           </span>
         ))}
+      {pie !== undefined && pie !== null && !cargando && <span className="block w-full">{pie}</span>}
     </>
   );
 

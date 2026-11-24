@@ -34,6 +34,14 @@ import { armarPrimerosPasos, type PrimerosPasos } from './primerosPasos';
 import { armarFinanzas, PAGINAS_FINANZAS, type FinanzasInicio } from './finanzasInicio';
 import { leerFinanzasInicio } from './finanzasInicio.server';
 import { destinoReporteFinanzas } from '@/lib/services/reportes/redireccionesFinanzas';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import type { FilaWidget } from './widgetsInicio';
+import { armarVentas, type VentasInicio } from './ventasWidgetInicio';
+import { leerVentasInicio, type LecturaVentasInicio } from './ventasWidgetInicio.server';
+import { armarLogistica, type LogisticaInicio } from './logisticaInicio';
+import { leerLogisticaInicio } from './logisticaInicio.server';
+import { armarTransporte, type TransporteInicio } from './transporteInicio';
+import { leerTransporteInicio } from './transporteInicio.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase' | 'memberId'>;
 
@@ -93,6 +101,13 @@ export interface CifrasVentasPeriodo {
   num_cobros: number;
   ventas_cobradas: number;
   ticket_promedio?: number;
+  /**
+   * «Recaudado del periodo» suma lo cobrado tal cual: con IVA/INC y con la
+   * propina (pasivo 28150501). Estas son sus partes, para decirlo en la tarjeta
+   * (`fn_inicio_ventas_rango`, migración 20261123233000). Anticipos no entran.
+   */
+  impuestos?: number;
+  propinas?: number;
   por_canal?: Record<string, number>;
   por_sucursal?: Record<string, number>;
   /**
@@ -110,6 +125,12 @@ export interface VentasPeriodo {
   monedas: string[];
   actual: CifrasVentasPeriodo;
   anterior: CifrasVentasPeriodo;
+  /**
+   * «Por cobrar del periodo»: saldo hoy de las ventas del periodo (lo vendido a
+   * crédito menos lo ya cobrado de ellas; regla única de ventas). null = no se
+   * pudo calcular.
+   */
+  por_cobrar?: number | null;
   /** Nombres de las sucursales del desglose «Todas» (id → nombre). */
   sucursales: Record<string, string>;
   /** «Ver ventas» del detalle, solo si la persona ve esa página del menú. */
@@ -309,6 +330,22 @@ export interface ModuloInicio {
    * `inicioFinanzas`.
    */
   finanzas?: FinanzasInicio | null;
+  /**
+   * Ventas, Logística y Transporte (Figma `03` › Inicio, 2915:45356, aprobado
+   * el 2026-11-23): panel propio y la fila plegada `filaWidget`, cuyas claves
+   * son del namespace `inicioWidgets` (con ella, `resumen.badge` y
+   * `resumen.tono` salen de `filaWidget`).
+   */
+  ventas?: VentasInicio | null;
+  logistica?: LogisticaInicio | null;
+  transporte?: TransporteInicio | null;
+  filaWidget?: FilaWidget | null;
+}
+
+/** Opciones de `modulosDelInicio` para los widgets que miran «hoy» además del periodo. */
+export interface OpcionesModulos {
+  /** Rango de «hoy» con la regla del inicio (horas de operación, zona de la sede). */
+  rangoHoy?: RangoPeriodo;
 }
 
 export interface ModulosInicio {
@@ -347,17 +384,20 @@ export async function modulosDelInicio(
   rango: RangoPeriodo,
   sucursal: number | null,
   prefs: PreferenciasInicio,
+  opciones: OpcionesModulos = {},
 ): Promise<ModulosInicio> {
   const secciones = await seccionesVisiblesServidor(ctx);
   const visibles = modulosDeSecciones(secciones);
   const codigos = visibles.map((v) => v.codigo);
   const ocultos = prefs.modulosOcultos.filter((c) => codigos.includes(c));
   const visible = (href: string) => paginaVisible(secciones, href);
+  const seMuestra = (codigo: string) => codigos.includes(codigo) && !ocultos.includes(codigo);
+  const rangoHoy = opciones.rangoHoy ?? rango;
 
-  // Finanzas lee sus pendientes en paralelo al resumen (y solo si la fila se
-  // muestra): el panel desplegado no hace otra consulta.
-  const conFinanzas = codigos.includes('finance') && !ocultos.includes('finance');
-  const [principal, crudoFinanzas] = await Promise.all([
+  // Finanzas y Ventas leen su panel en paralelo al resumen (y solo si la fila
+  // se muestra): el panel desplegado no hace otra consulta.
+  const conFinanzas = seMuestra('finance');
+  const [principal, crudoFinanzas, lecturaVentas] = await Promise.all([
     ctx.supabase.rpc('fn_inicio_modulos_resumen', { ...argsRango(ctx, rango, sucursal), p_omitir: ocultos }),
     conFinanzas
       ? leerFinanzasInicio(ctx, sucursal, visible).catch((err: unknown) => {
@@ -365,10 +405,74 @@ export async function modulosDelInicio(
           return null;
         })
       : Promise.resolve(null),
+    seMuestra('pos')
+      ? getOrganizationTimezone(ctx.organizationId, ctx.supabase)
+          .then((zona) => leerVentasInicio(ctx, { rango, rangoHoy, dia: todayInTz(zona), sucursal, zona }))
+          .catch((err: unknown): LecturaVentasInicio | null => {
+            // Sin permiso o con error, la fila de Ventas conserva su resumen de siempre.
+            console.error('[inicio/ventas]', { organizationId: ctx.organizationId, message: err instanceof Error ? err.message : String(err) });
+            return null;
+          })
+      : Promise.resolve(null),
   ]);
   if (principal.error) throw errorRpc('fn_inicio_modulos_resumen', principal.error);
   const crudo = principal.data as CrudoResumen;
   const hrefReportes = visible(PAGINAS_FINANZAS.reportes) ? destinoReporteFinanzas('/app/finanzas/reportes') : null;
+  const href = (pagina: string) => (visible(pagina) ? pagina : null);
+
+  // Logística y Transporte: solo si la base devolvió su fila (módulo activo +
+  // permiso). Sus cifras salen de los servicios del módulo, con la zona y el
+  // día de la organización que calculó la base.
+  const crudoDe = (codigo: string) => (crudo.modulos ?? []).find((m) => m.codigo === codigo && !m.error);
+  const mLogistica = crudoDe('logistica');
+  const mTransporte = crudoDe('transport');
+  const [crudoLogistica, crudoTransporte] = await Promise.all([
+    mLogistica
+      ? leerLogisticaInicio(ctx, { sucursal, zona: crudo.zona, dia: crudo.dia, hayEnvios: mLogistica.hay_envios === true }).catch((err: unknown) => {
+          console.error('[inicio/logistica]', { organizationId: ctx.organizationId, message: err instanceof Error ? err.message : String(err) });
+          return null;
+        })
+      : Promise.resolve(null),
+    mTransporte
+      ? leerTransporteInicio(ctx, {
+          sucursal,
+          dia: crudo.dia,
+          // Sin las marcas (base anterior a la migración) se asume que hay datos.
+          hayViajes: mTransporte.hay_viajes !== false,
+          hayVehiculos: mTransporte.hay_vehiculos !== false,
+        }).catch((err: unknown) => {
+          console.error('[inicio/transporte]', { organizationId: ctx.organizationId, message: err instanceof Error ? err.message : String(err) });
+          return null;
+        })
+      : Promise.resolve(null),
+  ]);
+  const periodoEsHoy = rango.inicio === rangoHoy.inicio && rango.fin === rangoHoy.fin;
+
+  /** Panel y fila de Ventas, Logística o Transporte (vacío si no aplica o su lectura falló). */
+  const armarWidget = (codigo: string, m: CrudoResumen['modulos'][number]): Partial<ModuloInicio> => {
+    if (codigo === 'pos' && lecturaVentas) {
+      const ventas = armarVentas({
+        crudo: lecturaVentas.crudo,
+        ultimas: lecturaVentas.ultimas,
+        dias: lecturaVentas.dias,
+        monedaBase: crudo.moneda,
+        periodoEsHoy,
+        sucursal,
+        cajas: { abiertas: Number(m.cajas_abiertas ?? 0), anteriores: Number(m.cajas_de_dias_anteriores ?? 0) },
+        href,
+      });
+      return { ventas, filaWidget: ventas.fila };
+    }
+    if (codigo === 'logistica' && crudoLogistica) {
+      const logistica = armarLogistica({ crudo: crudoLogistica, moneda: crudo.moneda, href });
+      return { logistica, filaWidget: logistica.fila };
+    }
+    if (codigo === 'transport' && crudoTransporte) {
+      const transporte = armarTransporte({ crudo: crudoTransporte, href });
+      return { transporte, filaWidget: transporte.fila };
+    }
+    return {};
+  };
 
   const porCodigo = new Map((crudo.modulos ?? []).map((m) => [m.codigo, m]));
   const filas: ModuloInicio[] = [];
@@ -392,7 +496,12 @@ export async function modulosDelInicio(
         resumen.tono = finanzas.fila.tono;
         resumen.badge = finanzas.fila.badge;
       }
-      filas.push({ ...v, oculto: false, resumen, ...(finanzas ? { finanzas } : {}) });
+      const widgets = resumen.error ? {} : armarWidget(v.codigo, m);
+      if (widgets.filaWidget) {
+        resumen.tono = widgets.filaWidget.tono;
+        resumen.badge = widgets.filaWidget.badge;
+      }
+      filas.push({ ...v, oculto: false, resumen, ...(finanzas ? { finanzas } : {}), ...widgets });
     } else if (ocultos.includes(v.codigo)) {
       // Oculto por la persona: no se consulta; se lista para poder volver a
       // mostrarlo. Solo pudo ocultarlo desde esta misma lista, así que es un

@@ -97,7 +97,7 @@ describe('GET /api/configuracion/secciones', () => {
   });
 
   test('toda sección del registro sale con un booleano de edición', async () => {
-    getActiveModules.mockResolvedValue(['crm', 'chat', 'finance', 'pos', 'hrm', 'pms_hotel', 'integrations', 'parking', 'calendar', 'operations', 'memberships', 'notifications'].map((code) => ({ code })));
+    getActiveModules.mockResolvedValue(['crm', 'chat', 'finance', 'pos', 'hrm', 'pms_hotel', 'integrations', 'parking', 'calendar', 'operations', 'memberships', 'notifications', 'logistica', 'transport'].map((code) => ({ code })));
     hasOrgAdminOrPermission.mockResolvedValue(false);
     const { GET } = await import('@/app/api/configuracion/secciones/route');
     const json = (await (await GET(new Request('https://erp.example/x'), { params: Promise.resolve({}) })).json()) as { secciones: { id: string; puedeEditar: boolean }[] };

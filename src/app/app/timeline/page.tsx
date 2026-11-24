@@ -148,7 +148,7 @@ export default function TimelinePage() {
       customer: `/app/crm/clientes/${entityId}`,
       invoice: `/app/finanzas/facturas/${entityId}`,
       trip: `/app/transporte/viajes/${entityId}`,
-      shipment: `/app/transporte/envios/${entityId}`,
+      shipment: `/app/logistica/envios/${entityId}`,
       conversation: `/app/inbox/${entityId}`,
       integration: `/app/integraciones/conexiones/${entityId}`,
       employee: `/app/hrm/empleados/${entityId}`,

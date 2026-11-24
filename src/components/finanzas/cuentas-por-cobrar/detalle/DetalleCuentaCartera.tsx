@@ -48,12 +48,14 @@ import { PlanCuotasCartera } from '@/components/finanzas/cartera/PlanCuotasCarte
 import { CrearPlanCuotasDialog } from '@/components/finanzas/cartera/CrearPlanCuotasDialog';
 import { EstadoCuentaDialog } from '@/components/finanzas/cartera/EstadoCuentaDialog';
 import { rutasCartera } from '../listado/ListadoCartera';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 /** La tabla va dentro de una `Tarjeta sinRelleno`: sin su propio marco, con la raya superior como separador. */
 const TABLA_EN_TARJETA = '[&>div]:rounded-none [&>div]:border-x-0 [&>div]:border-b-0';
 
 export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'finanzas' | 'pos' }) {
   const t = useTranslations('cartera');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const permisos = usePermisosFinanzas();
   const moneda = useMonedaOrganizacion();
@@ -247,7 +249,7 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
         subtitulo={datos ? [datos.cliente?.nombre ?? t('listado.sinCliente'), t('listado.venceEl', { fecha: formatDate(c?.vencimiento) })].join(' · ') : undefined}
         migas={
           enPos
-            ? [{ etiqueta: t('migas.pos'), href: '/app/pos' }, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: numero }]
+            ? [migaVentas, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: numero }]
             : [{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.cartera') }, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: numero }]
         }
         estado={c?.estado}

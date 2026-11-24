@@ -28,6 +28,7 @@ import {
   deliveryIntegrationService,
   type ProofOfDelivery,
 } from '@/lib/services/deliveryIntegrationService';
+import { useEvidenciasEnvio } from '@/components/logistica/useEvidenciasEnvio';
 
 interface ProofOfDeliveryViewProps {
   shipmentId: string;
@@ -45,6 +46,10 @@ export function ProofOfDeliveryView({
   const [proof, setProof] = useState<ProofOfDelivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
+  // Fotos y firma en bucket privado: enlaces firmados de corta duración generados en el servidor.
+  const evidencias = useEvidenciasEnvio(shipmentId, !!proof, proof?.id ?? null);
+  const firma = evidencias.enlace(proof?.signature_url);
+  const fotos = (proof?.photo_urls ?? []).map((v) => evidencias.enlace(v)).filter((u): u is string => !!u);
 
   useEffect(() => {
     if (variant === 'dialog' && !open) return;
@@ -204,7 +209,7 @@ export function ProofOfDeliveryView({
         )}
 
         {/* Firma */}
-        {proof.signature_url && (
+        {firma && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -214,13 +219,13 @@ export function ProofOfDeliveryView({
               </p>
               <div className="border dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-800">
                 <img
-                  src={proof.signature_url}
+                  src={firma}
                   alt="Firma del receptor"
                   className="max-h-24 mx-auto"
                 />
               </div>
               <Button variant="outline" size="sm" className="w-full dark:border-gray-600" asChild>
-                <a href={proof.signature_url} download target="_blank" rel="noopener noreferrer">
+                <a href={firma} download target="_blank" rel="noopener noreferrer">
                   <Download className="h-4 w-4 mr-2 dark:text-gray-300" />
                   Descargar firma
                 </a>
@@ -230,16 +235,16 @@ export function ProofOfDeliveryView({
         )}
 
         {/* Fotos */}
-        {proof.photo_urls && proof.photo_urls.length > 0 && (
+        {fotos.length > 0 && (
           <>
             <Separator />
             <div className="space-y-2">
               <p className="text-sm font-medium flex items-center gap-2 dark:text-gray-100">
                 <ImageIcon className="h-4 w-4 dark:text-gray-300" />
-                Fotos de entrega ({proof.photo_urls.length})
+                Fotos de entrega ({fotos.length})
               </p>
               <div className="grid grid-cols-2 gap-2">
-                {proof.photo_urls.map((url, index) => (
+                {fotos.map((url, index) => (
                   <button
                     key={index}
                     type="button"

@@ -7,6 +7,7 @@ import { EmptyState, PageHeader, Pagination } from '@/components/kit';
 import KitchenService, { type KitchenTicket } from '@/lib/services/kitchenService';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { useTituloComanda } from './ComandaTarjeta';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 /**
  * Historial de comandas (entregadas y canceladas) del enlace «Ver historial de
@@ -27,6 +28,7 @@ export function HistorialComandas({
   onVer?: (c: KitchenTicket) => void;
 }) {
   const t = useTranslations('posComandasV2.historial');
+  const migaVentas = useMigaVentas();
   const titulo = useTituloComanda();
   const [pagina, setPagina] = React.useState(1);
   const [tamano, setTamano] = React.useState(20);
@@ -52,7 +54,7 @@ export function HistorialComandas({
         volverA="/app/pos/comandas"
         onVolver={onVolver}
         cargando={!datos && !error}
-        migas={[{ etiqueta: 'POS', href: '/app/pos' }, { etiqueta: t('comandas'), href: '/app/pos/comandas' }, { etiqueta: t('titulo') }]}
+        migas={[migaVentas, { etiqueta: t('comandas'), href: '/app/pos/comandas' }, { etiqueta: t('titulo') }]}
       />
       {error ? (
         <EmptyState variante="error" titulo={t('error')} onReintentar={cargar} />

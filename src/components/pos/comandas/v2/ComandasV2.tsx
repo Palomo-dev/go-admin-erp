@@ -34,6 +34,7 @@ import {
 } from './DialogosComanda';
 import { puntoEstacion, useNombreEstacion } from './estacionUi';
 import type { ComandasTurno } from './useComandasTurno';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 /**
  * Comandas v2 — modo Tablero (Figma 959:583914, 959:584798, 959:585351 y
@@ -117,6 +118,7 @@ export function ComandasV2({
   // ── Arrastrar entre columnas (Figma 2117:209496) ──
   const tituloDe = useTituloComanda();
   const ta = useTranslations('posComandasV2.arrastre');
+  const migaVentas = useMigaVentas();
   const motivoRechazo = useAvisoRechazo();
   const nombreColumna = (col: ColumnaComanda) => t(`columnas.tablero.${col}`);
   /** Soltar válido = la misma acción que la flecha (avanzar) o que «Devolver a Nuevas» (retroceder, con su confirmación). */
@@ -238,7 +240,7 @@ export function ComandasV2({
         subtitulo={mostrarTablero ? subtitulo : subtituloSimple}
         icono={ChefHat}
         cargando={turno.cargando}
-        migas={[{ etiqueta: 'POS', href: '/app/pos' }, { etiqueta: t('cabecera.titulo') }]}
+        migas={[migaVentas, { etiqueta: t('cabecera.titulo') }]}
         acciones={
           <>
             <button

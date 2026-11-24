@@ -62,6 +62,7 @@ import { listarClientes } from '@/lib/services/clientesListadoService';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { BandaAntiguedad } from '@/components/kit';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 /** Tono de la insignia de antigüedad por tramo (mismos colores que `BandaAntiguedad`). */
 const TONO_TRAMO: Record<TramoAntiguedad, TonoBadge> = {
@@ -87,6 +88,7 @@ export function rutasCartera(origen: 'finanzas' | 'pos') {
 
 export function ListadoCartera({ origen }: ListadoCarteraProps) {
   const t = useTranslations('cartera');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const entero = useFormatoEntero();
   const permisos = usePermisosFinanzas();
@@ -359,7 +361,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
         cargando={cargando}
         migas={
           enPos
-            ? [{ etiqueta: t('migas.pos'), href: '/app/pos' }, { etiqueta: t('titulo') }]
+            ? [migaVentas, { etiqueta: t('titulo') }]
             : [{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.cartera') }, { etiqueta: t('titulo') }]
         }
         debajo={<BranchBadgeActiva />}

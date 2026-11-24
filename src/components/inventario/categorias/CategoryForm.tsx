@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ChefHat, Globe, Info, Landmark, Layers, Loader2, Lock, Save, Sparkles, Tags, TriangleAlert, Wand2 } from 'lucide-react';
+import { ChefHat, Globe, Info, Landmark, Layers, Loader2, Lock, Save, Sparkles, Tags, TriangleAlert, Truck, Wand2 } from 'lucide-react';
 import { BloqueCuentasCatalogo } from '@/components/finanzas/contabilidad/cuentas/BloqueCuentasCatalogo';
-import { EmptyState, FormField, FormSection, PageHeader } from '@/components/kit';
+import { CampoNumero, EmptyState, FormField, FormSection, PageHeader } from '@/components/kit';
 import { TreeCell } from '@/components/kit/TreeCell';
 import { TreeSelect, type OpcionArbol } from '@/components/kit/TreePicker';
 import { ancestrosDe, descendientesDe } from '@/components/kit/arbol';
@@ -68,6 +68,7 @@ function textoPlano(html: string): string {
 
 export default function CategoryForm({ categoryUuid, defaultParentId }: CategoryFormProps) {
   const t = useTranslations('categorias');
+  const tEnvio = useTranslations('logistica.zonas.peso.categoria');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -125,6 +126,10 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
             cuenta_costo: cat.cuenta_costo ?? '',
             cuenta_inventario: cat.cuenta_inventario ?? '',
             cuenta_devolucion: cat.cuenta_devolucion ?? '',
+            default_weight_kg: cat.default_weight_kg ?? null,
+            default_length_cm: cat.default_length_cm ?? null,
+            default_width_cm: cat.default_width_cm ?? null,
+            default_height_cm: cat.default_height_cm ?? null,
           });
         }
       } catch {
@@ -526,6 +531,26 @@ export default function CategoryForm({ categoryUuid, defaultParentId }: Category
                 </span>
               )}
             </FormField>
+          </FormSection>
+
+          {/* Logística Fase 1 (Figma 2800:3649): peso y caja por defecto de los productos sin medidas propias. */}
+          <FormSection titulo={tEnvio('titulo')} descripcion={tEnvio('descripcion')} columnas={2} icono={Truck} colapsable>
+            <FormField etiqueta={tEnvio('peso')} ayuda={tEnvio('pesoAyuda')}>
+              <CampoNumero
+                valor={datos.default_weight_kg ?? null}
+                onValorChange={(v) => cambiar('default_weight_kg', v && v > 0 ? v : null)}
+                decimales={3}
+                minimo={0}
+                sufijo="kg"
+              />
+            </FormField>
+            <div className="grid grid-cols-3 gap-2">
+              {(['default_length_cm', 'default_width_cm', 'default_height_cm'] as const).map((campo) => (
+                <FormField key={campo} etiqueta={tEnvio(`medidas.${campo}`)}>
+                  <CampoNumero valor={datos[campo] ?? null} onValorChange={(v) => cambiar(campo, v && v > 0 ? v : null)} decimales={1} minimo={0} sufijo="cm" />
+                </FormField>
+              ))}
+            </div>
           </FormSection>
 
           <FormSection titulo={t('formulario.cuentas.titulo')} descripcion={t('formulario.cuentas.descripcion')} columnas={1} icono={Landmark} colapsable>

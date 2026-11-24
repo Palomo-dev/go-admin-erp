@@ -21,8 +21,14 @@ export const GET = withOrg(async (ctx, req) => {
   const p = await pedidoPanel(ctx, req);
   if (p instanceof NextResponse) return p;
   try {
-    const [rango, prefs] = await Promise.all([rangoDelPeriodo(ctx, p.pedido, p.sucursal), leerPreferencias(ctx)]);
-    const datos = await modulosDelInicio(ctx, rango, p.sucursal, prefs);
+    // «Hoy» aparte: el widget de Ventas muestra hoy además del periodo elegido.
+    const esHoy = p.pedido.periodo === 'hoy' && !p.pedido.horas && !p.pedido.fechas;
+    const [rango, rangoHoy, prefs] = await Promise.all([
+      rangoDelPeriodo(ctx, p.pedido, p.sucursal),
+      esHoy ? null : rangoDelPeriodo(ctx, { periodo: 'hoy', horas: null, fechas: null }, p.sucursal),
+      leerPreferencias(ctx),
+    ]);
+    const datos = await modulosDelInicio(ctx, rango, p.sucursal, prefs, { rangoHoy: rangoHoy ?? rango });
     return NextResponse.json(datos, { headers: SIN_CACHE });
   } catch (err) {
     return manejarError('modulos', ctx, err);

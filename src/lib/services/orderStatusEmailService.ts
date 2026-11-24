@@ -32,8 +32,10 @@ import { getMasterResend, getMasterResendKey, getResendClient } from '@/lib/serv
 import { resolveSender } from '@/lib/services/crm/email/domainsService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { formatEstimateInTz } from '@/lib/utils/dateDisplay';
-import { avisarClientePedido, nombreTipoOrg, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
-import { rubroDeTipoOrg, type CanalAviso, type DatosAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
+import { avisarClientePedido, avisarNovedadPedido, nombreTipoOrg, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
+import { motivoNovedadCliente, rubroDeTipoOrg, type CanalAviso, type DatosAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
+import { datosEnvioParaAviso, envioDelPedidoWeb } from '@/lib/services/logistica/avisosEnvioService';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 
 /** Estados que avisan al cliente. `pending` no: ese correo lo manda el sitio al crear el pedido. */
@@ -147,6 +149,11 @@ export function armarCorreoEstado(datos: {
   /** Una tienda no «prepara»: alista para el envío o para recoger. */
   rubro?: DatosAviso['rubro'];
   conEnvio?: boolean;
+  /**
+   * Logística Fase 1 (Figma 2805:5220): domiciliario (primer nombre), código de entrega (solo en
+   * contraentrega, «en camino») y «Pagas al recibir».
+   */
+  envio?: { domiciliario?: string | null; codigo?: string | null; pagaAlRecibir?: string | null } | null;
 }): CorreoEstadoPedido {
   const estadoBase = { ...ESTADOS[datos.estado] };
   if (datos.estado === 'confirmed' && datos.rubro === 'tienda') {
@@ -168,6 +175,8 @@ export function armarCorreoEstado(datos: {
     ...(datos.listoAprox ? [['Listo aprox.', escapar(datos.listoAprox)]] : []),
     ...(datos.entregaAprox ? [['Entrega aprox.', escapar(datos.entregaAprox)]] : []),
     ...(datos.motivo ? [['Motivo', escapar(datos.motivo)]] : []),
+    ...(datos.envio?.domiciliario ? [['Te lo lleva', escapar(datos.envio.domiciliario)]] : []),
+    ...(datos.envio?.codigo ? [['Código de entrega', escapar(datos.envio.codigo)]] : []),
   ]
     .map(([k, v]) => `<tr><td style="padding:6px 0;color:#666;font-size:13px;">${k}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${v}</td></tr>`)
     .join('');
@@ -184,6 +193,7 @@ ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:13px;">${escapar(nego
 <p style="color:#333;font-size:15px;">Hola <strong>${escapar(datos.nombreCliente || 'cliente')}</strong>,</p>
 <p style="color:#666;font-size:14px;">${escapar(c.mensaje)}</p>
 <div style="background:#f8f9fa;border-radius:8px;padding:16px;margin:20px 0;"><table style="width:100%;border-collapse:collapse;">${filas}</table></div>
+${datos.envio?.pagaAlRecibir ? `<div style="background:#FEFCE8;border:1px solid #FDE68A;border-radius:8px;padding:12px 16px;margin:0 0 20px;"><p style="margin:0;color:#333;font-size:14px;font-weight:600;">Pagas al recibir: ${escapar(datos.envio.pagaAlRecibir)}</p><p style="margin:4px 0 0;color:#666;font-size:12px;">Efectivo, datáfono o transferencia.${datos.envio.codigo ? ' Dale el código de entrega a quien te entregue.' : ''}</p></div>` : ''}
 ${boton}
 </div></div>`;
   const text = [
@@ -193,6 +203,9 @@ ${boton}
     datos.listoAprox ? `Listo aprox.: ${datos.listoAprox}` : '',
     datos.entregaAprox ? `Entrega aprox.: ${datos.entregaAprox}` : '',
     datos.motivo ? `Motivo: ${datos.motivo}` : '',
+    datos.envio?.domiciliario ? `Te lo lleva: ${datos.envio.domiciliario}` : '',
+    datos.envio?.codigo ? `Código de entrega: ${datos.envio.codigo}` : '',
+    datos.envio?.pagaAlRecibir ? `Pagas al recibir: ${datos.envio.pagaAlRecibir}` : '',
     datos.urlSeguimiento ? `Seguimiento: ${datos.urlSeguimiento}` : '',
   ].filter(Boolean).join('\n');
   const asunto = `${c.titulo} — Pedido ${datos.numeroPedido}${negocio ? ` · ${negocio}` : ''}`;
@@ -345,6 +358,7 @@ export async function enviarCorreoEstadoPedido(
       actor: opciones.actor ?? null,
       soloCanal: opciones.soloCanal ?? null,
       estadoConAvisoLegado: (e) => esEstadoConAviso(e),
+      datosEnvio: (momento) => datosEnvioParaAviso(db, organizationId, orderId, momento),
       enviarCorreo: async (extra) => {
         const estado = esEstadoConAviso(pedido.status) ? pedido.status : null;
         if (!estado) return { ok: false, error: 'estado_sin_aviso' };
@@ -365,6 +379,9 @@ export async function enviarCorreoEstadoPedido(
           conEnvio: !!pedido.delivery_type && pedido.delivery_type !== 'pickup',
           motivo: ['cancelled', 'rejected'].includes(pedido.status) ? pedido.cancellation_reason : null,
           marca,
+          envio: extra.datos
+            ? { domiciliario: extra.datos.conductor ?? null, codigo: extra.datos.codigoEntrega ?? null, pagaAlRecibir: extra.datos.pagaAlRecibir ?? null }
+            : null,
         });
         return enviarAvisoEstado(db, organizationId, { nombreOrg: org.name ?? '', ...extra }, {
           to: pedido.customer_email as string,
@@ -377,6 +394,103 @@ export async function enviarCorreoEstadoPedido(
     return r.email === 'sent';
   } catch (err) {
     console.warn('[orderStatusEmail] Error enviando el aviso de estado', { orderId, err: err instanceof Error ? err.message : err });
+    return false;
+  }
+}
+
+/** Correo de la novedad de entrega (puro). Mismo esqueleto y marca que el de estado. */
+export function armarCorreoNovedad(datos: {
+  numeroPedido: string;
+  nombreCliente: string;
+  nombreNegocio: string;
+  motivo: string | null;
+  nuevoIntento: string | null;
+  urlSeguimiento: string | null;
+  marca?: MarcaCorreo | null;
+}): CorreoEstadoPedido {
+  const color = normalizarColor(datos.marca?.color) ?? '#D97706';
+  const legible = contrasteConBlanco(color) >= 3;
+  const textoBoton = legible ? '#FFFFFF' : '#111111';
+  const negocio = datos.nombreNegocio.trim();
+  const logo = logoPublico(datos.marca?.logoUrl);
+  const nombre = datos.nombreCliente.trim().split(/\s+/)[0] || 'cliente';
+  const motivo = motivoNovedadCliente(datos.motivo);
+  const siguiente = datos.nuevoIntento ? `Lo intentamos de nuevo ${datos.nuevoIntento}.` : 'Te contactamos para acordar una nueva entrega.';
+  const boton = datos.urlSeguimiento
+    ? `<div style="text-align:center;margin-top:24px;"><a href="${escapar(datos.urlSeguimiento)}" style="display:inline-block;background:${color};color:${textoBoton};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Cambiar dirección u hora</a></div>`
+    : '';
+  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+<div style="background:${color}1A;border-top:4px solid ${color};padding:32px;text-align:center;border-radius:8px 8px 0 0;">
+${logo ? `<img src="${escapar(logo)}" alt="${escapar(negocio || 'Logo')}" style="display:block;margin:0 auto 16px;max-height:56px;max-width:200px;height:auto;border:0;">` : ''}
+<h1 style="margin:0;color:${legible ? color : '#333333'};font-size:22px;">No pudimos entregar tu pedido</h1>
+${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:13px;">${escapar(negocio)}</p>` : ''}
+</div>
+<div style="padding:24px;">
+<p style="color:#333;font-size:15px;">Hola <strong>${escapar(nombre)}</strong>,</p>
+<p style="color:#666;font-size:14px;">Pasamos a entregar tu pedido ${escapar(datos.numeroPedido)} y no pudimos: ${escapar(motivo)}. ${escapar(siguiente)}</p>
+<p style="color:#666;font-size:14px;">Si quieres cambiar la dirección o la hora, respóndenos este correo.</p>
+${boton}
+</div></div>`;
+  const text = [
+    `Hola ${nombre},`,
+    `Pasamos a entregar tu pedido ${datos.numeroPedido} y no pudimos: ${motivo}.`,
+    siguiente,
+    datos.urlSeguimiento ? `Cambiar dirección u hora: ${datos.urlSeguimiento}` : 'Si quieres cambiar la dirección o la hora, respóndenos este correo.',
+  ].join('\n');
+  return { asunto: `No pudimos entregar tu pedido ${datos.numeroPedido}${negocio ? ` · ${negocio}` : ''}`, html, text };
+}
+
+/**
+ * Aviso «novedad» de un pedido web (logística Fase 1): lo llama quien registró la novedad
+ * (`logistica_registrar_novedad` devuelve `aviso: 'novedad'`). Organización de la sesión o del
+ * pedido, nunca de un body. Devuelve si salió el correo. Nunca lanza.
+ */
+export async function enviarAvisoNovedadPedido(
+  db: SupabaseClient,
+  organizationId: number,
+  orderId: string,
+  opciones: { actor?: string | null } = {},
+): Promise<boolean> {
+  try {
+    const { data: pedido } = await db
+      .from('web_orders')
+      .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status, delivery_type')
+      .eq('id', orderId)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    if (!pedido) return false;
+    const { data: org } = await db.from('organizations').select('id, name, logo_url, primary_color').eq('id', organizationId).maybeSingle();
+    if (!org) return false;
+    const envio = await envioDelPedidoWeb(db, organizationId, orderId);
+    const marca = await marcaDelNegocio(db, organizationId, org);
+    const url = urlSeguimiento({ id: organizationId, host: await hostPublicoOrg(db, organizationId) }, pedido);
+    // `expected_delivery_date` es un `date`: se formatea sin convertir de zona.
+    const nuevoIntento = envio?.fechaEstimada ? `el ${formatPlainDate(envio.fechaEstimada, { weekday: 'short', day: 'numeric', month: 'short' })}` : null;
+    const r = await avisarNovedadPedido(db, organizationId, pedido as PedidoParaAviso, {
+      negocio: org.name ?? '',
+      actor: opciones.actor ?? null,
+      novedad: { motivo: envio?.motivo ?? null, nuevoIntento, url },
+      enviarCorreo: async (extra) => {
+        const correo = armarCorreoNovedad({
+          numeroPedido: pedido.order_number,
+          nombreCliente: pedido.customer_name ?? '',
+          nombreNegocio: extra.nombreVisible || org.name || '',
+          motivo: envio?.motivo ?? null,
+          nuevoIntento,
+          urlSeguimiento: url,
+          marca,
+        });
+        return enviarAvisoEstado(db, organizationId, { nombreOrg: org.name ?? '', ...extra }, {
+          to: pedido.customer_email as string,
+          subject: extra.asunto || correo.asunto,
+          html: correo.html,
+          text: extra.texto || correo.text,
+        }, { orderId, estado: 'novedad' });
+      },
+    });
+    return r.email === 'sent';
+  } catch (err) {
+    console.warn('[orderStatusEmail] Error enviando el aviso de novedad', { orderId, err: err instanceof Error ? err.message : err });
     return false;
   }
 }

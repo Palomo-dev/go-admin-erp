@@ -30,6 +30,7 @@ import { TONO_ESTADO_CUPON, codigoErrorCupon, csvLote, type CodigoErrorCupon } f
 import { rutaCupon } from './CuponesPage';
 import { useFormatoCupones } from './useFormatoCupones';
 import type { CanjeCupon, CanjesCupon, Coupon, EstadoCupon } from './types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA_LISTA = '/app/pos/cupones';
 
@@ -41,6 +42,7 @@ function estadoDe(c: Coupon): EstadoCupon {
 /** Detalle de un cupón (Figma 458:83350 · 27-promociones-04): datos, estado, estadísticas e historial de canjes. */
 export function CuponDetalle({ id }: { id: string }) {
   const t = useTranslations('posCupones');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const formato = useFormatoCupones();
   const [cupon, setCupon] = useState<Coupon | null>(null);
@@ -98,7 +100,7 @@ export function CuponDetalle({ id }: { id: string }) {
   }, []);
 
   const migas = [
-    { etiqueta: t('migaPos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: t('titulo'), href: RUTA_LISTA },
     { etiqueta: cupon?.code ?? '…' },
   ];

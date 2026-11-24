@@ -94,7 +94,7 @@ export default function CorrelationDetailPage() {
       invoice: `/app/finanzas/facturas/${entityId}`,
       sale: `/app/pos/ventas/${entityId}`,
       trip: `/app/transporte/viajes/${entityId}`,
-      shipment: `/app/transporte/envios/${entityId}`,
+      shipment: `/app/logistica/envios/${entityId}`,
       conversation: `/app/inbox/${entityId}`,
       employee: `/app/hrm/empleados/${entityId}`,
       membership: `/app/pms/memberships/${entityId}`,

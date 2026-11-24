@@ -45,6 +45,7 @@ describe('avisos al miembro', () => {
       'cartera.resumen',
       'inventario.cero',
       'inventario.bajo',
+      'transporte.documento.vence',
     ]);
     expect(gruposActivos(guardado).vence).toBe(false);
     expect(gruposActivos(guardado)['tarea.completada']).toBe(true);

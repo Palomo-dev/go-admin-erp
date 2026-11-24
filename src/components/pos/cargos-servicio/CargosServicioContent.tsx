@@ -60,6 +60,7 @@ import {
 import { CargoFormDialog } from './CargoFormDialog';
 import { ImportarCargosDialog, descargarPlantillaCargos } from './ImportarCargosDialog';
 import { APPLIES_TO_VALUES, type AppliesTo, type ImpuestoCargo, type ServiceCharge } from './types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const TONO_ESTADO: Record<EstadoCargo, 'exito' | 'neutro' | 'advertencia'> = {
   activo: 'exito',
@@ -85,6 +86,7 @@ const TONO_ESTADO: Record<EstadoCargo, 'exito' | 'neutro' | 'advertencia'> = {
  */
 export function CargosServicioContent({ embedded = false }: { embedded?: boolean }) {
   const t = useTranslations('posCargos');
+  const migaVentas = useMigaVentas();
   const { organization } = useOrganization();
   const { branchFilter, branches } = useBranch();
   const moneda = useMonedaOrganizacion();
@@ -353,7 +355,7 @@ export function CargosServicioContent({ embedded = false }: { embedded?: boolean
       <PageHeader
         titulo={t('titulo')}
         icono={Coins}
-        migas={embedded ? undefined : [{ etiqueta: t('migaPos'), href: '/app/pos' }, { etiqueta: t('titulo') }]}
+        migas={embedded ? undefined : [migaVentas, { etiqueta: t('titulo') }]}
         subtitulo={t('subtitulo')}
         debajo={embedded ? undefined : <BranchBadgeActiva />}
         acciones={

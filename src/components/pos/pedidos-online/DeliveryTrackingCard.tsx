@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Truck,
   User,
-  MapPin,
   Clock,
   Phone,
   CheckCircle2,
@@ -26,6 +25,7 @@ import {
   type ProofOfDelivery,
 } from '@/lib/services/deliveryIntegrationService';
 import { useTranslations } from 'next-intl';
+import { useEvidenciasEnvio } from '@/components/logistica/useEvidenciasEnvio';
 
 interface DeliveryTrackingCardProps {
   webOrderId: string;
@@ -41,6 +41,9 @@ export function DeliveryTrackingCard({
   const [events, setEvents] = useState<TransportEvent[]>([]);
   const [proof, setProof] = useState<ProofOfDelivery | null>(null);
   const [loading, setLoading] = useState(true);
+  // La firma vive en un bucket privado: enlace firmado de corta duración generado en el servidor.
+  const evidencias = useEvidenciasEnvio(shipment?.id, !!proof?.signature_url, proof?.id ?? null);
+  const enlaceFirma = evidencias.enlace(proof?.signature_url);
 
   useEffect(() => {
     loadShipmentData();
@@ -280,9 +283,9 @@ export function DeliveryTrackingCard({
                     <span className="dark:text-gray-100">{'⭐'.repeat(proof.customer_rating)}</span>
                   </div>
                 )}
-                {proof.signature_url && (
+                {enlaceFirma && (
                   <Button variant="outline" size="sm" className="w-full mt-2 dark:border-gray-600" asChild>
-                    <a href={proof.signature_url} target="_blank" rel="noopener noreferrer">
+                    <a href={enlaceFirma} target="_blank" rel="noopener noreferrer">
                       {t('deliveryTrackingCard.verFirma')}
                       <ExternalLink className="h-3 w-3 ml-2 dark:text-gray-300" />
                     </a>

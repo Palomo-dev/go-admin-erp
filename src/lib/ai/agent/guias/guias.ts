@@ -74,15 +74,15 @@ export const GUIAS: readonly Guia[] = [
   },
   {
     id: 'promociones',
-    titulo: 'Crear una promoción del POS',
+    titulo: 'Crear una promoción de Ventas',
     palabras: ['promocion', 'promociones', 'descuento automatico', 'oferta', '2x1', 'combo'],
     pasos: [
-      'Abre POS > Promociones.',
+      'Abre Ventas > Promociones.',
       'Crea una nueva promoción: tipo, productos o categorías, vigencia y sucursales.',
       'Actívala. El POS la aplica sola a las líneas que cumplen la regla.',
     ],
     rutas: [
-      { ruta: '/app/pos/promociones', nombre: 'POS > Promociones' },
+      { ruta: '/app/pos/promociones', nombre: 'Ventas > Promociones' },
       { ruta: '/app/pos/promociones/nuevo', nombre: 'Nueva promoción' },
     ],
   },
@@ -94,7 +94,7 @@ export const GUIAS: readonly Guia[] = [
       'Hace falta el permiso «Quitar promoción de una línea» (pos.promotions.remove). Los administradores (roles 1 y 2 y superadministradores) ya lo tienen.',
       'El rol «Empleado» es un rol del sistema y no se puede editar. Hay dos caminos: dar el permiso en el cargo del cajero (recomendado) o duplicar «Empleado» en Roles y permisos y editar la copia.',
       'Con el cargo: un administrador abre Roles y permisos > Cargos y entra al cargo del cajero.',
-      'En la matriz, en POS, columna «Otras acciones», marca «Quitar promoción de una línea» y guarda.',
+      'En la matriz, en Ventas, columna «Otras acciones», marca «Quitar promoción de una línea» y guarda.',
       'El cajero tiene que tener ese cargo asignado: el editor del cargo muestra quién lo tiene. Si no aparece, asígnale el cargo.',
       'El cajero vuelve a entrar al POS; en el carrito verá la acción para quitar la promoción de la línea.',
     ],
@@ -206,12 +206,12 @@ export const GUIAS: readonly Guia[] = [
     titulo: 'Abrir, cerrar y revisar cajas',
     palabras: ['caja', 'cajas', 'abrir caja', 'cerrar caja', 'arqueo', 'turno de caja', 'cierre de caja'],
     pasos: [
-      'Abre POS > Cajas.',
+      'Abre Ventas > Cajas.',
       'Abre la caja con el monto inicial; al terminar el turno, ciérrala con el conteo.',
       'Entra a una caja para ver sus movimientos y el cierre.',
     ],
     rutas: [
-      { ruta: '/app/pos/cajas', nombre: 'POS > Cajas' },
+      { ruta: '/app/pos/cajas', nombre: 'Ventas > Cajas' },
       { ruta: '/app/pos/cajas/[id]', nombre: 'Detalle de la caja' },
     ],
   },

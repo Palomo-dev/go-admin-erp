@@ -35,6 +35,7 @@ import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
+import { CLAVES_BARRA_FIJA_EDITOR, EditorBarraFija } from './EditorBarraFija';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
@@ -125,6 +126,8 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       if (campoCubiertoPorEstilo(c, s.section_type)) return false;
       // PAGINA-01: «Mostrar paginación» se pinta una vez, dentro del panel de paginación.
       if (c.key === 'show_pagination' && (TIPOS_PAGINACION as readonly string[]).includes(s.section_type)) return false;
+      // «Barra fija en el celular» se pinta dentro de «Barra fija al bajar» (EditorBarraFija, Figma 2859:71538).
+      if (s.section_type === 'product_actions' && CLAVES_BARRA_FIJA_EDITOR.includes(c.key)) return false;
       if (!campoVisible(c, contenido, s.section_variant)) return false;
       if (!campoLayoutCategorias(c, contenido, s.section_type)) return false;
       // Ítems manuales: se esconden si la sección ya toma sus datos del ERP y no tiene ítems (A/05b).
@@ -417,6 +420,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           ) : (
             pintarConBloques(campos('contenido'))
           ))}
+        {/* Barra fija al bajar, celular y computador (Figma 2836:69391, propuesta 9). */}
+        {pestana === 'contenido' && s.section_type === 'product_actions' && (
+          <EditorBarraFija contenido={contenido} onCambiar={onCambiarContenido} />
+        )}
 
         {pestana === 'estilo' && (
           <InspectorEstilo

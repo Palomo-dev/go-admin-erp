@@ -38,6 +38,7 @@ import { LoteCreadoDialog } from './LoteCreadoDialog';
 import { TONO_ESTADO_CUPON, codigoErrorCupon, type CodigoErrorCupon } from './cuponesVista';
 import { useFormatoCupones } from './useFormatoCupones';
 import type { Coupon, CuponFila, DatosLote, FiltroEstadoCupon, ListadoCupones, LoteCreado, ResumenCupones } from './types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const FILTROS_ESTADO: readonly FiltroEstadoCupon[] = ['todos', 'activo', 'programado', 'agotado', 'vencido', 'inactivo', 'archivados'];
 
@@ -65,6 +66,7 @@ export const rutaCupon = (id: string) => `/app/pos/cupones/${id}`;
  */
 export function CuponesPage() {
   const t = useTranslations('posCupones');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const { organization } = useOrganization();
   const { branchFilter, branches } = useBranch();
@@ -309,7 +311,7 @@ export function CuponesPage() {
       <PageHeader
         titulo={t('titulo')}
         icono={Ticket}
-        migas={[{ etiqueta: t('migaPos'), href: '/app/pos' }, { etiqueta: t('titulo') }]}
+        migas={[migaVentas, { etiqueta: t('titulo') }]}
         subtitulo={subtitulo}
         debajo={<BranchBadgeActiva />}
         acciones={

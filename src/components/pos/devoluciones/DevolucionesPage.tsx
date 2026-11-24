@@ -64,6 +64,7 @@ import type { ReturnReason } from './types';
 import { BadgeEstadoDevolucion } from './BadgeEstadoDevolucion';
 import { NuevaDevolucionDialog } from './NuevaDevolucionDialog';
 import { CrearDevolucionDialog } from './CrearDevolucionDialog';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA = '/app/pos/devoluciones';
 const FILTROS = ['estado', 'metodo', 'motivo', 'desde', 'hasta'] as const;
@@ -73,6 +74,7 @@ export function DevolucionesPage() {
   const t = useTranslations('posDevoluciones.listado');
   const tk = useTranslations('posDevoluciones.kpis');
   const ta = useTranslations('posDevolucionesAnular');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const params = useSearchParams();
   const entero = useFormatoEntero();
@@ -394,7 +396,7 @@ export function DevolucionesPage() {
         subtitulo={subtitulo}
         icono={Undo2}
         cargando={cargando}
-        migas={[{ etiqueta: t('migas.pos'), href: '/app/pos' }, { etiqueta: t('migas.devoluciones') }]}
+        migas={[migaVentas, { etiqueta: t('migas.devoluciones') }]}
         acciones={
           <>
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('actualizar')} title={t('actualizar')}>

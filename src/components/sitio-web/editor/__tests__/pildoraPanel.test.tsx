@@ -215,8 +215,9 @@ describe('Celular › Menú inferior · Píldora flotante (P4)', () => {
   test('tarjeta junto a Pestañas y Acciones; al elegirla guarda floating con hasta 5 botones', () => {
     const cambiar = jest.fn();
     renderConIdioma(<MenuInferiorPanel ajustes={{ mobile_menu_style: 'tabs' }} cambiar={cambiar} />);
-    const tipo = grupo('Tipo');
-    expect(within(tipo).getAllByRole('radio').map((r) => r.textContent)).toEqual(['Pestañas tipo app', 'Botones de acción', 'Píldora flotante']);
+    // 2026-11-23 (Figma 2840:69984): se suman «Solo íconos» e «Isla + botón aparte», con «Nuevo».
+    const tipo = grupo('Estilo');
+    expect(within(tipo).getAllByRole('radio').map((r) => r.textContent?.replace('Nuevo', ''))).toEqual(['Pestañas tipo app', 'Botones de acción', 'Píldora flotante', 'Solo íconos', 'Isla + botón aparte']);
     fireEvent.click(within(tipo).getByRole('radio', { name: 'Píldora flotante' }));
     const g = guardado(cambiar);
     expect(g.variant).toBe('floating');
@@ -240,7 +241,7 @@ describe('Celular › Menú inferior · Píldora flotante (P4)', () => {
     expect(guardado(cambiar).style).toMatchObject({ offset: 24 });
     fireEvent.click(within(grupo('Ancho')).getByRole('radio', { name: 'Casi todo el ancho' }));
     expect(guardado(cambiar).style).toMatchObject({ width: 'full' });
-    fireEvent.click(within(grupo('Indicador del activo')).getByRole('radio', { name: 'Punto' }));
+    fireEvent.click(within(grupo('Marca del activo')).getByRole('radio', { name: 'Punto' }));
     expect(guardado(cambiar).style).toMatchObject({ indicator: 'dot' });
     fireEvent.click(within(grupo('Botón central destacado')).getByRole('radio', { name: 'Reservar' }));
     expect(guardado(cambiar).style).toMatchObject({ centerId: 'booking' });

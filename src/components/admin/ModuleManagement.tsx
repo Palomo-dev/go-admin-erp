@@ -31,7 +31,7 @@ interface ModuleManagementProps {
   isAdmin?: boolean;
 }
 
-const ModuleIcons: Record<string, React.ComponentType<any>> = {
+const ModuleIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'organizations': Building2,
   'branding': Settings,
   'branches': Building2,
@@ -49,6 +49,7 @@ const ModuleIcons: Record<string, React.ComponentType<any>> = {
   'reports': BarChart3,
   'notifications': Activity,
   'integrations': Settings,
+  'logistica': Package,
   'transport': Package,
   'calendar': Activity,
   'operations': Activity
@@ -136,7 +137,7 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
     return 'available';
   };
 
-  const getStatusBadge = (status: string, module: Module) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'core':
         return <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-800"><Crown className="h-3 w-3 mr-1" />Core</Badge>;
@@ -265,7 +266,7 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
                         {getModuleIcon(module.code)}
                         <CardTitle className="text-lg">{module.name}</CardTitle>
                       </div>
-                      {getStatusBadge(status, module)}
+                      {getStatusBadge(status)}
                     </div>
                     <CardDescription className="text-sm">
                       {module.description}
@@ -306,8 +307,6 @@ export default function ModuleManagement({ organizationId, isAdmin = false }: Mo
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {coreModules.map((module) => {
-              const isActive = orgStatus.active_modules.includes(module.code);
-
               return (
                 <Card key={module.code} className="border-blue-200">
                   <CardHeader className="pb-3">

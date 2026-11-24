@@ -18,6 +18,10 @@
  * - Finanzas (2360:42276, aprobado el 2026-11-07): con `m.finanzas`, la fila
  *   lleva su propio badge y resumen (namespace `inicioFinanzas`) y el panel
  *   desplegado es `PanelFinanzasInicio` (cifras + pendientes).
+ * - Ventas, Logística y Transporte (2915:45356, aprobado el 2026-11-23): con
+ *   `m.filaWidget`, badge y resumen del namespace `inicioWidgets`; el panel es
+ *   `PanelVentasInicio`, `PanelLogisticaInicio` o `PanelTransporteInicio`. Si
+ *   su lectura falla, la fila conserva el resumen y las cifras de siempre.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -39,6 +43,9 @@ import type { CifraModulo, KpiModulo, ResumenModulo, TextoModulo } from '@/lib/d
 import type { ModuloInicio, ModulosInicio as DatosModulos } from '@/lib/dashboard/inicio.server';
 import { formatoEntero, formatoVariacion, useLecturaInicio } from './useLecturaInicio';
 import { PanelFinanzasInicio } from './PanelFinanzasInicio';
+import { PanelVentasInicio } from './modulos/PanelVentasInicio';
+import { PanelLogisticaInicio } from './modulos/PanelLogisticaInicio';
+import { PanelTransporteInicio } from './modulos/PanelTransporteInicio';
 
 export interface ModulosInicioProps {
   organizationId: number;
@@ -92,6 +99,7 @@ function Kpi({ kpi, cifra }: { kpi: KpiModulo; cifra: (c: CifraModulo) => string
 export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal, version = 0, prefs, onGuardar, guardando, onModulos }: ModulosInicioProps) {
   const t = useTranslations('home.modulos');
   const tFinanzas = useTranslations('inicioFinanzas');
+  const tWidgets = useTranslations('inicioWidgets');
   const tNav = useTranslations('nav');
   const cifra = useFormatoCifra();
   const { formatTime } = useFormatDate();
@@ -247,8 +255,15 @@ export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal
             const idPanel = `inicio-modulo-${m.codigo}`;
             const solido = estado.fase === 'listo' && estado.datos.badgeSolido === m.codigo;
             // Finanzas: badge y línea plegada con sus propios textos (`inicioFinanzas`).
-            const tFila = m.finanzas ? tFinanzas : t;
-            const lineaResumen = r ? (m.finanzas ? textoResumen(m.finanzas.fila, tFinanzas, cifra) : textoResumen(r, t, cifra)) : null;
+            // Ventas, Logística y Transporte: con los textos de `inicioWidgets`.
+            const tFila = m.filaWidget ? tWidgets : m.finanzas ? tFinanzas : t;
+            const lineaResumen = r
+              ? m.filaWidget
+                ? textoResumen(m.filaWidget, tWidgets, cifra)
+                : m.finanzas
+                  ? textoResumen(m.finanzas.fila, tFinanzas, cifra)
+                  : textoResumen(r, t, cifra)
+              : null;
             return (
               <li key={m.codigo} className="rounded-lg border border-line bg-surface" data-modulo={m.codigo}>
                 <button
@@ -280,6 +295,21 @@ export function ModulosInicio({ organizationId, periodo, horas, fechas, sucursal
                   <div id={idPanel} className="flex flex-col gap-3 border-t border-line px-3 pb-3 pt-3">
                     {r?.error ? (
                       <EmptyState variante="error" compacto onReintentar={() => recargar(false)} />
+                    ) : r && m.ventas ? (
+                      <>
+                        <p className="text-xs text-fg-secondary sm:hidden">{lineaResumen}</p>
+                        <PanelVentasInicio datos={m.ventas} organizationId={organizationId} onCambio={() => recargar(false)} />
+                      </>
+                    ) : r && m.logistica ? (
+                      <>
+                        <p className="text-xs text-fg-secondary sm:hidden">{lineaResumen}</p>
+                        <PanelLogisticaInicio datos={m.logistica} />
+                      </>
+                    ) : r && m.transporte ? (
+                      <>
+                        <p className="text-xs text-fg-secondary sm:hidden">{lineaResumen}</p>
+                        <PanelTransporteInicio datos={m.transporte} />
+                      </>
                     ) : r && m.finanzas ? (
                       <>
                         <p className="text-xs text-fg-secondary sm:hidden">{lineaResumen}</p>

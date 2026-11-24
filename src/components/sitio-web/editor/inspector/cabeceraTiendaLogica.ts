@@ -8,8 +8,12 @@
  * Lectura y defaults: `@/lib/website/v2/cabeceraTienda` (el mismo archivo que lee la tienda).
  */
 import {
+  CLAVES_LINEAS_BENEFICIOS,
   ESTILOS_ICONOS_NUEVOS,
   LARGO_BOTON_CUENTA,
+  LARGO_LINEA_BENEFICIO,
+  LARGO_TEXTO_ICONO,
+  LARGO_TITULO_BENEFICIOS,
   LARGO_TEXTO_REGLA_BOTON,
   LARGO_TITULO_CUENTA,
   LARGO_TEXTOS_FAVORITOS,
@@ -19,6 +23,7 @@ import {
   segundosValidos,
   textosBotonLimpios,
   type BotonCarrito,
+  type ClaveLineaBeneficio,
   type ClaveTextoRegla,
   type EstiloIconos,
   type FormaIcono,
@@ -263,13 +268,37 @@ export function cambioInterruptorFavoritos(a: Ajustes, campo: 'contador' | 'avis
 
 // ─── Cuenta ─────────────────────────────────────────────────────────────────────────────────
 
+/** Texto escrito o `null` (vacío = el texto por defecto, que no se guarda). */
+const textoOpcional = (v: string | null, max: number): string | null => (v && v.trim() ? v.slice(0, max) : null);
+
+export interface CambioCuenta {
+  modo?: string;
+  titulo?: string | null;
+  boton?: string | null;
+  beneficios?: boolean;
+  ventanaDestino?: string;
+  despues?: string;
+  /** «Con tu cuenta puedes» propio (Figma E-A1 2839:69662). */
+  beneficiosTitulo?: string | null;
+  /** Líneas de los beneficios: `beneficio1`, `beneficio2`, `beneficio3`. */
+  lineas?: Partial<Record<ClaveLineaBeneficio, string | null>>;
+  /** Texto del ícono con sesión («Hola, {nombre}»). */
+  textoSesion?: string | null;
+}
+
 /**
  * Opciones de «Al tocar el ícono de cuenta» (`header_cuenta`, Figma 2839:69662). Los valores por
- * defecto no se guardan: «Página», el título y el botón de siempre, beneficios encendidos, el
- * panel desde la ventana y quedarse en la página.
+ * defecto no se guardan: «Página», el título y el botón de siempre, beneficios encendidos y con
+ * sus textos de siempre, el panel desde la ventana, quedarse en la página y «Hola, {nombre}».
  */
-export function cambioCuenta(a: Ajustes, parte: { modo?: string; titulo?: string | null; boton?: string | null; beneficios?: boolean; ventanaDestino?: string; despues?: string }): Ajustes {
+export function cambioCuenta(a: Ajustes, parte: CambioCuenta): Ajustes {
   const limpio: Record<string, unknown> = {};
+  if (parte.beneficiosTitulo !== undefined) limpio.beneficiosTitulo = textoOpcional(parte.beneficiosTitulo, LARGO_TITULO_BENEFICIOS);
+  for (const k of CLAVES_LINEAS_BENEFICIOS) {
+    const v = parte.lineas?.[k];
+    if (v !== undefined) limpio[k] = textoOpcional(v, LARGO_LINEA_BENEFICIO);
+  }
+  if (parte.textoSesion !== undefined) limpio.textoSesion = textoOpcional(parte.textoSesion, LARGO_TEXTO_ICONO);
   if (parte.modo !== undefined) limpio.modo = parte.modo === 'pagina' ? null : parte.modo;
   if (parte.titulo !== undefined) limpio.titulo = parte.titulo && parte.titulo.trim() ? parte.titulo.slice(0, LARGO_TITULO_CUENTA) : null;
   if (parte.boton !== undefined) limpio.boton = parte.boton && parte.boton.trim() ? parte.boton.slice(0, LARGO_BOTON_CUENTA) : null;

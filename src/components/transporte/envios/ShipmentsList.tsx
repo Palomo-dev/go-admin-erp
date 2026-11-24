@@ -309,7 +309,7 @@ export function ShipmentsList({
               <TableRow
                 key={shipment.id}
                 className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                onClick={() => router.push(`/app/transporte/envios/${shipment.id}`)}
+                onClick={() => router.push(`/app/logistica/envios/${shipment.id}`)}
               >
                 <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
@@ -323,7 +323,7 @@ export function ShipmentsList({
                     <CopyableId
                       label={shipment.tracking_number || ''}
                       copyValue={shipment.tracking_number || ''}
-                      onClick={() => router.push(`/app/transporte/envios/${shipment.id}`)}
+                      onClick={() => router.push(`/app/logistica/envios/${shipment.id}`)}
                       iconSize={12}
                     />
                   </div>
@@ -400,7 +400,7 @@ export function ShipmentsList({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => router.push(`/app/transporte/envios/${shipment.id}`)}>
+                      <DropdownMenuItem onClick={() => router.push(`/app/logistica/envios/${shipment.id}`)}>
                         <Eye className="h-4 w-4 mr-2" />
                         Ver detalle
                       </DropdownMenuItem>

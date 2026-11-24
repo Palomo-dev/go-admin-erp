@@ -128,8 +128,10 @@ test('escritorio listo: el orden del Figma y solo lecturas /api/inicio/* con la 
   const { container } = renderConIdioma(<InicioPage />);
   await waitFor(() => expect(container.querySelector('[data-cifra="neto"]')).not.toBeNull());
   await waitFor(() => expect(titulos(container)).toContain('Tienda web'));
-  // Cabecera → Hoy → Ventas | Actividad → Tienda web → Módulos.
-  expect(titulos(container)).toEqual(['Hoy', 'Ventas del periodo', 'Actividad reciente', 'Tienda web', 'Módulos']);
+  // Cabecera → Hoy → Recaudado | Actividad → Tienda web → Módulos. La tarjeta de lo
+  // COBRADO se llama «Recaudado del periodo» (2026-11-23); «Ventas del periodo»
+  // son las ventas netas del widget de Ventas.
+  expect(titulos(container)).toEqual(['Hoy', 'Recaudado del periodo', 'Actividad reciente', 'Tienda web', 'Módulos']);
   // «Hoy» dice cuántos pedidos web expiran pronto (Figma: «3 expiran en menos de 30 min»).
   expect(container.textContent).toContain('3 expiran en menos de 30 min');
   // Cabecera: Actualizar (solo icono), Personalizar y «⋯»; selector con siete opciones.

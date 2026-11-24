@@ -69,6 +69,7 @@ const FILA: FilaVenta = {
   payment_status: 'paid',
   estado: 'pagada' as FilaVenta['estado'],
   origen: 'pos' as FilaVenta['origen'],
+  canal: 'pos',
   numero: 'V-0001',
   tipo_numero: 'pedido',
   factura_id: null,
@@ -101,6 +102,14 @@ const CIFRAS = {
     ],
   },
   anterior: { ventas: 43143303.57, transacciones: 1200 },
+  // Figma 24 Ventas: conteo por canal (sin el filtro de canal) y «Ventas de hoy».
+  por_canal: [
+    { canal: 'pos', transacciones: 812, ventas: 30000000 },
+    { canal: 'tienda_web', transacciones: 402, ventas: 15000000 },
+    { canal: 'menu_qr', transacciones: 61, ventas: 2000000 },
+    { canal: 'manual', transacciones: 37, ventas: 1320500 },
+  ],
+  hoy: { ventas: 4862300, transacciones: 131, anterior: 4502130 },
 } as unknown as CifrasVentas;
 
 beforeEach(() => {
@@ -142,22 +151,37 @@ describe('VentasPage · layout de Figma', () => {
 });
 
 describe('VentasPage · cierre del Figma (2026-11-20)', () => {
-  it('cabecera: «Historial de ventas», N ventas encontradas · periodo · sucursal y «Exportar» visible', async () => {
+  it('cabecera (Figma 24): «Todas las ventas», N ventas · periodo · sucursal · canal, «Nuevo pedido manual» y «Exportar» en el ⋯', async () => {
     params = new URLSearchParams();
     renderConIdioma(<VentasPage />);
-    expect(await screen.findByRole('heading', { name: 'Historial de ventas' })).toBeTruthy();
-    expect(await screen.findAllByText(/1 venta encontrada · 1 al 28 de septiembre de 2026 · Sucursal Principal/)).not.toHaveLength(0);
-    expect(screen.getByRole('button', { name: 'Exportar' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Todas las ventas' })).toBeTruthy();
+    expect(await screen.findAllByText(/1 venta encontrada · 1 al 28 de septiembre de 2026 · Sucursal Principal · todos los canales/)).not.toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Nuevo pedido manual' })).toBeTruthy();
+    // «Exportar» ya no es un botón suelto de la cabecera: vive en el menú «⋯».
+    expect(screen.queryByRole('button', { name: 'Exportar' })).toBeNull();
   });
 
-  it('KPI: ventas con variación, ticket, transacciones con su detalle e impuestos por impuesto', async () => {
+  it('KPI (Figma 24): ventas de hoy frente al mismo día de la semana pasada, del periodo, por canal y ticket', async () => {
     params = new URLSearchParams();
     renderConIdioma(<VentasPage />);
-    expect(await screen.findByText('Ventas del periodo')).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('+12 % frente al periodo anterior')).toBeTruthy());
-    expect(screen.getByText(/sobre 1.309 transacciones/)).toBeTruthy();
-    expect(screen.getByText('1.286 pagadas · 23 pendientes · 3 anuladas')).toBeTruthy();
-    expect(screen.getByText('IVA 19 % 7402100 · INC 8 % 310300')).toBeTruthy();
+    expect(await screen.findByText('Ventas de hoy')).toBeTruthy();
+    expect(screen.getByText('Ventas del periodo')).toBeTruthy();
+    expect(screen.getByText('Por canal')).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('POS 62 %')).toBeTruthy());
+    expect(screen.getByText('Tienda web 31 % · Menú QR 5 % · Manual 3 %')).toBeTruthy();
+    expect(screen.getByText(/^131 ventas · \+8 % vs\. el .+ pasado$/)).toBeTruthy();
+    expect(screen.getByText(/^1\.309 ventas · /)).toBeTruthy();
+    expect(screen.getByText('del periodo, todos los canales')).toBeTruthy();
+  });
+
+  it('chips de canal con su conteo; Marketplace no sale sin ventas; elegir uno filtra la tabla', async () => {
+    params = new URLSearchParams();
+    renderConIdioma(<VentasPage />);
+    const grupo = await screen.findByRole('radiogroup', { name: 'Canal' });
+    await waitFor(() => expect(within(grupo).getByRole('radio', { name: 'Todos · 1.312' })).toBeTruthy());
+    expect(within(grupo).getByRole('radio', { name: 'POS · 812' })).toBeTruthy();
+    expect(within(grupo).getByRole('radio', { name: 'Manual · 37' })).toBeTruthy();
+    expect(within(grupo).queryByRole('radio', { name: /Marketplace/ })).toBeNull();
   });
 
   it('las cifras piden los mismos filtros que la tabla (sin orden ni página)', async () => {
@@ -187,14 +211,14 @@ describe('VentasPage · cierre del Figma (2026-11-20)', () => {
     expect(setSelectedBranch).toHaveBeenCalledWith('all');
   });
 
-  it('segunda línea del N.º y del cliente, y origen con color', async () => {
+  it('segunda línea del N.º y del cliente, y canal con su insignia', async () => {
     params = new URLSearchParams();
     pedirVentas.mockResolvedValue({
       total: 3,
       filas: [
         { ...FILA, id: 'v2', numero: 'F-001480', saldo: 640000, estado: 'pago_parcial', cliente: { id: 'c2', nombre: 'Distribuciones', documento: '901455221-3', tipo_documento: 'NIT' } },
-        { ...FILA, id: 'v3', numero: 'F-001481', origen: 'mesa', mesa: '7', cliente: null, cajero: { id: 'u1', nombre: 'Laura Restrepo' } },
-        { ...FILA, id: 'v4', numero: 'P-0002144', origen: 'web', cliente: { id: 'c3', nombre: 'Julián', documento: null, telefono: '318 455 20 11' } },
+        { ...FILA, id: 'v3', numero: 'F-001481', origen: 'mesa', canal: 'pos', mesa: '7', cliente: null, cajero: { id: 'u1', nombre: 'Laura Restrepo' } },
+        { ...FILA, id: 'v4', numero: 'P-0002144', origen: 'web', canal: 'menu_qr', cliente: { id: 'c3', nombre: 'Julián', documento: null, telefono: '318 455 20 11' } },
       ],
     });
     renderConIdioma(<VentasPage />);
@@ -203,7 +227,8 @@ describe('VentasPage · cierre del Figma (2026-11-20)', () => {
     expect(screen.getAllByText('Mesa 7 · Laura R.')).not.toHaveLength(0);
     expect(screen.getAllByText('pedido web')).not.toHaveLength(0);
     expect(screen.getAllByText('318 455 20 11')).not.toHaveLength(0);
-    const mesa = screen.getAllByText('Mesa').find((e) => !!e.closest('[class*="warning"]'));
-    expect(mesa).toBeTruthy();
+    // InsigniaCanal (Figma 2896:12337): Menú QR en el tono de éxito.
+    const qr = screen.getAllByText('Menú QR').find((e) => !!e.closest('[class*="success"]'));
+    expect(qr).toBeTruthy();
   });
 });

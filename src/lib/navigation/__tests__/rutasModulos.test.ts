@@ -4,14 +4,15 @@
  * el mismo orden. Si este test falla, pega en `RUTAS_MODULOS` el bloque que
  * imprime: no edites a mano una sola entrada.
  */
-import { CATALOGO_NAV } from '../catalog';
+import { CATALOGO_NAV, paginasPropias } from '../catalog';
 import { RUTAS_MODULOS, cantidadPaginas, moduloDeRuta, paginaDeRuta } from '../rutasModulos';
 
 function derivado() {
   return CATALOGO_NAV.filter((m) => m.codigo !== null).map((m) => ({
     codigo: m.codigo as string,
     rutas: [...m.rutas],
-    paginas: m.paginas.map((p) => p.href),
+    // Las páginas prestadas de otro módulo (`moduloDueno`) no son del módulo.
+    paginas: paginasPropias(m).map((p) => p.href),
   }));
 }
 
@@ -61,7 +62,7 @@ describe('moduloDeRuta / paginaDeRuta', () => {
   });
 
   it('cantidad de páginas igual al catálogo', () => {
-    for (const m of CATALOGO_NAV) if (m.codigo) expect(cantidadPaginas(m.codigo)).toBe(m.paginas.length);
+    for (const m of CATALOGO_NAV) if (m.codigo) expect(cantidadPaginas(m.codigo)).toBe(paginasPropias(m).length);
     expect(cantidadPaginas('no-existe')).toBe(0);
   });
 });

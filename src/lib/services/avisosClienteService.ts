@@ -20,6 +20,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   AJUSTES_POR_DEFECTO,
   asuntoAviso,
+  asuntoAvisoNovedad,
+  textoAvisoNovedad,
+  type DatosNovedad,
+  type MomentoAvisoEnvio,
   momentoDeEstado,
   normalizarMomentos,
   rubroDeTipoOrg,
@@ -108,7 +112,7 @@ export async function listarAvisosPedido(db: SupabaseClient, organizationId: num
 
 async function registrar(
   db: SupabaseClient,
-  fila: { organizationId: number; orderId: string; momento: MomentoAviso; canal: CanalAviso; estado: EstadoRegistroAviso; destinatario?: string | null; detalle?: string | null; proveedorId?: string | null; actor?: string | null },
+  fila: { organizationId: number; orderId: string; momento: MomentoAviso | MomentoAvisoEnvio; canal: CanalAviso; estado: EstadoRegistroAviso; destinatario?: string | null; detalle?: string | null; proveedorId?: string | null; actor?: string | null },
 ) {
   const { error } = await db.from('web_order_notices').insert({
     organization_id: fila.organizationId,
@@ -201,9 +205,14 @@ export async function avisarClientePedido(
     url: string | null;
     actor?: string | null;
     soloCanal?: CanalAviso | null;
-    enviarCorreo: (extra: { asunto: string; texto: string; nombreVisible: string | null; responderA: string | null }) => Promise<{ ok: boolean; id?: string | null; error?: string | null }>;
+    enviarCorreo: (extra: { asunto: string; texto: string; nombreVisible: string | null; responderA: string | null; datos?: DatosAviso }) => Promise<{ ok: boolean; id?: string | null; error?: string | null }>;
     /** Legado (sin tablas): qué estados avisaban antes. */
     estadoConAvisoLegado: (estado: string) => boolean;
+    /**
+     * Logística Fase 1: datos del envío para «en camino» y «entregado» (domiciliario, código de
+     * entrega si es contraentrega, valor a pagar). Opcional: sin envío el aviso es el de siempre.
+     */
+    datosEnvio?: (momento: MomentoAviso) => Promise<Partial<DatosAviso>>;
   },
 ): Promise<{ email: ResultadoCanal; whatsapp: ResultadoCanal; momento: MomentoAviso | null }> {
   const momento = momentoDeEstado(pedido.status);
@@ -218,7 +227,11 @@ export async function avisarClientePedido(
   // `recibido` lo manda el sitio al crear el pedido; aquí solo si se reenvía.
   if (!momento) return { email: null, whatsapp: null, momento };
 
-  const datos = await datosDeAviso(db, organizationId, pedido, ajustes.nombreVisible || contexto.negocio, contexto.url);
+  const base = await datosDeAviso(db, organizationId, pedido, ajustes.nombreVisible || contexto.negocio, contexto.url);
+  const extraEnvio = (momento === 'en_camino' || momento === 'entregado') && contexto.datosEnvio
+    ? await contexto.datosEnvio(momento).catch(() => ({}))
+    : {};
+  const datos: DatosAviso = { ...base, ...extraEnvio };
   const texto = textoAviso(momento, datos);
   const resultado: { email: ResultadoCanal; whatsapp: ResultadoCanal } = { email: 'apagado', whatsapp: 'apagado' };
 
@@ -227,7 +240,7 @@ export async function avisarClientePedido(
       resultado.email = 'no_data';
       await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'email', estado: 'no_data', detalle: 'sin_correo', actor: contexto.actor });
     } else {
-      const r = await contexto.enviarCorreo({ asunto: asuntoAviso(momento, pedido.order_number), texto, nombreVisible: ajustes.nombreVisible, responderA: ajustes.responderA });
+      const r = await contexto.enviarCorreo({ asunto: asuntoAviso(momento, pedido.order_number), texto, nombreVisible: ajustes.nombreVisible, responderA: ajustes.responderA, datos });
       resultado.email = r.ok ? 'sent' : 'failed';
       await registrar(db, {
         organizationId, orderId: pedido.id, momento, canal: 'email', estado: resultado.email,
@@ -258,4 +271,65 @@ export async function avisarClientePedido(
     }
   }
   return { ...resultado, momento };
+}
+
+/**
+ * Aviso «novedad» (logística Fase 1, Figma 2805:5220): el domiciliario no pudo entregar. Lo
+ * dispara quien registra la novedad (`logistica_registrar_novedad` devuelve `aviso: 'novedad'`).
+ * Sin interruptor propio en los ajustes: sale por correo y WhatsApp (hoy WhatsApp falla con
+ * NO_CHANNEL hasta que la organización reconecte su canal; queda registrado). Nunca lanza.
+ */
+export async function avisarNovedadPedido(
+  db: SupabaseClient,
+  organizationId: number,
+  pedido: PedidoParaAviso,
+  contexto: {
+    negocio: string;
+    novedad: Omit<DatosNovedad, 'cliente' | 'numero' | 'negocio'>;
+    actor?: string | null;
+    enviarCorreo: (extra: { asunto: string; texto: string; nombreVisible: string | null; responderA: string | null }) => Promise<{ ok: boolean; id?: string | null; error?: string | null }>;
+  },
+): Promise<{ email: ResultadoCanal; whatsapp: ResultadoCanal }> {
+  const momento = 'novedad' as const;
+  const { ajustes } = await leerAjustesAvisos(db, organizationId);
+  const texto = textoAvisoNovedad({
+    cliente: pedido.customer_name ?? '',
+    numero: pedido.order_number,
+    negocio: ajustes.nombreVisible || contexto.negocio,
+    ...contexto.novedad,
+  });
+  const resultado: { email: ResultadoCanal; whatsapp: ResultadoCanal } = { email: null, whatsapp: null };
+
+  if (!pedido.customer_email) {
+    resultado.email = 'no_data';
+    await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'email', estado: 'no_data', detalle: 'sin_correo', actor: contexto.actor });
+  } else {
+    const r = await contexto.enviarCorreo({ asunto: asuntoAvisoNovedad(pedido.order_number), texto, nombreVisible: ajustes.nombreVisible, responderA: ajustes.responderA });
+    resultado.email = r.ok ? 'sent' : 'failed';
+    await registrar(db, {
+      organizationId, orderId: pedido.id, momento, canal: 'email', estado: resultado.email,
+      destinatario: pedido.customer_email, detalle: r.ok ? null : r.error ?? 'proveedor', proveedorId: r.id ?? null, actor: contexto.actor,
+    });
+  }
+
+  if (!pedido.customer_phone || !pedido.customer_id) {
+    resultado.whatsapp = 'no_data';
+    await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'whatsapp', estado: 'no_data', detalle: 'sin_telefono', actor: contexto.actor });
+  } else {
+    try {
+      const { sendWhatsApp } = await import('@/lib/services/crm/whatsapp/outboundService');
+      const r = await sendWhatsApp(
+        { orgId: organizationId, customerId: pedido.customer_id, text: texto, purpose: 'utility', source: 'platform_send', clientRequestId: `aviso:${pedido.id}:${momento}:${Date.now()}` },
+        db,
+        db,
+      );
+      resultado.whatsapp = 'sent';
+      await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'whatsapp', estado: 'sent', destinatario: pedido.customer_phone, proveedorId: r.message_id, actor: contexto.actor });
+    } catch (err) {
+      const codigo = (err as { code?: string })?.code ?? (err instanceof Error ? err.message : 'error');
+      resultado.whatsapp = 'failed';
+      await registrar(db, { organizationId, orderId: pedido.id, momento, canal: 'whatsapp', estado: 'failed', destinatario: pedido.customer_phone, detalle: String(codigo), actor: contexto.actor });
+    }
+  }
+  return resultado;
 }

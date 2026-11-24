@@ -34,12 +34,14 @@ import { codigoErrorPropina, type CodigoErrorPropina } from '@/lib/pos/propinas/
 import { centavos, numeroEgreso } from '@/lib/pos/propinas/liquidacionLogica';
 import { SIN_PERMISOS_PROPINAS, type DetalleLiquidacion, type PermisosPropinasServidor } from '@/lib/pos/propinas/tiposPropinas';
 import { useEtiquetasPropinas, useFormatoPropinas } from './formatoPropinas';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 const RUTA = '/app/pos/propinas';
 const VISIBLES = 10;
 
 export function LiquidacionDetalle({ id }: { id: string }) {
   const t = useTranslations('posPropinas');
+  const migaVentas = useMigaVentas();
   const params = useSearchParams();
   const f = useFormatoPropinas();
   const etiqueta = useEtiquetasPropinas();
@@ -91,7 +93,7 @@ export function LiquidacionDetalle({ id }: { id: string }) {
   };
 
   const migas = [
-    { etiqueta: t('pagina.migaPos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: t('pagina.titulo'), href: `${RUTA}?pestana=liquidaciones` },
     { etiqueta: d?.codigo ?? t('detalle.titulo') },
   ];

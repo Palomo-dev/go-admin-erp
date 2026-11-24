@@ -5,7 +5,7 @@
  * 2754:60110): leen lo que ya tiene el sitio (sin escribir al abrir) y cada control arma el cambio
  * del documento (`header_iconos`, `header_moneda`, `header_carrito`).
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { VistaCarrito, VistaIconos, VistaMoneda } from '../CabeceraTiendaVistas';
 
 jest.mock('next-intl', () => ({
@@ -63,6 +63,34 @@ describe('Encabezado › Selector de moneda', () => {
     expect(base.hasAttribute('disabled')).toBe(true);
     fireEvent.click(await screen.findByRole('checkbox', { name: /EUR/ }));
     expect(cambiar).toHaveBeenLastCalledWith({ header_moneda: { visibles: ['COP', 'USD'] } });
+  });
+
+  // Queja del dueño 2026-11-23: con «Solo ícono» la vista de la moneda no ofrecía el dibujo.
+  test('«Solo ícono» muestra el dibujo de la moneda: el mismo dato que la tarjeta Moneda de «Íconos»', async () => {
+    const cambiar = jest.fn();
+    render(<VistaMoneda ajustes={{ header_moneda: { estilo: 'icono' }, currency_icon: 'coins' }} cambiar={cambiar} organizationId={1} />);
+    await screen.findByRole('checkbox', { name: /COP/ });
+    const dibujo = screen.getByRole('radiogroup', { name: 'Ícono de moneda' });
+    expect(within(dibujo).getByRole('radio', { name: 'Monedas' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(dibujo).getByRole('radio', { name: 'Billetera' }));
+    expect(cambiar).toHaveBeenLastCalledWith({ currency_icon: 'wallet' });
+    expect(screen.getByText('moneda.dibujoAyuda')).toBeTruthy();
+  });
+
+  test('sin estilo (lo de hoy) también se ofrece el dibujo; con «Bandera + código», no', async () => {
+    render(<VistaMoneda ajustes={{}} cambiar={jest.fn()} organizationId={1} />);
+    await screen.findByRole('checkbox', { name: /COP/ });
+    expect(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).toBeTruthy();
+    document.body.innerHTML = '';
+    render(<VistaMoneda ajustes={{ header_moneda: { estilo: 'bandera' } }} cambiar={jest.fn()} organizationId={1} />);
+    await screen.findByRole('checkbox', { name: /COP/ });
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono de moneda' })).toBeNull();
+  });
+
+  test('lo elegido en la vista de la moneda se ve marcado en la tarjeta Moneda de «Íconos»', () => {
+    render(<VistaIconos ajustes={{ currency_icon: 'wallet' }} cambiar={jest.fn()} onAbrir={jest.fn()} />);
+    const dibujo = screen.getByRole('radiogroup', { name: 'Ícono de moneda' });
+    expect(within(dibujo).getByRole('radio', { name: 'Billetera' }).getAttribute('aria-checked')).toBe('true');
   });
 });
 

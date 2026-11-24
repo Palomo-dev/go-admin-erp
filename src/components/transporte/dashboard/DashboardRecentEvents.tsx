@@ -85,7 +85,7 @@ export function DashboardRecentEvents({ events, isLoading }: DashboardRecentEven
             <Activity className="h-5 w-5 text-blue-600 dark:text-blue-300" />
             Últimos Eventos
           </CardTitle>
-          <Link href="/app/transporte/tracking">
+          <Link href="/app/logistica/seguimiento">
             <Button variant="ghost" size="sm" className="text-xs">
               Ver todos
               <ArrowRight className="h-3 w-3 ml-1" />

@@ -143,6 +143,10 @@ export function DetalleVentas({ abierto, onAbiertoChange, datos, periodo, fechas
           {v.moneda && Number(datos.actual?.reintegros) > 0 && (
             <Cifra etiqueta={t('devoluciones')} valor={`−${v.importe(Number(datos.actual?.reintegros))}`} />
           )}
+          {/* Lo que lleva lo cobrado (se aclara, no se resta) y lo vendido sin cobrar. */}
+          {v.moneda && v.impuestos >= 0.5 && <Cifra etiqueta={t('impuestosIncluidos')} valor={v.importe(v.impuestos)} />}
+          {v.moneda && v.propinas >= 0.5 && <Cifra etiqueta={t('propinasIncluidas')} valor={v.importe(v.propinas)} />}
+          {v.moneda && v.porCobrar !== null && <Cifra etiqueta={t('porCobrarCorto')} valor={v.importe(v.porCobrar)} />}
         </dl>
 
         {v.hayGrafica ? (

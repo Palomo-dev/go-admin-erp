@@ -14,7 +14,7 @@ import { cn } from '@/utils/Utils';
 
 export interface CeldaPermisoProps {
   estado: EstadoCasilla | 'bloqueado';
-  /** Nombre accesible: «Ver en Punto de venta». */
+  /** Nombre accesible: «Ver en Ventas». */
   etiqueta: string;
   onAlternar?: () => void;
   sensible?: boolean;

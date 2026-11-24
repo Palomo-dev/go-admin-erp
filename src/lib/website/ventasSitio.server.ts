@@ -26,7 +26,7 @@
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { permisosSitio } from '@/lib/services/website/paginasSitioService';
 import { seccionesVisiblesServidor } from '@/lib/navigation/navegacionServidor';
-import { CATALOGO_NAV } from '@/lib/navigation/catalog';
+import { CATALOGO_NAV, paginasPropias } from '@/lib/navigation/catalog';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { plainDateToInstant, todayInTz } from '@/lib/utils/dateDisplay';
@@ -114,7 +114,7 @@ export interface RespuestaVentas {
 
 const ENLACES: Record<Exclude<TemaVenta, 'checkout'>, { href: string; texto: string }> = {
   pagos: { href: '/app/finanzas/metodos-pago', texto: 'irFinanzasMetodos' },
-  envios: { href: '/app/transporte/tarifas-envio', texto: 'irTransporteTarifas' },
+  envios: { href: '/app/logistica/zonas', texto: 'irTransporteTarifas' },
   cupones: { href: '/app/pos/cupones', texto: 'irPosPromociones' },
   pedidos: { href: '/app/pos/pedidos-online', texto: 'irPosPedidos' },
   reservas: { href: '/app/pos/reservas-mesas?tab=configuracion', texto: 'irPosReservas' },
@@ -124,7 +124,7 @@ const ENLACES: Record<Exclude<TemaVenta, 'checkout'>, { href: string; texto: str
 /** Módulo del catálogo que tiene esa página (para «Disponible con Transporte»). */
 export function moduloDeRuta(href: string): string {
   const base = href.split('?')[0];
-  const m = CATALOGO_NAV.find((mod) => mod.paginas.some((p) => p.href === base) || mod.rutas.some((r) => base === r));
+  const m = CATALOGO_NAV.find((mod) => paginasPropias(mod).some((p) => p.href === base) || mod.rutas.some((r) => base === r));
   return m?.etiqueta ?? 'sitioWeb';
 }
 

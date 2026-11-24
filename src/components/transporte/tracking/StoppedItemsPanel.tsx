@@ -77,7 +77,7 @@ export function StoppedItemsPanel({ items, isLoading, onRefresh }: StoppedItemsP
                   </Badge>
                 </div>
                 <Link
-                  href={item.type === 'trip' ? `/app/transporte/viajes/${item.id}` : `/app/transporte/envios/${item.id}`}
+                  href={item.type === 'trip' ? `/app/transporte/viajes/${item.id}` : `/app/logistica/envios/${item.id}`}
                 >
                   <Button variant="ghost" size="sm">
                     <ExternalLink className="h-4 w-4" />

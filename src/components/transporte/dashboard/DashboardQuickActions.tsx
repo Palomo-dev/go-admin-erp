@@ -30,7 +30,7 @@ export function DashboardQuickActions() {
     },
     {
       label: 'Nuevo Envío',
-      href: '/app/transporte/envios/nuevo',
+      href: '/app/logistica/envios',
       icon: Package,
       color: 'bg-purple-600 hover:bg-purple-700',
       description: 'Crear un nuevo envío',
@@ -59,10 +59,10 @@ export function DashboardQuickActions() {
   ];
 
   const catalogLinks = [
-    { label: 'Transportadoras', href: '/app/transporte/transportadoras', icon: Truck },
+    { label: 'Transportadoras', href: '/app/integraciones/conexiones/logistica', icon: Truck },
     { label: 'Vehículos', href: '/app/transporte/vehiculos', icon: Bus },
     { label: 'Conductores', href: '/app/transporte/conductores', icon: Users },
-    { label: 'Paradas', href: '/app/transporte/paradas', icon: MapPin },
+    { label: 'Paradas', href: '/app/transporte/rutas?pestana=paradas', icon: MapPin },
     { label: 'Rutas', href: '/app/transporte/rutas', icon: Route },
     { label: 'Horarios', href: '/app/transporte/horarios', icon: Calendar },
   ];
@@ -70,10 +70,10 @@ export function DashboardQuickActions() {
   const operationLinks = [
     { label: 'Viajes', href: '/app/transporte/viajes', icon: Bus },
     { label: 'Boletos', href: '/app/transporte/boletos', icon: Ticket },
-    { label: 'Envíos', href: '/app/transporte/envios', icon: Package },
-    { label: 'Tracking', href: '/app/transporte/tracking', icon: Navigation },
-    { label: 'Etiquetas', href: '/app/transporte/etiquetas', icon: ClipboardList },
-    { label: 'Incidentes', href: '/app/transporte/incidentes', icon: AlertTriangle },
+    { label: 'Envíos', href: '/app/logistica/envios', icon: Package },
+    { label: 'Tracking', href: '/app/logistica/seguimiento', icon: Navigation },
+    { label: 'Etiquetas', href: '/app/logistica/etiquetas', icon: ClipboardList },
+    { label: 'Incidentes', href: '/app/transporte/viajes?pestana=novedades', icon: AlertTriangle },
   ];
 
   return (

@@ -25,6 +25,7 @@ export const TIPOS_ENTIDAD = [
   'category',
   'invoice',
   'web_order',
+  'shipment',
   'reservation',
   'space',
   'membership',
@@ -51,6 +52,8 @@ export const GRUPOS_ENTIDAD: readonly DefinicionGrupo[] = [
   { tipo: 'category', paginas: ['/app/inventario/categorias'] },
   { tipo: 'invoice', paginas: ['/app/finanzas/facturas-venta'] },
   { tipo: 'web_order', paginas: ['/app/pos/pedidos-online'] },
+  // Envíos (Logística, 2026-11-23): por guía, pedido, destinatario, teléfono o dirección.
+  { tipo: 'shipment', paginas: ['/app/logistica/envios', '/app/logistica/por-despachar', '/app/logistica/seguimiento'] },
   { tipo: 'reservation', paginas: ['/app/pms/reservas'] },
   { tipo: 'space', paginas: ['/app/pms/espacios'] },
   { tipo: 'membership', paginas: ['/app/membresias/membresias'] },

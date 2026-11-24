@@ -112,6 +112,40 @@ export interface DatosAviso {
   motivo?: string | null;
   conductor?: string | null;
   url?: string | null;
+  /**
+   * Logística Fase 1 (Figma 2805:5220): contraentrega propia. El código de entrega solo viaja en el
+   * aviso «en camino» y solo si el envío es contraentrega (lo emite la base); `pagaAlRecibir` es el
+   * valor ya formateado en la moneda del pedido.
+   */
+  codigoEntrega?: string | null;
+  pagaAlRecibir?: string | null;
+  /** «Entregado»: quién recibió y cómo pagó en la puerta (ya traducido). */
+  recibio?: string | null;
+  medioCobro?: string | null;
+}
+
+/** Momentos de envío que avisa logística (`web_order_notices.moment`); `novedad` no tiene interruptor propio. */
+export const MOMENTOS_AVISO_ENVIO = ['en_camino', 'entregado', 'novedad'] as const;
+export type MomentoAvisoEnvio = (typeof MOMENTOS_AVISO_ENVIO)[number];
+
+/** Motivo de la novedad en palabras del cliente (`shipments.exception_reason`). */
+export const MOTIVO_NOVEDAD_CLIENTE: Record<string, string> = {
+  not_home: 'no había nadie para recibirlo',
+  wrong_address: 'la dirección no corresponde',
+  incomplete_address: 'faltan datos en la dirección',
+  rejected: 'el pedido fue rechazado al entregarlo',
+  damaged: 'el paquete se dañó',
+  lost: 'el paquete se extravió',
+  access_denied: 'no nos dejaron entrar',
+  business_closed: 'el lugar estaba cerrado',
+  weather: 'el clima no lo permitió',
+  vehicle_issue: 'tuvimos un problema con el vehículo',
+  customer_request: 'nos pediste cambiar la entrega',
+  other: 'tuvimos un inconveniente',
+};
+
+export function motivoNovedadCliente(codigo: string | null | undefined): string {
+  return (codigo && MOTIVO_NOVEDAD_CLIENTE[codigo]) || MOTIVO_NOVEDAD_CLIENTE.other;
 }
 
 /** Rubro para la redacción a partir de `organization_types.name`: solo `restaurant` prepara. */
@@ -152,9 +186,17 @@ export function textoAviso(momento: MomentoAviso, d: DatosAviso): string {
     case 'en_camino':
       partes.push(d.conductor ? `${d.conductor} lleva tu pedido ${d.numero}.` : `Tu pedido ${d.numero} va en camino.`);
       if (d.entregaAprox) partes.push(`Llega ${fraseEstimacion(d.entregaAprox)}${d.zonaHoraria ? ` (${d.zonaHoraria})` : ''}.`);
+      // Contraentrega (Figma 2805:5220): el código y el valor a pagar en la puerta.
+      if (d.codigoEntrega) partes.push(`Tu código de entrega es ${d.codigoEntrega}. Dáselo a quien te entregue.`);
+      if (d.pagaAlRecibir) partes.push(`Pagas al recibir: ${d.pagaAlRecibir}.`);
       break;
     case 'entregado':
-      partes.push(`Gracias por tu compra. Tu pedido ${d.numero} fue entregado.`);
+      partes.push(
+        d.recibio
+          ? `Tu pedido ${d.numero} fue entregado y lo recibió ${d.recibio}. Gracias por tu compra.`
+          : `Gracias por tu compra. Tu pedido ${d.numero} fue entregado.`,
+      );
+      if (d.pagaAlRecibir) partes.push(`Pagaste ${d.pagaAlRecibir}${d.medioCobro ? ` en ${d.medioCobro}` : ''}.`);
       break;
     case 'rechazado':
       partes.push(`No pudimos atender tu pedido ${d.numero}.${d.motivo ? ` Motivo: ${d.motivo}.` : ''} Si ya pagaste, te devolvemos el dinero.`);
@@ -185,4 +227,32 @@ export function asuntoAviso(momento: MomentoAviso, numero: string): string {
     case 'rechazado':
       return `No pudimos atender tu pedido ${numero}`;
   }
+}
+
+export interface DatosNovedad {
+  cliente: string;
+  numero: string;
+  negocio: string;
+  /** Código de `shipments.exception_reason` (se dice en palabras del cliente). */
+  motivo: string | null;
+  /** «mañana», «el jue 26 nov»: día del nuevo intento ya formateado; null = la tienda te contacta. */
+  nuevoIntento?: string | null;
+  url?: string | null;
+}
+
+/** Aviso «novedad» (Figma 2805:5220): no pudimos entregar, por qué y qué sigue. */
+export function textoAvisoNovedad(d: DatosNovedad): string {
+  const nombre = d.cliente.trim().split(/\s+/)[0] || 'cliente';
+  const partes = [
+    `Hola ${nombre},`,
+    `Pasamos a entregar tu pedido ${d.numero} y no pudimos: ${motivoNovedadCliente(d.motivo)}.`,
+    d.nuevoIntento ? `Lo intentamos de nuevo ${d.nuevoIntento}.` : 'Te contactamos para acordar una nueva entrega.',
+    d.url ? `Si quieres cambiar la dirección o la hora, respóndenos aquí o entra a ${d.url}` : 'Si quieres cambiar la dirección o la hora, respóndenos aquí.',
+    d.negocio,
+  ];
+  return partes.filter(Boolean).join('\n\n');
+}
+
+export function asuntoAvisoNovedad(numero: string): string {
+  return `No pudimos entregar tu pedido ${numero}`;
 }

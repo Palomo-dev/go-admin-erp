@@ -397,7 +397,7 @@
     "modules": {
       "finance": "Finanzas",
       "inventory": "Inventario",
-      "pos": "POS",
+      "pos": "Ventas",
       "crm": "CRM",
       "pmsHotel": "PMS Hotel",
       "parking": "Parking",
@@ -699,7 +699,10 @@
         "pedidosWeb": "Pedidos web",
         "cajasAnteriores": "Cajas sin cerrar",
         "reservasStock": "Reservas de stock sin mover",
-        "misTareas": "Mis tareas"
+        "misTareas": "Mis tareas",
+        "documentosVencidos": "Documentos",
+        "despachosBloqueados": "Despachos",
+        "enviosAtrasados": "Envíos"
       },
       "estados": {
         "vencido": "Vencido",
@@ -718,7 +721,10 @@
         "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
         "cajasAbiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
         "reservas": "{n, plural, one {# reserva} other {# reservas}}",
-        "abiertas": "{n, plural, one {# abierta} other {# abiertas}}"
+        "abiertas": "{n, plural, one {# abierta} other {# abiertas}}",
+        "vencidos": "{n, plural, one {# vencido} other {# vencidos}}",
+        "viajes": "{n, plural, one {# viaje} other {# viajes}}",
+        "atrasados": "{n, plural, one {# atrasado} other {# atrasados}}"
       },
       "detalles": {
         "carteraAlDia": "Ninguna cuenta vencida",
@@ -739,7 +745,13 @@
         "cajasDesde": "Abierta desde hace {dias, plural, one {# día} other {# días}}",
         "tareasVencidas": "{n, plural, one {# vencida} other {# vencidas}}{hoy, plural, =0 {} one { · # vence hoy} other { · # vencen hoy}}",
         "tareasHoy": "{n, plural, one {# vence hoy} other {# vencen hoy}}",
-        "tareasSinVencer": "Ninguna vence hoy"
+        "tareasSinVencer": "Ninguna vence hoy",
+        "documentoEjemplo": "{causa} de {nombre}{mas, plural, =0 {} other { · y # más}}",
+        "documentosVencidos": "Renuévalos para que los viajes puedan salir",
+        "noPuedenSalir": "{codigos}{mas, plural, =0 {} other { y # más}} {n, plural, one {no puede salir} other {no pueden salir}}",
+        "despachosBloqueados": "No pueden salir hasta resolver el bloqueo",
+        "masAtrasado": "El más atrasado: {numero}, {minutos} min",
+        "enviosAtrasados": "Ya pasaron la promesa de entrega"
       },
       "acciones": {
         "verCartera": "Ver cartera",
@@ -750,12 +762,15 @@
         "atender": "Atender",
         "verCajas": "Ver cajas",
         "revisar": "Revisar",
-        "abrir": "Abrir"
+        "abrir": "Abrir",
+        "renovar": "Renovar",
+        "resolver": "Resolver",
+        "verAtrasados": "Ver atrasados"
       },
       "verTodas": "Ver las {n} · {resto}"
     },
     "ventasPeriodo": {
-      "titulo": "Ventas del periodo",
+      "titulo": "Recaudado del periodo",
       "variasMonedas": "Cobros en varias monedas",
       "sinBase": "Sin periodo anterior para comparar",
       "resumen": "{ventas} {n, plural, one {venta cobrada} other {ventas cobradas}} · ticket promedio {ticket}",
@@ -767,8 +782,8 @@
       "otros": "Otros",
       "otroCanal": "Otro canal",
       "sucursalSinNombre": "Sucursal {id}",
-      "abrirDetalle": "Ver el detalle de las ventas del periodo",
-      "grafica": "Ventas del periodo actual frente al anterior",
+      "abrirDetalle": "Ver el detalle de lo recaudado en el periodo",
+      "grafica": "Recaudado del periodo actual frente al anterior",
       "sinGrafica": "Sin cobros en este periodo ni en el anterior",
       "sinGraficaMonedas": "Con cobros en varias monedas no se dibuja la tendencia",
       "frenteConValor": "{frente} ({valor})",
@@ -800,7 +815,14 @@
         "web": "Tienda web",
         "factura": "Facturas",
         "mesa": "Mesas"
-      }
+      },
+      "incluyeImpuestos": "Incluye {impuestos} de IVA e INC",
+      "incluyePropinas": "Incluye {propinas} de propinas (son de los trabajadores)",
+      "incluyeImpuestosYPropinas": "Incluye {impuestos} de IVA e INC y {propinas} de propinas (son de los trabajadores)",
+      "porCobrar": "Por cobrar del periodo: {valor}",
+      "porCobrarCorto": "Por cobrar del periodo",
+      "impuestosIncluidos": "IVA e INC incluidos",
+      "propinasIncluidas": "Propinas incluidas"
     },
     "tiendaWeb": {
       "titulo": "Tienda web",
@@ -931,7 +953,7 @@
       "siempreVisible": "Siempre visible · no se puede ocultar",
       "bloque": {
         "indicadores": "Indicadores",
-        "ventas": "Ventas del periodo",
+        "ventas": "Recaudado del periodo",
         "actividad": "Actividad reciente",
         "tiendaWeb": "Tienda web"
       },
@@ -4379,7 +4401,7 @@
       "inicio": "Inicio",
       "pos": "POS",
       "pos_pedidos-online": "Pedidos online",
-      "pos_ventas": "Ventas",
+      "pos_ventas": "Todas las ventas",
       "pos_cajas": "Cajas",
       "pos_devoluciones": "Devoluciones",
       "pos_cuentas-por-cobrar": "Cuentas por cobrar",
@@ -4439,15 +4461,15 @@
       "transporte_tarifas-envio": "Tarifas de envío",
       "transporte_tracking": "Tracking",
       "transporte_etiquetas": "Etiquetas",
-      "transporte_manifiestos": "Manifiestos",
+      "transporte_manifiestos": "Manifiestos de carga",
       "transporte_transportadoras": "Transportadoras",
       "transporte_vehiculos": "Vehículos",
-      "transporte_conductores": "Conductores",
+      "transporte_conductores": "Conductores y tripulación",
       "transporte_paradas": "Paradas",
-      "transporte_rutas": "Rutas",
+      "transporte_rutas": "Rutas y paradas",
       "transporte_horarios": "Horarios",
       "transporte_direcciones-clientes": "Direcciones de clientes",
-      "transporte_incidentes": "Incidentes",
+      "transporte_incidentes": "Novedades",
       "inventario_productos": "Productos",
       "inventario_categorias": "Categorías",
       "inventario_etiquetas": "Etiquetas de producto",
@@ -4612,7 +4634,21 @@
       "hrm_plazas": "Plazas",
       "hrm_aprobaciones": "Aprobaciones",
       "hrm_novedades": "Novedades",
-      "hrm_mi-equipo": "Mi equipo"
+      "hrm_mi-equipo": "Mi equipo",
+      "logistica_por-despachar": "Por despachar",
+      "logistica_envios": "Envíos",
+      "logistica_domiciliarios": "Domiciliarios",
+      "logistica_cuadres": "Cuadres",
+      "logistica_seguimiento": "Seguimiento y novedades",
+      "logistica_mis-envios": "Mis envíos",
+      "logistica_conductores": "Conductores y domiciliarios",
+      "logistica_vehiculos": "Vehículos",
+      "logistica_etiquetas": "Etiquetas",
+      "logistica_direcciones-clientes": "Direcciones de clientes",
+      "logistica_zonas": "Zonas y tarifas",
+      "logistica_reglas": "Reglas de despacho",
+      "transporte_flota": "Flota",
+      "finanzas_tesoreria_procesadores-pago": "Procesadores de pago"
     },
     "grupos": {
       "venta": "Venta",
@@ -4650,7 +4686,14 @@
       "sedes": "Sedes",
       "plan-y-facturacion": "Plan y facturación",
       "marca": "Marca",
-      "tributario": "Tributario"
+      "tributario": "Tributario",
+      "operacion-del-dia": "Operación del día",
+      "catalogo-comun": "Catálogo común",
+      "cobertura": "Cobertura",
+      "vender": "Vender",
+      "movimientos": "Movimientos",
+      "red": "Red",
+      "flota": "Flota"
     },
     "backToMenu": "Menú",
     "membresias": "Membresías",
@@ -4660,6 +4703,13 @@
       "sitio-web_tienda": "Solo comercio",
       "sitio-web_ventas": "Checkout, pagos y envíos",
       "sitio-web_sedes": "Si tienes más de una sede"
+    },
+    "logistics": "Logística",
+    "sectionOperation": "Operación",
+    "ventas": "Ventas",
+    "sectionCommercial": "Comercial",
+    "sinonimos": {
+      "ventas": "POS punto de venta caja"
     }
   },
   "crm": {
@@ -9804,7 +9854,8 @@
         "reservations": "Reservas",
         "spaces": "Espacios",
         "memberships": "Membresías",
-        "parking": "Parqueadero"
+        "parking": "Parqueadero",
+        "shipments": "Envíos"
       },
       "actions": {
         "reportProblem": "Reportar un problema",
@@ -20820,7 +20871,7 @@
       "pendiente_pago": "Pendiente de pago"
     },
     "listado": {
-      "titulo": "Historial de ventas",
+      "titulo": "Todas las ventas",
       "subtitulo": "{count, plural, one {{n} venta} other {{n} ventas}}",
       "migas": {
         "pos": "Punto de venta",
@@ -31993,7 +32044,7 @@
         "operations": "Operaciones",
         "organizations": "Organizaciones",
         "pms": "Hotel (PMS)",
-        "pos": "Punto de venta",
+        "pos": "Ventas",
         "reports": "Reportes",
         "roles": "Roles",
         "sales": "Ventas",
@@ -34692,7 +34743,17 @@
             "coins": "Monedas",
             "wallet": "Billetera",
             "banknote": "Billete",
-            "dollar-sign": "Signo de pesos"
+            "dollar-sign": "Signo de pesos",
+            "text-search": "Lupa con líneas",
+            "search-check": "Lupa con visto bueno",
+            "zoom-in": "Lupa con más",
+            "binoculars": "Binoculares",
+            "shopping-basket": "Canasta",
+            "store": "Tienda",
+            "circle-user-round": "Persona en círculo redondo",
+            "log-in": "Entrar",
+            "circle-dollar-sign": "Pesos en círculo",
+            "languages": "Idiomas"
           }
         },
         "diseno": {
@@ -34942,6 +35003,116 @@
             "show_account": "Cuenta",
             "enabled": "Barra inferior activa",
             "showLabel": "Mostrar texto"
+          }
+        },
+        "movilEncabezado": {
+          "mi": {
+            "accion": {
+              "favorites": "Favoritos"
+            },
+            "variante": "Estilo",
+            "varianteOpcion": {
+              "icons": "Solo íconos",
+              "split": "Isla + botón aparte"
+            },
+            "marca": "Marca del activo",
+            "marcaAyuda": "«Desliza»: una píldora suave se mueve al botón que tocas. Respeta «menos movimiento» del teléfono.",
+            "marcaOpcion": {
+              "none": "Ninguna",
+              "fill": "Relleno",
+              "dot": "Punto",
+              "line": "Línea",
+              "slide": "Desliza"
+            },
+            "formaCentro": "Forma del destacado",
+            "formaCentroOpcion": {
+              "circle": "Círculo",
+              "notch": "Muesca"
+            },
+            "aparte": "Botón aparte",
+            "aparteAyuda": "Sale en su propio círculo a la derecha de la isla. Por defecto, el Carrito.",
+            "colores": "Colores",
+            "coloresOpcion": {
+              "header": "Encabezado",
+              "light": "Claro",
+              "custom": "Propio"
+            },
+            "coloresAyuda": "«Encabezado» usa su fondo y su modo (claro u oscuro). «Claro» usa el fondo del sitio. «Propio» abre fondo, activo e inactivo.",
+            "contador": {
+              "titulo": "Contador en el ícono",
+              "cart": "Carrito",
+              "favorites": "Favoritos",
+              "opcion": {
+                "number": "Número",
+                "dot": "Punto",
+                "hidden": "Oculto"
+              },
+              "ayuda": "El mismo contador de la cabecera. Si el ícono también está arriba, los dos muestran lo mismo."
+            },
+            "contadorBoton": "Contador",
+            "alBajar": "Al bajar la página",
+            "alBajarOpcion": {
+              "always": "Siempre visible",
+              "hide": "Se esconde"
+            },
+            "alBajarAyuda": "Vuelve al subir, al final de la página y en páginas cortas. La burbuja del chat se mueve con el menú.",
+            "paginas": {
+              "titulo": "Páginas especiales",
+              "ficha": "Ficha de producto",
+              "fichaOpcion": {
+                "hide": "Ocultar",
+                "stack": "Apilar"
+              },
+              "fichaAyuda": "Mientras se ve la barra de compra: el menú se oculta, o queda compacto debajo de ella.",
+              "checkout": "Checkout y carrito",
+              "checkoutValor": "Siempre oculto",
+              "chat": "Burbuja del chat",
+              "chatValor": "Se acomoda sola"
+            },
+            "noRepetir": "No repetir en la cabecera (opcional)",
+            "noRepetirAyuda": "Apagado por defecto: Carrito y Cuenta salen arriba y abajo, como hoy. Al encenderlo, arriba quedan el logo y lo que no está en el menú.",
+            "arrastrar": "Arrastra el tirador para cambiar el orden. El ojo oculta sin borrar.",
+            "efectos": {
+              "titulo": "Efectos",
+              "vistaPrevia": "Vista previa en vivo",
+              "reproducir": "Reproducir",
+              "tocaIcono": "o toca un ícono para probar",
+              "activo": "Efecto del activo",
+              "activoOpcion": {
+                "color": "Color",
+                "pill": "Píldora",
+                "underline": "Subrayado",
+                "dot": "Punto",
+                "slide": "Desliza",
+                "fill": "Relleno",
+                "bounce": "Rebote",
+                "glow": "Halo",
+                "label": "Etiqueta"
+              },
+              "toque": "Al tocar",
+              "toqueOpcion": {
+                "none": "Ninguno",
+                "darken": "Oscurecer fondo",
+                "scale": "Escala",
+                "bounce": "Rebote",
+                "ripple": "Onda",
+                "tilt": "Inclinación"
+              },
+              "velocidad": "Velocidad",
+              "velocidadOpcion": {
+                "fast": "Rápida",
+                "normal": "Normal",
+                "slow": "Suave"
+              },
+              "ayuda": "Con «menos movimiento» del teléfono solo cambia el color, sin animación."
+            },
+            "iconoOpcion": {
+              "store": "Tienda",
+              "list": "Lista",
+              "basket": "Canasta",
+              "user-circle": "En círculo",
+              "gift": "Regalo"
+            }
           }
         }
       },
@@ -35802,7 +35973,11 @@
             "caja": "Caja de los íconos",
             "cajaAyuda": "Forma, fondo y sombra de carrito, cuenta, moneda, favoritos y búsqueda. Sin elegir, se ve el ícono de hoy.",
             "tamanoGuardado": "Sin «Tamaño» aquí: el tamaño es uno solo, arriba (S / M / L). La tienda tiene {n} px guardado y se sigue viendo igual mientras no elijas S, M o L.",
-            "sinTamano": "Sin «Tamaño» aquí: el tamaño es uno solo, arriba (S / M / L)."
+            "sinTamano": "Sin «Tamaño» aquí: el tamaño es uno solo, arriba (S / M / L).",
+            "tamanoCaja": "Tamaño de la caja",
+            "tamanoCajaAyuda": "Mide la caja y, si arriba no eliges S, M o L, también el dibujo de adentro. Normal = el de hoy.",
+            "tamanoNormal": "Normal",
+            "tamanoPx": "{n} px"
           },
           "cualesTitulo": "Cuáles se ven y con qué dibujo",
           "cualesTituloAyuda": "En el orden de la cabecera. En cada uno: mostrar u ocultar, el dibujo, la forma (si quieres que sea distinto a los demás) y su texto.",
@@ -35839,7 +36014,8 @@
           "filaEstilo": "Los íconos se configuran en Contenido › Íconos",
           "filaEstiloAyuda": "Estilo, forma, tamaño, trazo, fondo y dibujos. Toca para abrir la vista.",
           "buscarEsBarra": "Tu buscador es una barra: su botón no usa este dibujo. El dibujo y la forma de la lupa aparecen aquí cuando eliges el buscador «Ícono» en Diseño › Buscador.",
-          "monedaSinDibujo": "Con el estilo «{estilo}» la moneda no usa dibujo: se ve como lo eliges en «Cambiar cómo se ve el selector». El dibujo solo se usa con «Solo ícono»."
+          "monedaSinDibujo": "Con el estilo «{estilo}» la moneda no usa dibujo: se ve como lo eliges en «Cambiar cómo se ve el selector». El dibujo solo se usa con «Solo ícono».",
+          "buscarFormaBarra": "La forma se ve cuando el buscador es un ícono. En la barra manda la forma de la barra (Diseño › Buscador); el dibujo sí sale en su botón y en su lupa."
         },
         "moneda": {
           "titulo": "Encabezado › Selector de moneda",
@@ -35881,7 +36057,8 @@
             "lateral": "La lista se despliega dentro del menú lateral.",
             "chips": "Las monedas van como chips dentro del menú.",
             "barra": "La bandera (o el código) va junto al carrito y abre la hoja."
-          }
+          },
+          "dibujoAyuda": "Es el mismo dibujo de la tarjeta Moneda en «Íconos»: lo que elijas aquí se ve marcado allá."
         },
         "carrito": {
           "titulo": "Encabezado › Carrito",
@@ -36070,7 +36247,13 @@
             "quedarse": "Quedarse en la página",
             "cuenta": "Ir a Mi cuenta"
           },
-          "despuesAyuda": "«Quedarse» cierra el acceso y deja al cliente donde estaba (carrito o pago incluidos)."
+          "despuesAyuda": "«Quedarse» cierra el acceso y deja al cliente donde estaba (carrito o pago incluidos).",
+          "textoAyuda": "Por defecto: «{texto}». Con sesión: «{sesion}».",
+          "textoSesion": "Texto con sesión",
+          "textoSesionAyuda": "Con la sesión iniciada. {marcador} es el primer nombre del cliente; si no se conoce, se ve el texto de arriba. Vacío = «{texto}».",
+          "beneficiosEditables": "Cada texto es editable (vacío = texto por defecto).",
+          "beneficiosTitulo": "Título de los beneficios",
+          "beneficioLinea": "Línea {n}"
         }
       },
       "accionesFicha": {
@@ -36130,6 +36313,171 @@
           "ir": "Ir a Contacto"
         },
         "comportamiento": "Comportamiento"
+      },
+      "barraFija": {
+        "titulo": "Barra fija al bajar",
+        "celular": "Celular",
+        "computador": "Computador",
+        "celularEncendida": "Barra fija en el celular",
+        "celularAyuda": "Al bajar, abajo queda «Agregar al carrito» + corazón, sin importar la distribución.",
+        "estilo": "Estilo",
+        "estilos": {
+          "flat": "Plana",
+          "floating": "Flotante",
+          "glass": "Vidrio"
+        },
+        "hoy": "Hoy",
+        "queMuestra": "Qué muestra",
+        "miniaturaPrecio": "Miniatura y precio",
+        "cantidad": "Cantidad",
+        "comprarAhora": "«Comprar ahora»",
+        "favorito": "Corazón de favoritos",
+        "favoritoAyuda": "También se oculta con «Corazón en la ficha» apagado y en restaurantes.",
+        "texto": "Texto del botón",
+        "textoAyuda": "Hasta {max} letras. Vacío = «{texto}».",
+        "aparece": "Cuándo aparece",
+        "apariciones": {
+          "scroll": "Al bajar 400 px (hoy)",
+          "pass": "Al pasar el botón"
+        },
+        "aparicionesComputador": {
+          "scroll": "Al bajar 400 px",
+          "pass": "Al pasar el botón"
+        },
+        "aparecePasarAyuda": "Aparece justo cuando «Agregar al carrito» de la ficha sale de la pantalla.",
+        "alAgregar": "Al agregar",
+        "efectos": {
+          "check": "Check verde (hoy)",
+          "fly": "Vuela al carrito"
+        },
+        "vuelaAyuda": "La miniatura vuela hasta el ícono del carrito, que late. Con «menos movimiento» en el teléfono, solo el check.",
+        "vibracion": "Vibración suave",
+        "vibracionAyuda": "Solo en los teléfonos que la permiten.",
+        "chatAyuda": "El chat flotante sube sobre la barra mientras se ve y baja cuando se va.",
+        "computadorEncendida": "Barra fija en el computador",
+        "computadorAyuda": "Apagada por defecto: hoy no existe. Desde 1024 px de ancho.",
+        "posicion": "Posición",
+        "posiciones": {
+          "top": "Arriba, bajo la cabecera",
+          "replace": "En lugar de la cabecera",
+          "bottom": "Abajo, flotante"
+        },
+        "sugerida": "Sugerida",
+        "posicionesAyuda": {
+          "top": "La cabecera queda y la barra se pega debajo: menú y compra a la vez.",
+          "replace": "Al bajar, la cabecera se esconde y la barra ocupa su lugar con el logo; vuelve al subir.",
+          "bottom": "Flotante abajo, separada del borde; no toca la cabecera y el chat sube sobre ella."
+        },
+        "miniaturaNombre": "Miniatura y nombre",
+        "precio": "Precio",
+        "variante": "Variante compacta",
+        "varianteAyuda": "Un desplegable por atributo (Color, Talla…), sincronizado con el de la ficha.",
+        "compartidoAyuda": "El texto del botón y la animación al agregar son los del celular."
+      },
+      "selectorIconos": {
+        "titulo": "Ícono de «{nombre}»",
+        "buscar": "Buscar ícono: casa, carrito, bolsa…",
+        "pesoRejilla": "Estilo de la rejilla",
+        "peso": {
+          "regular": "Línea",
+          "fill": "Relleno",
+          "duotone": "Duotono",
+          "bold": "Gruesa",
+          "thin": "Fina",
+          "light": "Liviana"
+        },
+        "sugeridos": "Sugeridos para esta acción",
+        "categorias": "Categorías",
+        "categoria": {
+          "todos": "Todos",
+          "clasicos": "De siempre",
+          "comercio": "Comercio",
+          "navegacion": "Navegación",
+          "personas": "Personas",
+          "comunicacion": "Comunicación",
+          "pagos": "Pagos",
+          "envios": "Envíos",
+          "comida": "Comida",
+          "hogar": "Hogar",
+          "moda": "Moda",
+          "belleza": "Belleza",
+          "mascotas": "Mascotas"
+        },
+        "mas": "Más…",
+        "menos": "Menos",
+        "clasicosAyuda": "los dibujos que ya usa la tienda, se ven igual que hoy",
+        "cargando": "Cargando íconos…",
+        "sinResultados": "No hay íconos con «{q}». Prueba otra palabra (también sirve en inglés).",
+        "mostrando": "Mostrando {n} de {total} · sigue bajando para ver más. Al pasar el mouse se ve el nombre.",
+        "mostrandoTodos": "Mostrando los {n}. Al pasar el mouse se ve el nombre.",
+        "usar": "Usar ícono",
+        "subir": "Subir mi ícono (SVG o PNG)",
+        "subirAyuda": "Pronto podrás subir tu propio ícono. Un PNG no cambia de color.",
+        "subirMio": "Subir mío",
+        "fase2": "Fase 2",
+        "pronto": "Pronto",
+        "icono": "Ícono",
+        "cambiar": "Cambiar",
+        "propioResumen": "{estilo} · propio",
+        "deSiempreResumen": "De siempre · se ve como hoy",
+        "comoTodos": "{estilo} · como todos",
+        "estiloCard": {
+          "linea": "Línea",
+          "relleno": "Relleno",
+          "duotono": "Duotono",
+          "gruesa": "Línea gruesa"
+        },
+        "sugeridosPara": "Sugeridos para {accion}",
+        "estilo": "Estilo",
+        "igualTodos": "Igual que todos",
+        "propio": "Propio",
+        "verTodos": "Ver los {n} íconos",
+        "verMas": "Ver más",
+        "estiloTitulo": "Estilo de los íconos",
+        "estiloAyudaMenu": "Los mismos ajustes existen en Encabezado › Íconos. «Igual que la cabecera» copia todo de un clic.",
+        "estiloAyudaCabecera": "Los mismos ajustes existen en el menú inferior. Si eliges un estilo aquí, manda sobre «Trazo». Sin tocarlo, los íconos se ven como hoy.",
+        "aplicar": "Aplicar",
+        "alcance": {
+          "all": "Igual para todos",
+          "item": "Propio por botón"
+        },
+        "grosor": "Grosor",
+        "grosorOpcion": {
+          "fino": "Fino",
+          "normal": "Normal",
+          "grueso": "Grueso"
+        },
+        "grosorSoloLinea": "El grosor aplica al estilo Línea.",
+        "tamano": "Tamaño",
+        "tamanoHoy": "El de hoy",
+        "tamanoVolver": "Volver al tamaño de hoy",
+        "efectos": "Efectos",
+        "sombra": "Sombra",
+        "sombraOpcion": {
+          "none": "Ninguna",
+          "soft": "Suave",
+          "strong": "Marcada"
+        },
+        "fondo": "Fondo del ícono",
+        "fondoOpcion": {
+          "none": "Ninguno",
+          "circle": "Círculo",
+          "square": "Cuadrado"
+        },
+        "colorFondo": "Color del fondo",
+        "colorFondoNulo": "Tono del ícono",
+        "colorFondoNuloMenu": "Tono del ícono (el activo, la marca)",
+        "colorActivo": "Color activo",
+        "colorInactivo": "Color inactivo",
+        "comoElMenu": "Como el menú",
+        "volverHoy": "Volver a como se ve hoy",
+        "igualCabecera": "Igual que la cabecera",
+        "igualMenu": "Igual que el menú inferior",
+        "vistaPrevia": "Vista previa de los íconos",
+        "muestra": {
+          "tienda": "Tu tienda"
+        },
+        "estiloDibujo": "Estilo del dibujo"
       }
     },
     "paginas": {
@@ -37271,7 +37619,7 @@
         "origen": {
           "checkout": "Se edita aquí",
           "pagos": "Visibles y orden se configuran en Finanzas",
-          "envios": "Las tarifas por zona viven en Transporte",
+          "envios": "Las tarifas por zona viven en Logística",
           "enviosPlana": "Tarifa plana del sitio · se edita aquí",
           "cupones": "Se crean en el POS",
           "pedidos": "Se atienden en el POS",
@@ -37281,7 +37629,7 @@
         "acciones": {
           "editarOpciones": "Editar opciones",
           "irFinanzasMetodos": "Ir a Finanzas › Métodos de pago",
-          "irTransporteTarifas": "Ir a Transporte › Tarifas de envío",
+          "irTransporteTarifas": "Ir a Logística › Zonas y tarifas",
           "irPosPromociones": "Ir a POS › Promociones y cupones",
           "irPosPedidos": "Ir a POS › Pedidos online",
           "irPosReservas": "Ir a POS › Reservas › Configuración",
@@ -37993,7 +38341,7 @@
       "operations": "Operaciones",
       "organizations": "Organizaciones",
       "pms": "Hotel (PMS)",
-      "pos": "Punto de venta",
+      "pos": "Ventas",
       "reports": "Reportes",
       "roles": "Roles y permisos",
       "sales": "Ventas",
@@ -38125,7 +38473,7 @@
       "porCobrar": "Por cobrar en caja",
       "reservaActiva": "Reserva de stock activa",
       "volver": "Volver",
-      "verVenta": "Ver venta POS",
+      "verVenta": "Ver venta",
       "canales": {
         "website": "Web",
         "mobile_app": "App",
@@ -38155,7 +38503,7 @@
     },
     "documentos": {
       "titulo": "Documentos y trazabilidad",
-      "venta": "Venta POS",
+      "venta": "Venta",
       "factura": "Factura de venta",
       "comanda": "Comanda de cocina",
       "origen": "Origen",
@@ -38174,7 +38522,7 @@
       "seCobraEnCaja": "Se cobra en la caja de la sede al entregar: {caja}.",
       "reenviarAviso": "Reenviar aviso al cliente",
       "cancelarPedido": "Cancelar pedido…",
-      "pedidosOnline": "Pedidos Online",
+      "pedidosOnline": "Pedidos online",
       "hoyFecha": "hoy, {fecha}",
       "programadoPara": "Para: {fecha}",
       "imprimirComanda": "Imprimir comanda",
@@ -39654,7 +40002,7 @@
     }
   },
   "pedidosOnlineListado": {
-    "titulo": "Pedidos Online",
+    "titulo": "Pedidos online",
     "subtitulo": "{total, plural, one {# pedido} other {# pedidos}} en el periodo · {pendientes} pendientes de confirmar",
     "subtituloMovil": "{total} pedidos · {pendientes} sin confirmar",
     "cargando": "Cargando pedidos…",
@@ -40231,7 +40579,7 @@
       "crm": "CRM",
       "hrm": "Recursos humanos",
       "pms": "PMS Hotel",
-      "pos": "POS",
+      "pos": "Ventas",
       "chat": "Chat",
       "integraciones": "Integraciones",
       "parking": "Parking",
@@ -40241,7 +40589,9 @@
       "facturacion": "Facturación electrónica",
       "gym": "Membresías",
       "notificaciones": "Notificaciones",
-      "datos-offline": "Datos sin conexión"
+      "datos-offline": "Datos sin conexión",
+      "logistica": "Logística",
+      "transporte": "Transporte"
     },
     "secciones": {
       "generalGeneral": {
@@ -40413,6 +40763,16 @@
         "titulo": "Nómina",
         "descripcion": "Conceptos de nómina, encendido y plan de cuentas",
         "palabras": "nómina, conceptos, cuentas contables, encender nómina, terceros, nit, preliquidación, recursos humanos, rrhh"
+      },
+      "logisticaGeneral": {
+        "titulo": "Logística",
+        "descripcion": "Sin movimiento, envío gratis, peso por defecto y avisos de entrega",
+        "palabras": "logística, domicilio, envíos, sin movimiento, envío gratis, peso, medidas, contraentrega, código de entrega, cargo de domicilio, flete, zonas"
+      },
+      "transporteGeneral": {
+        "titulo": "Transporte",
+        "descripcion": "Retención del puesto, cambios y anulaciones, liquidación, tipos de vehículo, motivos de novedad y excepciones de despacho",
+        "palabras": "transporte, pasajes, retención, puesto, cambios, anulación, reembolso, liquidación, afiliados, propietarios, RNDC, manifiesto, tipos de vehículo, lancha, yate, motivos de novedad, incidentes, excepción, despacho, PIN, supervisor"
       }
     },
     "ajustes": {
@@ -40427,6 +40787,58 @@
       "agenteVozDesinteres": {
         "titulo": "Cuando el cliente no tiene interés",
         "palabras": "interés, desinterés, no le interesa, oportunidad perdida, cerrar oportunidad, excepción, valor alto, etapa"
+      },
+      "logisticaSinMovimiento": {
+        "titulo": "Envíos sin movimiento",
+        "palabras": "sin movimiento, horas, demora, alerta, seguimiento, novedades"
+      },
+      "logisticaEnvioGratis": {
+        "titulo": "Envío gratis por defecto",
+        "palabras": "envío gratis, web, POS, zonas nuevas"
+      },
+      "logisticaPesoOrganizacion": {
+        "titulo": "Peso y caja de la organización",
+        "palabras": "peso, medidas, caja, volumétrico, por defecto"
+      },
+      "logisticaCodigoEntrega": {
+        "titulo": "Pedir código de entrega en contraentrega",
+        "palabras": "código de entrega, contraentrega, verificar entrega, 4 dígitos, interruptor"
+      },
+      "logisticaCargoDomicilio": {
+        "titulo": "Quién cambia el cargo de domicilio",
+        "palabras": "cargo de domicilio, flete, POS, permiso, cambiar tarifa"
+      },
+      "logisticaAvisos": {
+        "titulo": "Avisos de entrega al cliente",
+        "palabras": "avisos, en camino, entregado, novedad, correo, WhatsApp"
+      },
+      "transporteRetencion": {
+        "titulo": "Retención del puesto",
+        "palabras": "retención, puesto, taquilla, tienda web, POS, minutos"
+      },
+      "transporteCambios": {
+        "titulo": "Cambios y anulaciones de pasajes",
+        "palabras": "cambio, anulación, reembolso, pasaje, boleto"
+      },
+      "transporteLiquidacion": {
+        "titulo": "Liquidación de conductores y afiliados",
+        "palabras": "liquidación, nómina, conductores, propietarios, afiliados, administración"
+      },
+      "transporteRndc": {
+        "titulo": "RNDC · manifiesto electrónico",
+        "palabras": "RNDC, manifiesto, remesa, Ministerio de Transporte, credenciales"
+      },
+      "transporteTiposVehiculo": {
+        "titulo": "Tipos de vehículo",
+        "palabras": "tipos de vehículo, bus, buseta, camión, lancha, yate, embarcación"
+      },
+      "transporteMotivos": {
+        "titulo": "Motivos de novedad",
+        "palabras": "motivos, novedades, incidentes, falla, accidente, retraso"
+      },
+      "transporteExcepciones": {
+        "titulo": "Excepciones al bloqueo de despacho",
+        "palabras": "excepción, despacho, bloqueo, SOAT, licencia, PIN, supervisor"
       }
     },
     "telefonia": {
@@ -53320,7 +53732,7 @@
       "roles": "Equipo y roles",
       "plan": "Plan y facturación",
       "asistente": "GO Asistente",
-      "pos": "Punto de venta",
+      "pos": "Ventas",
       "facturacion": "Facturación electrónica",
       "sitioweb": "Sitio web",
       "crm": "CRM",
@@ -53334,7 +53746,9 @@
       "gym": "Membresías",
       "integraciones": "Integraciones",
       "timeline": "Timeline",
-      "datos-offline": "Datos sin conexión"
+      "datos-offline": "Datos sin conexión",
+      "logistica": "Logística",
+      "transporte": "Transporte"
     },
     "pestanas": {
       "chatGeneral": "Etiquetas y respuestas rápidas",
@@ -63202,5 +63616,2758 @@
     "error": "No pudimos cargar tus sucursales.",
     "entrarSinElegir": "Entrar sin elegir sucursal",
     "rechazada": "Ya no tienes acceso a esa sucursal. Elige otra."
+  },
+  "logistica": {
+    "misEnvios": {
+      "titulo": "Mis envíos",
+      "hoy": "Hoy · {fecha}",
+      "recargar": "Actualizar mis envíos",
+      "cliente": "Cliente",
+      "sinDireccion": "Sin dirección",
+      "cobrar": "Cobrar {monto}",
+      "cobrado": "Cobrado",
+      "pagado": "Pagado",
+      "volver": "Volver a mis envíos",
+      "guardando": "Guardando…",
+      "sinDomiciliario": {
+        "titulo": "No tienes perfil de domiciliario",
+        "descripcion": "Pide a quien despacha en tu sede que te registre como domiciliario con tu cuenta."
+      },
+      "error": {
+        "titulo": "No se pudieron cargar tus envíos",
+        "descripcion": "Revisa la señal y vuelve a intentar."
+      },
+      "ruta": {
+        "etiqueta": "Resumen de la ruta",
+        "vacia": "Sin envíos asignados hoy",
+        "terminada": "Ruta terminada",
+        "parada": "Ruta en curso · parada {n} de {total}",
+        "estados": {
+          "sin_salir": "Sin salir",
+          "en_ruta": "En ruta",
+          "terminada": "Terminada"
+        },
+        "porEntregar": "Por entregar",
+        "entregados": "Entregados",
+        "aCobrar": "A cobrar",
+        "enMano": "En mano",
+        "anuncio": "{n, plural, =0 {No te quedan envíos por entregar} one {Te queda # envío por entregar} other {Te quedan # envíos por entregar}}"
+      },
+      "pestanas": {
+        "etiqueta": "Ver envíos",
+        "pendientes": "Pendientes {n}",
+        "entregados": "Entregados {n}",
+        "novedades": "Novedades {n}"
+      },
+      "vacio": {
+        "pendientes": {
+          "titulo": "No tienes envíos pendientes",
+          "descripcion": "Cuando te asignen uno, aparece aquí."
+        },
+        "entregados": {
+          "titulo": "Aún no has entregado hoy",
+          "descripcion": "Las entregas de hoy se ven aquí."
+        },
+        "novedades": {
+          "titulo": "Sin novedades",
+          "descripcion": "Los envíos que no pudiste entregar se ven aquí."
+        }
+      },
+      "tarjeta": {
+        "abrir": "Abrir el envío {numero} de {nombre}",
+        "intento": "{n}.º intento"
+      },
+      "terminarJornada": "Terminar jornada y cuadrar",
+      "estados": {
+        "assigned": "Por recoger",
+        "ready": "Listo para recoger",
+        "ready_for_pickup": "Listo para recoger",
+        "picked": "Recogido",
+        "dispatched": "Recogido",
+        "in_transit": "En tránsito",
+        "out_for_delivery": "En camino",
+        "failed_attempt": "No entregado",
+        "delivered": "Entregado",
+        "returned": "Devuelto",
+        "cancelled": "Cancelado",
+        "otro": "Pendiente"
+      },
+      "promesa": {
+        "hora": "Promesa {hora}",
+        "tarde": "+{minutos} min",
+        "faltan": "faltan {minutos} min",
+        "en": "en {minutos} min"
+      },
+      "contacto": {
+        "llamarA": "Llamar a {nombre}",
+        "comoLlegarA": "Cómo llegar donde {nombre}",
+        "llamar": "Llamar",
+        "whatsapp": "WhatsApp",
+        "comoLlegar": "Cómo llegar",
+        "googleMaps": "Abrir Google Maps",
+        "waze": "Abrir Waze",
+        "mensajeWhatsApp": "Hola, soy el domiciliario de tu pedido {numero}."
+      },
+      "parada": {
+        "cargando": "Cargando la parada…",
+        "titulo": "Parada · {numero}",
+        "noEncontrada": {
+          "titulo": "Este envío no está en tu ruta",
+          "descripcion": "Puede que lo hayan reasignado. Vuelve a tus envíos."
+        },
+        "tarde": "Vas tarde frente a la hora prometida.",
+        "novedadAnterior": "Intento anterior: {motivo}",
+        "indicaciones": "Indicaciones: {texto}",
+        "cobra": "Cobra al entregar {monto}",
+        "medios": "Acepta efectivo, datáfono o transferencia.",
+        "pideCodigo": "Pídele al cliente el código de entrega de 4 dígitos.",
+        "llevas": "Qué llevas ({n})",
+        "envio": "Envío",
+        "pasos": "Pasos"
+      },
+      "origen": {
+        "tienda": "Tienda web",
+        "pos": "Punto de venta",
+        "otro": "Envío"
+      },
+      "pasos": {
+        "recogido": "Recogí el pedido",
+        "en_camino": "Voy en camino",
+        "entregado": "Entregado",
+        "hechoSr": "hecho",
+        "actualSr": "paso actual",
+        "pendienteSr": "pendiente",
+        "hecho": {
+          "picked": "Pedido recogido",
+          "out_for_delivery": "Vas en camino: le avisamos al cliente"
+        },
+        "boton": {
+          "recoger": "Recogí el pedido",
+          "en_camino": "Voy en camino",
+          "reintentar": "Reintentar: voy en camino",
+          "entregar": "Entregado",
+          "noEntregado": "No se pudo entregar"
+        }
+      },
+      "errores": {
+        "titulo": "No se pudo guardar",
+        "ERROR": "Algo falló. Revisa la señal y vuelve a intentar.",
+        "ENVIO_NO_ENCONTRADO": "El envío ya no existe.",
+        "SIN_ACCESO_SEDE": "No tienes acceso a la sede de este envío.",
+        "SIN_ACCESO": "No tienes permiso para este envío.",
+        "TRANSICION_INVALIDA": "El envío cambió de estado. Actualiza y vuelve a intentar.",
+        "ESTADO_NO_PERMITIDO": "Ese paso no se puede hacer desde aquí.",
+        "YA_ENTREGADO": "Este envío ya estaba entregado.",
+        "ESTADO_NO_ENTREGABLE": "Este envío no se puede entregar en su estado actual.",
+        "RECEPTOR_REQUERIDO": "Escribe quién recibió.",
+        "CODIGO_NO_EMITIDO": "Este envío no tiene código de entrega. Avisa a la tienda.",
+        "CODIGO_BLOQUEADO": "El código quedó bloqueado. Un administrador debe reiniciarlo.",
+        "COBRO_REQUERIDO": "Registra el cobro de la contraentrega.",
+        "MOTIVO_INVALIDO": "Elige qué pasó.",
+        "ESTADO_SIN_NOVEDAD": "Este envío no admite novedad en su estado actual.",
+        "ENVIO_AJENO": "Este envío ya no está asignado a ti."
+      },
+      "entregar": {
+        "titulo": "Entregar {numero}",
+        "noEntregable": {
+          "titulo": "Este envío no se puede entregar",
+          "descripcion": "Ya está entregado, devuelto o cancelado."
+        },
+        "hecho": "Entrega registrada",
+        "confirmar": "Confirmar entrega",
+        "confirmarCon": "Confirmar entrega · {monto}",
+        "nota": {
+          "efectivo": "Efectivo recibido",
+          "cambio": "Cambio",
+          "aprobacion": "Aprobación datáfono"
+        },
+        "prueba": {
+          "titulo": "1. Prueba de entrega",
+          "codigo": "Código",
+          "foto": "Foto",
+          "firma": "Firma"
+        },
+        "codigo": {
+          "etiqueta": "Código de entrega",
+          "ayuda": "Pídele el código al cliente: lo recibió por WhatsApp y correo cuando salió el pedido.",
+          "falta": "Escribe los 4 dígitos que te dicte el cliente.",
+          "incorrecto": "{n, plural, one {Código incorrecto. Te queda # intento.} other {Código incorrecto. Te quedan # intentos.}}",
+          "bloqueado": {
+            "titulo": "Código bloqueado",
+            "descripcion": "Se equivocaron {max} veces. Llama a la tienda: un administrador debe reiniciar el código."
+          },
+          "sigueObligatorio": "El código de entrega sigue siendo obligatorio en contraentrega."
+        },
+        "firma": {
+          "etiqueta": "Firma de quien recibe",
+          "borrar": "Borrar firma",
+          "falta": "Pide la firma de quien recibe."
+        },
+        "foto": {
+          "titulo": "Foto del paquete entregado",
+          "opcional": "Opcional con código",
+          "obligatoria": "Obligatoria sin código",
+          "quitar": "Quitar foto",
+          "falta": "Toma una foto del paquete entregado."
+        },
+        "receptor": {
+          "etiqueta": "¿Quién recibió?",
+          "falta": "Escribe quién recibió.",
+          "relacion": "Relación con el cliente",
+          "relaciones": {
+            "customer": "Titular",
+            "family": "Familiar",
+            "doorman": "Portería",
+            "other": "Otro"
+          }
+        },
+        "cobro": {
+          "titulo": "2. Cobrar contraentrega",
+          "medio": "Medio de pago",
+          "medios": {
+            "cash": "Efectivo",
+            "card": "Datáfono",
+            "transfer": "Transferencia"
+          },
+          "recibido": "Recibido en efectivo",
+          "insuficiente": "El efectivo no alcanza para el total.",
+          "rapidos": "Billetes rápidos",
+          "exacto": "Exacto",
+          "cambio": "Cambio a devolver",
+          "aprobacion": "Número de aprobación",
+          "faltaAprobacion": "Anota el número de aprobación del datáfono.",
+          "comprobante": "Foto del comprobante",
+          "comprobanteAyuda": "Toma foto de la transferencia en el celular del cliente",
+          "faltaMedio": "Elige cómo pagó el cliente.",
+          "nota": "Datáfono: anota el número de aprobación. Transferencia: toma foto del comprobante."
+        }
+      },
+      "novedad": {
+        "titulo": "No se pudo entregar",
+        "noAplica": {
+          "titulo": "Este envío no admite novedad",
+          "descripcion": "Primero recógelo y sal con él."
+        },
+        "quePaso": "¿Qué pasó?",
+        "motivos": {
+          "not_home": {
+            "titulo": "Cliente ausente",
+            "descripcion": "Nadie abre ni contesta"
+          },
+          "wrong_address": {
+            "titulo": "Dirección errada",
+            "descripcion": "No existe o no corresponde"
+          },
+          "incomplete_address": {
+            "titulo": "Dirección incompleta",
+            "descripcion": "Falta el número o el apartamento"
+          },
+          "rejected": {
+            "titulo": "Rechazado",
+            "descripcion": "El cliente no lo quiso recibir"
+          },
+          "damaged": {
+            "titulo": "Paquete dañado",
+            "descripcion": "Llegó en mal estado"
+          },
+          "lost": {
+            "titulo": "Paquete perdido",
+            "descripcion": "No aparece el paquete"
+          },
+          "access_denied": {
+            "titulo": "Sin acceso",
+            "descripcion": "No dejaron entrar al conjunto o edificio"
+          },
+          "business_closed": {
+            "titulo": "Negocio cerrado",
+            "descripcion": "El local estaba cerrado"
+          },
+          "weather": {
+            "titulo": "Clima",
+            "descripcion": "Lluvia o vía cerrada"
+          },
+          "vehicle_issue": {
+            "titulo": "Falla del vehículo",
+            "descripcion": "Pinchazo o daño en el camino"
+          },
+          "customer_request": {
+            "titulo": "Pedido del cliente",
+            "descripcion": "El cliente pidió otra hora u otro día"
+          },
+          "other": {
+            "titulo": "Otro",
+            "descripcion": "Escribe el motivo"
+          }
+        },
+        "nota": "Nota para la tienda",
+        "faltaNota": "Escribe qué pasó.",
+        "foto": {
+          "titulo": "Foto de evidencia",
+          "ayuda": "Se guarda la ubicación automáticamente"
+        },
+        "yAhora": "¿Y ahora?",
+        "plan": {
+          "hoy": "Hoy {hora}",
+          "manana": "Mañana",
+          "devolver": "Devolver a la sede",
+          "detalleHora": "Nueva hora: {hora}"
+        },
+        "aviso": {
+          "reintento": "La tienda ve la novedad y la nueva hora en Logística. Si el reintento también falla, decide qué hacer.",
+          "devolver": "El paquete vuelve a la sede: entrégalo al terminar la jornada."
+        },
+        "guardar": "Guardar y seguir con la ruta",
+        "hecho": "Novedad registrada"
+      },
+      "finJornada": {
+        "titulo": "Fin de jornada",
+        "cifras": "Resumen del día",
+        "entregados": "Entregados",
+        "noEntregados": "No entregados",
+        "porDevolver": "Por devolver",
+        "paquetes": "{n, plural, one {# paquete} other {# paquetes}}",
+        "cobraste": "Lo que cobraste",
+        "sinCobros": "Hoy no cobraste contraentregas.",
+        "medios": {
+          "cash": "{n, plural, one {Efectivo · # envío} other {Efectivo · # envíos}}",
+          "card": "{n, plural, one {Datáfono · # voucher} other {Datáfono · # vouchers}}",
+          "transfer": "{n, plural, one {Transferencia · # comprobante} other {Transferencia · # comprobantes}}",
+          "qr": "{n, plural, one {QR · # pago} other {QR · # pagos}}"
+        },
+        "totalCobrado": "Total cobrado",
+        "entregaEnCaja": "Entrega en caja",
+        "entregaEnCajaAyuda": "Solo el efectivo pasa por tus manos. Datáfono y transferencia se concilian en la sede con el voucher y el comprobante.",
+        "pendientes": "Pendientes",
+        "reprogramadoPara": "reprogramado · {fecha}",
+        "reprogramadoHoy": "reintento hoy",
+        "paqueteDevolver": "Paquete por devolver",
+        "enviado": {
+          "titulo": "Resumen enviado",
+          "descripcion": "Tu jornada quedó cerrada. Entrega el efectivo en la caja de la sede: allí lo reciben en Logística › Cuadres."
+        },
+        "notaCuadre": "Quien recibe el dinero lo ve en Logística › Cuadres y lo pasa a la caja abierta de la sede.",
+        "enviar": "Enviar resumen para el cuadre",
+        "errorEnviar": "No se pudo cerrar la jornada. Vuelve a intentar."
+      }
+    },
+    "domiciliario": {
+      "titulo": "Domiciliarios",
+      "subtitulo": "Quién reparte, en qué está y cuánto lleva del día",
+      "migaLogistica": "Logística",
+      "sinNombre": "Sin nombre",
+      "externo": "Externo",
+      "empleado": "Empleado",
+      "noCobraContraentrega": "No cobra contraentrega",
+      "todasLasSedes": "Todas las sedes",
+      "buscar": "Buscar domiciliario…",
+      "sinResultados": "Ningún domiciliario coincide con la búsqueda.",
+      "etiquetaFila": "{nombre}, {estado}",
+      "errorAccion": "No se pudo guardar el cambio",
+      "estados": {
+        "libre": "Libre",
+        "en_ruta": "En ruta",
+        "fuera_de_turno": "Fuera de turno",
+        "inactivo": "Inactivo"
+      },
+      "carga": {
+        "sinCarga": "Sin envíos hoy",
+        "resumen": "{entregados} de {total} entregados{novedades, plural, =0 {} one { · # novedad} other { · # novedades}}"
+      },
+      "columnas": {
+        "domiciliario": "Domiciliario",
+        "celular": "Celular",
+        "vehiculo": "Vehículo",
+        "sede": "Sede",
+        "estado": "Estado",
+        "carga": "Carga del día",
+        "porCuadrar": "Por cuadrar"
+      },
+      "kpis": {
+        "etiqueta": "Domiciliarios hoy",
+        "libres": "Libres",
+        "enRuta": "En ruta",
+        "entregasHoy": "{n, plural, one {# entrega hoy} other {# entregas hoy}}",
+        "fuera": "Fuera de turno",
+        "porCuadrar": "Por cuadrar"
+      },
+      "acciones": {
+        "registrar": "Registrar domiciliario",
+        "recargar": "Actualizar",
+        "verFicha": "Ver ficha",
+        "llamar": "Llamar",
+        "whatsapp": "WhatsApp",
+        "verCuadres": "Ver cuadres",
+        "activar": "Activar",
+        "desactivar": "Desactivar",
+        "activado": "{nombre} quedó activo",
+        "desactivado": "{nombre} quedó inactivo",
+        "noDesactivarEnRuta": "Está en ruta: espera a que termine sus entregas."
+      },
+      "vacio": {
+        "titulo": "Aún no hay domiciliarios",
+        "descripcion": "Registra a quien reparte, aunque no tenga contrato en Recursos humanos."
+      },
+      "error": {
+        "titulo": "No se pudieron cargar los domiciliarios",
+        "descripcion": "Vuelve a intentar en un momento."
+      },
+      "sinPermiso": {
+        "titulo": "Sin permiso",
+        "descripcion": "Registrar o desactivar domiciliarios lo hacen cajeros y administradores."
+      },
+      "ficha": {
+        "cargaDelDia": "Carga del día",
+        "asignados": "Asignados",
+        "enCamino": "Con paquete",
+        "entregadosHoy": "Entregados hoy",
+        "porCuadrar": "Por cuadrar",
+        "sinEnvios": "No tiene envíos en curso.",
+        "datos": "Datos del domiciliario",
+        "documento": "Documento",
+        "contraentrega": "Cobra contraentrega",
+        "si": "Sí",
+        "no": "No",
+        "misEnvios": "Mis envíos",
+        "conCuenta": "Tiene cuenta",
+        "sinCuenta": "Sin cuenta: no ve Mis envíos",
+        "licencia": "Licencia",
+        "sinLicencia": "Sin licencia registrada"
+      },
+      "alta": {
+        "titulo": "Registrar domiciliario",
+        "descripcion": "Queda disponible de inmediato para asignar. Licencia y documentos se completan después en Transporte › Conductores.",
+        "registrar": "Registrar",
+        "guardando": "Registrando…",
+        "hecho": "{nombre} quedó registrado",
+        "nombre": "Nombre completo",
+        "celular": "Celular",
+        "celularAyuda": "Para llamarlo y escribirle por WhatsApp.",
+        "tipoDocumento": "Tipo",
+        "documento": "Número de documento",
+        "sede": "Sede",
+        "elegirSede": "Elige la sede",
+        "vehiculo": "Vehículo (opcional)",
+        "vehiculoAyuda": "Puedes dejarlo vacío. La placa y el SOAT se agregan después si los necesitas.",
+        "sinVehiculo": "Sin vehículo",
+        "vehiculos": {
+          "motorcycle": "Moto",
+          "bicycle": "Bicicleta",
+          "car": "Carro",
+          "van": "Camioneta",
+          "on_foot": "A pie",
+          "other": "Otro"
+        },
+        "cobraContraentrega": "¿Cobra contraentrega?",
+        "cobraContraentregaAyuda": "Si está apagado, no se le asignan envíos con pago contra entrega.",
+        "esEmpleado": "Es empleado de la empresa",
+        "esEmpleadoAyuda": "Si lo es, se vincula con Recursos humanos. Si no, queda como domiciliario externo.",
+        "traerDeRrhh": "Traer desde Recursos humanos",
+        "elegirEmpleado": "Elige el empleado",
+        "sinEmpleados": "No hay empleados activos sin perfil de domiciliario.",
+        "cargando": "Cargando…",
+        "cuenta": "Cuenta para Mis envíos (opcional)",
+        "cuentaAyuda": "Si ya es miembro de la organización, vincúlalo para que vea sus envíos en el celular.",
+        "sinCuenta": "Sin cuenta por ahora",
+        "errores": {
+          "nombre": "Escribe el nombre completo.",
+          "celular": "Escribe un celular válido.",
+          "documento": "Escribe el número de documento.",
+          "branchId": "Elige la sede.",
+          "empleo": "Elige el empleado de Recursos humanos.",
+          "servidor": {
+            "SIN_PERMISO": "No tienes permiso para registrar domiciliarios.",
+            "DATOS_INVALIDOS": "Revisa los datos del formulario.",
+            "SEDE": "La sede no es de esta organización.",
+            "EMPLEO": "Ese empleado no es de esta organización.",
+            "USUARIO": "Esa cuenta no es un miembro activo de la organización.",
+            "DUPLICADO": "Ese empleado o esa cuenta ya tienen perfil de domiciliario.",
+            "EMPLEO_AJENO": "Ese empleado es de otra organización.",
+            "ERROR": "No se pudo registrar. Vuelve a intentar."
+          }
+        }
+      }
+    },
+    "cuadres": {
+      "titulo": "Cuadres",
+      "subtitulo": "Lo que cobraron los domiciliarios contra lo que entra a la caja",
+      "migaLogistica": "Logística",
+      "sinNombre": "Domiciliario",
+      "hoy": "Hoy",
+      "ayer": "Ayer",
+      "buscar": "Buscar domiciliario…",
+      "sinResultados": "Ningún cuadre coincide con la búsqueda.",
+      "nota": "Esperado = contraentrega de los envíos entregados. Diferencia = lo recibido menos lo esperado. Un faltante queda con motivo y responsable, sin asiento, hasta que el Contador defina cómo se registra.",
+      "etiquetaFila": "{nombre}, {estado}",
+      "nadaPorRecibir": "No hay dinero por recibir.",
+      "filtroDomiciliario": "Solo {nombre}",
+      "entregasN": "{n, plural, one {# envío} other {# envíos}}",
+      "faltan": "Faltan {monto}",
+      "sobran": "Sobran {monto}",
+      "tabs": {
+        "etiqueta": "Tipo de cuadre",
+        "domiciliarios": "Domiciliarios",
+        "transportadoras": "Transportadoras y terceros · Fase 2–3",
+        "transportadorasAviso": "Transportadoras y terceros llegan en las fases 2 y 3, cuando haya uno conectado. Hoy no hay ninguno."
+      },
+      "kpis": {
+        "etiqueta": "Cuadres de hoy",
+        "porRecibir": "Por recibir",
+        "domiciliariosPorRecibir": "{n, plural, one {de # domiciliario} other {de # domiciliarios}}",
+        "nadaPorRecibir": "Todo recibido",
+        "cuadradosHoy": "Cuadrados hoy",
+        "recibidoHoy": "{monto} ya en la caja",
+        "conDiferencia": "Con diferencia",
+        "faltante": "faltan {monto} · con motivo",
+        "sinDiferencias": "Sin diferencias hoy",
+        "abiertosAnteriores": "Abiertos de días anteriores",
+        "cerrarPendientes": "Recíbelos para cerrarlos",
+        "todoCerrado": "Todo cerrado hasta ayer"
+      },
+      "columnas": {
+        "fecha": "Fecha",
+        "domiciliario": "Domiciliario",
+        "sede": "Sede",
+        "entregas": "Entregas",
+        "esperado": "Esperado",
+        "efectivo": "Efectivo",
+        "datafono": "Datáfono",
+        "transferencia": "Transferencia",
+        "diferencia": "Diferencia",
+        "motivo": "Motivo",
+        "estado": "Estado"
+      },
+      "estados": {
+        "por_recibir": "Por recibir",
+        "abierto": "Abierto",
+        "cuadrado": "Cuadrado",
+        "con_diferencia": "Con diferencia",
+        "anulado": "Anulado"
+      },
+      "acciones": {
+        "recibir": "Recibir dinero",
+        "recibirDe": "Recibir dinero de {nombre}",
+        "soloEste": "Ver solo este domiciliario",
+        "anular": "Anular cuadre",
+        "recargar": "Actualizar",
+        "exportar": "Exportar"
+      },
+      "vacio": {
+        "titulo": "No hay cuadres todavía",
+        "descripcion": "Cuando un domiciliario entregue una contraentrega, su cobro aparece aquí para recibirlo en la caja."
+      },
+      "error": {
+        "titulo": "No se pudieron cargar los cuadres",
+        "descripcion": "Vuelve a intentar en un momento."
+      },
+      "medioReportado": {
+        "cash": "Efectivo",
+        "card": "Datáfono",
+        "transfer": "Transferencia",
+        "qr": "QR"
+      },
+      "errores": {
+        "ERROR": "No se pudo completar. Vuelve a intentar.",
+        "NO_OPEN_CASH_SESSION": "No hay caja abierta en la sede. Abre una caja en POS › Cajas para recibir el efectivo.",
+        "SEDE_INVALIDA": "La sede no es válida.",
+        "DOMICILIARIO_INVALIDO": "El domiciliario no es de esta organización.",
+        "SIN_PERMISO": "Recibir cuadres lo hacen cajeros y administradores.",
+        "SIN_ACCESO_SEDE": "No tienes acceso a esta sede.",
+        "CUADRE_CERRADO": "Este cuadre ya está cerrado.",
+        "CUADRE_NO_ENCONTRADO": "El cuadre ya no existe.",
+        "CUADRE_CON_RECIBOS": "No se puede anular: ya se recibió dinero.",
+        "LINEA_NO_ENCONTRADA": "Un envío del cuadre ya no existe. Actualiza la pantalla.",
+        "LINEA_YA_RECIBIDA": "Un envío ya estaba recibido. Actualiza la pantalla.",
+        "LINEAS_PENDIENTES": "Faltan envíos por recibir.",
+        "MONTO_INVALIDO": "Revisa los montos contados.",
+        "MONTO_MAYOR_AL_ESPERADO": "Lo contado no puede ser mayor que lo esperado.",
+        "MOTIVO_REQUERIDO": "Falta el motivo de la diferencia.",
+        "MOTIVO_Y_RESPONSABLE_REQUERIDOS": "Falta el motivo y el responsable de la diferencia.",
+        "METODO_INVALIDO": "El medio de pago no está activo.",
+        "FACTURA_REQUERIDA": "Falta la factura del pedido.",
+        "FACTURA_DE_VENTA_NO_ENCONTRADA": "La venta no tiene factura.",
+        "PEDIDO_DE_PASARELA": "El pedido se pagó en línea: no se cobra en caja.",
+        "PEDIDO_SIN_CONFIRMAR": "El pedido aún no está confirmado.",
+        "ORIGEN_NO_SOPORTADO": "Este envío no viene de una venta ni de un pedido web.",
+        "RECIBOS_INVALIDOS": "Los montos del cuadre no son válidos. Actualiza la pantalla y vuelve a contar."
+      },
+      "elegir": {
+        "titulo": "¿De quién recibes?",
+        "descripcion": "Elige el domiciliario que trae el dinero.",
+        "cerrar": "Cerrar"
+      },
+      "anular": {
+        "titulo": "Anular cuadre",
+        "descripcion": "Se anula el cuadre abierto de {nombre}. Sus cobros vuelven a quedar por recibir.",
+        "confirmar": "Anular cuadre",
+        "hecho": "Cuadre anulado"
+      },
+      "recibir": {
+        "titulo": "Recibir dinero · {nombre}",
+        "descripcion": "{n, plural, one {# envío} other {# envíos}} · {sede}",
+        "cancelar": "Cancelar",
+        "confirmar": "Recibir y cerrar cuadre",
+        "procesando": "Recibiendo {hechas} de {total}…",
+        "lineasNuevas": "Entraron cobros nuevos mientras contabas. Revisa los montos y confirma otra vez.",
+        "entraALaCaja": "Entra a la caja",
+        "caja": "Caja {caja} · {sede}",
+        "cajaAbierta": "Abierta a las {hora}",
+        "abierta": "Abierta",
+        "sinCajaAyuda": "Abre una caja en POS › Cajas para recibir el efectivo.",
+        "tabla": {
+          "etiqueta": "Lo esperado y lo contado por medio de pago",
+          "medio": "Medio",
+          "esperado": "Esperado",
+          "contado": "Contado",
+          "diferencia": "Diferencia",
+          "contadoDe": "Contado en {medio}"
+        },
+        "medios": {
+          "efectivo": "{n, plural, =0 {Efectivo} one {Efectivo · # envío} other {Efectivo · # envíos}}",
+          "datafono": "{n, plural, =0 {Datáfono} one {Datáfono · # voucher} other {Datáfono · # vouchers}}",
+          "transferencia": "{n, plural, =0 {Transferencia} one {Transferencia · # envío} other {Transferencia · # envíos}}"
+        },
+        "faltan": "Faltan {monto}",
+        "sobran": "Sobran {monto}",
+        "sobranteAyuda": "Un sobrante (por ejemplo, la propina en el sobre) no entra por el cuadre: regístralo aparte en la caja.",
+        "bloqueos": {
+          "sinCaja": "No hay caja abierta en la sede",
+          "sinLineas": "No hay envíos por recibir",
+          "sobrante": "Lo contado es mayor que lo esperado"
+        },
+        "diferencia": {
+          "titulo": "Motivo de la diferencia",
+          "motivo": "Motivo",
+          "elegirMotivo": "Elige el motivo",
+          "faltaMotivo": "Elige el motivo de la diferencia.",
+          "nota": "Nota",
+          "faltaNota": "Escribe qué pasó.",
+          "responsable": "Responsable",
+          "faltaResponsable": "Elige el responsable.",
+          "sinAsiento": "El faltante queda registrado con motivo y responsable, sin asiento contable, hasta que el Contador defina cómo se registra."
+        },
+        "motivos": {
+          "cambio_de_mas": "Cambio entregado de más",
+          "cliente_pago_menos": "El cliente pagó menos",
+          "dinero_perdido": "Dinero perdido",
+          "error_conteo": "Error de conteo",
+          "otro": "Otro"
+        },
+        "responsables": {
+          "courier": "El domiciliario",
+          "cashier": "La caja",
+          "customer": "El cliente",
+          "other": "Otro"
+        },
+        "envios": "Envíos del cuadre ({n})",
+        "verTodos": "Ver {n} más",
+        "verMenos": "Ver menos",
+        "pie": {
+          "entranACaja": "Entran a Caja {caja}: {monto}",
+          "sinCaja": "Sin caja abierta en la sede",
+          "datafono": "Datáfono {monto}: se concilia con el banco"
+        },
+        "hecho": "Cuadre cerrado: el dinero quedó en la caja",
+        "hechoConDiferencia": "Cuadre cerrado con un faltante de {monto}"
+      }
+    },
+    "zonas": {
+      "pagina": {
+        "migaLogistica": "Logística",
+        "pestanas": {
+          "etiqueta": "Secciones de la configuración de logística",
+          "zonas": "Zonas y tarifas",
+          "reglas": "Reglas de despacho"
+        }
+      },
+      "titulo": "Zonas y tarifas de domicilio",
+      "subtitulo": "Dónde entregas, cuánto cobras y en cuánto tiempo, por sede",
+      "simulador": "Simulador",
+      "nueva": "Nueva zona",
+      "buscar": "Buscar zona, barrio o municipio",
+      "avisoServidor": {
+        "titulo": "El servidor recalcula siempre el valor del envío",
+        "descripcion": "El checkout y el POS solo muestran la tarifa. Al crear el pedido, el servidor vuelve a buscar la zona con la dirección y cobra ese valor; si el navegador manda otro (por ejemplo $ 0), se ignora y queda en la bitácora."
+      },
+      "kpi": {
+        "etiqueta": "Resumen de las zonas",
+        "activas": "Zonas activas",
+        "activasValor": "{activas} de {total}",
+        "pausadas": "{n, plural, =0 {Ninguna pausada} one {# pausada} other {# pausadas}}",
+        "sinZona": "Envíos sin zona (30 días)",
+        "sinZonaDetalle": "Se cobraron sin zona o con la tarifa general",
+        "tiempo": "Tiempo prometido promedio",
+        "minutos": "{n} min",
+        "tiempoDetalle": "{n, plural, =0 {Sin promesa} one {# zona con promesa} other {# zonas con promesa}}",
+        "gratis": "Envío gratis",
+        "gratisValor": "desde {valor}",
+        "sinGratis": "Sin envío gratis"
+      },
+      "todasLasSedes": "Todas las sedes",
+      "tarifaGeneral": "Tarifa general · fuera de zona",
+      "copia": "{nombre} (copia)",
+      "toast": {
+        "guardada": "Zona guardada",
+        "eliminada": "Zona eliminada",
+        "duplicada": "Zona duplicada (queda pausada)",
+        "pausada": "Zona pausada",
+        "activada": "Zona activada",
+        "error": "No se pudo guardar. Revisa los datos o tus permisos."
+      },
+      "cobertura": {
+        "general": "Todo lo que no cae en otra zona",
+        "ninguna": "Sin cobertura todavía",
+        "polygon": "{n, plural, one {Polígono} other {Polígonos (#)}}",
+        "neighborhood": "{n, plural, one {Barrio (#)} other {Barrios (#)}}",
+        "postal_code": "{n, plural, one {Código postal (#)} other {Códigos postales (#)}}",
+        "municipality": "{n, plural, one {Municipio DANE} other {Municipios DANE (#)}}"
+      },
+      "acciones": {
+        "editar": "Editar zona",
+        "duplicar": "Duplicar zona",
+        "simular": "Simular envío",
+        "pausar": "Pausar zona",
+        "activar": "Activar zona",
+        "eliminar": "Eliminar zona…"
+      },
+      "gratisAplica": {
+        "web": "web",
+        "pos": "POS",
+        "both": "web y POS"
+      },
+      "columnas": {
+        "zona": "Zona",
+        "cobertura": "Cobertura",
+        "tarifa": "Tarifa",
+        "tiempo": "Tiempo prometido",
+        "minimo": "Pedido mínimo",
+        "gratis": "Gratis desde",
+        "corte": "Corte",
+        "estado": "Estado"
+      },
+      "estado": {
+        "activa": "Activa",
+        "pausada": "Pausada"
+      },
+      "vacio": {
+        "titulo": "Aún no hay zonas de domicilio",
+        "descripcion": "Sin zonas, el checkout y el POS cobran como hoy (tarifa plana del sitio o tarifas de Transporte). Crea la primera para cobrar por barrio, municipio o código postal."
+      },
+      "mapa": {
+        "titulo": "Mapa de zonas",
+        "pendiente": "Dibujar zonas en el mapa llega en la siguiente entrega. Hoy cada zona se arma con barrios, municipios DANE y códigos postales, y la cotización ya respeta los polígonos que existan."
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar la zona?",
+        "descripcion": "Se borra «{nombre}» con su cobertura. Las direcciones de esa zona caen en la siguiente zona o en la tarifa general.",
+        "confirmar": "Eliminar zona"
+      },
+      "editor": {
+        "nueva": "Nueva zona",
+        "subtitulo": "Cobertura, tarifa y promesa de entrega",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar zona",
+        "cobertura": "Cobertura",
+        "tipos": {
+          "neighborhood": "Barrios",
+          "municipality": "Municipios DANE",
+          "postal_code": "Códigos postales",
+          "polygon": "Polígonos en el mapa"
+        },
+        "poligonoPendiente": {
+          "titulo": "Polígono en el mapa: próximamente",
+          "descripcion": "Mientras tanto, arma la zona con barrios, municipios DANE o códigos postales. Si dos zonas se cruzan, gana la de menor número de prioridad."
+        },
+        "campo": {
+          "neighborhood": "Barrio",
+          "municipality": "Código DANE",
+          "postal_code": "Código postal"
+        },
+        "placeholder": {
+          "neighborhood": "Chapinero Alto",
+          "municipality": "11001",
+          "postal_code": "110231"
+        },
+        "municipioOpcional": "Municipio DANE (opcional)",
+        "etiquetaOpcional": "Nombre visible (opcional)",
+        "agregar": "Agregar",
+        "sinUbicaciones": "Todavía no hay nada de este tipo en la zona.",
+        "quitar": "Quitar {nombre}",
+        "poligonoSinNombre": "Polígono sin nombre",
+        "coberturaAyuda": "Los barrios se comparan sin tildes ni mayúsculas. El código DANE tiene 5 dígitos (05001); si escribes 4, se completa.",
+        "datos": "Datos de la zona",
+        "nombre": "Nombre",
+        "sede": "Sede que despacha",
+        "sedeAyuda": "Los pedidos de esta zona salen de esta sede.",
+        "prioridad": "Prioridad",
+        "prioridadAyuda": "Si dos zonas se cruzan, gana el número menor.",
+        "esGeneral": "Es la tarifa general",
+        "esGeneralAyuda": "Se cobra a las direcciones que no caen en ninguna zona. Una por sede.",
+        "tarifaPromesa": "Tarifa y promesa",
+        "tarifa": "Tarifa",
+        "minimo": "Pedido mínimo",
+        "tiempoMin": "Tiempo desde",
+        "tiempoMax": "Tiempo hasta",
+        "textoPromesa": "Promesa en palabras (opcional)",
+        "textoPromesaAyuda": "Reemplaza los números, por ejemplo «Mismo día» o «2 a 5 días hábiles».",
+        "textoPromesaPlaceholder": "Mismo día",
+        "gratisDesde": "Envío gratis desde",
+        "gratisDesdeAyuda": "Vacío: sin envío gratis en esta zona.",
+        "gratisAplica": "Envío gratis aplica en",
+        "gratisAplicaAyuda": "Por defecto solo en la tienda web. El pedido manual de Pedidos online cuenta como POS.",
+        "corte": "Horario de corte",
+        "corteAyuda": "Lo que entre después sale al día siguiente y el checkout lo dice.",
+        "diasReparto": "Días de reparto",
+        "dias": {
+          "1": "Lun",
+          "2": "Mar",
+          "3": "Mié",
+          "4": "Jue",
+          "5": "Vie",
+          "6": "Sáb",
+          "7": "Dom"
+        },
+        "estado": "Estado",
+        "activa": "Zona activa",
+        "activaAyuda": "Si la apagas, las direcciones caen en la siguiente zona o en la tarifa general.",
+        "errores": {
+          "nombre_requerido": "Escribe el nombre de la zona.",
+          "tarifa_invalida": "La tarifa no puede ser negativa.",
+          "promesa_invalida": "El tiempo «hasta» no puede ser menor que «desde».",
+          "minimo_invalido": "El pedido mínimo no puede ser negativo.",
+          "envio_gratis_invalido": "El envío gratis debe ser mayor que cero.",
+          "aplica_gratis_invalido": "Elige dónde aplica el envío gratis.",
+          "dias_invalidos": "Elige al menos un día de reparto.",
+          "corte_invalido": "El horario de corte no es válido.",
+          "zona_duplicada": "Ya existe una zona con ese nombre o una tarifa general en esa sede."
+        },
+        "errorUbicacion": {
+          "tipo_invalido": "Ese tipo de cobertura no existe.",
+          "municipio_invalido": "El código DANE debe tener 5 dígitos.",
+          "barrio_requerido": "Escribe el barrio.",
+          "codigo_postal_invalido": "El código postal no es válido.",
+          "poligono_invalido": "El polígono no es válido.",
+          "repetida": "Eso ya está en la zona."
+        },
+        "unidadPromesa": "Tiempo de entrega en",
+        "unidadPromesaAyuda": "Domicilios cercanos en minutos u horas; envíos nacionales en días.",
+        "unidades": {
+          "minutos": "Minutos",
+          "horas": "Horas",
+          "dias": "Días"
+        },
+        "unidadesCortas": {
+          "minutos": "min",
+          "horas": "h",
+          "dias": "días"
+        }
+      },
+      "peso": {
+        "alerta": {
+          "titulo": "{n} de {total} productos tienen peso",
+          "descripcion": "Sin peso no se puede cotizar por peso ni crear guías con transportadoras. Pon un peso por categoría para cubrir casi todos hoy mismo y completa los productos que pesen distinto.",
+          "accion": "Completar en Inventario"
+        },
+        "categoria": {
+          "titulo": "Envío",
+          "descripcion": "Peso y caja por defecto de los productos de esta categoría que no tienen los suyos. Se usan para cotizar envíos.",
+          "peso": "Peso por defecto",
+          "pesoAyuda": "Vacío: se usa el de la organización (Configuración › Logística).",
+          "medidas": {
+            "default_length_cm": "Largo",
+            "default_width_cm": "Ancho",
+            "default_height_cm": "Alto"
+          }
+        },
+        "ficha": {
+          "hereda": "Hereda de {nombre}",
+          "vacioUsa": "Vacío: usa {peso} kg de la categoría {nombre}",
+          "seUsa": "Peso que se usa",
+          "sinPeso": "Sin peso",
+          "volumetrico": "Peso volumétrico",
+          "cobra": "La transportadora cobra",
+          "fuente": {
+            "producto": "del producto",
+            "categoria": "de la categoría {nombre}",
+            "organizacion": "de la organización"
+          }
+        }
+      },
+      "ajustes": {
+        "cargando": "Cargando…",
+        "errorCargar": "No se pudieron leer los ajustes de logística",
+        "guardado": "Ajustes de logística guardados",
+        "errorGuardar": "No se pudieron guardar. Revisa tus permisos.",
+        "soloLectura": "Solo lectura: cambiar estos ajustes pide el permiso «Configurar la organización».",
+        "sinMovimiento": {
+          "titulo": "Envío sin movimiento",
+          "descripcion": "Pasado este tiempo sin un evento nuevo, el envío sale en Seguimiento › Por resolver como «Sin movimiento».",
+          "propio": "Propio y última milla",
+          "transportadora": "Transportadora"
+        },
+        "envioGratis": {
+          "titulo": "Envío gratis por defecto",
+          "descripcion": "Con qué valor nace «Envío gratis aplica en» en cada zona nueva. Cada zona lo puede cambiar."
+        },
+        "peso": {
+          "titulo": "Peso y caja de la organización",
+          "descripcion": "Último recurso para cotizar: se usa solo si el producto y su categoría no tienen peso. El peso por categoría se pone en Inventario › Categorías.",
+          "default_weight_kg": "Peso",
+          "default_length_cm": "Largo",
+          "default_width_cm": "Ancho",
+          "default_height_cm": "Alto"
+        },
+        "informativos": "Cómo funciona",
+        "codigoEntrega": {
+          "titulo": "Pedir código de entrega en contraentrega",
+          "descripcion": "El cliente recibe un código de 4 dígitos en el rastreo; el domiciliario lo pide antes de recibir el pago y marcar «Entregado». Cinco intentos errados lo bloquean; un administrador lo reinicia. Aplica a los envíos que se creen después del cambio."
+        },
+        "cargoDomicilio": {
+          "titulo": "Quién puede cambiar el cargo de domicilio en el POS",
+          "descripcion": "En el POS y el pedido manual, el cargo lo llena la zona. Cambiarlo pide el permiso «Configurar la organización» y queda registrado quién lo cambió.",
+          "accion": "Ver roles"
+        },
+        "avisos": {
+          "titulo": "Avisos de entrega al cliente",
+          "descripcion": "Los mensajes de cada estado del envío (en camino, entregado, novedad) salen por correo con el enlace de rastreo y por WhatsApp cuando el canal está conectado. Se editan en Punto de venta › Avisos al cliente.",
+          "accion": "Ir a Avisos al cliente"
+        },
+        "zonas": {
+          "titulo": "Zonas, tarifas y reglas de despacho",
+          "descripcion": "Zonas y tarifas y Reglas de despacho son páginas de Logística. Los proveedores de envío se conectan en Integraciones › Conexiones.",
+          "accion": "Ir a Zonas y tarifas",
+          "conexiones": "Ir a Conexiones"
+        },
+        "grupos": {
+          "seguimiento": "Seguimiento y entrega",
+          "cobro": "Cobro del domicilio",
+          "avisos": "Avisos al cliente",
+          "catalogos": "Catálogos y proveedores"
+        }
+      }
+    },
+    "reglas": {
+      "titulo": "Reglas de despacho",
+      "subtitulo": "Quién entrega cada pedido: la primera regla que se cumple decide",
+      "nueva": "Nueva regla",
+      "probar": "Probar con un pedido",
+      "todasLasSedes": "Todas las sedes",
+      "copia": "{nombre} (copia)",
+      "siempreAplica": "Sin condiciones: aplica a todo",
+      "activarRegla": "Regla {nombre} activa",
+      "chips": {
+        "zona": "Zona: {valor}",
+        "canal": "Canal: {valor}",
+        "metodo": "Pago: {valor}",
+        "valor": "Valor: {desde} a {hasta}",
+        "peso": "Peso: {desde} a {hasta} kg",
+        "dias": "Días: {valor}",
+        "horario": "Horario: {desde} a {hasta}"
+      },
+      "canales": {
+        "web": "Tienda web",
+        "pos": "POS",
+        "manual": "Pedido manual"
+      },
+      "dias": {
+        "1": "Lun",
+        "2": "Mar",
+        "3": "Mié",
+        "4": "Jue",
+        "5": "Vie",
+        "6": "Sáb",
+        "7": "Dom"
+      },
+      "toast": {
+        "guardada": "Regla guardada",
+        "duplicada": "Regla duplicada (queda en pausa)",
+        "eliminada": "Regla eliminada",
+        "error": "No se pudo guardar. Revisa los datos o tus permisos."
+      },
+      "acciones": {
+        "editar": "Editar regla",
+        "duplicar": "Duplicar regla",
+        "probar": "Probar esta regla",
+        "eliminar": "Eliminar regla…",
+        "propio": "Domiciliario propio"
+      },
+      "columnas": {
+        "orden": "Orden",
+        "condiciones": "Si se cumple todo esto…",
+        "entrega": "…entonces lo entrega",
+        "activa": "Activa"
+      },
+      "kpi": {
+        "etiqueta": "Resumen de las reglas",
+        "activas": "Reglas activas",
+        "activasValor": "{activas} de {total}",
+        "pausadas": "{n, plural, =0 {Ninguna en pausa} one {# en pausa} other {# en pausa}}",
+        "fase": "Quién entrega",
+        "faseValor": "Domiciliario propio",
+        "faseDetalle": "Terceros y transportadoras llegan en la Fase 2"
+      },
+      "vacio": {
+        "titulo": "Sin reglas de despacho",
+        "descripcion": "Sin reglas, todo pedido a domicilio lo lleva el domiciliario propio de la sede."
+      },
+      "final": {
+        "titulo": "Si ninguna regla aplica",
+        "entrega": "Domiciliario propio de la sede · queda «sin asignar» para revisión"
+      },
+      "como": {
+        "titulo": "Cómo se evalúan",
+        "descripcion": "De arriba hacia abajo: primero las reglas de la sede, después las de todas, por número de orden. La primera que se cumple decide; el resultado queda en la línea de tiempo del envío."
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar la regla?",
+        "descripcion": "Se borra «{nombre}». Los pedidos que decidía pasan a la siguiente regla.",
+        "confirmar": "Eliminar regla"
+      },
+      "hoja": {
+        "tituloNueva": "Nueva regla",
+        "tituloEditar": "Regla {orden} · {nombre}",
+        "subtitulo": "{total, plural, =0 {Primera regla} one {# regla en total} other {# reglas en total}}",
+        "nombre": "Nombre de la regla",
+        "errorNombre": "Escribe el nombre de la regla.",
+        "prioridad": "Orden",
+        "sede": "Sede",
+        "siSeCumple": "Si se cumple todo esto",
+        "sinCondiciones": "Sin condiciones, la regla aplica a todos los pedidos.",
+        "campo": "Campo de la condición",
+        "campos": {
+          "zona": "Zona",
+          "canal": "Canal",
+          "metodo_pago": "Método de pago",
+          "valor": "Valor del pedido",
+          "peso": "Peso",
+          "dias": "Días",
+          "horario": "Horario"
+        },
+        "operador": {
+          "zona": "es",
+          "canal": "es",
+          "metodo_pago": "es",
+          "valor": "entre",
+          "peso": "entre",
+          "dias": "es",
+          "horario": "entre"
+        },
+        "desde": "Desde",
+        "hasta": "Hasta",
+        "sinZonas": "Aún no hay zonas: créalas en «Zonas y tarifas».",
+        "quitarCondicion": "Quitar la condición {campo}",
+        "agregarCondicion": "Agregar condición",
+        "camposAyuda": "Campos: zona, canal (tienda web, POS, pedido manual), método de pago, valor del pedido, peso, días y horario.",
+        "entonces": "Entonces lo entrega",
+        "propioAyuda": "Se asigna en Logística › Envíos.",
+        "salidas": {
+          "tercero": {
+            "titulo": "Tercero de última milla",
+            "ayuda": "Mensajería urbana según el país",
+            "fase": "Fase 3"
+          },
+          "fija": {
+            "titulo": "Transportadora fija",
+            "ayuda": "Siempre la misma transportadora",
+            "fase": "Fase 2"
+          },
+          "barata": {
+            "titulo": "La más barata",
+            "ayuda": "Cotiza entre las conectadas y elige el menor valor",
+            "fase": "Fase 2"
+          },
+          "rapida": {
+            "titulo": "La más rápida",
+            "ayuda": "Cotiza y elige el menor tiempo prometido",
+            "fase": "Fase 2"
+          }
+        },
+        "cancelar": "Cancelar",
+        "guardar": "Guardar regla"
+      },
+      "prueba": {
+        "titulo": "Probar las reglas con un pedido",
+        "descripcion": "No crea el envío: solo muestra qué regla decidiría.",
+        "probar": "Probar",
+        "otro": "Probar otro pedido",
+        "cerrar": "Cerrar",
+        "sede": "Sale de",
+        "metodo": "Método de pago",
+        "sinMetodo": "Sin método",
+        "ciudad": "Ciudad o municipio",
+        "valor": "Valor del pedido",
+        "peso": "Peso",
+        "canal": "Canal",
+        "recorrido": "Recorrido de las reglas",
+        "pasos": {
+          "decide": "Aplica: decide esta regla.",
+          "no_aplica": "No aplica a este pedido.",
+          "sin_evaluar": "No se evaluó: una regla anterior ya decidió.",
+          "en_pausa": "En pausa: no participa.",
+          "otra_sede": "Es de otra sede: no participa."
+        },
+        "finalUsado": "Ninguna regla aplicó: lo lleva el domiciliario propio.",
+        "finalNoUsado": "No se usó.",
+        "loEntrega": "Lo entrega: domiciliario propio",
+        "regla": "Regla {orden}",
+        "zona": "Zona",
+        "fueraDeZona": "Fuera de zona",
+        "cobra": "Cobra al cliente",
+        "tiempo": "Tiempo prometido"
+      }
+    },
+    "cotizar": {
+      "buscando": "Buscando la zona de la dirección…",
+      "gratis": "Gratis",
+      "minimo": "Pedido mínimo {valor}",
+      "gratisDesde": "envío gratis desde {valor}",
+      "saleEl": "sale el {fecha}",
+      "origen": "Sale de Logística › Configuración › Zonas y tarifas",
+      "ciudad": "Ciudad",
+      "error": {
+        "titulo": "No se pudo calcular el domicilio",
+        "descripcion": "Revisa la conexión e inténtalo de nuevo. El servidor vuelve a calcular el envío al guardar."
+      },
+      "bajoMinimo": {
+        "titulo": "{zona}: no llega al pedido mínimo",
+        "descripcion": "El pedido mínimo para domicilio es {minimo}. Faltan {falta}."
+      },
+      "fuera": {
+        "titulo": "Fuera de zona: esta dirección no está en ninguna zona de domicilio",
+        "conGeneral": "Cobra la tarifa general {valor} (Logística › Configuración › Zonas y tarifas) o envíalo con transportadora.",
+        "soloTransportadora": "No hay domicilio propio para esta dirección: envíalo con transportadora.",
+        "sinCobertura": "No hay domicilio ni transportadora para esta dirección.",
+        "cobrarGeneral": "Cobrar tarifa general {valor}",
+        "usarTransportadora": "Usar transportadora"
+      },
+      "pos": {
+        "barrio": "Barrio",
+        "barrioPlaceholder": "Chapinero",
+        "cargo": "Cargo de domicilio (flete)",
+        "cargoSinZona": "Se llena al elegir una de las opciones de arriba.",
+        "cargoDeZonaEditable": "Lo llenó {zona}. Si lo cambias, queda registrado quién lo cambió.",
+        "cargoDeZonaBloqueado": "Lo llenó {zona}. Cambiarlo pide el permiso «Configuración de la organización».",
+        "contraentrega": "Paga al recibir (contraentrega)",
+        "contraentregaAyuda": "Si lo marcas, el domiciliario cobra {valor} al entregar y ese dinero entra a su cuadre del día (Logística › Cuadres).",
+        "contraentregaSinCliente": "Para cobrar al recibir, elige el cliente de la venta.",
+        "contraentregaSinDireccion": "Para cobrar al recibir, escribe la dirección de entrega.",
+        "fueraDeZona": "fuera de zona"
+      },
+      "manual": {
+        "envioEditable": "Lo llenó {zona}. Si lo cambias, queda registrado.",
+        "envioBloqueado": "Lo llena la zona. Cambiarlo pide el permiso «Configuración de la organización»."
+      },
+      "simulador": {
+        "titulo": "¿Cuánto cuesta enviar a…?",
+        "descripcion": "Mismo cálculo que hace el servidor en el checkout, el POS y el pedido manual",
+        "cerrar": "Cerrar",
+        "calcular": "Calcular",
+        "verRegla": "Ver regla de despacho",
+        "saleDe": "Sale de",
+        "metodoPago": "Método de pago",
+        "metodoPagoAyuda": "El código del método, para probar las reglas.",
+        "metodoPagoPlaceholder": "cash",
+        "ciudad": "Ciudad o código DANE",
+        "ciudadAyuda": "Bogotá o 11001",
+        "codigoPostal": "Código postal",
+        "valor": "Valor del pedido",
+        "peso": "Peso",
+        "canal": "Canal",
+        "canales": {
+          "web": "Tienda web",
+          "pos": "POS",
+          "manual": "Pedido manual"
+        },
+        "sinZonas": {
+          "titulo": "Esta organización no tiene zonas",
+          "descripcion": "El checkout y el POS cobran como hoy: tarifa plana del sitio o tarifas de Transporte."
+        },
+        "fueraDeZona": "Fuera de zona",
+        "ganaZona": "Gana esta zona",
+        "estados": {
+          "en_zona": "En zona",
+          "bajo_minimo": "No llega al mínimo",
+          "fuera_tarifa_general": "Tarifa general",
+          "fuera_transportadora": "Solo transportadora",
+          "sin_cobertura": "Sin cobertura"
+        },
+        "envio": "Envío",
+        "llega": "Entrega",
+        "corte": "Corte",
+        "hoy": "Hoy",
+        "faltaGratis": "Falta para el envío gratis",
+        "faltaMinimo": "Falta para el pedido mínimo",
+        "regla": "Regla de despacho",
+        "reglaAplica": "Aplica una regla",
+        "reglaNinguna": "Ninguna: domiciliario propio",
+        "dane": "Municipio DANE",
+        "saleHoy": "Sale hoy",
+        "saleEl": "Sale el {fecha}"
+      }
+    },
+    "menu": {
+      "logistica": "Logística",
+      "transporte": "Transporte",
+      "catalogoComun": "Catálogo común (compartido)"
+    },
+    "despacho": {
+      "titulo": "Por despachar",
+      "subtitulo": "Pedidos de todos los canales",
+      "subtituloSede": "Pedidos de todos los canales · salen de {sede}",
+      "migas": {
+        "logistica": "Logística"
+      },
+      "actualizar": "Actualizar",
+      "imprimirHojaRuta": "Imprimir hoja de ruta",
+      "asignarDomiciliario": "Asignar domiciliario",
+      "registrarDomiciliario": "Registrar domiciliario",
+      "irDomiciliarios": "Ver domiciliarios",
+      "tabla": "Envíos por despachar",
+      "errorCarga": "No pudimos cargar los envíos por despachar.",
+      "sinResultados": "Ningún envío coincide con la búsqueda o los filtros.",
+      "recortada": "Se muestran los {n} envíos más antiguos. Despacha o filtra por sede para ver el resto.",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a los envíos",
+        "descripcion": "Pide a un administrador acceso a Logística."
+      },
+      "sustantivo": {
+        "singular": "pedido",
+        "plural": "pedidos"
+      },
+      "buscar": {
+        "placeholder": "Buscar por pedido, cliente, teléfono, dirección o barrio…",
+        "etiqueta": "Buscar envíos"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de la bandeja",
+        "porDespachar": "Por despachar",
+        "porDespacharDetalle": "{hoy} para hoy · {manana} para mañana",
+        "porDespacharVacio": "pedidos pendientes de salida",
+        "atrasados": "Atrasados",
+        "atrasadosDetalle": "ya pasaron la promesa de entrega",
+        "atrasadosVacio": "todo a tiempo",
+        "contraentrega": "Contraentrega por cobrar hoy",
+        "contraentregaDetalle": "{count, plural, one {en # envío} other {en # envíos}} · efectivo y datáfono",
+        "contraentregaVacio": "nada por cobrar hoy",
+        "sinDomiciliario": "Sin domiciliario",
+        "sinDomiciliarioDetalle": "de los {total} que salen hoy, {n} sin asignar",
+        "sinDomiciliarioVacio": "todos con domiciliario",
+        "sinDomiciliariosRegistrados": "0 domiciliarios registrados"
+      },
+      "sinDomiciliarios": {
+        "titulo": "No hay domiciliarios registrados",
+        "tituloSede": "No hay domiciliarios registrados en {sede}",
+        "descripcion": "Hay {n} pedidos para hoy y nadie a quién asignarlos. Registrar un domiciliario toma un minuto: nombre, teléfono y documento. El vehículo es opcional.",
+        "traerRrhh": "Traer desde Recursos humanos"
+      },
+      "columnas": {
+        "pedido": "Pedido",
+        "cliente": "Cliente",
+        "direccion": "Dirección y barrio",
+        "promesa": "Promesa",
+        "valor": "Valor",
+        "pago": "Pago",
+        "modo": "Modo sugerido",
+        "estado": "Estado"
+      },
+      "canales": {
+        "web": "Tienda web",
+        "pos": "POS",
+        "qr": "Menú QR",
+        "manual": "Manual",
+        "marketplace": "Marketplace"
+      },
+      "modos": {
+        "own": "Propio",
+        "last_mile": "Última milla",
+        "national_carrier": "Transportadora",
+        "marketplace": "Marketplace"
+      },
+      "estados": {
+        "por_asignar": "Por asignar",
+        "asignado": "Asignado",
+        "listo_para_salir": "Listo para salir",
+        "por_crear_guia": "Por crear guía",
+        "intento_fallido": "Intento fallido"
+      },
+      "pago": {
+        "contraentrega": "Contraentrega",
+        "pagado": "Pagado"
+      },
+      "promesa": {
+        "hoy": "Hoy {hora}",
+        "otroDia": "{dia} {hora}",
+        "sin": "Sin hora prometida",
+        "tarde": "+{tiempo}",
+        "faltan": "faltan {tiempo}",
+        "en": "en {tiempo}"
+      },
+      "duracion": {
+        "min": "{n} min",
+        "h": "{n} h",
+        "dias": "{n} días"
+      },
+      "filtros": {
+        "estado": "Estado",
+        "pago": "Pago",
+        "canal": "Canal",
+        "todos": "Todos",
+        "pago_contraentrega": "Contraentrega",
+        "pago_pagado": "Pagado",
+        "soloAtrasados": "Solo atrasados",
+        "chipEstado": "Estado: {estado}",
+        "chipCanal": "Canal: {canal}",
+        "limpiar": "Limpiar todo",
+        "verN": "{count, plural, one {Ver # pedido} other {Ver # pedidos}}"
+      },
+      "acciones": {
+        "verDetalle": "Ver detalle del envío",
+        "asignar": "Asignar domiciliario",
+        "cambiarDomiciliario": "Cambiar domiciliario",
+        "listoParaSalir": "Marcar listo para salir",
+        "imprimirGuia": "Imprimir guía",
+        "pedirRepartidor": "Pedir repartidor",
+        "crearGuia": "Crear guía",
+        "cancelar": "Cancelar envío…"
+      },
+      "masivo": {
+        "imprimirGuias": "Imprimir guías",
+        "listos": "Marcar listos para salir"
+      },
+      "motivos": {
+        "estado_no_asignable": "Ninguno de los seleccionados se puede asignar: ya salieron o se cerraron.",
+        "no_es_propio": "Este envío no es de domiciliario propio.",
+        "requiere_tercero": "Requiere conectar un tercero de última milla (Integraciones › Conexiones › Logística).",
+        "requiere_transportadora": "Requiere conectar una transportadora (Integraciones › Conexiones › Logística).",
+        "ya_listo": "Ya está listo para salir.",
+        "sin_seleccion": "No hay envíos para la hoja de ruta.",
+        "nada_por_asignar": "No hay pedidos de hoy por asignar. Selecciona envíos en la tabla."
+      },
+      "cancelar": {
+        "titulo": "¿Cancelar el envío {numero}?",
+        "descripcion": "El envío no sale. Si el cliente ya pagó, el reembolso se hace desde el pedido.",
+        "confirmar": "Cancelar envío",
+        "volver": "Volver",
+        "nota": "Cancelado desde Por despachar"
+      },
+      "toast": {
+        "nadaAsignable": "Ninguno de los envíos elegidos se puede asignar.",
+        "listos": "{count, plural, one {# envío listo para salir} other {# envíos listos para salir}}",
+        "errorEstado": "No se pudo cambiar el estado",
+        "cancelado": "Envío {numero} cancelado"
+      },
+      "vacio": {
+        "titulo": "Todo despachado",
+        "descripcion": "No hay pedidos por despachar. Los pedidos nuevos con domicilio de la tienda web, el POS y el menú QR aparecen aquí solos.",
+        "descripcionSede": "No hay pedidos por despachar en {sede}. Los pedidos nuevos con domicilio de la tienda web, el POS y el menú QR aparecen aquí solos.",
+        "verEnCamino": "Ver envíos en camino",
+        "verCuadres": "Ver cuadres del día"
+      },
+      "asignar": {
+        "titulo": "{count, plural, one {Asignar # envío} other {Asignar # envíos}}",
+        "subtituloCobro": "contraentrega en total {monto}",
+        "subtituloSinCobro": "sin contraentrega",
+        "laSede": "la sede",
+        "sinNombre": "Sin nombre",
+        "noAsignables": "{count, plural, one {# envío no se puede asignar y queda fuera} other {# envíos no se pueden asignar y quedan fuera}}",
+        "ruta": {
+          "titulo": "Orden sugerido de ruta",
+          "ayuda": "Ordenado por la hora prometida y por barrio desde {sede}. El domiciliario lo ve igual en «Mis envíos».",
+          "promesa": "promesa {hora}",
+          "contraentrega": "Contraentrega",
+          "pagado": "Pagado"
+        },
+        "domiciliario": {
+          "titulo": "Domiciliario",
+          "buscar": "Buscar por nombre…",
+          "carga": "{count, plural, =0 {Sin envíos} one {# envío} other {# envíos}}",
+          "cargaConCobro": "{count, plural, one {# envío} other {# envíos}} · {monto} por cobrar",
+          "errorCarga": "No pudimos cargar los domiciliarios.",
+          "ninguno": "No hay domiciliarios activos",
+          "ningunoAyuda": "Registra uno para poder asignar: nombre, teléfono y documento. El vehículo es opcional.",
+          "registrar": "Registrar domiciliario",
+          "sinCoincidencias": "Ningún domiciliario coincide con la búsqueda."
+        },
+        "estados": {
+          "libre": "Libre",
+          "en_ruta": "En ruta",
+          "fuera_de_turno": "Fuera de turno",
+          "inactivo": "Inactivo"
+        },
+        "motivos": {
+          "inactivo": "Está inactivo.",
+          "noCobra": "No cobra contraentrega: {n} de los {total} envíos la tienen."
+        },
+        "vehiculos": {
+          "motorcycle": "Moto",
+          "bicycle": "Bicicleta",
+          "car": "Carro",
+          "van": "Camioneta",
+          "on_foot": "A pie",
+          "other": "Otro vehículo",
+          "truck": "Camión",
+          "bus": "Bus",
+          "sin": "Sin vehículo"
+        },
+        "vehiculo": {
+          "titulo": "Vehículo",
+          "opcional": "Opcional",
+          "ninguno": "Sin vehículo (el del domiciliario)",
+          "ayuda": "Solo si quieres controlar la flota. No es obligatorio para asignar."
+        },
+        "opciones": {
+          "imprimir": "{count, plural, one {Imprimir la guía al asignar} other {Imprimir las # guías al asignar}}",
+          "aviso": "El cliente recibe el aviso «Va en camino» cuando el domiciliario sale.",
+          "avisoYCodigo": "El cliente recibe el aviso «Va en camino» cuando el domiciliario sale. En contraentrega se pide el código de 4 dígitos al entregar."
+        },
+        "pie": {
+          "llevara": "{count, plural, one {{nombre} llevará # envío} other {{nombre} llevará # envíos}}",
+          "cobrara": "Cobrará {monto} en efectivo o datáfono",
+          "nadaPorCobrar": "Nada por cobrar en la puerta",
+          "elige": "Elige un domiciliario"
+        },
+        "cancelar": "Cancelar",
+        "confirmar": "{count, plural, one {Asignar # envío} other {Asignar # envíos}}",
+        "asignando": "Asignando…",
+        "toast": {
+          "asignados": "{count, plural, one {# envío asignado a {nombre}} other {# envíos asignados a {nombre}}}",
+          "fallidos": "{count, plural, one {# envío no se pudo asignar} other {# envíos no se pudieron asignar}}"
+        },
+        "errores": {
+          "ENVIO_NO_ENCONTRADO": "El envío ya no existe o no es de esta organización.",
+          "SIN_ACCESO_SEDE": "No tienes acceso a la sede de este envío.",
+          "SIN_ACCESO": "No tienes permiso para esta acción.",
+          "ESTADO_NO_ASIGNABLE": "El envío ya salió o se cerró: no se puede asignar.",
+          "DOMICILIARIO_INVALIDO": "El domiciliario no está activo o es de otra sede.",
+          "VEHICULO_INVALIDO": "El vehículo no está disponible.",
+          "ERROR": "No se pudo completar. Intenta de nuevo.",
+          "DOMICILIARIO_NO_COBRA": "Ese domiciliario no cobra contraentrega y el envío tiene cobro.",
+          "ENVIO_AJENO": "Ese envío es de otro domiciliario.",
+          "SIN_PERMISO": "Asignar lo hacen quienes despachan: cajeros y administradores."
+        }
+      },
+      "impresion": {
+        "hojaTitulo": "Hoja de ruta",
+        "guiasEnviadas": "{count, plural, one {# guía enviada a la impresora térmica} other {# guías enviadas a la impresora térmica}}",
+        "errorGuias": "No se pudieron preparar las guías.",
+        "ventanaBloqueada": "Permite las ventanas emergentes para imprimir.",
+        "columnas": {
+          "parada": "#",
+          "pedido": "Pedido",
+          "cliente": "Cliente",
+          "direccion": "Dirección",
+          "promesa": "Promesa",
+          "cobrar": "Cobrar",
+          "firma": "Firma",
+          "total": "Total a cobrar",
+          "pagado": "Pagado"
+        }
+      },
+      "irZonas": "Zonas y tarifas"
+    },
+    "envio": {
+      "titulo": "Envío",
+      "migas": {
+        "logistica": "Logística",
+        "envios": "Envíos"
+      },
+      "errorCarga": "No pudimos cargar el envío.",
+      "noExiste": "Este envío no existe o no es de esta organización.",
+      "volverBandeja": "Ir a Por despachar",
+      "volver": "Volver",
+      "errorAccion": "No se pudo completar la acción",
+      "errorAviso": "No se pudo enviar el aviso al cliente.",
+      "reprogramado": "Entrega reprogramada para el {dia}.",
+      "subtitulo": {
+        "pedido": "Pedido {pedido}",
+        "creado": "creado {fecha}"
+      },
+      "estados": {
+        "created": "Creado",
+        "ready_for_pickup": "Listo para recoger",
+        "assigned": "Asignado",
+        "picked": "Recogido",
+        "in_transit": "En tránsito",
+        "out_for_delivery": "En reparto",
+        "failed_attempt": "Intento fallido",
+        "delivered": "Entregado",
+        "exception": "Novedad",
+        "returned": "Devuelto",
+        "cancelled": "Cancelado"
+      },
+      "motivos": {
+        "not_home": "Cliente ausente",
+        "wrong_address": "Dirección errada",
+        "incomplete_address": "Dirección incompleta",
+        "rejected": "Rechazado por el cliente",
+        "damaged": "Dañado",
+        "lost": "Perdido",
+        "access_denied": "Sin acceso al lugar",
+        "business_closed": "Negocio cerrado",
+        "weather": "Clima",
+        "vehicle_issue": "Falla del vehículo",
+        "customer_request": "Pedido del cliente",
+        "other": "Otro motivo"
+      },
+      "canales": {
+        "web": "Tienda web",
+        "pos": "POS",
+        "qr": "Menú QR",
+        "manual": "Manual",
+        "marketplace": "Marketplace"
+      },
+      "modos": {
+        "own": "Domicilio propio",
+        "last_mile": "Última milla",
+        "national_carrier": "Transportadora",
+        "marketplace": "Marketplace"
+      },
+      "vehiculos": {
+        "motorcycle": "Moto",
+        "bicycle": "Bicicleta",
+        "car": "Carro",
+        "van": "Camioneta",
+        "on_foot": "A pie",
+        "other": "Otro vehículo",
+        "truck": "Camión",
+        "bus": "Bus",
+        "sin": "Sin vehículo"
+      },
+      "errores": {
+        "ENVIO_NO_ENCONTRADO": "El envío ya no existe o no es de esta organización.",
+        "SIN_ACCESO_SEDE": "No tienes acceso a la sede de este envío.",
+        "SIN_ACCESO": "No tienes permiso para esta acción.",
+        "SIN_PERMISO": "No tienes permiso para esta acción.",
+        "ESTADO_NO_ASIGNABLE": "El envío ya salió o se cerró: no se puede asignar.",
+        "DOMICILIARIO_INVALIDO": "El domiciliario no está activo o es de otra sede.",
+        "VEHICULO_INVALIDO": "El vehículo no está disponible.",
+        "ESTADO_NO_PERMITIDO": "Ese estado no se puede poner a mano.",
+        "TRANSICION_INVALIDA": "El envío cambió de estado: actualiza la pantalla.",
+        "YA_ENTREGADO": "El envío ya estaba entregado.",
+        "ESTADO_NO_ENTREGABLE": "El envío no está en camino: no se puede marcar entregado.",
+        "RECEPTOR_REQUERIDO": "Escribe quién recibió.",
+        "CODIGO_NO_EMITIDO": "Este envío no tiene código de entrega.",
+        "CODIGO_BLOQUEADO": "El código se bloqueó tras 5 errores. Un administrador debe reiniciarlo.",
+        "COBRO_REQUERIDO": "Es contraentrega: registra el cobro (medio y monto).",
+        "MOTIVO_INVALIDO": "Elige un motivo de la lista.",
+        "ESTADO_SIN_NOVEDAD": "En este estado no se puede registrar una novedad.",
+        "VENTA_NO_ENCONTRADA": "No encontramos la venta.",
+        "VENTA_ANULADA": "La venta está anulada.",
+        "DIRECCION_REQUERIDA": "Falta la dirección de entrega.",
+        "ERROR": "No se pudo completar. Intenta de nuevo.",
+        "DOMICILIARIO_NO_COBRA": "Ese domiciliario no cobra contraentrega y el envío tiene cobro.",
+        "ENVIO_AJENO": "Ese envío es de otro domiciliario."
+      },
+      "chips": {
+        "intento": "{n}.º intento",
+        "contraentrega": "Contraentrega {monto} · {estado}"
+      },
+      "cobro": {
+        "pendiente": "Pendiente",
+        "cobrado": "Cobrado",
+        "girado": "Girado a caja"
+      },
+      "acciones": {
+        "avisar": "Avisar al cliente",
+        "llamar": "Llamar al cliente",
+        "asignar": "Asignar domiciliario",
+        "cambiarDomiciliario": "Cambiar domiciliario",
+        "listoParaSalir": "Marcar listo para salir",
+        "recogido": "Marcar recogido",
+        "enCamino": "Marcar en camino",
+        "novedad": "Registrar intento fallido",
+        "reintentar": "Reintentar entrega",
+        "entregar": "Marcar entregado",
+        "imprimirGuia": "Imprimir guía",
+        "devolver": "Devolver a la sede…",
+        "cancelar": "Cancelar envío…"
+      },
+      "ok": {
+        "listo": "Listo para salir",
+        "recogido": "Marcado como recogido",
+        "enCamino": "En camino: se avisó al cliente",
+        "reintentar": "Sale de nuevo a entregar",
+        "devolver": "Envío devuelto a la sede",
+        "cancelar": "Envío cancelado",
+        "avisar": "Aviso enviado al cliente"
+      },
+      "linea": {
+        "titulo": "Línea de tiempo",
+        "vacia": "Aún no hay movimientos.",
+        "porVenir": "por venir",
+        "intento": "{estado} ({n}.º intento)"
+      },
+      "destinatario": {
+        "titulo": "Destinatario y dirección",
+        "cambiar": "Cambiar dirección",
+        "recibe": "Recibe",
+        "telefono": "Teléfono",
+        "direccion": "Dirección",
+        "barrio": "Barrio",
+        "ciudad": "Ciudad",
+        "indicaciones": "Indicaciones",
+        "comoLlegar": "Cómo llegar"
+      },
+      "items": {
+        "titulo": "Ítems ({n})",
+        "sinItems": "El envío no tiene ítems registrados.",
+        "envio": "Envío",
+        "total": "Total",
+        "totalCobrar": "Total a cobrar al entregar"
+      },
+      "intentos": {
+        "titulo": "Intentos fallidos y novedades",
+        "intento": "Intento {n} · {hora}",
+        "reprogramado": "Reprogramado {dia}",
+        "foto": "Foto {n}",
+        "reintentarAhora": "Reintentar ahora"
+      },
+      "prueba": {
+        "titulo": "Prueba de entrega",
+        "foto": "Foto",
+        "fotoTomada": "la tomó el domiciliario",
+        "sinFoto": "sin foto",
+        "pendiente": "pendiente",
+        "firmaOCodigo": "Firma o código",
+        "codigoValidado": "Código validado",
+        "validadoCliente": "validado con el cliente",
+        "firmaTomada": "firma tomada",
+        "sinFirma": "sin firma",
+        "codigoCuatro": "código de 4 dígitos",
+        "quien": "Quién recibió",
+        "ubicacion": "Ubicación",
+        "verMapa": "ver en el mapa",
+        "sinUbicacion": "sin ubicación",
+        "alConfirmar": "se toma al confirmar",
+        "recibio": "Recibió",
+        "documento": "Documento",
+        "terminadoEn": "{tipo} terminada en {fin}",
+        "cobro": "Cobro",
+        "notas": "Notas",
+        "ayuda": "Se guarda al marcar «Entregado» desde «Mis envíos» o desde aquí."
+      },
+      "avisos": {
+        "titulo": "Avisos enviados al cliente",
+        "ninguno": "Aún no se ha enviado ningún aviso.",
+        "reenviar": "Reenviar",
+        "momentos": {
+          "recibido": "Pedido recibido",
+          "confirmado": "Pedido confirmado",
+          "listo": "Pedido listo",
+          "en_camino": "Tu pedido va en camino",
+          "entregado": "Entregado",
+          "rechazado": "Pedido rechazado",
+          "novedad": "Novedad en la entrega"
+        },
+        "canales": {
+          "email": "Correo",
+          "whatsapp": "WhatsApp"
+        },
+        "estados": {
+          "queued": "En cola",
+          "sent": "Enviado",
+          "delivered": "Entregado",
+          "failed": "Falló",
+          "no_data": "Sin datos de contacto"
+        }
+      },
+      "domiciliario": {
+        "titulo": "Domiciliario",
+        "externo": "Domiciliario externo",
+        "propio": "Domiciliario de la empresa",
+        "telefono": "Teléfono",
+        "vehiculo": "Vehículo",
+        "sinVehiculo": "Sin vehículo",
+        "asignado": "Asignado",
+        "ninguno": "Aún no tiene domiciliario."
+      },
+      "contraentrega": {
+        "titulo": "Contraentrega",
+        "cobrado": "Cobrado",
+        "cuadre": "Se cuadra en",
+        "sinCuadre": "Aún sin cuadre",
+        "camino": "Estado del recaudo",
+        "lineas": {
+          "pending": "Cuadre abierto",
+          "received": "Recibido en caja",
+          "shortage": "Con faltante",
+          "cancelled": "Anulado"
+        }
+      },
+      "codigo": {
+        "titulo": "Código de entrega",
+        "verificado": "Validado {hora}",
+        "intentos": "{n} de {max} intentos errados",
+        "reiniciar": "Reiniciar código",
+        "reiniciado": "Código reiniciado",
+        "errorReiniciar": "No se pudo reiniciar el código.",
+        "soloAdmin": "Solo lo ven los administradores. El cliente lo tiene en su enlace de rastreo."
+      },
+      "documentos": {
+        "titulo": "Documentos",
+        "pedido": "Pedido",
+        "guia": "Guía",
+        "cuadre": "Cuadre",
+        "verSeguimiento": "Ver seguimiento"
+      },
+      "devolver": {
+        "titulo": "¿Devolver el envío a la sede?",
+        "descripcion": "El envío queda como devuelto. El stock se reingresa o va a merma desde Inventario.",
+        "confirmar": "Devolver a la sede"
+      },
+      "cancelar": {
+        "titulo": "¿Cancelar el envío?",
+        "descripcion": "El envío no sale. Si el cliente ya pagó, el reembolso se hace desde el pedido.",
+        "confirmar": "Cancelar envío"
+      },
+      "entregar": {
+        "titulo": "Marcar entregado",
+        "descripcion": "Queda como prueba de entrega. En contraentrega se registra el cobro.",
+        "receptor": "Quién recibió",
+        "relacion": "Relación",
+        "documento": "Documento de quien recibe",
+        "documentoAyuda": "Opcional. Solo se muestran los últimos 4 dígitos.",
+        "relaciones": {
+          "titular": "Titular",
+          "familiar": "Familiar",
+          "porteria": "Portería",
+          "otro": "Otra persona"
+        },
+        "cobroTitulo": "Contraentrega: cobrar {monto}",
+        "codigo": "Código de entrega",
+        "codigoAyuda": "El cliente lo tiene en su enlace de rastreo.",
+        "codigoErrado": "Código errado. Quedan {n} de {max} intentos.",
+        "codigoBloqueado": "El código se bloqueó. Un administrador debe reiniciarlo.",
+        "metodo": "Medio de cobro",
+        "monto": "Monto cobrado",
+        "elegir": "Elegir…",
+        "medios": {
+          "cash": "Efectivo",
+          "card": "Datáfono",
+          "transfer": "Transferencia",
+          "qr": "QR"
+        },
+        "notas": "Notas",
+        "confirmar": "Marcar entregado",
+        "cancelar": "Cancelar",
+        "ok": "Envío entregado",
+        "error": "No se pudo marcar entregado",
+        "faltante": {
+          "receptor": "Escribe quién recibió.",
+          "codigo": "El código tiene 4 dígitos.",
+          "metodo": "Elige el medio de cobro.",
+          "monto": "Escribe el monto cobrado."
+        }
+      },
+      "novedad": {
+        "titulo": "Registrar intento fallido",
+        "descripcion": "El envío queda con novedad y se puede reintentar, reasignar o devolver.",
+        "motivo": "Motivo",
+        "elegir": "Elegir…",
+        "detalle": "Qué pasó",
+        "reprogramar": "Reprogramar para",
+        "reprogramarAyuda": "Opcional. Día en que se intenta de nuevo.",
+        "faltaMotivo": "Elige el motivo.",
+        "faltaDetalle": "Cuenta qué pasó.",
+        "avisoPendiente": "Si el pedido es de la tienda, el cliente recibe el aviso «Novedad» según los ajustes de Avisos al cliente.",
+        "confirmar": "Registrar",
+        "cancelar": "Cancelar",
+        "ok": "Novedad registrada",
+        "error": "No se pudo registrar la novedad"
+      },
+      "direccion": {
+        "titulo": "Cambiar dirección",
+        "descripcion": "La nueva dirección la ve el domiciliario en «Mis envíos».",
+        "direccion": "Dirección",
+        "ciudad": "Ciudad",
+        "instrucciones": "Indicaciones",
+        "faltaDireccion": "Escribe la dirección.",
+        "guardar": "Guardar",
+        "cancelar": "Cancelar",
+        "ok": "Dirección actualizada",
+        "error": "No se pudo cambiar la dirección"
+      }
+    },
+    "seguimiento": {
+      "titulo": "Seguimiento",
+      "subtitulo": "Novedades y envíos que necesitan a alguien hoy",
+      "subtituloMovil": "Logística · {n} por resolver",
+      "migas": {
+        "logistica": "Logística"
+      },
+      "actualizar": "Actualizar",
+      "consultarProveedores": "Consultar proveedores ahora",
+      "irPorDespachar": "Ir a Por despachar",
+      "tabla": "Envíos por resolver",
+      "errorCarga": "No pudimos cargar el seguimiento.",
+      "sinResultados": "Ningún envío por resolver coincide con la búsqueda o los filtros.",
+      "sinPermiso": {
+        "titulo": "No tienes acceso al seguimiento",
+        "descripcion": "Pide a un administrador acceso a Logística."
+      },
+      "sustantivo": {
+        "singular": "envío",
+        "plural": "envíos"
+      },
+      "orden": "Ordenado por plazo: lo que vence primero, arriba",
+      "domiciliarioPropio": "Domiciliario propio",
+      "guia": "Guía {guia}",
+      "notaReintento": "Reintento desde Seguimiento",
+      "notaDevolucion": "Devuelto desde Seguimiento",
+      "mensajeCliente": "Hola, te escribimos por tu pedido {numero}.",
+      "buscar": {
+        "placeholder": "Buscar guía, pedido o cliente",
+        "etiqueta": "Buscar envíos"
+      },
+      "chips": {
+        "etiqueta": "Qué mostrar",
+        "todo": "Todo {n}",
+        "novedades": "Novedades {n}",
+        "sinMovimiento": "Sin movimiento {n}"
+      },
+      "kpis": {
+        "etiqueta": "Resumen del seguimiento",
+        "novedades": "Novedades abiertas",
+        "vencenHoy": "{count, plural, one {# vence hoy} other {# vencen hoy}}",
+        "sinVencer": "ninguna vence hoy",
+        "sinMovimiento": "Sin movimiento más de 24 h",
+        "conTransportadora": "{count, plural, one {# con transportadora} other {# con transportadora}}",
+        "sinMovimientoDetalle": "envíos quietos",
+        "primerIntento": "Entregas al primer intento (30 días)",
+        "meta": "Meta {meta}",
+        "avisosHoy": "Avisos al cliente hoy",
+        "fallaronWhatsApp": "{count, plural, one {# falló por WhatsApp} other {# fallaron por WhatsApp}}",
+        "avisosDetalle": "correo y WhatsApp",
+        "sinMovimientoTitulo": "Sin movimiento",
+        "sinMovimientoUmbral": "propio desde {propio} h · transportadora desde {transportadora} h"
+      },
+      "columnas": {
+        "envio": "Envío",
+        "quePaso": "Qué pasó",
+        "destino": "Destino",
+        "proveedor": "Proveedor",
+        "plazo": "Plazo"
+      },
+      "canales": {
+        "web": "Tienda web",
+        "pos": "POS",
+        "qr": "Menú QR",
+        "manual": "Manual",
+        "marketplace": "Marketplace"
+      },
+      "quePaso": {
+        "sinMovimiento": "Sin movimiento {horas} h",
+        "motivoIntento": "{motivo} · {n}.º intento"
+      },
+      "plazo": {
+        "hoy": "Hoy {hora}",
+        "otroDia": "{dia} {hora}"
+      },
+      "consecuencias": {
+        "reclamo": "luego se abre reclamo",
+        "devolucion": "luego la devuelven",
+        "ultimo_intento": "último intento",
+        "vuelve_a_bodega": "luego vuelve a bodega",
+        "revisar": "revisar con el domiciliario"
+      },
+      "acciones": {
+        "reintentar": "Reintentar",
+        "cambiar_direccion": "Cambiar dirección",
+        "contactar_cliente": "Contactar cliente",
+        "consultar_proveedor": "Consultar proveedor",
+        "abrir_reclamo": "Abrir reclamo",
+        "ver_detalle": "Ver detalle del envío",
+        "devolver": "Devolver al remitente…"
+      },
+      "masivo": {
+        "avisar": "Avisar al cliente"
+      },
+      "motivos": {
+        "conector": "Necesita el conector de la transportadora (Integraciones › Conexiones › Logística).",
+        "propio": "Es de domiciliario propio: no hay proveedor que consultar.",
+        "noReintentable": "Ninguno de los seleccionados se puede reintentar."
+      },
+      "filtros": {
+        "proveedor": "Proveedor",
+        "todos": "Todos",
+        "propio": "Domiciliario propio",
+        "transportadora": "Transportadora",
+        "limpiar": "Limpiar todo",
+        "verN": "{count, plural, one {Ver # envío} other {Ver # envíos}}"
+      },
+      "devolver": {
+        "titulo": "¿Devolver {numero} al remitente?",
+        "descripcion": "El envío queda como devuelto y sale de la lista por resolver.",
+        "confirmar": "Devolver",
+        "volver": "Volver"
+      },
+      "toast": {
+        "reintentados": "{count, plural, one {# envío sale de nuevo} other {# envíos salen de nuevo}}",
+        "devuelto": "Envío {numero} devuelto",
+        "avisados": "{count, plural, one {# cliente avisado} other {# clientes avisados}}",
+        "sinAviso": "{count, plural, one {# envío sin aviso} other {# envíos sin aviso}}",
+        "sinAvisoAyuda": "Solo se avisa a los pedidos de la tienda que van en camino.",
+        "error": "No se pudo completar"
+      },
+      "vacio": {
+        "titulo": "Nada por resolver",
+        "descripcion": "No hay novedades ni envíos quietos. Lo que necesite a alguien aparece aquí."
+      }
+    },
+    "promesa": {
+      "minutos": "{n} min",
+      "horas": "{n, plural, one {# hora} other {# horas}}",
+      "dias": "{n, plural, one {# día} other {# días}}",
+      "hasta": "hasta {tiempo}",
+      "rango": {
+        "minutos": "{desde}–{hasta} min",
+        "horas": "{desde}–{hasta} horas",
+        "dias": "{desde}–{hasta} días"
+      }
+    }
+  },
+  "transporte": {
+    "tiposVehiculo": {
+      "bus": "Bus",
+      "minibus": "Buseta",
+      "truck": "Camión",
+      "car": "Carro",
+      "van": "Van",
+      "motorcycle": "Moto",
+      "trailer": "Tractomula",
+      "boat": "Lancha",
+      "yacht": "Yate",
+      "other": "Otro"
+    },
+    "motivos": {
+      "retraso": "Retraso",
+      "falla_mecanica": "Falla mecánica",
+      "accidente": "Accidente de tránsito",
+      "control_transito": "Control de tránsito",
+      "pasajero": "Pasajero (salud o conducta)",
+      "carga": "Carga (faltante o daño)",
+      "objeto_olvidado": "Objeto olvidado",
+      "clima": "Clima o estado del mar"
+    },
+    "ajustes": {
+      "cargando": "Cargando…",
+      "errorCargar": "No se pudieron leer los ajustes de transporte",
+      "guardado": "Ajustes de transporte guardados",
+      "errorGuardar": "No se pudieron guardar. Revisa tus permisos.",
+      "soloLectura": "Solo lectura: cambiar estos ajustes pide el permiso «Gestionar transporte».",
+      "errores": {
+        "retencion_invalida": "La retención va de 1 a 120 minutos por canal.",
+        "plazos_invalidos": "Revisa los plazos de cambio y anulación.",
+        "porcentaje_invalido": "Los porcentajes van de 0 a 100.",
+        "tipos_invalidos": "Revisa los tipos de vehículo.",
+        "motivos_invalidos": "Cada motivo necesita nombre y debe quedar al menos uno activo.",
+        "booleano_invalido": "Hay un interruptor sin valor.",
+        "SIN_PERMISO": "Te falta el permiso «Gestionar transporte»."
+      },
+      "pasajes": {
+        "titulo": "Venta de pasajes y retención",
+        "retencion": "Retención del puesto",
+        "retencionDescripcion": "Cuánto queda apartado un puesto mientras se cobra, según dónde se vende.",
+        "taquilla": "Taquilla",
+        "web": "Tienda web",
+        "pos": "POS",
+        "cambios": "Cambios y anulaciones",
+        "cambiosDescripcion": "Hasta cuándo se cambia sin costo o se anula con reembolso, y cuánto se devuelve.",
+        "cambioSinCosto": "Cambio sin costo",
+        "anulacion": "Anulación",
+        "reembolso": "Reembolso",
+        "minAntes": "min antes",
+        "hAntes": "h antes",
+        "liberar": "Liberar el puesto al vencer la retención",
+        "liberarDescripcion": "Si se apaga, taquilla lo libera a mano desde Boletos.",
+        "nota": "La venta con plano de puestos y retención llega con la fase Pasajes; estos valores quedan guardados para ella."
+      },
+      "liquidacion": {
+        "titulo": "Liquidación",
+        "descripcion": "Cómo se paga a quien maneja y a los dueños de los vehículos afiliados.",
+        "conductores": "Conductores y tripulación",
+        "conductoresDescripcion": "Se pagan por nómina, con los viajes y novedades del periodo.",
+        "irRrhh": "Recursos humanos",
+        "propietarios": "Propietarios afiliados",
+        "propietariosDescripcion": "Se pagan por cuentas por pagar, con el producido de cada vehículo.",
+        "irFinanzas": "Finanzas",
+        "administracion": "Administración sobre afiliados",
+        "administracionDescripcion": "Porcentaje del producido que retiene la empresa, según el contrato."
+      },
+      "rndc": {
+        "titulo": "RNDC · manifiesto electrónico de carga",
+        "descripcion": "Las credenciales del web service del Ministerio de Transporte (NIT, código de habilitación, ambiente, usuario y contraseña) se guardan en Integraciones › Conexiones, con «Ver» en claro como las pasarelas. La conexión con el RNDC llega con la fase Carga.",
+        "accion": "Ir a Conexiones"
+      },
+      "tipos": {
+        "titulo": "Tipos de vehículo",
+        "descripcion": "Lancha y yate se suman a la lista: si hay al menos una embarcación activa, Viajes y Boletos muestran Embarcaciones. También existen moto, van, tractomula y otro.",
+        "agregar": "Agregar tipo",
+        "tipo": "Tipo",
+        "codigo": "Código",
+        "uso": "Uso habitual",
+        "activo": "Activo",
+        "activoDe": "{tipo} activo",
+        "nuevo": "Nuevo",
+        "usos": {
+          "transporte": "Transporte",
+          "logistica": "Logística",
+          "ambos": "Transporte y Logística"
+        }
+      },
+      "motivos": {
+        "titulo": "Motivos de novedad",
+        "descripcion": "Una sola lista para la app del conductor, Viajes › Novedades y el diálogo de reporte. El orden de aquí es el orden en que se ofrecen.",
+        "agregar": "Agregar motivo",
+        "nuevo": "Nombre del motivo nuevo",
+        "placeholder": "Ej.: Pinchazo",
+        "anadir": "Agregar",
+        "cancelar": "Cancelar",
+        "nombreDe": "Nombre del motivo {n}",
+        "gravedadDe": "Gravedad de {motivo}",
+        "bloquea": "Bloquea el vehículo",
+        "inactivo": "Inactivo",
+        "subir": "Subir",
+        "bajar": "Bajar",
+        "desactivar": "Desactivar",
+        "activar": "Activar",
+        "quitar": "Quitar",
+        "ultimoActivo": "Debe quedar al menos un motivo activo",
+        "gravedades": {
+          "leve": "Leve",
+          "moderada": "Moderada",
+          "grave": "Grave"
+        }
+      },
+      "excepciones": {
+        "titulo": "Excepciones al bloqueo de despacho",
+        "descripcion": "Un viaje con documentos vencidos no sale. Cada excepción vale para un solo viaje, pide motivo y queda en la planilla de despacho y en la bitácora del viaje.",
+        "quien": "Quién puede autorizar",
+        "quienDescripcion": "Quien tenga el permiso «Autorizar excepción de despacho» (lo trae el cargo «Supervisor de despacho»). Se resuelve en el servidor; el permiso se da en Equipo y roles.",
+        "irRoles": "Equipo y roles",
+        "vehiculo": "Por documentos del vehículo",
+        "vehiculoDescripcion": "SOAT, técnico-mecánica, póliza y tarjeta de operación.",
+        "conductor": "Por documentos del conductor",
+        "conductorDescripcion": "Licencia y examen médico.",
+        "manifiesto": "Por manifiesto de carga faltante",
+        "manifiestoDescripcion": "El viaje sale y el manifiesto se emite en las 2 horas siguientes. Aplica cuando llegue el manifiesto electrónico (fase Carga).",
+        "pin": "Pedir el PIN del supervisor",
+        "pinDescripcion": "Es el PIN de Recursos humanos (el mismo del kiosco de marcación). Se verifica en el servidor; nunca se guarda en el equipo.",
+        "noDisponible": "Todavía no está disponible."
+      }
+    },
+    "pestanas": {
+      "viajesAria": "Vistas de Viajes",
+      "rutasAria": "Vistas de Rutas",
+      "boletosAria": "Vistas de Boletos",
+      "todos": "Todos los viajes",
+      "despachos": "Despachos de hoy",
+      "novedades": "Novedades",
+      "rutas": "Rutas",
+      "paradas": "Paradas",
+      "boletos": "Boletos",
+      "tarifas": "Tarifas"
+    },
+    "viajes": {
+      "titulo": "Viajes",
+      "subtitulo": "{fecha} · {n, plural, =0 {sin viajes hoy} one {# viaje hoy} other {# viajes hoy}} · cada salida pasa por el despacho",
+      "migas": {
+        "transporte": "Transporte"
+      },
+      "actualizar": "Actualizar",
+      "kpis": {
+        "etiqueta": "Resumen del día",
+        "hoy": "Viajes de hoy",
+        "hoyDetalle": "{despachados} despachados · {pendientes} por despachar",
+        "despachados": "Despachados hoy",
+        "despachadosDetalle": "con su planilla de despacho",
+        "porDespachar": "Por despachar",
+        "porDespacharDetalle": "{listos} listos · {bloqueados} bloqueados",
+        "bloqueados": "Bloqueados",
+        "bloqueadosDetalle": "documentos vencidos o sin asignar",
+        "porVencer": "{n, plural, one {# documento vence} other {# documentos vencen}} en 30 días",
+        "bloqueadosVacio": "todo al día"
+      }
+    },
+    "despachos": {
+      "causas": {
+        "sin_vehiculo": "Sin vehículo asignado",
+        "sin_conductor": "Sin conductor asignado",
+        "sin_credencial": "Conductor sin licencia registrada",
+        "soat": "SOAT",
+        "tecnomecanica": "Revisión técnico-mecánica",
+        "poliza": "Póliza de responsabilidad",
+        "tarjeta_operacion": "Tarjeta de operación",
+        "licencia": "Licencia de conducción",
+        "examen_medico": "Examen médico",
+        "matricula": "Matrícula",
+        "navegabilidad": "Certificado de navegabilidad",
+        "otro": "Otro documento"
+      },
+      "venceEn": "{documento} vence en {dias, plural, =0 {hoy} one {# día} other {# días}}",
+      "cumplimiento": {
+        "listo": "Documentos al día",
+        "vence": "Vence pronto",
+        "bloqueado": "Bloqueado",
+        "excepcion": "Excepción autorizada",
+        "despachado": "Despachado",
+        "cancelado": "Cancelado"
+      },
+      "estados": {
+        "listo": "Listo para salir",
+        "bloqueado": "Bloqueado",
+        "despachado": "En ruta",
+        "excepcion": "En ruta con excepción",
+        "cancelado": "Cancelado"
+      },
+      "revision": {
+        "vencio": "venció el {fecha}",
+        "vence": "vence el {fecha}",
+        "sinFecha": "sin fecha registrada",
+        "asignar": "asígnalo en el viaje",
+        "registrarLicencia": "regístrala en Conductores",
+        "hoy": "hoy {hora}",
+        "vehiculo": "Vehículo · {placa}",
+        "conductor": "Conductor · {nombre}",
+        "viaje": "Viaje",
+        "pasajeros": "{vendidos} de {total} puestos vendidos",
+        "planilla": "Planilla de despacho",
+        "planillaAlDespachar": "se genera al despachar"
+      },
+      "dialogo": {
+        "titulo": "Despachar {codigo}",
+        "cancelar": "Cancelar",
+        "despachar": "Despachar",
+        "autorizarYDespachar": "Autorizar y despachar",
+        "faltaExcepcion": "Escribe el motivo y el PIN del supervisor",
+        "sinExcepcion": "Este bloqueo no admite excepción: asigna lo que falta o cambia de vehículo",
+        "cambiarVehiculo": "Cambiar vehículo",
+        "eligeVehiculo": "Elige un vehículo",
+        "noSale": "No se puede despachar",
+        "explicaExcepcion": "El viaje no sale hasta corregirlo o cambiar de vehículo. Si no hay otro, solo un supervisor puede autorizar una excepción, y queda registrada.",
+        "explicaSinExcepcion": "Corrige lo que falta para que el viaje pueda salir.",
+        "cambiarA": "Cambiar a otro vehículo",
+        "puestos": "{n} puestos",
+        "cambiarNota": "Los pasajeros conservan su puesto si el otro vehículo tiene el mismo plano."
+      },
+      "excepcion": {
+        "titulo": "Despachar con excepción autorizada",
+        "descripcion": "La autoriza quien tenga el permiso «Autorizar excepción de despacho» (cargo «Supervisor de despacho»), con su PIN. Vale solo para este viaje.",
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Ej.: el SOAT se renovó hoy y la póliza llega al correo antes de las 15:00",
+        "motivoMin": "Mínimo {n} caracteres.",
+        "pin": "PIN del supervisor",
+        "pinAyuda": "El PIN de Recursos humanos (6 dígitos). Se verifica en el servidor.",
+        "registro": "Queda registrado el motivo, quién autoriza, quién despacha y cuándo. Sale en la planilla y en la bitácora del viaje.",
+        "supervisor": "Supervisor que autoriza",
+        "eligeSupervisor": "Elige quién autoriza",
+        "sinAutorizadores": "Nadie tiene el permiso «Autorizar excepción de despacho»",
+        "sinPinOpcion": "{nombre} (sin PIN)",
+        "sinPin": "Esta persona no tiene PIN asignado; asígnelo en Recursos humanos.",
+        "irAsignarPin": "Ir a Recursos humanos › Marcación › PIN y carnés"
+      },
+      "resultado": {
+        "no_admite_excepcion": "Este bloqueo no admite excepción. Revisa Configuración › Transporte.",
+        "motivo_invalido": "El motivo debe tener entre 10 y 500 caracteres.",
+        "pin_rechazado": "El PIN no es válido o esa persona no puede autorizar excepciones.",
+        "pin_bloqueado": "Demasiados PIN errados. Espera 15 minutos.",
+        "sin_permiso_excepcion": "Te falta el permiso «Autorizar excepción de despacho».",
+        "no_despachable": "Este viaje ya salió o fue cancelado.",
+        "supervisor_sin_pin": "Esta persona no tiene PIN asignado; asígnelo en Recursos humanos."
+      },
+      "errores": {
+        "sin_permiso": "Te falta el permiso «Despachar viajes».",
+        "no_encontrado": "No se encontró el viaje.",
+        "error": "No se pudo despachar. Intenta de nuevo.",
+        "vehiculo": "No se pudo cambiar el vehículo.",
+        "carga": "No se pudieron cargar los despachos"
+      },
+      "toast": {
+        "despachado": "{codigo} despachado · planilla {planilla}",
+        "conExcepcion": "{codigo} despachado con excepción autorizada · planilla {planilla}",
+        "bloqueado": "{codigo} sigue bloqueado",
+        "vehiculoCambiado": "Vehículo de {codigo} cambiado",
+        "masivo": "{count, plural, one {# viaje despachado} other {# viajes despachados}}",
+        "masivoBloqueados": "{count, plural, one {# viaje no salió: ábrelo para ver por qué} other {# viajes no salieron: ábrelos para ver por qué}}"
+      },
+      "acciones": {
+        "verViaje": "Ver viaje",
+        "despachar": "Despachar",
+        "planilla": "Imprimir planilla",
+        "novedad": "Reportar novedad",
+        "planillaDe": "Imprimir planilla de {codigo}",
+        "despacharDe": "Despachar {codigo}"
+      },
+      "ocupacion": "{vendidos} de {total}",
+      "pasajeros": "pasajeros",
+      "planillaN": "Planilla {numero}",
+      "columnas": {
+        "sale": "Sale",
+        "viaje": "Viaje",
+        "vehiculo": "Vehículo",
+        "ocupacion": "Ocupación",
+        "cumplimiento": "Cumplimiento",
+        "estado": "Estado",
+        "acciones": "Acciones rápidas"
+      },
+      "sustantivo": {
+        "singular": "viaje",
+        "plural": "viajes"
+      },
+      "vacio": {
+        "titulo": "Sin viajes hoy",
+        "descripcion": "No hay salidas programadas para hoy en esta sede. Programa un viaje o genera los del día desde Horarios.",
+        "programar": "Programar viaje",
+        "horarios": "Ir a Horarios"
+      },
+      "buscar": {
+        "placeholder": "Buscar por viaje, placa o conductor…",
+        "etiqueta": "Buscar despachos"
+      },
+      "tabla": "Despachos de hoy",
+      "sinResultados": "Ningún viaje de hoy coincide con la búsqueda.",
+      "sinPermiso": {
+        "titulo": "Sin acceso a los despachos",
+        "descripcion": "Pide a un administrador el permiso «Ver transporte»."
+      },
+      "masivo": {
+        "despacharListos": "Despachar listos",
+        "sinListos": "La selección no tiene viajes listos para salir",
+        "imprimir": "Imprimir planillas",
+        "sinPlanillas": "La selección no tiene viajes despachados"
+      },
+      "pie": "Un viaje con documentos vencidos no sale; la excepción la autoriza un supervisor con su PIN.",
+      "verNovedades": "Ver novedades"
+    },
+    "planilla": {
+      "titulo": "Planilla de despacho",
+      "viaje": "Viaje",
+      "ruta": "Ruta",
+      "fecha": "Fecha",
+      "salida": "sale",
+      "llegada": "llega",
+      "vehiculo": "Vehículo",
+      "conductor": "Conductor",
+      "documento": "Documento",
+      "licencia": "Licencia",
+      "vence": "vence",
+      "pasajeros": "Pasajeros",
+      "puesto": "Puesto",
+      "nombre": "Nombre",
+      "valor": "Valor",
+      "total": "Total",
+      "sinPasajeros": "Sin pasajeros registrados",
+      "excepcion": "Excepción autorizada",
+      "autorizo": "Autorizó",
+      "despachado": "Despachado",
+      "firmaConductor": "Firma del conductor",
+      "firmaDespachador": "Firma del despachador",
+      "ventanaBloqueada": "El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para GO Admin.",
+      "error": "No se pudo preparar la planilla"
+    },
+    "flota": {
+      "titulo": "Flota",
+      "subtitulo": "Documentos de vehículos, embarcaciones y personas · avisos antes de vencer",
+      "migas": {
+        "transporte": "Transporte"
+      },
+      "actualizar": "Actualizar",
+      "irVehiculos": "Vehículos",
+      "conductor": "conductor",
+      "hace": "hace {n, plural, one {# día} other {# días}}",
+      "hoy": "vence hoy",
+      "en": "en {n, plural, one {# día} other {# días}}",
+      "columnas": {
+        "documento": "Documento",
+        "de": "De",
+        "vence": "Vence",
+        "estado": "Estado",
+        "bloquea": "¿Bloquea el despacho?",
+        "numero": "Número",
+        "archivo": "Archivo"
+      },
+      "estados": {
+        "vencido": "Vencido",
+        "por_vencer": "Por vencer",
+        "vigente": "Vigente"
+      },
+      "bloquea": {
+        "vehiculo": "Bloquea el despacho",
+        "conductor": "No se puede asignar",
+        "hasta": "No, hasta el {fecha}",
+        "no": "No bloquea"
+      },
+      "acciones": {
+        "verVehiculos": "Ir a Vehículos",
+        "verConductores": "Ir a Conductores",
+        "verArchivo": "Ver archivo",
+        "renovar": "Renovar documento",
+        "cargar": "Cargar documento",
+        "archivar": "Archivar"
+      },
+      "sustantivo": {
+        "singular": "documento",
+        "plural": "documentos"
+      },
+      "vacio": {
+        "titulo": "Sin vehículos ni conductores",
+        "descripcion": "Registra la flota y sus documentos para que los viajes revisen los vencimientos antes de salir.",
+        "agregarVehiculo": "Agregar vehículo",
+        "agregarConductor": "Agregar conductor"
+      },
+      "kpis": {
+        "etiqueta": "Resumen de la flota",
+        "vencidos": "Vencidos",
+        "vencidosDetalle": "bloquean el despacho",
+        "vencidosVacio": "ninguno",
+        "porVencer": "Vencen en 30 días",
+        "primero": "el primero el {fecha}",
+        "porVencerVacio": "ninguno en 30 días",
+        "vigentes": "Vigentes",
+        "vigilados": "de {n} documentos vigilados",
+        "mantenimiento": "En mantenimiento",
+        "sinFecha": "{n, plural, one {# sin fechas registradas} other {# sin fechas registradas}}",
+        "mantenimientoDetalle": "vehículos fuera de servicio",
+        "sinArchivo": "Sin archivo",
+        "sinArchivoDetalle": "solo tienen la fecha",
+        "enMantenimiento": "{n, plural, one {# vehículo en mantenimiento} other {# vehículos en mantenimiento}}"
+      },
+      "aviso": {
+        "titulo": "Cómo avisa",
+        "descripcion": "Aviso por la campana y el correo a quien gestiona Transporte y al conductor 30, 15 y 7 días antes. Vencido, el documento bloquea el despacho del vehículo o la asignación de la persona (Viajes › Despachos de hoy)."
+      },
+      "documentos": "Documentos y vencimientos",
+      "buscar": {
+        "placeholder": "Buscar por documento, placa o persona…",
+        "etiqueta": "Buscar documentos"
+      },
+      "filtroAtencion": "Vencidos o por vencer",
+      "verTodos": "Ver todos",
+      "sinDocumentos": {
+        "titulo": "Sin fechas de vencimiento",
+        "descripcion": "Registra las fechas del SOAT, la técnico-mecánica, la póliza y la licencia en Vehículos y Conductores."
+      },
+      "todoAlDia": "Nada vencido ni por vencer en 30 días.",
+      "sinResultados": "Ningún documento coincide con la búsqueda.",
+      "errorCarga": "No se pudieron cargar los documentos",
+      "masivo": {
+        "exportar": "Exportar CSV"
+      },
+      "subir": "Subir documento",
+      "archivoVer": "Ver archivo",
+      "sinArchivo": "Sin archivo",
+      "toast": {
+        "guardado": "Documento guardado",
+        "archivado": "Documento archivado"
+      },
+      "errores": {
+        "archivo": "No se pudo abrir el archivo",
+        "archivo_grande": "El archivo pasa de 10 MB.",
+        "archivo_tipo": "Solo PDF o imagen (JPG, PNG, WEBP).",
+        "subida": "No se pudo subir el archivo.",
+        "sin_permiso": "Te falta el permiso «Gestionar transporte».",
+        "error": "No se pudo guardar el documento."
+      },
+      "archivar": {
+        "titulo": "¿Archivar {documento} de {de}?",
+        "descripcion": "Deja de vigilarse y de contar para el despacho. Queda en el historial y la fecha de siempre del vehículo o del conductor no cambia.",
+        "confirmar": "Archivar",
+        "volver": "Volver"
+      },
+      "dialogo": {
+        "titulo": "Subir documento",
+        "tituloRenovar": "Renovar documento",
+        "descripcion": "El nuevo queda vigente y el anterior pasa al historial.",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar",
+        "faltan": "Elige de quién es y la fecha de vencimiento",
+        "de": "Es de",
+        "vehiculo": "Vehículo",
+        "conductor": "Conductor",
+        "elegir": "Elegir",
+        "sinDuenos": "No hay registros",
+        "tipo": "Documento",
+        "numero": "Número",
+        "entidad": "Entidad",
+        "entidadPlaceholder": "Aseguradora, CDA, tránsito…",
+        "categoria": "Categoría",
+        "vence": "Vence",
+        "archivo": "Archivo",
+        "archivoAyuda": "PDF o imagen, hasta 10 MB. Se guarda privado; se abre con un enlace temporal.",
+        "bloquea": "Bloquea el despacho al vencer",
+        "bloqueaAyuda": "SOAT, técnico-mecánica, póliza, tarjeta de operación, licencia y examen siempre bloquean.",
+        "errores": {
+          "archivo_grande": "El archivo pasa de 10 MB.",
+          "archivo_tipo": "Solo PDF o imagen (JPG, PNG, WEBP)."
+        }
+      }
+    },
+    "pasajes": {
+      "titulo": "Vender pasaje",
+      "subtitulo": "Taquilla: elige el viaje y el puesto; queda retenido mientras se cobra.",
+      "migas": {
+        "transporte": "Transporte",
+        "boletos": "Boletos"
+      },
+      "canalTaquilla": "Canal: Taquilla",
+      "retencionMin": "Retención en taquilla: {n} min",
+      "sinCaja": {
+        "titulo": "El cobro con la caja del POS todavía no está conectado",
+        "descripcion": "El boleto se emite «Pendiente de pago» o «Pagado», como en el diálogo de siempre. Cobrar con la caja se hará reutilizando el POS, sin una segunda caja."
+      },
+      "sinViajes": {
+        "titulo": "No hay viajes para vender",
+        "descripcion": "Programa un viaje o genera los del día desde Horarios.",
+        "programar": "Programar viaje"
+      },
+      "viaje": "Viaje",
+      "eligeViaje": "Elige un viaje",
+      "libres": "{n, plural, one {# libre} other {# libres}}",
+      "sube": "Sube en",
+      "baja": "Baja en",
+      "eligeParada": "Elige la parada",
+      "plano": {
+        "titulo": "Plano de puestos",
+        "ayuda": "Toca un puesto libre; queda retenido {n} min mientras cobras.",
+        "resumen": "{vendidos} vendidos · {retenidos} retenidos · {libres} libres",
+        "aria": "Plano de puestos",
+        "timon": "Timón",
+        "conductor": "Conductor",
+        "puerta": "Puerta",
+        "puestoAria": "Puesto {puesto}, {estado}",
+        "ventana": "Ventanilla",
+        "leyenda": "Leyenda del plano",
+        "estados": {
+          "libre": "Libre",
+          "seleccionado": "Seleccionado",
+          "vendido": "Vendido",
+          "retenido": "Retenido",
+          "bloqueado": "Bloqueado"
+        }
+      },
+      "sinPlano": {
+        "titulo": "Este vehículo no tiene plano de puestos",
+        "sinVehiculo": "El viaje no tiene vehículo asignado",
+        "descripcion": "Elige una plantilla para crearlo (pide el permiso «Gestionar transporte»).",
+        "plantilla": "Plantilla",
+        "crear": "Crear plano"
+      },
+      "plantillas": {
+        "bus40": "Bus 40 (2+2)",
+        "buseta19": "Buseta 19",
+        "lancha24": "Lancha 24",
+        "yate12": "Yate 12"
+      },
+      "pasajero": "Pasajero",
+      "pasajeroPuesto": "Pasajero · puesto {puesto}",
+      "retenido": "Puesto {puesto} retenido para ti · {tiempo} min",
+      "eligePuesto": "Toca un puesto libre del plano.",
+      "documento": "Documento",
+      "nombre": "Nombre",
+      "telefono": "Celular",
+      "tarifa": "Tarifa",
+      "tarifaBase": "Tarifa del viaje",
+      "resumen": "Resumen",
+      "puesto": "Puesto",
+      "puestoVentana": "{puesto} · ventanilla",
+      "total": "Total",
+      "pago": {
+        "pendiente": "Pendiente de pago",
+        "pagado": "Pagado",
+        "etiqueta": "Estado del pago"
+      },
+      "faltan": "Elige un puesto y escribe el nombre del pasajero",
+      "emitir": "Emitir boleto · {valor}",
+      "emitirSinValor": "Emitir boleto",
+      "verBoletos": "Ver boletos",
+      "toast": {
+        "retencionVencida": "Venció la retención: el puesto se liberó",
+        "emitido": "Boleto {numero} emitido · puesto {puesto}",
+        "planoCreado": "Plano creado y aplicado al vehículo"
+      },
+      "errores": {
+        "viajes": "No se pudieron cargar los viajes",
+        "plano": "No se pudo crear el plano. Revisa tus permisos."
+      },
+      "respuestas": {
+        "error": "No se pudo completar. Intenta de nuevo.",
+        "ocupado": "Ese puesto ya no está libre.",
+        "viaje_cerrado": "El viaje ya salió o se canceló.",
+        "datos_invalidos": "Revisa el nombre del pasajero.",
+        "no_cambiable": "Este boleto ya no se puede cambiar.",
+        "fuera_de_plazo": "Fuera del plazo de cambio sin costo: solo quien gestiona Transporte puede cambiarlo.",
+        "no_anulable": "Este boleto ya no se puede anular.",
+        "motivo_invalido": "Escribe el motivo.",
+        "retenido": "Puesto retenido",
+        "emitido": "Boleto emitido",
+        "cambiado": "Boleto cambiado",
+        "anulado": "Boleto anulado"
+      },
+      "cambiar": {
+        "titulo": "Cambiar boleto {numero}",
+        "descripcion": "Puesto actual: {puesto}. Elige el viaje y el puesto nuevo.",
+        "cancelar": "Cancelar",
+        "confirmar": "Cambiar boleto",
+        "eligePuesto": "Elige un puesto libre",
+        "sinCosto": "Sin costo: faltan más de {n} min para la salida.",
+        "fueraDePlazo": "Fuera de plazo (menos de {n} min para la salida): solo quien gestiona Transporte puede cambiarlo.",
+        "viaje": "Viaje",
+        "sinPlano": "Este viaje no tiene plano de puestos.",
+        "hecho": "Boleto {numero} cambiado al puesto {puesto}"
+      },
+      "anular": {
+        "titulo": "Anular boleto {numero}",
+        "descripcion": "El puesto queda libre. La anulación queda registrada con su motivo.",
+        "volver": "Volver",
+        "confirmar": "Anular boleto",
+        "faltaMotivo": "Escribe el motivo",
+        "conReembolso": "Se devuelve {valor} ({pct} % del pasaje).",
+        "sinPago": "Sin reembolso: el boleto no estaba pagado.",
+        "fueraDePlazo": "Sin reembolso: faltan menos de {n} h para la salida.",
+        "notaCaja": "El reembolso queda registrado en el boleto; devolver el dinero se hace por la caja.",
+        "motivo": "Motivo",
+        "hecho": "Boleto {numero} anulado",
+        "hechoReembolso": "Boleto {numero} anulado · reembolso {valor}"
+      }
+    }
+  },
+  "ventas": {
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Tienda web",
+      "menu_qr": "Menú QR",
+      "marketplace": "Marketplace",
+      "manual": "Manual"
+    },
+    "todas": {
+      "abrirPos": "Abrir POS",
+      "nuevoPedidoManual": "Nuevo pedido manual",
+      "verEnReportes": "Ver ventas por canal y por sede en Reportes",
+      "todosLosCanales": "todos los canales",
+      "columnaCanal": "Canal",
+      "chips": {
+        "etiqueta": "Canal",
+        "todos": "Todos · {n}",
+        "canal": "{canal} · {n}"
+      },
+      "filtros": {
+        "canal": "Canal",
+        "todosLosCanales": "Todos los canales",
+        "canalChip": "Canal: {canal}"
+      },
+      "kpis": {
+        "hoy": "Ventas de hoy",
+        "hoyCorto": "Hoy",
+        "hoyVentas": "{count, plural, one {{n} venta} other {{n} ventas}}",
+        "vsDia": "{pct} % vs. el {dia} pasado",
+        "periodo": "Ventas del periodo",
+        "periodoVentas": "{count, plural, one {{n} venta} other {{n} ventas}}",
+        "porCanal": "Por canal",
+        "canalPct": "{canal} {pct} %",
+        "unSoloCanal": "Todas las ventas del periodo por este canal",
+        "sinVentas": "Sin ventas en el periodo",
+        "ticketTodos": "del periodo, todos los canales",
+        "ticketCanal": "del periodo · {canal}",
+        "vsDiaHora": "{pct} % vs. el {dia} pasado a esta hora",
+        "vsPeriodo": "{pct} % vs. {rango}",
+        "vsPeriodoHora": "{pct} % vs. {rango} a esta hora"
+      }
+    }
+  },
+  "inicioWidgets": {
+    "comun": {
+      "sinDatos": "Sin datos",
+      "alDia": "Al día",
+      "porAtender": "{n, plural, one {# por atender} other {# por atender}}",
+      "requiereAtencion": "Requiere atención",
+      "parcial": "Una parte no se pudo leer: puede faltar algo en esta lista.",
+      "vsCierreAyer": "vs. cierre de ayer"
+    },
+    "canales": {
+      "pos": "POS",
+      "tienda_web": "Tienda web",
+      "menu_qr": "Menú QR",
+      "marketplace": "Marketplace",
+      "manual": "Manual"
+    },
+    "ventas": {
+      "porCanal": "Ventas por canal",
+      "porSede": "Ventas por sede",
+      "kpis": {
+        "hoy": "Ventas de hoy",
+        "periodo": "Ventas del periodo",
+        "ticket": "Ticket promedio",
+        "porAtender": "Por atender"
+      },
+      "detalles": {
+        "hoySinVentas": "Todavía no hay ventas hoy: la primera aparece aquí",
+        "hoyVsSemana": "{n, plural, one {# venta} other {# ventas}} · frente al mismo día de la semana pasada a esta hora",
+        "ventas": "{n, plural, one {# venta} other {# ventas}}",
+        "periodo": "{n, plural, one {# venta} other {# ventas}} · todos los canales",
+        "ticket": "Del periodo, entre {n, plural, one {# venta} other {# ventas}}",
+        "pedidos": "{n, plural, one {# pedido} other {# pedidos}}",
+        "ningunPedido": "Ningún pedido web ni de menú QR esperando",
+        "porExpirar": "{n, plural, one {# expira} other {# expiran}} en menos de {minutos} min",
+        "pedidosEsperando": "Pedidos web y de menú QR esperando confirmación"
+      },
+      "acciones": {
+        "abrirPos": "Abrir POS",
+        "pedidoManual": "Nuevo pedido manual"
+      },
+      "fila": {
+        "porAtender": "{n} por atender",
+        "cajasAntiguas": "{n, plural, one {# caja de días anteriores} other {# cajas de días anteriores}}",
+        "sinVentas": "Módulo activo, sin ventas todavía",
+        "ventasHoy": "{n, plural, one {# venta hoy} other {# ventas hoy}}",
+        "monto": "{valor}",
+        "periodo": "periodo {valor}",
+        "canales": "{n} canales"
+      },
+      "ultimas": {
+        "titulo": "Últimas ventas · todos los canales",
+        "hoy": "{n} hoy",
+        "vacio": "Hoy no hay ventas todavía. Las del periodo están en Ventas.",
+        "mesa": "Mesa {mesa}",
+        "clienteGenerico": "Cliente genérico"
+      },
+      "cajas": {
+        "abiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
+        "conAnteriores": "{n, plural, one {# caja abierta} other {# cajas abiertas}} · {anteriores} de días anteriores",
+        "ver": "Ver cajas"
+      },
+      "vacio": {
+        "titulo": "Aún no hay ventas",
+        "descripcion": "Haz la primera venta en el POS o registra un pedido que llegó por teléfono o WhatsApp."
+      },
+      "notaReportes": "El detalle por producto, vendedor o impuesto está en Reportes.",
+      "comparado": {
+        "diaPasadoHora": "vs. el {dia, select, 0 {domingo} 1 {lunes} 2 {martes} 3 {miércoles} 4 {jueves} 5 {viernes} 6 {sábado} other {mismo día}} pasado a esta hora",
+        "semanaPasadaHora": "vs. el mismo día de la semana pasada a esta hora",
+        "periodoAnterior": "vs. el periodo anterior"
+      }
+    },
+    "logistica": {
+      "kpis": {
+        "porDespachar": "Por despachar",
+        "atrasados": "Atrasados",
+        "contraentrega": "Contraentrega por cobrar hoy",
+        "sinDomiciliario": "Sin domiciliario"
+      },
+      "detalles": {
+        "nadaPendiente": "Nada pendiente para hoy ni mañana",
+        "hoyManana": "{hoy} para hoy · {manana} para mañana · de todos los canales",
+        "atrasados": "Ya pasaron la promesa de entrega",
+        "aTiempo": "Todos dentro de la promesa",
+        "contraentrega": "En {n, plural, one {# envío} other {# envíos}}",
+        "sinContraentrega": "Ningún envío contraentrega hoy",
+        "todosConDomiciliario": "Todos los envíos tienen quién los lleve",
+        "salenHoy": "{n} de los {total} que salen hoy"
+      },
+      "atencion": {
+        "atrasados": "{n, plural, one {# despacho atrasado} other {# despachos atrasados}}",
+        "masAtrasado": "El más atrasado: {numero}, {minutos} min sobre la promesa",
+        "novedadesHoy": "{n, plural, one {# novedad vence hoy} other {# novedades vencen hoy}}",
+        "novedadesAbiertas": "{n, plural, one {# novedad abierta} other {# novedades abiertas}}",
+        "novedades": "{n, plural, one {# novedad abierta} other {# novedades abiertas}}",
+        "sinMovimiento": "{n, plural, one {# envío sin movimiento} other {# envíos sin movimiento}}",
+        "conTransportadora": "{n} con transportadora · se abre reclamo si siguen quietos",
+        "conDiferencia": "{n, plural, one {# cuadre con diferencia} other {# cuadres con diferencia}} hoy",
+        "faltante": "Falta dinero: revisa el motivo y el responsable",
+        "porRecibir": "Dinero de domiciliarios por recibir",
+        "domiciliariosConDinero": "{n, plural, one {# domiciliario aún con dinero por entregar} other {# domiciliarios aún con dinero por entregar}}"
+      },
+      "acciones": {
+        "verAtrasados": "Ver atrasados",
+        "resolver": "Resolver",
+        "revisar": "Revisar",
+        "recibirDinero": "Recibir dinero",
+        "configurarZonas": "Configurar zonas de domicilio",
+        "agregarDomiciliario": "Agregar domiciliario"
+      },
+      "abiertos": {
+        "titulo": "Envíos abiertos por estado",
+        "porDespachar": "Por despachar",
+        "enCamino": "En camino",
+        "conNovedad": "Con novedad"
+      },
+      "fila": {
+        "atrasados": "{n, plural, one {# atrasado} other {# atrasados}}",
+        "sinEnvios": "Módulo activo, sin envíos todavía",
+        "porDespachar": "{n} por despachar",
+        "sinDomiciliario": "{n} sin domiciliario",
+        "contraentrega": "contraentrega hoy {valor}",
+        "enCamino": "{n} en camino",
+        "aTiempo": "todo a tiempo"
+      },
+      "vacio": {
+        "titulo": "Aún no hay envíos",
+        "descripcion": "Los pedidos con domicilio del POS, la tienda web y el menú QR llegarán a «Por despachar». Primero define tus zonas y tarifas."
+      },
+      "alDia": "Nada que atender: sin atrasos, sin novedades abiertas y sin dinero por recibir.",
+      "primerIntento": "Entregas al primer intento (30 días): {tasa}, meta {meta}"
+    },
+    "transporte": {
+      "kpis": {
+        "viajesHoy": "Viajes de hoy",
+        "ocupacion": "Ocupación",
+        "vehiculos": "Vehículos disponibles",
+        "documentos": "Documentos por vencer"
+      },
+      "detalles": {
+        "sinViajesHoy": "No hay viajes programados para hoy",
+        "viajesHoy": "{completados} completados · {enRuta} en ruta · {porSalir} por salir",
+        "porcentaje": "{p} %",
+        "sinSalidos": "Sin viajes salidos hoy",
+        "ocupacion": "De {n, plural, one {# viaje ya salido} other {los # viajes ya salidos}}",
+        "deTotal": "{n} de {total}",
+        "ningunoMantenimiento": "Ninguno en mantenimiento",
+        "vehiculos": "{enUso} en ruta · {mantenimiento} en mantenimiento",
+        "documentosVencidos": "Próximos 30 días · y {n} ya vencidos",
+        "proximos30": "Próximos 30 días",
+        "nadaVence": "Nada vence en los próximos 30 días"
+      },
+      "atencion": {
+        "bloqueado": "Despacho bloqueado · {codigo}",
+        "bloqueadoDetalle": "{salida} · {ruta} · {causa} · {placa}",
+        "masBloqueados": "{n, plural, one {# despacho bloqueado más} other {# despachos bloqueados más}}",
+        "retrasados": "{n, plural, one {# viaje con retraso} other {# viajes con retraso}}",
+        "documentosVencidos": "{n, plural, one {# documento vencido} other {# documentos vencidos}}",
+        "documentoEjemplo": "{nombre} · {causa}",
+        "mantenimiento": "{n, plural, one {# vehículo en mantenimiento} other {# vehículos en mantenimiento}}",
+        "placas": "{placas}"
+      },
+      "acciones": {
+        "resolver": "Resolver",
+        "verDespachos": "Ver despachos",
+        "verViajes": "Ver viajes",
+        "verDocumentos": "Ver documentos",
+        "verFlota": "Ver flota",
+        "programarViaje": "Programar viaje",
+        "registrarVehiculo": "Registrar vehículo"
+      },
+      "porEstado": {
+        "titulo": "Viajes de hoy por estado",
+        "completados": "Completados",
+        "enRuta": "En ruta",
+        "porSalir": "Por salir",
+        "bloqueados": "Bloqueados"
+      },
+      "fila": {
+        "bloqueados": "{n, plural, one {# bloqueado} other {# bloqueados}}",
+        "documentosVencidos": "{n, plural, one {# documento vencido} other {# documentos vencidos}}",
+        "retrasados": "{n, plural, one {# retrasado} other {# retrasados}}",
+        "sinViajes": "Módulo activo, sin viajes todavía",
+        "viajesHoy": "{n, plural, one {# viaje hoy} other {# viajes hoy}}",
+        "enRuta": "{n} en ruta",
+        "completados": "{n, plural, one {# completado} other {# completados}}",
+        "ocupacion": "ocupación {p} %",
+        "flotaDisponible": "flota disponible"
+      },
+      "vacio": {
+        "titulo": "Aún no hay viajes programados",
+        "descripcion": "Registra tus vehículos y conductores, crea una ruta y programa el primer viaje."
+      },
+      "alDia": "Nada que atender: ningún despacho bloqueado ni documentos vencidos.",
+      "notaReportes": "El detalle de costos y rendimiento está en Reportes."
+    }
   }
 }

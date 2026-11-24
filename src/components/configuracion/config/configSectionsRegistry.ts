@@ -122,6 +122,42 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'pos.numero-pedido', modulo: 'pos', seccion: 'numero-pedido', clave: 'posNumeroPedido', permiso: PERMISO_ADMIN, ajustes: [] },
   // «Etiquetas y respuestas rápidas» (Figma 12.8): el id sigue siendo `chat.general` porque es
   // estable (enlaces y favoritos). Las etiquetas se administran SOLO aquí; CRM enlaza.
+  // Logística (Fase 1): ajustes del módulo. Mismo permiso que escribir zonas y tarifas (RLS de
+  // shipping_zones y `PUT /api/logistica/ajustes`): `organization_settings`.
+  {
+    id: 'logistica.general',
+    modulo: 'logistica',
+    seccion: 'general',
+    clave: 'logisticaGeneral',
+    permiso: 'organization_settings',
+    ajustes: [
+      { ancla: 'sin-movimiento', clave: 'logisticaSinMovimiento' },
+      { ancla: 'envio-gratis', clave: 'logisticaEnvioGratis' },
+      { ancla: 'peso-organizacion', clave: 'logisticaPesoOrganizacion' },
+      { ancla: 'codigo-entrega', clave: 'logisticaCodigoEntrega' },
+      { ancla: 'cargo-domicilio', clave: 'logisticaCargoDomicilio' },
+      { ancla: 'avisos', clave: 'logisticaAvisos' },
+    ],
+  },
+  // Transporte (Figma «23 Transporte» › 21b): sin página de «Configuración» en el módulo. Editar
+  // exige `transporte.manage` (lo resuelve `PUT /api/transporte/ajustes`); los catálogos (rutas,
+  // tarifas, vehículos, conductores) se quedan en el módulo y el RNDC en Integraciones › Conexiones.
+  {
+    id: 'transporte.general',
+    modulo: 'transporte',
+    seccion: 'general',
+    clave: 'transporteGeneral',
+    permiso: 'transporte.manage',
+    ajustes: [
+      { ancla: 'retencion', clave: 'transporteRetencion' },
+      { ancla: 'cambios-anulaciones', clave: 'transporteCambios' },
+      { ancla: 'liquidacion', clave: 'transporteLiquidacion' },
+      { ancla: 'rndc', clave: 'transporteRndc' },
+      { ancla: 'tipos-vehiculo', clave: 'transporteTiposVehiculo' },
+      { ancla: 'motivos-novedad', clave: 'transporteMotivos' },
+      { ancla: 'excepciones', clave: 'transporteExcepciones' },
+    ],
+  },
   { id: 'chat.general', modulo: 'chat', seccion: 'general', clave: 'chatGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'chat.ia', modulo: 'chat', seccion: 'ia', clave: 'chatIa', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'integraciones.general', modulo: 'integraciones', seccion: 'general', clave: 'integracionesGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

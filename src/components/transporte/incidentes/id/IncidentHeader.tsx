@@ -114,7 +114,7 @@ export function IncidentHeader({
   const status = INCIDENT_STATUSES.find(s => s.value === incident.status);
 
   // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
-  useCabeceraMovil({ modo: 'page', titulo: incident.title, subtitulo: incidentType?.label || undefined, volverA: '/app/transporte/incidentes' });
+  useCabeceraMovil({ modo: 'page', titulo: incident.title, subtitulo: incidentType?.label || undefined, volverA: '/app/transporte/viajes?pestana=novedades' });
 
   const canChangeToInProgress = incident.status === 'open';
   const canResolve = incident.status === 'in_progress';
@@ -129,7 +129,7 @@ export function IncidentHeader({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push('/app/transporte/incidentes')}
+          onClick={() => router.push('/app/transporte/viajes?pestana=novedades')}
           className="hidden lg:inline-flex gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -313,7 +313,7 @@ export function IncidentHeader({
                         variant="link"
                         size="sm"
                         className="p-0 h-auto"
-                        onClick={() => router.push(`/app/transporte/envios/${relatedShipment.id}`)}
+                        onClick={() => router.push(`/app/logistica/envios/${relatedShipment.id}`)}
                       >
                         Ver envío →
                       </Button>

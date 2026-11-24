@@ -219,6 +219,6 @@ describe('guías: roles del sistema y quitar promoción', () => {
     expect(texto).toMatch(/«Empleado».*no se puede editar/);
     expect(texto).toMatch(/duplicar/);
     expect(texto).toMatch(/tener ese cargo asignado/);
-    expect(texto).toContain('POS, columna «Otras acciones»');
+    expect(texto).toContain('Ventas, columna «Otras acciones»');
   });
 });

@@ -58,7 +58,8 @@ test('listo: módulo legible, permisos permitidos y lo que no incluye', async ()
   const texto = container.textContent ?? '';
   expect(texto).toContain('Permisos efectivos');
   expect(texto).toContain('Mi empresa S.A.S.');
-  expect(texto).toContain('Punto de venta');
+  // El módulo `pos` se llama «Ventas» desde el 2026-11-23 (Figma 24).
+  expect(texto).toContain('Ventas');
   expect(texto).toContain('2 permisos');
   expect(texto).toContain('Vender en el POS');
   expect(texto).toContain('No incluye');
@@ -94,9 +95,9 @@ test('error: aviso y «Reintentar» vuelve a pedir', async () => {
 });
 
 test.each<[IdiomaPrueba, string, string]>([
-  ['en', 'Effective permissions', 'Point of sale'],
-  ['fr', 'Autorisations effectives', 'Point de vente'],
-  ['pt', 'Permissões efetivas', 'Ponto de venda'],
+  ['en', 'Effective permissions', 'Sales'],
+  ['fr', 'Autorisations effectives', 'Ventes'],
+  ['pt', 'Permissões efetivas', 'Vendas'],
 ])('%s: títulos y módulos traducidos', async (idioma, titulo, modulo) => {
   respuestas = [{ ok: true, status: 200, json: async () => RESPUESTA }];
   const { container } = await montar(idioma);

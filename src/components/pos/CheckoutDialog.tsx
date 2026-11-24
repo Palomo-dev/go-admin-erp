@@ -58,6 +58,9 @@ import { faltaParaEntrada, montosDeEntrada, muestraMontosRapidos } from '@/lib/p
 import { PORCENTAJES_PROPINA, baseDePropina, meserosDesdeMiembros, propinaTopada, topePropina } from '@/lib/pos/venta/cobro/propinaCobro';
 import { camposComisionDelSobre, comisionDeTasaResuelta, esPersonaAsignada, montoComision } from '@/lib/pos/venta/cobro/comisionCobro';
 import { camposEntregaDelSobre, fleteDeTarifaElegida, opcionesDeTarifa, tarifaPorDefecto, tarifasVisiblesEnPos } from '@/lib/pos/venta/cobro/entregaCobro';
+import { registrarCambioCargo, useCotizacionDomicilio } from '@/components/logistica/cotizar/useCotizacionDomicilio';
+import { AvisoCotizacionDomicilio } from '@/components/logistica/cotizar/AvisoCotizacionDomicilio';
+import { cargoDeCotizacion, cargoEditado, estadoCotizacion, nombreZona } from '@/lib/logistica/presentacionEnvio';
 import { lineasConSerial, seleccionSerialesCompleta, seleccionesDesdeLineas } from '@/lib/pos/venta/cobro/serialesCobro';
 import { comprobarStockReceta, debeConfirmarStock } from '@/lib/pos/venta/cobro/stockRecetaCobro';
 import { AVISO_SIN_IMPRESORA_CAJA, AVISO_VENTA_SIN_SUCURSAL, PREFIJO_ERROR_TICKET, lanzarTicketYCajon, planPostVenta } from '@/lib/pos/venta/cobro/postVentaCobro';
@@ -257,6 +260,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // Estado para pago del envío (pagado/pendiente)
   const [shipmentPaymentStatus, setShipmentPaymentStatus] = useState<'paid' | 'pending'>('paid');
 
+  // Logística Fase 1 (Figma 2830:73378): zona de domicilio, cargo que llena la zona y contraentrega.
+  const [deliveryBarrio, setDeliveryBarrio] = useState<string>('');
+  const [deliveryMunicipioId, setDeliveryMunicipioId] = useState<string | null>(null);
+  /** Cargo que puso la zona (o la tarifa general elegida); null = no lo puso la zona. */
+  const [cargoZona, setCargoZona] = useState<number | null>(null);
+  const [contraentrega, setContraentrega] = useState(false);
+
   // Estados para pago QR
   const [showQrDialog, setShowQrDialog] = useState(false);
   // Confirmación diferida de stock insuficiente (reemplaza window.confirm nativo)
@@ -344,7 +354,31 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // el cobro, no `baseTotal` (con impuestos). La misma base va a la pantalla
   // del cliente (setTipBase) para que «10 %» sea la misma cifra en las dos.
   const baseTip = baseDePropina({ calculatedTotals, cart });
-  const canComplete = cuentasCobro.canComplete;
+  const tLog = useTranslations('logistica.cotizar');
+  // Cotización del domicilio propio (`logistica_cotizar_envio`, canal POS) sobre el subtotal de
+  // productos, el mismo que usa `logistica_crear_envio_venta_pos` al crear el envío.
+  const cotDomicilio = useCotizacionDomicilio({
+    activo: open && !showReceipt && deliveryType === 'delivery_own',
+    branchId: cart.branch_id ?? null,
+    canal: 'pos',
+    subtotal: Number(totalesCobro.subtotal || cart.subtotal || 0),
+    direccion: { ciudad: deliveryCity, municipioId: deliveryMunicipioId, barrio: deliveryBarrio },
+    // Peso del pedido para las reglas de despacho por peso: lo suma la base con los productos.
+    items: cart.items.map((it) => ({ product_id: it.product_id, cantidad: it.quantity })),
+    // Sin dirección también se pregunta: así se sabe si la organización tiene zonas y aparece el barrio.
+    sondearSinDireccion: true,
+  });
+  const estadoZona = estadoCotizacion(cotDomicilio.cotizacion);
+  // Con zonas configuradas manda la zona; sin zonas, las tarifas de Transporte como siempre.
+  const usaZonas = deliveryType === 'delivery_own' && estadoZona !== null && estadoZona !== 'sin_zonas';
+  // «Paga al recibir»: la venta queda con saldo y el domiciliario lo cobra (cod_amount = saldo).
+  const motivoSinContraentrega = !cart.customer_id
+    ? tLog('pos.contraentregaSinCliente')
+    : !deliveryAddress.trim()
+      ? tLog('pos.contraentregaSinDireccion')
+      : null;
+  const ventaContraentrega = deliveryType === 'delivery_own' && contraentrega && motivoSinContraentrega === null && remaining > 0;
+  const canComplete = cuentasCobro.canComplete || ventaContraentrega;
 
   // Advertencia (no bloquea el cobro): líneas que se cobrarán sin IVA porque ni
   // el producto ni la organización tienen impuesto configurado.
@@ -551,6 +585,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setDeliveryType('pickup');
       setDeliveryAddress('');
       setDeliveryCity('');
+      setDeliveryBarrio('');
+      setDeliveryMunicipioId(null);
+      setCargoZona(null);
+      setContraentrega(false);
       setDeliveryContactName('');
       setDeliveryContactPhone('');
       setDeliveryInstructions('');
@@ -588,6 +626,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setDeliveryType('pickup');
       setDeliveryAddress('');
       setDeliveryCity('');
+      setDeliveryBarrio('');
+      setDeliveryMunicipioId(null);
+      setCargoZona(null);
+      setContraentrega(false);
       setDeliveryContactName('');
       setDeliveryContactPhone('');
       setDeliveryInstructions('');
@@ -643,6 +685,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       if (customerName && !deliveryContactName) {
         setDeliveryContactName(customerName);
       }
+      if (customer.fiscal_municipality_id) setDeliveryMunicipioId(String(customer.fiscal_municipality_id));
       if (customer.fiscal_municipality_id && !deliveryCity) {
         supabase
           .from('municipalities')
@@ -666,6 +709,13 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       setShippingRates([]);
       setSelectedRateId('');
       setShippingFee(0);
+      return;
+    }
+
+    // Con zonas de domicilio, el flete lo pone la zona (efecto de abajo), no shipping_rates.
+    if (usaZonas) {
+      setShippingRates([]);
+      setSelectedRateId('');
       return;
     }
 
@@ -709,13 +759,30 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     };
 
     loadShippingRates();
-  }, [deliveryType, deliveryCity, cart.organization_id, cart.subtotal, calculatedTotals.subtotal]);
+  }, [deliveryType, deliveryCity, cart.organization_id, cart.subtotal, calculatedTotals.subtotal, usaZonas]);
 
   // Actualizar shippingFee cuando cambia selectedRateId
   useEffect(() => {
+    if (usaZonas) return;
     const flete = fleteDeTarifaElegida(selectedRateId, shippingRates);
     if (flete !== null) setShippingFee(flete);
-  }, [selectedRateId, shippingRates]);
+  }, [selectedRateId, shippingRates, usaZonas]);
+
+  // La zona llena el cargo de domicilio en cada cotización nueva (dirección, barrio o ciudad
+  // distintos). Fuera de zona queda en 0 hasta que el cajero elija la tarifa general o la
+  // transportadora (Figma 2830:74984).
+  const cotizacionVigente = cotDomicilio.cotizacion;
+  useEffect(() => {
+    if (!usaZonas || !cotizacionVigente || !cotDomicilio.hayDireccion) {
+      setCargoZona(null);
+      if (usaZonas) setShippingFee(0);
+      return;
+    }
+    const cargo = cargoDeCotizacion(cotizacionVigente);
+    setCargoZona(cargo);
+    setShippingFee(cargo ?? 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cotizacionVigente, usaZonas]);
 
   // Calcular totales con impuestos cuando cambie el carrito o configuración de impuestos.
   // El cálculo es async: si la casilla cambia a mitad, el resultado viejo no pisa al nuevo.
@@ -1384,6 +1451,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               contact_name: deliveryContactName || customerData?.full_name || '',
               contact_phone: deliveryContactPhone || customerData?.phone || '',
               instructions: deliveryInstructions,
+              // Con barrio o DANE, `logistica_crear_envio_venta_pos` guarda la zona con que se cotizó.
+              ...(usaZonas && deliveryBarrio.trim() ? { barrio: deliveryBarrio.trim() } : {}),
+              ...(usaZonas && cotDomicilio.respuesta?.municipioDane ? { municipio_dane: cotDomicilio.respuesta.municipioDane } : {}),
             },
             saleItems: cart.items.map((item) => {
               const product = item.product as any;
@@ -1427,6 +1497,17 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           });
         } catch (shipmentError) {
           console.error('Error creando shipment:', shipmentError);
+        }
+        // El cargo que llenó la zona se cambió (con permiso): queda registrado quién y cuánto.
+        if (usaZonas && cargoZona !== null && cargoEditado(cargoZona, shippingFee)) {
+          void registrarCambioCargo({
+            tipo: 'sale',
+            id: sale.id,
+            cotizado: cargoZona,
+            cobrado: shippingFee,
+            zonaId: cotDomicilio.cotizacion?.zona?.id ?? null,
+            zonaNombre: nombreZona(cotDomicilio.cotizacion),
+          });
         }
       }
 
@@ -1792,7 +1873,10 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   const resumenEntrega =
     deliveryType === 'pickup'
       ? tPos('entrega.resumen.recoger')
-      : tPos(deliveryType === 'delivery_own' ? 'entrega.resumen.propio' : 'entrega.resumen.tercero', { flete: formatearCobro(shippingFee) });
+      : [
+          tPos(deliveryType === 'delivery_own' ? 'entrega.resumen.propio' : 'entrega.resumen.tercero', { flete: formatearCobro(shippingFee) }),
+          usaZonas ? (estadoZona === 'en_zona' ? nombreZona(cotDomicilio.cotizacion) : tLog('pos.fueraDeZona')) : null,
+        ].filter(Boolean).join(' · ');
   const nombreMesero = servers.find((s) => s.id === serverId)?.name ?? tPos('propina.sinMesero');
   const resumenPropina =
     tipAmount > 0
@@ -2188,6 +2272,47 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 pagoEnvio={shipmentPaymentStatus}
                 onPagoEnvio={setShipmentPaymentStatus}
                 formatear={formatearCobro}
+                zonas={
+                  usaZonas
+                    ? {
+                        barrio: deliveryBarrio,
+                        onBarrio: setDeliveryBarrio,
+                        aviso: (
+                          <AvisoCotizacionDomicilio
+                            estado={cotDomicilio.hayDireccion ? cotDomicilio.estado : 'inactivo'}
+                            cotizacion={cotDomicilio.cotizacion}
+                            formatear={formatearCobro}
+                            onCobrarTarifaGeneral={(valor) => {
+                              setCargoZona(valor);
+                              setShippingFee(valor);
+                            }}
+                            onUsarTransportadora={() => setDeliveryType('delivery_third_party')}
+                          />
+                        ),
+                        cargo: shippingFee,
+                        onCargo: setShippingFee,
+                        // Sin permiso, el cargo solo lo pone la zona o «Cobrar tarifa general».
+                        cargoEditable: cotDomicilio.puedeEditarCargo,
+                        ayudaCargo:
+                          cargoZona === null
+                            ? tLog('pos.cargoSinZona')
+                            : cotDomicilio.puedeEditarCargo
+                              ? tLog('pos.cargoDeZonaEditable', { zona: nombreZona(cotDomicilio.cotizacion) ?? '' })
+                              : tLog('pos.cargoDeZonaBloqueado', { zona: nombreZona(cotDomicilio.cotizacion) ?? '' }),
+                      }
+                    : undefined
+                }
+                contraentrega={{
+                  marcado: contraentrega,
+                  onCambio: (marcar: boolean) => {
+                    setContraentrega(marcar);
+                    // El pago que el cobro pre-rellenó con el total no se cobra ahora: lo cobra el
+                    // domiciliario. Lo que el cajero escribió a mano se respeta (abono).
+                    if (marcar) setPayments((prev) => prev.filter((pago) => touchedIds.has(pago.id)));
+                  },
+                  motivoNo: motivoSinContraentrega,
+                  ayuda: tLog('pos.contraentregaAyuda', { valor: formatearCobro(remaining > 0 ? remaining : cartTotal) }),
+                }}
               />
             </SeccionPlegable>
 

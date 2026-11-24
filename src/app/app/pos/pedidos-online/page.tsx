@@ -89,6 +89,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz } from '@/lib/utils/dateCore';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface FiltrosListado {
   status?: WebOrderStatus;
@@ -129,6 +130,7 @@ export default function PedidosOnlinePage() {
   const t = useTranslations('pedidosOnlineListado');
   const tPedido = useTranslations('pedidoWeb');
   const tManual = useTranslations('pedidosManuales');
+  const migaVentas = useMigaVentas();
   // Pedido manual y reconstrucción de pedidos pagados (Pedidos online · pagos sin pedido).
   const [manualAbierto, setManualAbierto] = useState(false);
   const [reconstruirAbierto, setReconstruirAbierto] = useState(false);
@@ -720,7 +722,7 @@ export default function PedidosOnlinePage() {
         subtitulo={subtitulo}
         icono={ShoppingBag}
         cargando={loading}
-        migas={[{ etiqueta: 'POS', href: '/app/pos' }, { etiqueta: t('titulo') }]}
+        migas={[migaVentas, { etiqueta: t('titulo') }]}
         acciones={
           <>
             <button

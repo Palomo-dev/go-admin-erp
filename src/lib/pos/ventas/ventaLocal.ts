@@ -4,6 +4,7 @@
  * Sin documentos, métodos ni devoluciones: la réplica no los trae.
  */
 import { estadoVenta, origenVenta } from './estadoVenta';
+import { canalVenta } from './canalVenta';
 import type { FilaVenta } from './listadoServidor';
 
 export interface FilaSalesLocal {
@@ -36,6 +37,8 @@ export function filaVentaLocal(s: FilaSalesLocal, cliente?: { nombre: string | n
     payment_status: s.payment_status,
     estado: estadoVenta({ status: s.status, payment_status: s.payment_status, total, pendiente_sync: s.pending_sync }),
     origen: origenVenta({ source: s.source, web_order_id: s.web_order_id, table_session_id: s.table_session_id }),
+    // Sin red no se lee el pedido web: un pedido del menú QR o manual cae en «Tienda web» hasta sincronizar.
+    canal: canalVenta({ source: s.source, web_order_id: s.web_order_id }),
     numero: null,
     tipo_numero: null,
     factura_id: null,

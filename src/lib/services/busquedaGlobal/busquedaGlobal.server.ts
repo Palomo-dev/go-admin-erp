@@ -278,6 +278,31 @@ const BUSCADORES: Record<TipoEntidad, Buscador> = {
       }));
   },
 
+  async shipment(b) {
+    if (!b.patron) return [];
+    const res = await b.db
+      .from('shipments')
+      .select('id, shipment_number, tracking_number, delivery_contact_name, delivery_contact_phone, delivery_address, delivery_city, status, metadata')
+      .eq('organization_id', b.org)
+      .or(orIlike(['shipment_number', 'tracking_number', 'delivery_contact_name', 'delivery_contact_phone', 'delivery_address'], b.patron))
+      .order('created_at', { ascending: false })
+      .limit(CANDIDATOS);
+    return filas(res, 'shipments')
+      .filter((f) =>
+        coincideCampos(
+          [f.shipment_number as string, f.tracking_number as string, f.delivery_contact_name as string, f.delivery_contact_phone as string, f.delivery_address as string],
+          b.palabras,
+        ),
+      )
+      .map((f) => ({
+        id: String(f.id),
+        tipo: 'shipment' as const,
+        titulo: texto(f.shipment_number),
+        url: `/app/logistica/envios/${f.id}`,
+        detalle: { cliente: texto(f.delivery_contact_name), direccion: texto(f.delivery_address), ciudad: texto(f.delivery_city), estado: texto(f.status) },
+      }));
+  },
+
   async reservation(b) {
     const ids = idsClientes(b);
     if (ids.length === 0) return [];

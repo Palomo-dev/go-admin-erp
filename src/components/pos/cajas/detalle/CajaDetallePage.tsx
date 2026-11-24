@@ -31,6 +31,7 @@ import { useFechaHoraCaja, useMensajeErrorCaja, useMonedaCaja } from '../comunes
 import { SucursalCaja } from '../listado/comunes';
 import { useResumenCaja } from '../useResumenCaja';
 import type { CashSession } from '../types';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 import {
   KpisCaja,
   TablaArqueos,
@@ -50,6 +51,7 @@ const ID_TABS = 'caja-detalle';
 
 export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
   const t = useTranslations('cajas.ficha');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const { formatear } = useMonedaCaja();
   const fechaHora = useFechaHoraCaja();
@@ -86,7 +88,7 @@ export function CajaDetallePage({ sessionUuid }: CajaDetallePageProps) {
   }, [resumen]);
 
   const migas = [
-    { etiqueta: t('migaPos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: t('migaCajas'), href: '/app/pos/cajas' },
     { etiqueta: resumen ? t('sesion', { id: resumen.sesion.id }) : '…' },
   ];

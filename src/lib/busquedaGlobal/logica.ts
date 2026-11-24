@@ -88,6 +88,11 @@ export interface PaginaFiltrable {
   name: string;
   url: string;
   description?: string;
+  /**
+   * Otras palabras con que se busca la página y que no se pintan: el nombre
+   * viejo de su módulo («POS», «punto de venta», «caja» para Ventas, Figma 24).
+   */
+  palabrasClave?: string;
 }
 
 /**
@@ -102,7 +107,7 @@ export function filtrarPaginas<T extends PaginaFiltrable>(paginas: readonly T[],
   const frase = palabras.join(' ');
   const puntuadas: { pagina: T; puntaje: number; orden: number }[] = [];
   paginas.forEach((pagina, orden) => {
-    if (!coincideCampos([pagina.name, pagina.description, pagina.url.replace(/^\/app\//, '').replace(/[/-]/g, ' ')], palabras)) return;
+    if (!coincideCampos([pagina.name, pagina.description, pagina.palabrasClave, pagina.url.replace(/^\/app\//, '').replace(/[/-]/g, ' ')], palabras)) return;
     const nombre = normalizarBusqueda(pagina.name);
     const palabrasNombre = nombre.split(' ');
     const puntaje = nombre.startsWith(frase)

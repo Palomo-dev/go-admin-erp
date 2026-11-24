@@ -10,6 +10,7 @@ import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import type { PropsSeccionFormulario } from '../tipos';
 import { SeccionReceta } from './SeccionReceta';
+import { ResumenPesoProducto } from '@/components/logistica/peso/ResumenPesoProducto';
 
 /**
  * Avanzado: envío (peso y medidas para cotizar guías; oculto en servicios),
@@ -36,7 +37,7 @@ function Subtitulo({ icono: Icono, children }: { icono: typeof Truck; children: 
 }
 
 export function SeccionAvanzado(props: PropsSeccionFormulario) {
-  const { estado, cambiar, errores, modo, productUuid } = props;
+  const { estado, cambiar, errores, modo, productUuid, organizacionId } = props;
   const t = useTranslations('productoForm.avanzado');
   const tErr = useTranslations('productoForm.errores');
   const entero = useFormatoEntero();
@@ -84,6 +85,15 @@ export function SeccionAvanzado(props: PropsSeccionFormulario) {
             <p className="text-xs text-fg-secondary" aria-live="polite">
               {volumen !== null ? t('volumen', { volumen: entero(volumen) }) : t('volumenVacio')}
             </p>
+            {/* Logística Fase 1 (Figma 2800:4625): peso que se usa al cotizar y lo que cobra la transportadora. */}
+            <ResumenPesoProducto
+              organizacionId={organizacionId}
+              categoriaId={estado.category_id}
+              peso={estado.weight_kg}
+              largo={largo}
+              ancho={ancho}
+              alto={alto}
+            />
           </>
         )}
       </div>

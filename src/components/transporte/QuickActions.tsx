@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  Plus, 
   Bus, 
   Package, 
   FileText, 
@@ -25,7 +24,7 @@ export function QuickActions() {
     },
     {
       label: 'Nuevo Envío',
-      href: '/app/transporte/envios/nuevo',
+      href: '/app/logistica/envios',
       icon: Package,
       color: 'bg-purple-600 hover:bg-purple-700',
     },
@@ -44,10 +43,10 @@ export function QuickActions() {
   ];
 
   const links = [
-    { label: 'Transportadoras', href: '/app/transporte/transportadoras', icon: Truck },
+    { label: 'Transportadoras', href: '/app/integraciones/conexiones/logistica', icon: Truck },
     { label: 'Vehículos', href: '/app/transporte/vehiculos', icon: Bus },
     { label: 'Conductores', href: '/app/transporte/conductores', icon: Users },
-    { label: 'Paradas', href: '/app/transporte/paradas', icon: MapPin },
+    { label: 'Paradas', href: '/app/transporte/rutas?pestana=paradas', icon: MapPin },
     { label: 'Rutas', href: '/app/transporte/rutas', icon: Route },
   ];
 

@@ -149,7 +149,8 @@ describe('matriz causa × rol', () => {
     respuesta = { ...BASE, causa: 'paginaOculta', modulo: 'pos', pagina: '/app/pos/devoluciones', paginas: ['/app/pos/ventas'], puedeResolver: false, puedeAvisar: true, plan: null };
     await montar();
     expect(screen.getByRole('heading', { level: 2, name: 'Esta página no está disponible' })).toBeTruthy();
-    expect(enlace(/Ir a Punto de venta/).getAttribute('href')).toBe('/app/pos/ventas');
+    // El módulo `pos` se llama «Ventas» desde el 2026-11-23 (Figma 24).
+    expect(enlace(/Ir a Ventas/).getAttribute('href')).toBe('/app/pos/ventas');
     expect(screen.getByRole('button', { name: /Avisar a los administradores/ })).toBeTruthy();
   });
 

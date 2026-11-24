@@ -34,6 +34,7 @@ import { ResumenArqueo } from '../conteo/ResumenArqueo';
 import { DebajoSesion, useMensajeErrorCaja, useMetodosPagoActivos, useMonedaCaja } from '../comunesCaja';
 import { useEtiquetaMetodoPago } from '../paymentMethodLabels';
 import { useResumenCaja } from '../useResumenCaja';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface NuevoArqueoPageProps {
   sessionUuid: string;
@@ -44,6 +45,7 @@ const MAX_NOTAS = 1000;
 export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
   const t = useTranslations('cajas.arqueo');
   const tFicha = useTranslations('cajas.ficha');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const { moneda, simbolo, formatear } = useMonedaCaja();
   const etiquetaMetodo = useEtiquetaMetodoPago();
@@ -111,7 +113,7 @@ export function NuevoArqueoPage({ sessionUuid }: NuevoArqueoPageProps) {
   };
 
   const migas = [
-    { etiqueta: tFicha('migaPos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: tFicha('migaCajas'), href: '/app/pos/cajas' },
     { etiqueta: resumen ? tFicha('sesion', { id: resumen.sesion.id }) : '…', href: volverA },
     { etiqueta: t('titulo') },

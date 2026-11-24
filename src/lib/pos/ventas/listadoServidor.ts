@@ -6,8 +6,11 @@
  *   pasan por la lista blanca de `filtrosVentas`.
  * - `cifrasVentas`: los KPI del Figma aprobado el 2026-11-20 (`pos_ventas_cifras`)
  *   sobre LAS VENTAS LISTADAS, con los mismos filtros y por fecha de venta:
- *   ventas del periodo (con variación frente al periodo anterior de igual
- *   duración), ticket promedio, transacciones e impuestos con su detalle.
+ *   ventas del periodo (VENTAS NETAS, la regla única `fn_ventas_netas_cifras`
+ *   que también usa el Inicio: sin IVA ni INC, sin propinas y restando
+ *   devoluciones y notas crédito del periodo), con variación frente al periodo
+ *   anterior de igual duración en días completos (o, si el periodo incluye hoy,
+ *   hasta esta misma hora), ticket promedio, transacciones e impuestos.
  *   «Transacciones» es siempre el «N ventas encontradas» de la cabecera. El
  *   criterio de caja (D2, `fn_inicio_ventas_rango`) queda para el Inicio: el
  *   Figma del listado pide lo vendido, no lo cobrado.
@@ -23,8 +26,19 @@ import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneServ
 import { getOperatingHours } from '@/lib/services/organizationOperatingHoursService';
 import { getDateRange } from '@/lib/utils/dateRanges';
 import { todayInTz } from '@/lib/utils/dateCore';
-import { filtrosVentas, parametrosFiltro, parametrosListado, periodoAnterior, type FiltrosVentas } from './filtrosVentas';
+import {
+  diasDelPeriodo,
+  filtrosVentas,
+  finComparacionAEstaHora,
+  incluyeHoy,
+  mismoDiaSemanaAnterior,
+  parametrosFiltro,
+  parametrosListado,
+  periodoAnterior,
+  type FiltrosVentas,
+} from './filtrosVentas';
 import type { EstadoVenta, OrigenVenta } from './estadoVenta';
+import type { CanalVenta } from './canalVenta';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId'>;
 
@@ -38,6 +52,8 @@ export interface FilaVenta {
   payment_status: string | null;
   estado: EstadoVenta;
   origen: OrigenVenta;
+  /** Canal (Figma 24 Ventas): POS, Tienda web, Menú QR, Marketplace o Manual. */
+  canal: CanalVenta;
   numero: string | null;
   tipo_numero: 'factura' | 'pedido' | null;
   factura_id: string | null;
@@ -80,8 +96,19 @@ export interface CifrasVentas {
   desde: string;
   hasta: string;
   actual: {
-    /** Σ total de las ventas listadas que no están anuladas ni en borrador. */
+    /**
+     * Ventas netas de las listadas (regla única `fn_ventas_netas_cifras`): Σ
+     * (total − IVA/INC − propina) de las que no están anuladas ni en borrador,
+     * menos devoluciones y notas crédito del periodo.
+     */
     ventas: number;
+    /** Partes de la cifra: Σ total, IVA/INC y propinas de las ventas; devoluciones (base). */
+    bruto?: number;
+    impuestos_ventas?: number;
+    propinas?: number;
+    devoluciones?: number;
+    /** Saldo hoy de las ventas del periodo. */
+    por_cobrar?: number;
     /** Todas las ventas listadas (= «N ventas encontradas»). */
     transacciones: number;
     /** Las que cuentan para el ticket: ni anuladas ni borradores. */
@@ -96,6 +123,21 @@ export interface CifrasVentas {
   };
   /** Mismos filtros en el periodo anterior de igual duración. */
   anterior: { ventas: number; transacciones: number } | null;
+  /**
+   * Contra qué compara «Ventas del periodo»: los días del periodo anterior y si
+   * se cortó a esta misma hora (el periodo incluye hoy).
+   */
+  comparacion?: { desde: string; hasta: string; aEstaHora: boolean };
+  /**
+   * Ventas por canal en el periodo con todos los filtros MENOS el de canal
+   * (chips «Todos · POS · Tienda web…» y StatCard «Por canal»).
+   */
+  por_canal?: { canal: CanalVenta; transacciones: number; ventas: number }[];
+  /**
+   * «Ventas de hoy» (Figma 24): hoy en la zona de la organización, con los
+   * mismos filtros, frente al mismo día de la semana anterior.
+   */
+  hoy?: { ventas: number; transacciones: number; anterior: number | null; aEstaHora?: boolean };
 }
 
 export interface CajeroVentas {
@@ -180,14 +222,43 @@ export async function cifrasVentas(ctx: Ctx, crudo: Record<string, string | stri
   const desde = f.desde ?? `${hoy.slice(0, 8)}01`;
   const hasta = f.hasta ?? hoy;
   const previo = periodoAnterior(desde, hasta);
+  const ahora = new Date();
+  // Periodo con hoy: el anterior se compara hasta esta misma hora (y la etiqueta lo dice).
+  const aEstaHora = incluyeHoy(desde, hasta, hoy);
   const [rango, rangoPrevio] = await Promise.all([rangoDeDias(ctx, desde, hasta), rangoDeDias(ctx, previo.desde, previo.hasta)]);
+  const hastaPrevio =
+    aEstaHora && rangoPrevio.desde && rangoPrevio.hasta
+      ? finComparacionAEstaHora(rangoPrevio.desde, rangoPrevio.hasta, diasDelPeriodo(desde, hasta), ahora)
+      : rangoPrevio.hasta;
   const { data, error } = await ctx.supabase.rpc('pos_ventas_cifras', {
     ...parametrosFiltro(f, { organizacionId: ctx.organizationId, sucursalId, desde: rango.desde, hasta: rango.hasta }),
     p_desde_anterior: rangoPrevio.desde,
-    p_hasta_anterior: rangoPrevio.hasta,
+    p_hasta_anterior: hastaPrevio,
   });
   if (error) throw errorRpc(error);
-  return data as CifrasVentas;
+  const cifras = data as CifrasVentas;
+  cifras.comparacion = { desde: previo.desde, hasta: previo.hasta, aEstaHora };
+  cifras.hoy = await cifrasDeHoy(ctx, f, hoy, sucursalId, ahora).catch(() => undefined);
+  return cifras;
+}
+
+/**
+ * «Ventas de hoy» frente al mismo día de la semana pasada HASTA ESTA MISMA HORA
+ * (la regla del Inicio), con los filtros del listado.
+ */
+async function cifrasDeHoy(ctx: Ctx, f: FiltrosVentas, hoy: string, sucursalId: number | null, ahora: Date): Promise<CifrasVentas['hoy']> {
+  const semanaPasada = mismoDiaSemanaAnterior(hoy);
+  const [rango, rangoPrevio] = await Promise.all([rangoDeDias(ctx, hoy, hoy), rangoDeDias(ctx, semanaPasada, semanaPasada)]);
+  const hastaPrevio =
+    rangoPrevio.desde && rangoPrevio.hasta ? finComparacionAEstaHora(rangoPrevio.desde, rangoPrevio.hasta, 7, ahora) : rangoPrevio.hasta;
+  const { data, error } = await ctx.supabase.rpc('pos_ventas_cifras', {
+    ...parametrosFiltro(f, { organizacionId: ctx.organizationId, sucursalId, desde: rango.desde, hasta: rango.hasta }),
+    p_desde_anterior: rangoPrevio.desde,
+    p_hasta_anterior: hastaPrevio,
+  });
+  if (error) throw errorRpc(error);
+  const c = data as CifrasVentas;
+  return { ventas: c.actual.ventas, transacciones: c.actual.efectivas, anterior: c.anterior?.ventas ?? null, aEstaHora: true };
 }
 
 /** Quiénes han vendido en las sucursales visibles (o en la elegida). */

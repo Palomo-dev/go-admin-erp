@@ -36,6 +36,7 @@ import { useFechaHoraCaja } from '@/components/pos/cajas/comunesCaja';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { AnularVentaDialog } from '../AnularVentaDialog';
 import { DevolucionPanel } from './DevolucionPanel';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 import {
   TarjetaAsientos,
   TarjetaCliente,
@@ -57,6 +58,7 @@ const RUTA = '/app/pos/ventas';
 export function VentaDetallePage({ ventaId }: { ventaId: string }) {
   const t = useTranslations('posVentas');
   const tAnular = useTranslations('posDevolucionesAnular');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const params = useSearchParams();
   const moneda = useMonedaOrganizacion();
@@ -114,7 +116,7 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
   const numero = venta ? (venta.numero.tipo === 'sin_numero' ? null : venta.numero.numero) : null;
   const titulo = numero ?? t('listado.sinNumero');
   const migas = [
-    { etiqueta: t('listado.migas.pos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: t('listado.titulo'), href: RUTA },
     { etiqueta: venta ? titulo : '…' },
   ];

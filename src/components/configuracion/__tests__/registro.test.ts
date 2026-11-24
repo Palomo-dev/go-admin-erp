@@ -31,6 +31,10 @@ const PERMISOS_CONOCIDOS = new Set([
   'hr.approvals.manage',
   'hr.access_log.view',
   'hr.payroll.view',
+  // Logística (2026-11-23): organization_settings = id 107, el permiso de zonas y tarifas.
+  'organization_settings',
+  // Transporte (2026-11-23): código creado en la migración 20261123220000_transporte_despacho_cumplimiento.
+  'transporte.manage',
 ]);
 
 describe('registro de secciones', () => {

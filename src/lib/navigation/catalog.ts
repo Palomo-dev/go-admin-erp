@@ -87,6 +87,7 @@ import {
   MapPin,
   MessageCircle,
   MessageSquare,
+  Navigation,
   Network,
   NotebookPen,
   Package,
@@ -131,7 +132,7 @@ import {
 import { CRM_NAV_ENABLED } from '@/config/crmNav';
 
 /** Secciones del sidebar, en el orden en que se pintan (diseño de Figma, página 03). */
-export type CodigoSeccion = 'principal' | 'ventas' | 'gestion' | 'organizacion' | 'sistema';
+export type CodigoSeccion = 'principal' | 'ventas' | 'operacion' | 'gestion' | 'organizacion' | 'sistema';
 
 export interface PaginaNav {
   href: string;
@@ -162,6 +163,16 @@ export interface PaginaNav {
    * (Figma 01c: «Solo restaurantes», «Checkout, pagos y envíos»…).
    */
   descripcion?: string;
+  /**
+   * Código del módulo DUEÑO de la página cuando el menú la muestra dentro de
+   * otro módulo (Figma 24 Ventas, 2026-11-23: Cotizaciones vive en
+   * /app/finanzas/cotizaciones y además sale en Ventas › Vender). La página se
+   * ve solo si la organización tiene activo ese módulo y no la apagó ahí; no
+   * es una página del módulo que la muestra: no entra en `RUTAS_MODULOS`, en
+   * `MODULE_PAGES` (activación por organización y por cargo) ni marca el
+   * módulo activo (`rutaActiva` resalta al dueño). Ver `paginasPropias()`.
+   */
+  moduloDueno?: string;
 }
 
 export interface ModuloNav {
@@ -183,6 +194,13 @@ export interface ModuloNav {
   rutas: string[];
   /** Páginas en orden. Si solo queda una visible, el módulo es un enlace directo. */
   paginas: PaginaNav[];
+  /**
+   * Página con que abre el módulo (enlace del menú, pestaña móvil, Inicio)
+   * cuando no es la primera de la lista. Si la organización o el cargo la
+   * ocultan, el módulo abre en su primera página visible, como siempre.
+   * Ventas abre en «Todas las ventas», no en la pantalla del POS (Figma 24).
+   */
+  inicio?: string;
   /**
    * Cómo pinta sus páginas el nivel 2 del menú móvil. `'grupos'` (por defecto):
    * filas de texto bajo los rótulos de grupo (MobileDrawerNivel2 622:13996).
@@ -212,7 +230,11 @@ export const CAPACIDADES_NAV: readonly CapacidadNav[] = ['gestionarNotificacione
 
 export const SECCIONES: { codigo: CodigoSeccion; etiqueta: string }[] = [
   { codigo: 'principal', etiqueta: 'sectionMain' },
-  { codigo: 'ventas', etiqueta: 'sectionSales' },
+  // «Comercial» (Figma 24 Ventas, 2026-11-23): para no leer «Ventas › Ventas»
+  // ahora que el módulo del POS se llama Ventas. El código sigue siendo 'ventas'.
+  { codigo: 'ventas', etiqueta: 'sectionCommercial' },
+  // «Operación» (Figma 21 Logística, barra lateral 2792:19): Logística y Transporte.
+  { codigo: 'operacion', etiqueta: 'sectionOperation' },
   { codigo: 'gestion', etiqueta: 'sectionManagement' },
   { codigo: 'organizacion', etiqueta: 'sectionOrganization' },
   { codigo: 'sistema', etiqueta: 'sectionSystem' },
@@ -234,21 +256,32 @@ export const CATALOGO_NAV: ModuloNav[] = [
     ],
   },
 
-  // ─── Ventas ───────────────────────────────────────────────────────────────
+  // ─── Comercial ────────────────────────────────────────────────────────────
   {
+    // «Ventas» (Figma 24, aprobado por el dueño el 2026-11-23): el módulo vende
+    // por todos los canales y el POS es solo una de sus páginas. Cambian el
+    // nombre visible, el icono (Receipt, «Venta» en CATALOGO-ICONOS; el carrito
+    // queda para el POS), los grupos y la página de inicio. NO cambian el código
+    // `pos` (planes, organization_modules, cargos y permisos) ni las rutas
+    // /app/pos/** (opción A de la lámina «Qué cambia»).
     codigo: 'pos',
     id: 'pos',
-    etiqueta: 'pointOfSale',
-    icono: ShoppingCart,
+    etiqueta: 'ventas',
+    icono: Receipt,
     seccion: 'ventas',
     rutas: ['/app/pos'],
+    inicio: '/app/pos/ventas',
     paginas: [
-      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Venta', pantallaCompleta: true },
-      { href: '/app/pos/pedidos-online', nombre: 'Pedidos online', icono: ShoppingBag, grupo: 'Venta' },
-      { href: '/app/pos/ventas', nombre: 'Ventas', icono: Receipt, grupo: 'Venta' },
-      { href: '/app/pos/cajas', nombre: 'Cajas', icono: Banknote, grupo: 'Venta' },
-      { href: '/app/pos/devoluciones', nombre: 'Devoluciones', icono: Undo2, grupo: 'Venta' },
-      { href: '/app/pos/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Venta' },
+      // Vender: donde se vende (mostrador, pedidos que entran, cotizaciones).
+      { href: '/app/pos', nombre: 'POS', icono: ShoppingCart, grupo: 'Vender', pantallaCompleta: true },
+      { href: '/app/pos/pedidos-online', nombre: 'Pedidos online', icono: ShoppingBag, grupo: 'Vender' },
+      // Ruta de Finanzas (se sigue viendo también allí): solo con el módulo finance activo.
+      { href: '/app/finanzas/cotizaciones', nombre: 'Cotizaciones', icono: Calculator, grupo: 'Vender', moduloDueno: 'finance' },
+      // Movimientos: revisar lo vendido. «Todas las ventas» es la página de inicio.
+      { href: '/app/pos/ventas', nombre: 'Todas las ventas', icono: Receipt, grupo: 'Movimientos' },
+      { href: '/app/pos/devoluciones', nombre: 'Devoluciones', icono: Undo2, grupo: 'Movimientos' },
+      { href: '/app/pos/cajas', nombre: 'Cajas', icono: Banknote, grupo: 'Movimientos' },
+      { href: '/app/pos/cuentas-por-cobrar', nombre: 'Cuentas por cobrar', icono: Wallet, grupo: 'Movimientos' },
       { href: '/app/pos/mesas', nombre: 'Mesas', icono: UtensilsCrossed, grupo: 'Restaurante', pantallaCompleta: true },
       { href: '/app/pos/reservas-mesas', nombre: 'Reservas de mesas', icono: CalendarClock, grupo: 'Restaurante' },
       { href: '/app/pos/comandas', nombre: 'Comandas', icono: ChefHat, grupo: 'Restaurante' },
@@ -412,31 +445,72 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/parking/mapa', nombre: 'Mapa', icono: LayoutGrid },
     ],
   },
+
+  // ─── Operación ────────────────────────────────────────────────────────────
+  // Figma «21 Logística» (2792:17), 2026-11-23: dos módulos visibles sobre un
+  // mismo núcleo (2793:2382). Logística es para quien vende y despacha;
+  // Transporte, para mover personas o carga. Lo de envíos que vivía en
+  // Transporte se mudó a /app/logistica con redirección 308
+  // (REDIRECCIONES_LOGISTICA en next.config.js). Conductores y vehículos son
+  // «Catálogo común»: la misma pantalla en los dos módulos, cada uno con su
+  // ruta (cada módulo se habilita por separado en el middleware).
+  {
+    codigo: 'logistica',
+    id: 'logistica',
+    etiqueta: 'logistics',
+    icono: Truck,
+    seccion: 'operacion',
+    rutas: ['/app/logistica'],
+    paginas: [
+      { href: '/app/logistica/por-despachar', nombre: 'Por despachar', icono: Package, grupo: 'Operación del día' },
+      { href: '/app/logistica/envios', nombre: 'Envíos', icono: Boxes, grupo: 'Operación del día' },
+      { href: '/app/logistica/domiciliarios', nombre: 'Domiciliarios', icono: Users, grupo: 'Operación del día' },
+      { href: '/app/logistica/cuadres', nombre: 'Cuadres', icono: Wallet, grupo: 'Operación del día' },
+      { href: '/app/logistica/seguimiento', nombre: 'Seguimiento y novedades', icono: Navigation, grupo: 'Operación del día' },
+      // La app del domiciliario: sale en el menú para que quien reparte llegue
+      // a ella (su cargo puede dejarle solo esta página).
+      { href: '/app/logistica/mis-envios', nombre: 'Mis envíos', icono: Truck, grupo: 'Operación del día' },
+      { href: '/app/logistica/conductores', nombre: 'Conductores y domiciliarios', icono: User, grupo: 'Catálogo común' },
+      { href: '/app/logistica/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Catálogo común' },
+      // Zonas y reglas son catálogos del módulo, no ajustes: los ajustes de
+      // Logística viven en el diálogo de Configuración (sección
+      // `logistica.general`, docs/configuracion/UNIFICACION-CONFIGURACION.md),
+      // que las pantallas abren con el atajo «Configurar». Sin página
+      // «Configuración» en el submenú.
+      { href: '/app/logistica/zonas', nombre: 'Zonas y tarifas', icono: MapPin, grupo: 'Cobertura' },
+      { href: '/app/logistica/reglas', nombre: 'Reglas de despacho', icono: ListChecks, grupo: 'Cobertura' },
+      // Fuera del menú (Figma no las lista): se llega desde los envíos. Siguen
+      // siendo páginas activables por organización. Las transportadoras son
+      // conexiones: viven en Integraciones › Conexiones › Logística.
+      { href: '/app/logistica/etiquetas', nombre: 'Etiquetas', icono: Tag, grupo: 'Cobertura', enMenu: false },
+      { href: '/app/logistica/direcciones-clientes', nombre: 'Direcciones de clientes', icono: MapPin, grupo: 'Cobertura', enMenu: false },
+    ],
+  },
   {
     codigo: 'transport',
     id: 'transporte',
     etiqueta: 'transport',
     icono: Bus,
-    seccion: 'ventas',
+    seccion: 'operacion',
     rutas: ['/app/transporte'],
     paginas: [
-      { href: '/app/transporte/viajes', nombre: 'Viajes', icono: Calendar, grupo: 'Pasajeros' },
-      { href: '/app/transporte/boletos', nombre: 'Boletos', icono: Ticket, grupo: 'Pasajeros' },
-      { href: '/app/transporte/tarifas-pasajeros', nombre: 'Tarifas de pasajeros', icono: DollarSign, grupo: 'Pasajeros' },
-      { href: '/app/transporte/envios', nombre: 'Envíos', icono: Package, grupo: 'Envíos' },
-      { href: '/app/transporte/mis-envios', nombre: 'Mis envíos', icono: Truck, grupo: 'Envíos' },
-      { href: '/app/transporte/tarifas-envio', nombre: 'Tarifas de envío', icono: DollarSign, grupo: 'Envíos' },
-      { href: '/app/transporte/tracking', nombre: 'Tracking', icono: Search, grupo: 'Envíos' },
-      { href: '/app/transporte/etiquetas', nombre: 'Etiquetas', icono: Tag, grupo: 'Envíos' },
-      { href: '/app/transporte/manifiestos', nombre: 'Manifiestos', icono: ClipboardList, grupo: 'Envíos' },
-      { href: '/app/transporte/transportadoras', nombre: 'Transportadoras', icono: Truck, grupo: 'Operación' },
-      { href: '/app/transporte/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Operación' },
-      { href: '/app/transporte/conductores', nombre: 'Conductores', icono: User, grupo: 'Operación' },
-      { href: '/app/transporte/paradas', nombre: 'Paradas', icono: MapPin, grupo: 'Operación' },
-      { href: '/app/transporte/rutas', nombre: 'Rutas', icono: MapPin, grupo: 'Operación' },
-      { href: '/app/transporte/horarios', nombre: 'Horarios', icono: Clock, grupo: 'Operación' },
-      { href: '/app/transporte/direcciones-clientes', nombre: 'Direcciones de clientes', icono: MapPin, grupo: 'Operación' },
-      { href: '/app/transporte/incidentes', nombre: 'Incidentes', icono: Shield, grupo: 'Operación' },
+      // Figma «23 Transporte» (2910:23236), 2026-11-23: tres grupos y sin «Configuración» (los
+      // ajustes viven en el diálogo, sección `transporte.general`). El módulo abre en Viajes ›
+      // Despachos de hoy (pestaña por defecto de Viajes); sin «Inicio del día»: el único tablero
+      // es Inicio. Paradas, Tarifas de pasajeros e Incidentes pasan a pestañas de Rutas, Boletos
+      // y Viajes (REDIRECCIONES_TRANSPORTE en next.config.js). Vehículos y Conductores son el
+      // catálogo común (la misma pantalla que en Logística).
+      { href: '/app/transporte/viajes', nombre: 'Viajes', icono: Calendar, grupo: 'Operación' },
+      { href: '/app/transporte/boletos', nombre: 'Boletos', icono: Ticket, grupo: 'Operación' },
+      { href: '/app/transporte/manifiestos', nombre: 'Manifiestos de carga', icono: ClipboardList, grupo: 'Operación' },
+      { href: '/app/transporte/rutas', nombre: 'Rutas y paradas', icono: MapPin, grupo: 'Red' },
+      { href: '/app/transporte/horarios', nombre: 'Horarios', icono: Clock, grupo: 'Red' },
+      { href: '/app/transporte/flota', nombre: 'Flota', icono: Truck, grupo: 'Flota' },
+      { href: '/app/transporte/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Flota' },
+      { href: '/app/transporte/conductores', nombre: 'Conductores y tripulación', icono: User, grupo: 'Flota' },
+      // Fuera del menú: la lista es la pestaña Viajes › Novedades (/incidentes redirige con 308);
+      // el detalle de cada novedad sigue en /app/transporte/incidentes/[id].
+      { href: '/app/transporte/incidentes', nombre: 'Novedades', icono: Shield, grupo: 'Operación', enMenu: false },
     ],
   },
 
@@ -712,6 +786,25 @@ export const CATALOGO_NAV: ModuloNav[] = [
 /** Busca un módulo por su código de base de datos. */
 export function moduloPorCodigo(codigo: string): ModuloNav | undefined {
   return CATALOGO_NAV.find((m) => m.codigo === codigo);
+}
+
+/**
+ * Páginas que PERTENECEN al módulo: sin las que solo muestra prestadas de otro
+ * (`moduloDueno`). Es la lista que usan el middleware (`RUTAS_MODULOS`), la
+ * activación por organización y por cargo (`MODULE_PAGES`) y todo lo que
+ * pregunta «¿de qué módulo es esta ruta?».
+ */
+export function paginasPropias(modulo: Pick<ModuloNav, 'paginas'>): PaginaNav[] {
+  return modulo.paginas.filter((p) => !p.moduloDueno);
+}
+
+/**
+ * Enlace con que abre un módulo entre sus páginas visibles: `inicio` si sigue
+ * visible; si no, la primera. `null` si no le queda ninguna.
+ */
+export function hrefInicioModulo(modulo: Pick<ModuloNav, 'inicio'>, hrefsVisibles: readonly string[]): string | null {
+  if (modulo.inicio && hrefsVisibles.includes(modulo.inicio)) return modulo.inicio;
+  return hrefsVisibles[0] ?? null;
 }
 
 /**

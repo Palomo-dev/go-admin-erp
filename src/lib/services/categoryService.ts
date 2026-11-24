@@ -28,6 +28,11 @@ export interface Category {
   cuenta_costo?: string | null;
   cuenta_inventario?: string | null;
   cuenta_devolucion?: string | null;
+  /** Peso (kg) y caja (cm) por defecto para cotizar envíos (logística Fase 1, migración 20261123153810). */
+  default_weight_kg?: number | null;
+  default_length_cm?: number | null;
+  default_width_cm?: number | null;
+  default_height_cm?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +63,10 @@ export interface CategoryFormData {
   cuenta_costo?: string | null;
   cuenta_inventario?: string | null;
   cuenta_devolucion?: string | null;
+  default_weight_kg?: number | null;
+  default_length_cm?: number | null;
+  default_width_cm?: number | null;
+  default_height_cm?: number | null;
 }
 
 export interface CategoryStats {
@@ -238,6 +247,19 @@ export const emptyFormData: CategoryFormData = {
 
 const CLAVES_CUENTA = ['cuenta_ingreso', 'cuenta_costo', 'cuenta_inventario', 'cuenta_devolucion'] as const;
 
+const CLAVES_ENVIO = ['default_weight_kg', 'default_length_cm', 'default_width_cm', 'default_height_cm'] as const;
+
+/** Peso y caja por defecto: solo las claves presentes; vacío o ≤ 0 se guarda como NULL (CHECK > 0). */
+function columnasEnvio(formData: Partial<CategoryFormData>): Record<string, number | null> {
+  const out: Record<string, number | null> = {};
+  for (const clave of CLAVES_ENVIO) {
+    if (formData[clave] === undefined) continue;
+    const n = Number(formData[clave]);
+    out[clave] = formData[clave] !== null && Number.isFinite(n) && n > 0 ? n : null;
+  }
+  return out;
+}
+
 function columnasCuentas(formData: Partial<CategoryFormData>): Record<string, string | null> {
   const columnas: Record<string, string | null> = {};
   for (const clave of CLAVES_CUENTA) {
@@ -327,6 +349,7 @@ const categoryService = {
         station: formData.station || null,
         requires_preparation: formData.requires_preparation,
         ...columnasCuentas(formData),
+        ...columnasEnvio(formData),
       })
       .select()
       .single();
@@ -354,7 +377,7 @@ const categoryService = {
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
     if (formData.station !== undefined) updateData.station = formData.station || null;
     if (formData.requires_preparation !== undefined) updateData.requires_preparation = formData.requires_preparation;
-    Object.assign(updateData, columnasCuentas(formData));
+    Object.assign(updateData, columnasCuentas(formData), columnasEnvio(formData));
 
     const { data, error } = await supabase
       .from('categories')
@@ -391,7 +414,7 @@ const categoryService = {
     if (formData.metadata !== undefined) updateData.metadata = formData.metadata;
     if (formData.station !== undefined) updateData.station = formData.station || null;
     if (formData.requires_preparation !== undefined) updateData.requires_preparation = formData.requires_preparation;
-    Object.assign(updateData, columnasCuentas(formData));
+    Object.assign(updateData, columnasCuentas(formData), columnasEnvio(formData));
 
     const { data, error } = await supabase
       .from('categories')

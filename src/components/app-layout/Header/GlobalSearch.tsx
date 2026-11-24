@@ -101,6 +101,8 @@ export interface PaginaBuscable {
   name: string;
   url: string;
   description?: string;
+  /** Sinónimos que encuentran la página sin pintarse (`nav.sinonimos.<módulo>`). */
+  palabrasClave?: string;
   /** Icono de la página en el catálogo de navegación. */
   icono?: LucideIcon;
 }
@@ -128,6 +130,7 @@ const ICONO_ENTIDAD: Record<TipoEntidad, LucideIcon> = {
   category: Tags,
   invoice: FileText,
   web_order: ShoppingBag,
+  shipment: Truck,
   reservation: BookOpen,
   space: BedDouble,
   membership: CreditCard,
@@ -142,6 +145,7 @@ const GRUPO_I18N: Record<TipoEntidad, string> = {
   category: 'categories',
   invoice: 'invoices',
   web_order: 'webOrders',
+  shipment: 'shipments',
   reservation: 'reservations',
   space: 'spaces',
   membership: 'memberships',

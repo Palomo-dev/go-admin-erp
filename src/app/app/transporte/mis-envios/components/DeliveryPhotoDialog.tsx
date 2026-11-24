@@ -17,8 +17,12 @@ import { Camera, Loader2, X, FileCheck, Image as ImageIcon, Upload, RefreshCw } 
 type CaptureMode = 'upload' | 'camera';
 
 interface DeliveryPhotoDialogProps {
+  /** Organización y envío: la foto va a `shipment-pod/{org}/{envío}/…` (bucket privado). */
+  organizationId: number;
+  shipmentId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** `photoUrl` es la RUTA en el bucket privado (no una URL pública): se ve con enlace firmado. */
   onSubmit: (data: {
     recipientName: string;
     photoUrl: string;
@@ -27,7 +31,7 @@ interface DeliveryPhotoDialogProps {
   initialRecipientName?: string;
 }
 
-export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecipientName }: DeliveryPhotoDialogProps) {
+export function DeliveryPhotoDialog({ organizationId, shipmentId, open, onOpenChange, onSubmit, initialRecipientName }: DeliveryPhotoDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [notes, setNotes] = useState('');
@@ -83,8 +87,8 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
           setIsCameraReady(true);
         };
       }
-    } catch (err: any) {
-      setCameraError(err?.message || 'No se pudo acceder a la cámara');
+    } catch (err: unknown) {
+      setCameraError((err instanceof Error && err.message) || 'No se pudo acceder a la cámara');
     }
   }, []);
 
@@ -132,24 +136,13 @@ export function DeliveryPhotoDialog({ open, onOpenChange, onSubmit, initialRecip
 
     setIsSubmitting(true);
     try {
-      const fileName = `pod_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-      const filePath = `deliveries/${fileName}`;
-
-      const { supabase } = await import('@/lib/supabase/config');
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('shipment-pod')
-        .upload(filePath, photoFile, {
-          contentType: photoFile.type || 'image/jpeg',
-          upsert: false,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('shipment-pod')
-        .getPublicUrl(filePath);
-
-      const photoUrl = urlData.publicUrl;
+      // Misma subida que «Mis envíos» de Logística: {org}/{envío}/foto-{uuid}.{ext} en el bucket
+      // privado; se guarda la ruta (las pantallas piden un enlace firmado al servidor).
+      const [{ supabase }, { subirImagenEnvio }] = await Promise.all([
+        import('@/lib/supabase/config'),
+        import('@/lib/services/logistica/misEnviosService'),
+      ]);
+      const photoUrl = await subirImagenEnvio(supabase, organizationId, shipmentId, photoFile, 'foto');
 
       await onSubmit({
         recipientName,

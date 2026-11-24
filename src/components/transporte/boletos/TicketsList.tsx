@@ -31,8 +31,7 @@ import {
   Ticket,
   Phone,
   Copy,
-  Send,
-} from 'lucide-react';
+  Send, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { TicketWithDetails } from '@/lib/services/ticketsService';
@@ -51,6 +50,8 @@ interface TicketsListProps {
   onRefund: (ticket: TicketWithDetails) => void;
   onDuplicate?: (ticket: TicketWithDetails) => void;
   onResendQR?: (ticket: TicketWithDetails) => void;
+  /** Cambiar de viaje o de puesto con las reglas de Configuración › Transporte (Fase 2). */
+  onChangeTrip?: (ticket: TicketWithDetails) => void;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -82,6 +83,7 @@ export function TicketsList({
   onRefund,
   onDuplicate,
   onResendQR,
+  onChangeTrip,
 }: TicketsListProps) {
   // Cada boleto en su moneda; sin ella, la base de la organización.
   const { paraDocumento } = useMonedaOrganizacion();
@@ -214,6 +216,12 @@ export function TicketsList({
                         <DropdownMenuItem onClick={() => onDuplicate(ticket)}>
                           <Copy className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-300" />
                           Duplicar
+                        </DropdownMenuItem>
+                      )}
+                      {onChangeTrip && ['reserved', 'confirmed', 'paid'].includes(ticket.status ?? '') && (
+                        <DropdownMenuItem onClick={() => onChangeTrip(ticket)}>
+                          <ArrowLeftRight className="h-4 w-4 mr-2 text-brand" />
+                          Cambiar de viaje o puesto
                         </DropdownMenuItem>
                       )}
                       {onResendQR && ticket.status !== 'cancelled' && (

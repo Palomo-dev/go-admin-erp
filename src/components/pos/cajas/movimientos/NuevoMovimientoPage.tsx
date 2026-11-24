@@ -16,6 +16,7 @@ import { CajasService } from '../CajasService';
 import { DebajoSesion, useMensajeErrorCaja, useMonedaCaja } from '../comunesCaja';
 import { useResumenCaja } from '../useResumenCaja';
 import { EfectoEnCaja, MovimientoCajaForm, datosParaGuardar, useMovimientoCajaForm } from './MovimientoCajaForm';
+import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 interface NuevoMovimientoPageProps {
   sessionUuid: string;
@@ -24,6 +25,7 @@ interface NuevoMovimientoPageProps {
 export function NuevoMovimientoPage({ sessionUuid }: NuevoMovimientoPageProps) {
   const t = useTranslations('cajas.mov');
   const tFicha = useTranslations('cajas.ficha');
+  const migaVentas = useMigaVentas();
   const router = useRouter();
   const { simbolo, formatear } = useMonedaCaja();
   const mensajeError = useMensajeErrorCaja();
@@ -50,7 +52,7 @@ export function NuevoMovimientoPage({ sessionUuid }: NuevoMovimientoPageProps) {
   };
 
   const migas = [
-    { etiqueta: tFicha('migaPos'), href: '/app/pos' },
+    migaVentas,
     { etiqueta: tFicha('migaCajas'), href: '/app/pos/cajas' },
     { etiqueta: resumen ? tFicha('sesion', { id: resumen.sesion.id }) : '…', href: volverA },
     { etiqueta: t('titulo') },

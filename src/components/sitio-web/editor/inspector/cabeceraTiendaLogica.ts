@@ -146,6 +146,19 @@ export function cambioCarrito(a: Ajustes, parte: Record<string, unknown>): Ajust
   return mezclar(a, 'header_carrito', parte);
 }
 
+/** Dónde sale el aviso de contraentrega: el cajón del carrito o la ficha del producto. */
+export type LugarAvisoContraentrega = 'carrito' | 'ficha';
+
+/**
+ * Casilla del aviso de contraentrega (Figma 3071:82659). Un solo dato
+ * (`header_carrito.avisoContraentrega`) que cambian Encabezado › Carrito y el panel de la ficha.
+ * Encendido se guarda `true`; apagado se quita (el default, apagado, es la tienda de hoy).
+ */
+export function cambioAvisoContraentrega(a: Ajustes, lugar: LugarAvisoContraentrega, encendido: boolean): Ajustes {
+  const actual = objeto(objeto(a.header_carrito)?.avisoContraentrega) ?? {};
+  return cambioCarrito(a, { avisoContraentrega: { ...actual, [lugar]: encendido ? true : null } });
+}
+
 /**
  * Columnas legacy del botón (`fixed` usa el primer texto: el fijo va primero). La fila solo sabe
  * de fijo y dinámico; los modos nuevos (que un sitio sin borrador no puede elegir) van a dinámico.

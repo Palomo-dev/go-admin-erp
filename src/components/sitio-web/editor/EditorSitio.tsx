@@ -844,6 +844,7 @@ function Editor() {
               estiloTarjetaSitio={valorCampo(ed.documento?.tema.tarjetaProducto)}
               carruselSitio={valorCampo(ed.documento?.tema.carrusel)}
               onAbrirEstiloTarjeta={ed.enV2 && ed.documento ? () => setPanelIzquierdo('estilo') : undefined}
+              onCambiarAjustes={(c) => ed.cambiarAjustes(c as Partial<WebsiteSettings>)}
               onAplicarTarjeta={(estilo: EstiloTarjetaProducto) => {
                 for (const s of ed.currentPage?.sections ?? []) {
                   if (!esSeccionTarjetaProducto(s.section_type)) continue;

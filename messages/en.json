@@ -36851,6 +36851,39 @@
         "enlaceEstiloTarjeta": "Colors and texts in Card style",
         "restablecer": "Back to today's look",
         "ayudaRestablecer": "Removes the label options from this block: the product page renders as before."
+      },
+      "avisoContraentrega": {
+        "titulo": "Cash on delivery notice",
+        "ayuda": "Reminds customers they can pay on delivery. It only shows if the branch offers cash on delivery; otherwise it stays hidden even if checked.",
+        "mostrar": "Show the notice",
+        "casilla": {
+          "carrito": {
+            "titulo": "In the cart",
+            "ayuda": "A small line below the total, without a box."
+          },
+          "ficha": {
+            "titulo": "On the product page",
+            "ayuda": "A small line below the price."
+          }
+        },
+        "vistaPrevia": {
+          "etiqueta": "Preview",
+          "donde": {
+            "carrito": "Cart · below the total",
+            "ficha": "Product page · below the price"
+          },
+          "linea": {
+            "carrito": "Cash on delivery available: pay when you receive it.",
+            "ficha": "Cash on delivery available · pay on delivery"
+          }
+        },
+        "enlaceCondiciones": "Conditions in Online sales › Cash on delivery",
+        "soloBorrador": "It is saved once the site moves to the new draft; meanwhile you can see it in the preview.",
+        "ficha": {
+          "titulo": "Cash on delivery notice",
+          "ayuda": "A small line below the price. It only shows if the branch offers cash on delivery.",
+          "mismoDato": "Same option as Header › Cart › “On the product page”."
+        }
       }
     },
     "paginas": {

@@ -35,6 +35,7 @@ import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
+import { InterruptorAvisoFicha } from './AvisoContraentregaEditor';
 import { EditorEtiquetasFicha } from './EditorEtiquetasFicha';
 import { CAMPOS_CUBIERTOS_FICHA, PanelSeccionFicha, esSeccionFichaConPanel } from './EditorSeccionesFicha';
 import { CLAVES_BARRA_FIJA_EDITOR, EditorBarraFija } from './EditorBarraFija';
@@ -94,6 +95,12 @@ export interface InspectorSeccionProps {
   onAplicarTarjeta?: (estilo: EstiloTarjetaProducto) => void;
   /** Abre Estilo del sitio › Tarjeta de producto (enlace del panel «Etiquetas» de la ficha). */
   onAbrirEstiloTarjeta?: () => void;
+  /**
+   * Cambia ajustes del sitio (el `cambiarAjustes` del editor). Lo usa el interruptor «Aviso de
+   * contraentrega» de la ficha, que escribe `header_carrito.avisoContraentrega.ficha` (el mismo
+   * dato de Encabezado › Carrito). Sin él, el interruptor no sale.
+   */
+  onCambiarAjustes?: (cambio: Record<string, unknown>) => void;
 }
 
 export function InspectorSeccion(p: InspectorSeccionProps) {
@@ -424,6 +431,11 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         {/* Acciones de compra de la ficha: distribución y botones (Figma 2779:65038). */}
         {pestana === 'contenido' && s.section_type === 'product_actions' && (
           <EditorAccionesFicha contenido={contenido} onCambiar={onCambiarContenido} numeroWhatsapp={ajustesSitio?.whatsapp_number} />
+        )}
+        {/* Aviso de contraentrega junto al precio y el botón de compra (Figma 3073:83567): el mismo
+            dato que Encabezado › Carrito › «En la ficha del producto». */}
+        {pestana === 'contenido' && s.section_type === 'product_actions' && p.onCambiarAjustes && (
+          <InterruptorAvisoFicha ajustes={ajustesSitio ?? {}} cambiar={p.onCambiarAjustes} enBorrador={p.enBorrador} />
         )}
         {pestana === 'contenido' && esSeccionFichaConPanel(s.section_type) && (
           <PanelSeccionFicha tipo={s.section_type} pestana="contenido" contenido={contenido} onCambiar={onCambiarContenido} />

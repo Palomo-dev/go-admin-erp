@@ -7,7 +7,7 @@
  * - `header_iconos`: estilo, tamaño, trazo, textos propios, contador del carrito y favoritos.
  * - `header_moneda`: estilo del selector, flecha, monedas visibles, moneda al entrar y celular.
  * - `header_carrito`: botón principal (4 modos), botón «Comprar» de /carrito, enlace secundario,
- *   «Seguir comprando», título y envío gratis.
+ *   «Seguir comprando», título, envío gratis y aviso de contraentrega (carrito y ficha).
  * - `header_favoritos`: corazón de la cabecera, panel lateral y página /favoritos (Figma 2762:61067).
  * - `header_cuenta`: qué abre el ícono de cuenta (página, panel, ventana o diálogo) y sus textos
  *   (Figma 2834:68670).
@@ -478,6 +478,13 @@ export interface OpcionesCarrito {
   seguirComprando: string;
   titulo: string;
   envioGratis: { barra: boolean; mensaje: string; logrado: string };
+  /**
+   * Aviso de contraentrega (Figma 3071:82659 y 3073:83426, aprobado el 2026-11-24): una línea
+   * discreta en el cajón (debajo del total) y en la ficha (debajo del precio). Apagado por
+   * defecto. Un solo dato que el editor cambia desde Encabezado › Carrito y desde la ficha del
+   * producto. Encendido, sale solo si la sede ofrece contraentrega con condiciones.
+   */
+  avisoContraentrega: { carrito: boolean; ficha: boolean };
 }
 
 /** Marcador del monto que falta en el mensaje de envío gratis. */
@@ -493,6 +500,7 @@ export const CARRITO_HOY: Readonly<Omit<OpcionesCarrito, 'configurado' | 'boton'
     mensaje: '¡Te faltan {monto} para envío gratis!',
     logrado: '¡Listo! Tu pedido tiene envío gratis',
   },
+  avisoContraentrega: { carrito: false, ficha: false },
 };
 
 const LARGO_TEXTO_CARRITO = 60;
@@ -584,10 +592,14 @@ export function opcionesCarrito(ajustes: Ajustes): OpcionesCarrito {
   const barra = typeof envio.barra === 'boolean' ? envio.barra : null;
   const mensaje = textoCorto(envio.mensaje, LARGO_MENSAJE_ENVIO);
   const logrado = textoCorto(envio.logrado, LARGO_MENSAJE_ENVIO);
+  const aviso = objeto(crudo.avisoContraentrega) ?? {};
+  const avisoCarrito = typeof aviso.carrito === 'boolean' ? aviso.carrito : null;
+  const avisoFicha = typeof aviso.ficha === 'boolean' ? aviso.ficha : null;
   return {
     configurado:
       botonDoc !== null || botonPaginaDoc !== null || crudo.usarEnPagina === false || seguir !== null || titulo !== null ||
-      enlaceMostrar !== null || enlaceTexto !== null || enlaceEstilo !== null || barra !== null || mensaje !== null || logrado !== null,
+      enlaceMostrar !== null || enlaceTexto !== null || enlaceEstilo !== null || barra !== null || mensaje !== null || logrado !== null ||
+      avisoCarrito !== null || avisoFicha !== null,
     boton: botonDoc ?? botonCarritoDesdeLegacy(a.cart_button_mode, a.cart_button_texts),
     botonPagina: usarEnPagina ? botonDoc : botonPaginaDoc,
     usarEnPagina,
@@ -602,6 +614,10 @@ export function opcionesCarrito(ajustes: Ajustes): OpcionesCarrito {
       barra: barra ?? CARRITO_HOY.envioGratis.barra,
       mensaje: mensaje ?? CARRITO_HOY.envioGratis.mensaje,
       logrado: logrado ?? CARRITO_HOY.envioGratis.logrado,
+    },
+    avisoContraentrega: {
+      carrito: avisoCarrito ?? CARRITO_HOY.avisoContraentrega.carrito,
+      ficha: avisoFicha ?? CARRITO_HOY.avisoContraentrega.ficha,
     },
   };
 }
@@ -963,7 +979,7 @@ export const ERROR_INGRESO_GENERICO = 'Correo o contraseña incorrectos. Revisa 
 /** Confirmación de «Recuperar»: la misma exista o no la cuenta. */
 export function mensajeRecuperar(correo: string): string {
   const c = correo.trim();
-  return `Si ${c || 'ese correo'} tiene una cuenta en esta tienda, te enviamos un enlace para crear una nueva contraseña.`;
+  return `Si ${c || 'ese correo'} tiene una cuenta en esta tienda, te enviamos un código para crear una nueva contraseña.`;
 }
 
 /** Menú de cuenta con sesión: las rutas reales de /mi-cuenta. */

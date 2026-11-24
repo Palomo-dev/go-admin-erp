@@ -16,7 +16,7 @@
  */
 import { useEffect, useId, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { ArrowRight, BadgeCheck, Lock, Plus, RotateCcw, ShieldCheck, Trash2, Truck, type LucideIcon } from 'lucide-react';
 import { CampoNumero, Dialogo, FormField, FormSection, SegmentedControl, SettingRow, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,7 @@ import { CajaIcono } from '../ui/CajaIcono';
 import { ICONO_ENTREGA, ICONO_MODO_CHECKOUT, ICONO_SECCION_CHECKOUT } from './iconosVentas';
 import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '../ui/iconosSitio';
 import { useTextosVentas } from './textos';
+import { SelectorBarraPago } from './SelectorBarraPago';
 
 /** Icono de lucide para el icono guardado por el sitio (emojis heredados). */
 export function iconoSello(icono: string): LucideIcon {
@@ -117,6 +118,7 @@ export function diferenciasCheckout(a: AjustesCheckout, b: AjustesCheckout): Cam
   if (a.envioActivo !== b.envioActivo) c.envioActivo = b.envioActivo;
   if (a.tarifaPlana !== b.tarifaPlana) c.tarifaPlana = b.tarifaPlana;
   if (a.envioGratisDesde !== b.envioGratisDesde) c.envioGratisDesde = b.envioGratisDesde;
+  if (a.barraPago !== b.barraPago) c.barraPago = b.barraPago;
   return c;
 }
 
@@ -139,6 +141,7 @@ export interface DialogoCheckoutProps {
 
 export function DialogoCheckout({ abierto, onAbiertoChange, ajustes, simboloMoneda, onGuardar, esRestaurante = false, tarifasDomicilio = null, enlaceTarifas = null }: DialogoCheckoutProps) {
   const t = useTextosVentas();
+  const tBarra = useTranslations('barraPagoMovil');
   const { toast } = useToast();
   const id = useId();
   const [form, setForm] = useState<AjustesCheckout>(ajustes);
@@ -239,6 +242,10 @@ export function DialogoCheckout({ abierto, onAbiertoChange, ajustes, simboloMone
                 })}
               </div>
             )}
+          </FormField>
+          {/* Barra fija del pago en celular (Figma 3059:80757): A · B · C, por defecto C. */}
+          <FormField etiqueta={tBarra('etiqueta')} ayuda={tBarra('ayuda')}>
+            {(campo) => <SelectorBarraPago idEtiqueta={campo.idEtiqueta} valor={form.barraPago} onValorChange={(v) => poner('barraPago', v)} />}
           </FormField>
           <SettingRow titulo={t('ventas.checkout.ventaEnLinea')} descripcion={t('ventas.checkout.ventaEnLineaAyuda')} htmlFor={`${id}-venta`}>
             <Switch id={`${id}-venta`} checked={form.ventaEnLinea} onCheckedChange={(v) => poner('ventaEnLinea', v)} />

@@ -3,7 +3,10 @@
  * tarjeta, «N de M listos para vender», «Falta: …» y validación del checkout.
  */
 import {
+  BARRAS_PAGO_MOVIL,
+  BARRA_PAGO_POR_DEFECTO,
   filaDeCambios,
+  normalizarBarraPago,
   ordenarTablero,
   progresoVentas,
   tarjetaCheckout,
@@ -185,6 +188,19 @@ describe('validarCambiosCheckout', () => {
     expect(v.campos.sort()).toEqual(['custom_scripts', 'modo', 'organization_id', 'pedidoMinimo', 'tiposEntrega'].sort());
     expect(validarCambiosCheckout({ tiposEntrega: ['dron'] }).ok).toBe(false);
     expect(validarCambiosCheckout([]).ok).toBe(false);
+  });
+
+  test('barra de pago en celular: A/B/C a checkout_mobile_bar_style; otro valor se rechaza', () => {
+    const v = validarCambiosCheckout({ barraPago: 'dos_lineas' });
+    expect(v.ok && filaDeCambios(v.cambios)).toEqual({ checkout_mobile_bar_style: 'dos_lineas' });
+    expect(validarCambiosCheckout({ barraPago: 'C' })).toEqual({ ok: false, campos: ['barraPago'] });
+    expect(validarCambiosCheckout({ barraPago: null })).toEqual({ ok: false, campos: ['barraPago'] });
+  });
+
+  test('sin estilo guardado (o con uno desconocido) la barra es C', () => {
+    expect(BARRA_PAGO_POR_DEFECTO).toBe('partido');
+    expect([null, undefined, '', 'x'].map(normalizarBarraPago)).toEqual(['partido', 'partido', 'partido', 'partido']);
+    expect(BARRAS_PAGO_MOVIL.map(normalizarBarraPago)).toEqual(['dos_filas', 'dos_lineas', 'partido']);
   });
 
   test('null en un importe significa «sin mínimo» / «sin envío gratis»', () => {

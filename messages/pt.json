@@ -69110,5 +69110,24 @@
       "enLinea": "pagamento online",
       "explicacion": "«Esperado» soma só o que o entregador cobra na porta (total − sinal). Os sinais entram pela plataforma de pagamento e são conciliados em Finanças › Processadores de pagamento."
     }
+  },
+  "barraPagoMovil": {
+    "etiqueta": "Barra de pagamento no celular",
+    "ayuda": "Como fica a barra fixa com o botão de pagar no checkout pelo celular. No computador não muda.",
+    "porDefecto": "padrão",
+    "estilos": {
+      "dos_filas": {
+        "titulo": "Duas linhas",
+        "descripcion": "Os valores em cima e um botão curto em toda a largura."
+      },
+      "dos_lineas": {
+        "titulo": "Botão de duas linhas",
+        "descripcion": "O total em cima; o botão diz o que você paga e com qual gateway."
+      },
+      "partido": {
+        "titulo": "Botão dividido",
+        "descripcion": "A ação à esquerda e o valor sempre à direita."
+      }
+    }
   }
 }

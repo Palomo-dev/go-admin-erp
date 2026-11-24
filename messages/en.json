@@ -69100,5 +69100,24 @@
       "enLinea": "online payment",
       "explicacion": "\"Expected\" only adds what the courier collects at the door (total − deposit). Deposits come in through the gateway and are reconciled in Finance › Payment processors."
     }
+  },
+  "barraPagoMovil": {
+    "etiqueta": "Mobile payment bar",
+    "ayuda": "How the sticky bar with the pay button looks at checkout on phones. Desktop does not change.",
+    "porDefecto": "default",
+    "estilos": {
+      "dos_filas": {
+        "titulo": "Two rows",
+        "descripcion": "Amounts on top and a short full-width button."
+      },
+      "dos_lineas": {
+        "titulo": "Two-line button",
+        "descripcion": "Total on top; the button says what you pay and with which gateway."
+      },
+      "partido": {
+        "titulo": "Split button",
+        "descripcion": "The action on the left and the amount always on the right."
+      }
+    }
   }
 }

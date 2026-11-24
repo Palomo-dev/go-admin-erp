@@ -78,6 +78,7 @@ function respuesta(t: EntradaTablero[] = tablero()): RespuestaVentas {
       envioActivo: true,
       tarifaPlana: 12000,
       envioGratisDesde: 200000,
+      barraPago: 'partido',
       pendienteMigracion: true,
     },
     permisos: { editar: true, publicar: true },

@@ -168,6 +168,12 @@ export interface EstiloTarjetaProducto {
   label_shipping?: EstiloEtiquetaTarjeta
   label_discount?: EstiloEtiquetaTarjeta
   label_sold_out?: EstiloEtiquetaTarjeta
+  /**
+   * Etiqueta de la promoción REAL del producto («2 X 1», «-20 %», «Combo»), de Promociones (canal
+   * web, vigente). En la TARJETA es opcional: solo sale con `show: true` (sin opciones guardadas, la
+   * tarjeta de hoy). La ficha la decide con su propio interruptor (Información › Etiquetas).
+   */
+  label_promotion?: EstiloEtiquetaTarjeta
   text_align?: (typeof ALINEACIONES)[number]
   price_position?: (typeof POSICIONES_PRECIO_TARJETA)[number]
   price_size?: (typeof TAMANOS_TEXTO)[number]
@@ -228,7 +234,7 @@ export interface EstiloTarjetaProducto {
 }
 
 const CLAVES_BOTON = ['add', 'buy', 'choose'] as const
-const CLAVES_ETIQUETA = ['label_new', 'label_shipping', 'label_discount', 'label_sold_out'] as const
+const CLAVES_ETIQUETA = ['label_new', 'label_shipping', 'label_discount', 'label_sold_out', 'label_promotion'] as const
 
 type ClaveBoton = (typeof CLAVES_BOTON)[number]
 type ClaveEtiqueta = (typeof CLAVES_ETIQUETA)[number]
@@ -541,6 +547,7 @@ export function valoresDePreset(preset: PresetTarjeta): EstiloTarjetaProducto {
     label_sold_out: { show: true, bg: '#1F2937', text: '#FFFFFF' },
     label_new: { show: false, bg: '#10B981', text: '#FFFFFF' },
     label_shipping: { show: false, bg: '#3B82F6', text: '#FFFFFF' },
+    label_promotion: { show: false, bg: '#EF4444', text: '#FFFFFF' },
     text_align: 'left',
     price_position: 'below_title',
     price_size: 'md',
@@ -869,6 +876,8 @@ const ETIQUETA_BASE: Record<string, { type: string; label: string; bg: string; t
   label_sold_out: { type: 'out_of_stock', label: 'Agotado', bg: '#1F2937', text: '#FFFFFF' },
   label_new: { type: 'new', label: 'Nuevo', bg: '#10B981', text: '#FFFFFF' },
   label_shipping: { type: 'free_shipping', label: 'Envío gratis', bg: '#3B82F6', text: '#FFFFFF' },
+  // El texto lo pone la promoción real del producto (`{value}`); sin promoción no se pinta.
+  label_promotion: { type: 'promotion', label: '{value}', bg: '#EF4444', text: '#FFFFFF' },
 }
 
 function mezclaSuave(hex: string): string {
@@ -905,6 +914,33 @@ function estiloEtiqueta(
   return { bg_color: bg, text_color: text }
 }
 
+/**
+ * ¿La tarjeta deja ver esta etiqueta? Lo de por defecto cuando el estilo no dice nada: descuento y
+ * agotado sí; nuevo, envío gratis y promoción no. Lo usa la ficha: una etiqueta apagada en la
+ * tarjeta tampoco sale allí (la promoción no: la ficha tiene su propio interruptor).
+ */
+export function etiquetaPermitidaEnTarjeta(
+  estilo: EstiloTarjetaProducto | null | undefined,
+  clave: 'label_new' | 'label_shipping' | 'label_discount' | 'label_sold_out' | 'label_promotion',
+): boolean {
+  const show = estilo?.[clave]?.show
+  if (show != null) return show
+  return clave === 'label_discount' || clave === 'label_sold_out'
+}
+
+/** Colores y forma de una etiqueta con el estilo de la tarjeta (fondo y texto ya resueltos). */
+export function pintarEtiquetaTarjeta(
+  estilo: EstiloTarjetaProducto | null | undefined,
+  clave: 'label_new' | 'label_shipping' | 'label_discount' | 'label_sold_out' | 'label_promotion' | null,
+  porDefecto: { bg: string; text: string },
+  modo?: EstiloTarjetaProducto['label_style'],
+): { bg_color?: string; text_color?: string; extra_style?: Record<string, string> } {
+  const cfg = clave ? estilo?.[clave] : undefined
+  const bg = cfg?.bg || porDefecto.bg
+  const text = cfg?.text || porDefecto.text
+  return estiloEtiqueta(modo ?? estilo?.label_style, bg, text, cfg?.gradient_1, cfg?.gradient_2, cfg?.gradient_angle)
+}
+
 /** `null` si el estilo no habla de etiquetas: se quedan las de hoy. */
 export function etiquetasDeEstilo(estilo: EstiloTarjetaProducto | null | undefined): EtiquetaPintada[] | null {
   if (!estilo) return null
@@ -915,7 +951,8 @@ export function etiquetasDeEstilo(estilo: EstiloTarjetaProducto | null | undefin
     estilo.label_new != null ||
     estilo.label_shipping != null ||
     estilo.label_discount != null ||
-    estilo.label_sold_out != null
+    estilo.label_sold_out != null ||
+    estilo.label_promotion != null
   if (!toca) return null
   const pos = posicionEtiquetaInterna(estilo.label_position)
   const shape = estilo.label_shape === 'rounded' ? 'rounded' : estilo.label_shape === 'semi' ? 'semi' : estilo.label_shape === 'square' ? 'square' : estilo.label_shape === 'circle' ? 'circle' : 'pill'

@@ -39,6 +39,7 @@ import TareasSidebar from '@/components/clientes/id/TareasSidebar';
 import InfoTab from '@/components/clientes/id/InfoTab';
 import OportunidadesTab from '@/components/clientes/id/OportunidadesTab';
 import { SaludClienteCard } from '@/components/clientes/id/SaludClienteCard';
+import { ListaPreciosClienteCard } from '@/components/listasPrecios/ListaPreciosClienteCard';
 import { construirAccionesFicha } from '@/components/clientes/id/accionesFicha';
 import { TONO_ESTADO_FICHA, estadoFicha } from '@/components/clientes/id/fichaLogica';
 import { motivoSinCobro, useCarteraFicha } from '@/components/clientes/id/useCarteraFicha';
@@ -369,6 +370,8 @@ export default function PerfilCliente() {
           <TareasSidebar clienteId={cliente.id} organizationId={cliente.organization_id} onNuevaTarea={crm.onNuevaTarea} recarga={crm.recarga} />
           {/* Figma 331:113288 (y 772:19838): «Salud del cliente» en la columna derecha. */}
           <SaludClienteCard customerId={cliente.id} lifecycleStage={cliente.lifecycle_stage ?? null} />
+          {/* Figma «05 POS y ventas» 06: la lista de precios del cliente y «Cambiar lista». */}
+          <ListaPreciosClienteCard customerId={cliente.id} />
         </aside>
       </div>
 

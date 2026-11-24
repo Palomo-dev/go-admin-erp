@@ -4408,6 +4408,7 @@
       "pos_cargos-servicio": "Frais de service",
       "pos_cupones": "Coupons",
       "pos_promociones": "Promotions",
+      "pos_listas-precios": "Listes de prix",
       "clientes": "Clients",
       "chat_bandeja": "Boîte de réception",
       "chat_canales": "Canaux",
@@ -36772,6 +36773,84 @@
           "tamanoTexto": "Taille du texte",
           "normal": "Normal"
         }
+      },
+      "etiquetasFicha": {
+        "titulo": "Étiquettes",
+        "mostrar": "Afficher les étiquettes sur la fiche",
+        "ayudaMostrar": "Les mêmes que sur la carte produit, avec leurs couleurs. Désactivé : la fiche reste comme aujourd'hui.",
+        "dondeSeVen": "Où elles s'affichent",
+        "ubicaciones": {
+          "foto": "Sur la photo",
+          "titulo": "À côté du titre",
+          "ambas": "Les deux"
+        },
+        "ayudaUbicacionFoto": "Elles ne s'affichent pas sur la photo si la Galerie a désactivé « Étiquettes sur la photo ».",
+        "cuales": "Lesquelles",
+        "tipos": {
+          "free_shipping": "Livraison gratuite",
+          "discount": "Remise",
+          "promotion": "Promotions (2 pour 1, 3 pour 2…)",
+          "volume": "Prix par quantité",
+          "sales_count": "Unités vendues",
+          "new": "Nouveau",
+          "sold_out": "Épuisé",
+          "custom": "Étiquettes personnalisées"
+        },
+        "muestras": {
+          "free_shipping": "Livraison gratuite",
+          "discount": "-20 %",
+          "promotion": "2 pour 1",
+          "volume": "Dès 3 : −10 %",
+          "sales_count": "776 vendus",
+          "new": "Nouveau",
+          "sold_out": "Épuisé",
+          "custom": "Originaux"
+        },
+        "mostrarTipo": "Afficher « {nombre} »",
+        "abrir": "Options de « {nombre} »",
+        "subir": "Monter",
+        "bajar": "Descendre",
+        "esquina": "Coin sur la photo",
+        "esquinas": {
+          "top_left": "En haut à gauche",
+          "top_right": "En haut à droite",
+          "bottom_left": "En bas à gauche",
+          "bottom_right": "En bas à droite"
+        },
+        "ayudaEsquina": "À côté du titre, seul l'ordre compte.",
+        "ayudaEsquinaSinFoto": "Ne s'applique que lorsque les étiquettes s'affichent sur la photo.",
+        "fondo": "Fond",
+        "texto": "Texte",
+        "deLaTarjeta": "Celui de la carte",
+        "ayudaFilaPropias": "Chaque étiquette personnalisée a son coin et ses couleurs : modifiez-les plus bas, dans « Étiquettes personnalisées ».",
+        "ayudaCuales": "Une étiquette désactivée sur la carte (Style de carte › Étiquettes) ne s'affiche pas non plus ici. Les promotions s'affichent d'elles-mêmes quand le produit fait partie d'une promotion web en cours ; celles d'un groupe de clients, seulement aux membres du groupe.",
+        "estilo": "Style",
+        "forma": "Forme",
+        "formas": {
+          "tarjeta": "Celle de la carte",
+          "pill": "Pilule",
+          "rounded": "Arrondie",
+          "semi": "Semi",
+          "square": "Carrée"
+        },
+        "relleno": "Remplissage",
+        "rellenos": {
+          "tarjeta": "Celui de la carte",
+          "solid": "Plein",
+          "soft": "Doux",
+          "outline": "Contour"
+        },
+        "tamano": "Taille",
+        "tamanos": {
+          "sm": "Petite",
+          "md": "Moyenne"
+        },
+        "propias": "Étiquettes personnalisées",
+        "usarDelEstilo": "Utiliser celles du style de carte",
+        "ayudaUsarDelEstilo": "Désactivé : la fiche a sa propre liste, qui commence par une copie de celles du site.",
+        "enlaceEstiloTarjeta": "Couleurs et textes dans Style de carte",
+        "restablecer": "Revenir à l'aspect d'aujourd'hui",
+        "ayudaRestablecer": "Retire les options d'étiquettes de ce bloc : la fiche s'affiche comme avant."
       }
     },
     "paginas": {
@@ -41074,6 +41153,11 @@
         "titulo": "Transport",
         "descripcion": "Réservation du siège, modifications et annulations, liquidation, types de véhicule, motifs d’incident et exceptions de départ",
         "palabras": "transport, billets, réservation, siège, modifications, annulation, remboursement, liquidation, affiliés, propriétaires, RNDC, manifeste, types de véhicule, bateau, yacht, motifs d’incident, incidents, exception, départ, PIN, superviseur"
+      },
+      "posPedidosOnline": {
+        "titulo": "Commandes en ligne",
+        "descripcion": "Délais de préparation et de livraison par mode de livraison et par site",
+        "palabras": "commandes en ligne, délais, prête vers, livraison vers, préparer, livraison, transporteur, retrait, confirmation automatique, site"
       }
     },
     "ajustes": {
@@ -41155,16 +41239,18 @@
       "rules": "Règles"
     },
     "tipos": {
-      "percentage": "Pourcentage",
+      "percentage": "% de remise",
       "fixed_amount": "Montant fixe",
-      "buy_x_get_y": "Achetez X, emportez Y",
-      "bundle": "Lot",
-      "free_shipping": "Livraison offerte"
+      "buy_x_get_y": "N achetés, M payés",
+      "bundle": "Combo",
+      "free_shipping": "Livraison gratuite",
+      "volume_tiers": "Prix par volume"
     },
     "aplicaA": {
       "all": "Tous les produits",
       "products": "Produits précis",
-      "categories": "Catégories précises"
+      "categories": "Catégories précises",
+      "brands": "Marques"
     },
     "formulario": {
       "nombre": "Nom de la promotion *",
@@ -41177,7 +41263,7 @@
       "combinableAyuda": "Autoriser avec d'autres promotions",
       "solapamientoTitulo": "Une seule s'appliquera par produit",
       "solapamientoDetalle": "Ces promotions se chevauchent et aucune n'est cumulable. Une seule s'appliquera sur chaque produit.",
-      "solapamientoAccion": "Activez « Autoriser avec d'autres promotions » ou augmentez la priorité de celle qui doit gagner.",
+      "solapamientoAccion": "Si elles se chevauchent et ne se cumulent pas, le client reçoit celle qui lui fait le plus économiser. Choisissez « Oui, cumulable » dans les Options avancées si elles doivent s’additionner.",
       "solapamientoVer": "Voir {nombre}",
       "tipo": "Type de promotion",
       "porcentaje": "Pourcentage de remise",
@@ -41457,6 +41543,264 @@
       "errorSinFranjas": "Ajoutez au moins une plage.",
       "errorDemasiadasFranjas": "Au maximum {max} plages par promotion.",
       "errorRevisar": "Vérifiez quand la promotion est active."
+    },
+    "v2": {
+      "estadisticas": {
+        "ahorroMes": "Économies du mois",
+        "ahorroMesDetalle": "sur {n, plural, one {# vente} other {# ventes}}",
+        "ventasCon": "Ventes avec la promotion",
+        "enMes": "en {mes}",
+        "ahorroDado": "Économies accordées aux clients",
+        "ahorroDadoDetalle": "déduit des ventes, pas une dépense à part",
+        "unidadesEscalon": "Unités par palier",
+        "unidadesDescuento": "Unités remisées",
+        "enEscalon": "{n} en « {rango} »",
+        "ventasColumna": "Ventes",
+        "recientesTitulo": "Ventes récentes avec cette promotion",
+        "recientesVacio": "Aucune vente avec cette promotion pour l’instant.",
+        "verTodas": "Tout voir dans Ventes",
+        "canalWeb": "Boutique en ligne",
+        "canalPos": "PDV {sucursal}",
+        "canalMesa": "Tables {sucursal}",
+        "sinNumero": "Vente sans numéro"
+      },
+      "subtitulo": "Tout sur un seul écran. Les options avancées sont repliées à la fin.",
+      "pie": "Tout tient sur cet écran. Vous pouvez enregistrer dès que vous avez un nom, un type et une remise.",
+      "crear": "Créer la promotion",
+      "guardarCambios": "Enregistrer les modifications",
+      "esencial": {
+        "titulo": "L’essentiel",
+        "descripcion": "Nom et type. Cela suffit pour enregistrer.",
+        "nombre": "Nom que voit le client",
+        "nombreAyuda": "Affiché sur le badge du produit, dans le panier et sur le reçu.",
+        "activa": "Active",
+        "tipo": "Quel type de promotion ?",
+        "nuevo": "Nouveau",
+        "envioGratis": "La livraison gratuite se configure dans Logistique › Tarifs.",
+        "irTarifas": "Aller aux Tarifs"
+      },
+      "tiposEjemplo": {
+        "percentage": "Ex. : 20 % sur toute la boutique",
+        "fixed_amount": "Ex. : 10 000 $ de moins par unité ou par achat",
+        "buy_x_get_y": "Ex. : 2 pour 1 ou 3 achetés, 2 payés",
+        "volume_tiers": "Ex. : 6 ou plus à 9 500 $ l’unité. Prix de gros",
+        "bundle": "Ex. : burger + frites + soda à 25 000 $",
+        "free_shipping": "Ne se crée plus ici : voir Logistique › Tarifs"
+      },
+      "tiposAyuda": {
+        "percentage": "Pour des soldes générales : « 20 % sur toute la boutique » ou une catégorie.",
+        "fixed_amount": "Pour un montant exact : « 10 000 $ de moins ». Le total ne passe jamais sous zéro.",
+        "buy_x_get_y": "Le classique 2 pour 1 ou « 3 achetés, 2 payés ». L’unité la moins chère est offerte.",
+        "bundle": "Plusieurs produits ensemble à un prix.",
+        "free_shipping": "La livraison gratuite se configure dans Logistique › Tarifs.",
+        "volume_tiers": "Prix de gros."
+      },
+      "descuento": {
+        "titulo": "La remise",
+        "porcentaje": "Pourcentage",
+        "cuanto": "Montant de la remise",
+        "tope": "Plafond (facultatif)",
+        "sinTope": "Sans plafond",
+        "topeAyuda": "Le plafond évite des remises trop fortes sur les gros achats.",
+        "seAplica": "S’applique",
+        "unaVez": "Une fois par achat",
+        "cadaN": "Toutes les N unités",
+        "lleva": "Achetés",
+        "paga": "Payés",
+        "precioCombo": "Prix du combo"
+      },
+      "escalones": {
+        "titulo": "Paliers de prix",
+        "descripcion": "Plus il achète d’unités, moins il paie chacune. Le prix du palier s’applique à toutes les unités de la ligne.",
+        "comoBaja": "Comment le prix baisse :",
+        "precioFijo": "Prix fixe par unité",
+        "porcentaje": "% de remise",
+        "desde": "À partir de",
+        "hasta": "Jusqu’à",
+        "precioUnidad": "Prix unitaire",
+        "descuento": "Remise",
+        "ahorro": "Économie",
+        "quitar": "Retirer",
+        "quitarN": "Retirer le palier {n}",
+        "unidades": "{n} u.",
+        "oMas": "ou plus",
+        "precioNormal": "Prix normal",
+        "desdeN": "À partir de (palier {n})",
+        "valorN": "Valeur (palier {n})",
+        "ahorra": "Économise {n} %",
+        "agregar": "Ajouter un palier",
+        "hastaAyuda": "« Jusqu’à » se remplit avec le palier suivant."
+      },
+      "conteo": {
+        "titulo": "Comment les unités sont comptées",
+        "promotion_mix": "Tout ce qui est dans la promotion s’additionne",
+        "promotion_mixAyuda": "3 sodas cola et 3 sodas citron comptent pour 6 et obtiennent le palier de 6.",
+        "same_product": "Chaque produit séparément (ses variantes s’additionnent)",
+        "same_productAyuda": "Chaque produit compte à part ; les tailles ou saveurs d’un même produit s’additionnent.",
+        "same_variant": "Chaque variante séparément",
+        "same_variantAyuda": "Seule la même variante compte : 6 cola atteignent le palier ; 3 cola + 3 citron non.",
+        "product_group": "Par groupes que vous créez",
+        "product_groupAyuda": "Choisissez les produits dans « À quels produits ? » et donnez un groupe à chacun. Ceux du même groupe s’additionnent.",
+        "grupoN": "Groupe {n}",
+        "grupoDe": "Groupe de {nombre}",
+        "gruposAyuda": "Les produits d’un même groupe additionnent leurs unités ; chaque groupe compte à part."
+      },
+      "alcance": {
+        "titulo": "À quels produits ?",
+        "descripcion": "Choisissez-en un. Vous pouvez exclure des produits à la fin.",
+        "todos": "Tous",
+        "categorias": "Catégories",
+        "productos": "Produits",
+        "marcas": "Marques",
+        "quitar": "Retirer {nombre}",
+        "sinMarcas": "Vos produits n’ont pas encore de marque. Ajoutez-la dans Inventaire › Produits.",
+        "excluir": "Exclure certains produits (facultatif)",
+        "ninguno": "aucun",
+        "nExcluidos": "{n, plural, one {# exclu} other {# exclus}}",
+        "excluirCategorias": "Catégories exclues",
+        "excluirProductos": "Produits exclus"
+      },
+      "donde": {
+        "titulo": "Où et quand ?",
+        "descripcion": "Les heures sont celles de l’organisation ({zona}).",
+        "web": "Boutique en ligne",
+        "webAyuda": "Commandes en ligne",
+        "pos": "Point de vente",
+        "posAyuda": "Comptoir, tables",
+        "facturas": "Factures",
+        "facturasAyuda": "Et devis",
+        "desde": "À partir du",
+        "hasta": "Jusqu’au (facultatif)",
+        "hastaAyuda": "Vide = sans date de fin.",
+        "todasSucursales": "Toutes les succursales",
+        "algunasSucursales": "Certaines succursales",
+        "horario": "Horaire"
+      },
+      "avanzadas": {
+        "titulo": "Options avancées",
+        "nCambiados": "{n, plural, one {# modifiée} other {# modifiées}}",
+        "resumenGrupo": "Seulement les clients du groupe « {grupo} »",
+        "resumenUsos": "max. {n} utilisations",
+        "resumenSinLimite": "sans limite d’utilisations",
+        "resumenSeSuma": "cumulable avec d’autres promotions",
+        "resumenNoSeSuma": "non cumulable avec d’autres promotions",
+        "resumenMinimo": "achat minimum {monto}",
+        "resumenSinMinimo": "sans achat minimum",
+        "quien": "Qui en bénéficie ?",
+        "todosClientes": "Tous les clients",
+        "unGrupo": "Un groupe de clients",
+        "grupo": "Groupe de clients",
+        "elegirGrupo": "Choisissez un groupe",
+        "grupoConteo": "{nombre} · {n, plural, one {# client} other {# clients}}",
+        "grupoAyuda": "Les groupes viennent de CRM › Segments (listes fixes). Sur la boutique en ligne, le client doit se connecter pour voir ce prix.",
+        "sinGrupos": "Vous n’avez pas encore de groupes de clients à liste fixe.",
+        "irSegmentos": "Aller aux Segments",
+        "limites": "Limites",
+        "usosTotal": "Utilisations au total",
+        "usosTotalAyuda": "Cesse de s’appliquer une fois la limite atteinte.",
+        "usosCliente": "Utilisations par client",
+        "usosClienteAyuda": "Compte les commandes et ventes d’un même client. Sans client identifié, elle ne s’applique pas.",
+        "tope": "Remise maximale par achat",
+        "compraMinima": "Achat minimum",
+        "desde": "À partir de",
+        "sinMinimo": "0 $ · sans minimum",
+        "seCuentaSobre": "Calculé sur",
+        "loQueEntra": "Ce qui entre dans la promotion",
+        "todoElCarrito": "Tout le panier",
+        "seSuma": "Cumulable avec d’autres promotions ?",
+        "noSeSuma": "Non, elle s’applique seule (recommandé)",
+        "noSeSumaAyuda": "Si plusieurs s’appliquent, le client reçoit celle qui lui fait le plus économiser. Rien n’est jamais offert en trop.",
+        "siSeSuma": "Oui, cumulable",
+        "siSeSumaAyuda": "S’additionne aux autres qui disent aussi « oui ». Ex. : 10 % de remise + 2 pour 1 dans le même achat.",
+        "mediosPago": "Seulement avec ces moyens de paiement",
+        "sinMedios": "Aucun moyen de paiement actif.",
+        "cualquierMedio": "S’applique avec n’importe quel moyen de paiement.",
+        "soloMedios": "S’applique seulement si le paiement utilise l’un de ces moyens.",
+        "nota": "Note interne (le client ne la voit pas)",
+        "notaPlaceholder": "Ex. : prix commerçants, convenu en novembre",
+        "sinPrioridad": "La « Priorité » n’est plus demandée. Si deux promotions se chevauchent et ne se cumulent pas, celle qui fait le plus économiser au client l’emporte. Le champ reste dans la base pour ne rien casser.",
+        "listasPrecios": "Clients avec une liste de prix",
+        "listasPreciosCasilla": "Ne s’applique pas aux clients avec une liste de prix",
+        "listasPreciosAyuda": "Le client avec une liste paie son prix de liste et ne reçoit pas cette promotion. Décochée, la promotion se calcule sur le prix de la liste.",
+        "resumenSinListas": "ne s’applique pas avec les listes de prix"
+      },
+      "vista": {
+        "titulo": "Ce que voit votre client",
+        "productoEjemplo": "Produit d’exemple",
+        "sinNombre": "Votre promotion",
+        "cu": "l’unité",
+        "oMas": "{n} ou plus : {precio}",
+        "compraMas": "Achetez plus, payez moins",
+        "rango": "{desde} à {hasta} unités",
+        "oMasCorto": "{n} ou plus",
+        "precioCu": "{precio} l’unité",
+        "enCarrito": "Dans le panier",
+        "ahorras": "{nombre} · vous économisez {monto}",
+        "agrega": "Ajoutez-en {n} de plus et chacune vous revient à {precio}.",
+        "notaPos": "Au point de vente, la ligne affiche « {nombre} » et le prix baisse seulement à partir de {n} unités.",
+        "carrito": "Panier : « {nombre} · {insignia} »",
+        "insigniaLleva": "{x} achetés, {y} payés",
+        "insigniaCombo": "Combo {precio}",
+        "insigniaVolumen": "Dès {desde} : −{pct} %"
+      },
+      "palabras": {
+        "titulo": "En clair",
+        "vigencia": "{cuando}, sur {canales} dans {donde}.",
+        "delAl": "Du {desde} au {hasta}",
+        "desdeSinFin": "À partir du {desde}, sans date de fin",
+        "canalWeb": "la boutique en ligne",
+        "canalPos": "le point de vente",
+        "canalFacturas": "les factures",
+        "sedes": "les succursales {sedes}",
+        "todasLasSedes": "toutes les succursales",
+        "alcance": "{alcance} : {descuento}.",
+        "todosLosProductos": "Tous les produits",
+        "nElementos": "{n} éléments",
+        "porcentaje": "{n} % de remise",
+        "valorFijo": "{monto} de moins",
+        "llevaPaga": "{x} achetés et {y} payés",
+        "combo": "le combo à {precio}",
+        "comboPorcentaje": "{n} % sur le combo",
+        "sinEscalones": "pas encore de paliers",
+        "escalonRango": "de {desde} à {hasta} unités à {valor}",
+        "escalonDesde": "dès {desde} à {valor}",
+        "precioUnidad": "{precio} l’unité",
+        "porcentajeMenos": "{n} % de moins",
+        "soloGrupo": "Seulement les clients du groupe « {grupo} ».",
+        "usosCliente": "Maximum {n, plural, one {# utilisation} other {# utilisations}} par client.",
+        "seSuma": "Cumulable avec d’autres promotions.",
+        "noSeSuma": "Non cumulable avec d’autres promotions."
+      },
+      "lista": {
+        "tipo": "Type :",
+        "volumenPrecio": "{n}+ à {precio} l’unité",
+        "volumenPorcentaje": "{n}+ −{pct} %"
+      },
+      "detalle": {
+        "pausar": "Mettre en pause",
+        "reanudar": "Reprendre",
+        "soloGrupo": "Seulement « {grupo} »",
+        "soloUnGrupo": "Seulement un groupe de clients",
+        "deLimite": "sur {n}",
+        "sinLimite": "sans limite",
+        "porCliente": "max. {n} par client",
+        "ganaLaQueMasAhorra": "Si plusieurs s’appliquent, celle qui fait le plus économiser l’emporte",
+        "cantidad": "Quantité",
+        "segunPrecio": "selon le prix"
+      },
+      "errores": {
+        "escalonesVacios": "Ajoutez au moins un palier",
+        "escalonDesde": "Chaque palier commence à 2 unités ou plus",
+        "escalonesOrden": "Chaque palier doit commencer à plus d’unités que le précédent",
+        "escalonValor": "Indiquez le prix ou le pourcentage de chaque palier",
+        "escalonPorcentaje": "Le pourcentage doit être compris entre 1 et 100",
+        "gruposProductos": "Pour compter par groupes, choisissez les produits dans « À quels produits ? »",
+        "alcanceProductos": "Choisissez au moins un produit",
+        "alcanceCategorias": "Choisissez au moins une catégorie",
+        "alcanceMarcas": "Choisissez au moins une marque",
+        "canales": "Choisissez au moins un canal : boutique en ligne, point de vente ou factures",
+        "grupoClientes": "Choisissez le groupe de clients"
+      }
     }
   },
   "pedidosManuales": {
@@ -67927,6 +68271,832 @@
         "examen": "Examen : {estado}",
         "sinRol": "Aucun nouveau rôle n’est créé : ce qu’il peut faire en Logistique ou Transport vient du poste."
       }
+    }
+  },
+  "pedidosOnlineTiempos": {
+    "cargando": "Chargement des délais…",
+    "errorCargar": "Impossible de charger les délais des commandes en ligne",
+    "guardado": "Délais enregistrés",
+    "errorGuardar": "Impossible d’enregistrer les délais",
+    "soloLectura": "Seule l’administration peut modifier ces délais.",
+    "porDefecto": {
+      "titulo": "Délais par défaut",
+      "descripcion": "Utilisés à la confirmation d’une commande pour calculer « Prête vers » et « Livraison vers ». En confirmant à la main, vous pouvez les modifier pour cette commande."
+    },
+    "tabla": {
+      "tipo": "Mode de livraison",
+      "alistar": "Préparer",
+      "entrega": "Livraison",
+      "noAplica": "Sans objet",
+      "valor": "{campo} · {tipo} : quantité",
+      "unidad": "{campo} · {tipo} : unité"
+    },
+    "tipos": {
+      "domicilio": {
+        "titulo": "Livraison par vos soins",
+        "descripcion": "Votre équipe la livre."
+      },
+      "transportadora": {
+        "titulo": "Transporteur",
+        "descripcion": "Si le tarif a des « jours de transit », le tarif l’emporte."
+      },
+      "recoger": {
+        "titulo": "Retrait en magasin",
+        "descripcion": "Le client vient chercher la commande."
+      }
+    },
+    "unidades": {
+      "minutos": "minutes",
+      "horas": "heures",
+      "dias": "jours"
+    },
+    "corto": {
+      "minutos": "{n} min",
+      "horas": "{n} h",
+      "dias": "{n, plural, one {# jour} other {# jours}}"
+    },
+    "fabrica": {
+      "nota": "Valeurs d’usine : commerce, préparer en 1 jour et livrer en 5 jours ; restaurant, 30 min et 30 min. Ce sont les mêmes qu’aujourd’hui : rien ne change tant que vous ne les modifiez pas.",
+      "restablecer": "Rétablir"
+    },
+    "automatica": {
+      "titulo": "Confirmation automatique",
+      "descripcion": "Quand une commande est payée en ligne, elle se confirme seule.",
+      "usar": {
+        "titulo": "Utiliser ces délais quand elle se confirme seule",
+        "descripcion": "Aujourd’hui, une commande payée par la passerelle est confirmée avec 1 jour fixe. Avec ceci, elle prend le délai du mode de livraison et du site."
+      },
+      "apertura": {
+        "titulo": "Si elle arrive magasin fermé, compter depuis l’ouverture",
+        "descripcion": "Une commande de 23 h est comptée à partir de l’ouverture du site le lendemain. Utilise les horaires du site : s’ils n’ont pas été vérifiés, on compte depuis l’arrivée."
+      }
+    },
+    "sedes": {
+      "titulo": "Par site",
+      "descripcion": "Si un site est plus rapide ou plus lent, donnez-lui ses propres délais. Les autres utilisent ceux du dessus.",
+      "generales": "Utilise les délais généraux",
+      "igualesGenerales": "Ses délais sont identiques aux généraux",
+      "propios": "Propres",
+      "personalizar": "Personnaliser",
+      "editar": "Modifier",
+      "personalizarAria": "Personnaliser les délais de {sede}",
+      "editarAria": "Modifier les délais de {sede}",
+      "vacio": "Aucun site actif.",
+      "resumen": {
+        "domicilio": "Livraison : préparer {alistar} · livrer {entrega}",
+        "transportadora": "Transporteur : préparer {alistar} · livrer {entrega}",
+        "recoger": "Retrait : {alistar}"
+      }
+    },
+    "dialogoSede": {
+      "titulo": "Délais de {sede}",
+      "usarGenerales": {
+        "titulo": "Utiliser les délais généraux",
+        "descripcion": "Désactivez-le pour donner à ce site ses propres délais."
+      },
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer"
+    },
+    "confirmar": {
+      "origen": "Ils viennent de Paramètres › Point de vente › Commandes en ligne ({sede}). Les modifier ici ne touche que cette commande.",
+      "origenSinSede": "Ils viennent de Paramètres › Point de vente › Commandes en ligne. Les modifier ici ne touche que cette commande.",
+      "lote": "Chaque commande prend les délais de son site et de son mode de livraison (Paramètres › Point de vente › Commandes en ligne). Si vous les modifiez ici, les mêmes s’appliquent à toutes.",
+      "hoy": "aujourd’hui, {hora}",
+      "manana": "demain, {hora}"
+    }
+  },
+  "listasPrecios": {
+    "titulo": "Listes de prix",
+    "subtitulo": "Prix propres par client ou groupe · {total, plural, one {# liste} other {# listes}} · {activas, plural, one {# active} other {# actives}}",
+    "subtituloCorto": "Prix propres par client ou groupe",
+    "cargando": "Chargement…",
+    "actualizar": "Actualiser",
+    "importar": {
+      "titulo": "Importer des prix dans « {nombre} »",
+      "paso1": "Étape 1 sur 2 · Téléversez l’Excel ou le CSV avec SKU, prix et, s’il y a des paliers, à partir de quelle quantité.",
+      "paso2": "Étape 2 sur 2 · Vérifiez avant d’importer. Rien ne change tant que vous ne confirmez pas.",
+      "pasoSubir": "Téléversez le fichier",
+      "pasoRevisar": "Vérifiez et confirmez",
+      "formatos": "Excel (.xlsx) ou CSV",
+      "filasLeidas": "{n, plural, one {# ligne lue} other {# lignes lues}}",
+      "lista": "Liste",
+      "soltar": "Glissez le fichier ici ou cliquez pour le choisir",
+      "columnasEsperadas": "Colonnes : SKU (ou code-barres), prix et, en option, à partir de la quantité",
+      "elegirArchivo": "Choisir un fichier",
+      "sinColumnas": "Les colonnes SKU et prix sont introuvables. Utilisez le modèle.",
+      "resumenArchivo": "{n, plural, one {# ligne} other {# lignes}} · colonnes : {columnas}",
+      "cambiarArchivo": "Changer de fichier",
+      "nuevos": "{n, plural, one {# nouveau} other {# nouveaux}}",
+      "cambian": "{n, plural, one {# change de prix} other {# changent de prix}}",
+      "conError": "{n, plural, one {# en erreur} other {# en erreur}}",
+      "igualesSeQuedan": "Ceux qui ne changent pas restent tels quels.",
+      "col": {
+        "fila": "Ligne",
+        "sku": "SKU",
+        "producto": "Produit",
+        "desde": "À partir de",
+        "hoy": "Aujourd’hui",
+        "nuevo": "Nouveau",
+        "estado": "État"
+      },
+      "noEncontrado": "Introuvable",
+      "unidades": "{n} u.",
+      "estados": {
+        "igual": "Identique",
+        "nuevo": "Nouveau",
+        "escalon_nuevo": "Nouveau palier",
+        "cambia": "Change",
+        "no_existe": "Ce SKU n’existe pas",
+        "precio_invalido": "Prix non valide",
+        "cantidad_invalida": "Quantité non valide",
+        "duplicado": "Répété dans le fichier"
+      },
+      "vista": {
+        "todas": "Voir les {n} lignes",
+        "errores": "erreurs uniquement",
+        "cambios": "changements uniquement"
+      },
+      "reemplazar": "Remplacer toute la liste",
+      "reemplazarAyuda": "Retire les prix fixes absents du fichier. Aujourd’hui {n, plural, =0 {tous y sont} one {# n’y est pas} other {# n’y sont pas}}.",
+      "filasConError": "{n, plural, one {La ligne {filas} n’est pas importée} other {Les lignes {filas} ne sont pas importées}}. Corrigez-les dans le fichier et téléversez-le à nouveau, ou continuez sans elles. Le modèle contient les colonnes et un exemple.",
+      "confirmar": "{n, plural, =0 {Rien à importer} one {Importer # prix} other {Importer # prix}}",
+      "nadaQueImportar": "Il n’y a ni nouveaux prix ni changements.",
+      "atras": "Retour",
+      "listo": "{n, plural, one {# prix importé} other {# prix importés}}",
+      "plantilla": {
+        "descargar": "Télécharger le modèle",
+        "archivo": "modele-liste-de-prix.csv",
+        "sku": "SKU",
+        "precio": "prix",
+        "cantidad": "à partir de la quantité"
+      }
+    },
+    "nueva": "Nouvelle liste",
+    "buscar": "Rechercher une liste…",
+    "copiaDe": "{nombre} (copie)",
+    "clientesN": "{n, plural, one {# client} other {# clients}}",
+    "pie": "{n, plural, one {# liste} other {# listes}}",
+    "pieOrden": "Glissez pour ordonner : avec deux groupes, la liste la plus haute l’emporte",
+    "kpi": {
+      "etiqueta": "Résumé des listes de prix",
+      "activas": "Listes actives",
+      "activasDetalle": "sur {creadas} créées · {programadas} programmée(s)",
+      "clientes": "Clients avec liste",
+      "clientesDetalle": "{grupo} par groupe · {directos} un par un",
+      "productos": "Produits à prix fixe",
+      "productosDetalle": "les autres suivent la règle en %",
+      "ventas": "Ventes nettes avec liste",
+      "ventasDetalle": "ce mois · {n, plural, one {# vente} other {# ventes}} · hors TVA"
+    },
+    "filtros": {
+      "estado": "État :",
+      "todas": "Toutes",
+      "activas": "Actives",
+      "programadas": "Programmées",
+      "vencidas": "Expirées",
+      "inactivas": "Inactives"
+    },
+    "columnas": {
+      "lista": "Liste",
+      "como": "Comment elle est définie",
+      "clientes": "Clients",
+      "vigencia": "Validité",
+      "productos": "Produits",
+      "canales": "Canaux",
+      "estado": "État"
+    },
+    "estado": {
+      "activa": "Active",
+      "programada": "Programmée",
+      "vencida": "Expirée",
+      "inactiva": "Inactive",
+      "sin_clientes": "Sans clients"
+    },
+    "como": {
+      "menos": "{n} % de moins",
+      "mas": "{n} % de plus",
+      "fijos": "fixes",
+      "precioFijo": "Prix fixe",
+      "volumen": "volume",
+      "porCategoria": "Par catégorie",
+      "sinReglas": "Sans règles"
+    },
+    "canales": {
+      "pos": "PDV",
+      "web": "Web",
+      "documentos": "Fact.",
+      "ninguno": "Aucun",
+      "posLargo": "PDV",
+      "webLargo": "boutique en ligne",
+      "documentosLargo": "devis et factures"
+    },
+    "productos": {
+      "todos": "Tous",
+      "categorias": "{n, plural, one {# catégorie} other {# catégories}}",
+      "marcas": "{n, plural, one {# marque} other {# marques}}"
+    },
+    "vigencia": {
+      "sinFin": "Sans date de fin",
+      "desde": "À partir du {fecha}",
+      "rango": "{desde} – {hasta}"
+    },
+    "acciones": {
+      "ver": "Voir la liste",
+      "editar": "Modifier",
+      "clientes": "Voir les clients",
+      "importar": "Importer des prix",
+      "duplicar": "Dupliquer",
+      "borrar": "Supprimer la liste"
+    },
+    "borrar": {
+      "titulo": "Supprimer « {nombre} » ?",
+      "descripcion": "{n, plural, =0 {Personne n’a cette liste.} one {# client perd cette liste et paie le prix normal.} other {# clients perdent cette liste et paient le prix normal.}} Les ventes passées gardent leurs prix.",
+      "confirmar": "Supprimer la liste"
+    },
+    "toast": {
+      "orden": "Ordre enregistré",
+      "duplicada": "Liste dupliquée (inactive, sans clients)",
+      "borrada": "Liste supprimée"
+    },
+    "vacio": {
+      "titulo": "Aucune liste de prix pour l’instant",
+      "descripcion": "Créez une liste pour que les grossistes, les employés ou un groupe du CRM paient leurs propres prix."
+    },
+    "error": {
+      "titulo": "Impossible de charger les listes",
+      "descripcion": "Vérifiez la connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Pas d’accès aux listes de prix",
+      "descripcion": "Demandez l’accès à un administrateur."
+    },
+    "errores": {
+      "sin_permiso": "Vous n’avez pas la permission de gérer les listes de prix.",
+      "no_encontrada": "La liste n’existe pas ou appartient à une autre organisation.",
+      "no_encontrado": "Le client n’existe pas ou appartient à une autre organisation.",
+      "nombre_requerido": "Saisissez le nom de la liste.",
+      "nombre_duplicado": "Une liste porte déjà ce nom.",
+      "datos_invalidos": "Vérifiez les données de la liste.",
+      "sede_invalida": "Un des établissements n’appartient pas à l’organisation.",
+      "regla_duplicada": "Il y a deux exceptions pour la même catégorie ou marque.",
+      "regla_invalida": "Vérifiez les exceptions : chacune a besoin d’un % ou de « Sans remise ».",
+      "escalon_duplicado": "Un produit a deux prix à partir de la même quantité.",
+      "precio_invalido": "Un prix ou une quantité n’est pas valide.",
+      "archivo_invalido": "Impossible de lire le fichier.",
+      "demasiados_clientes": "Ajoutez jusqu’à 1 000 clients à la fois.",
+      "error_desconocido": "Une erreur s’est produite. Réessayez."
+    },
+    "editor": {
+      "tituloNueva": "Nouvelle liste de prix",
+      "tituloEditar": "Modifier la liste · {nombre}",
+      "subtitulo": "Tout sur un seul écran. Avec le nom et une règle, vous pouvez déjà enregistrer.",
+      "estaLista": "cette liste",
+      "errorNombre": "Saisissez le nom de la liste",
+      "guardada": "Liste enregistrée",
+      "guardar": "Enregistrer la liste",
+      "cancelar": "Annuler",
+      "pieAviso": "Les changements s’appliquent aux nouvelles ventes. Les devis déjà envoyés gardent leur prix.",
+      "ultimoCambio": "Dernière modification",
+      "esencial": {
+        "titulo": "L’essentiel",
+        "descripcion": "Nom, devise et validité.",
+        "nombre": "Nom de la liste",
+        "nombreAyuda": "Le caissier le voit sur le badge du PDV. En boutique, le client voit « Votre prix spécial ».",
+        "activa": "Active",
+        "moneda": "Devise",
+        "monedaAyuda": "Celle de l’organisation.",
+        "desde": "Du",
+        "desdeAyuda": "Date de l’organisation.",
+        "hasta": "Au (facultatif)",
+        "hastaAyuda": "À l’échéance, le prix normal revient.",
+        "sinFin": "Sans date de fin"
+      },
+      "como": {
+        "titulo": "Comment le prix est-il défini ?",
+        "descripcion": "Une règle générale et, si vous voulez, des exceptions. Le plus précis l’emporte : prix fixe du produit › marque › catégorie › règle générale.",
+        "base": "Base :",
+        "porcentaje": "% sur le prix normal",
+        "soloFijos": "Prix fixes uniquement",
+        "todoCatalogo": "Tout le catalogue :",
+        "bajar": "Baisser",
+        "subir": "Augmenter",
+        "porcentajeEtiqueta": "Pourcentage",
+        "sobreNormal": "% sur le prix normal",
+        "ejemplo": "Ex. : {antes} → {despues}",
+        "avisoSubir": "Avec « Augmenter », ces clients paient plus que le prix normal. C’est permis ; vérifiez avant d’enregistrer."
+      },
+      "excepciones": {
+        "titulo": "Exceptions par catégorie ou marque",
+        "aplicaA": "S’applique à",
+        "ajuste": "Ajustement",
+        "categoria": "Catégorie",
+        "marca": "Marque",
+        "menos": "de moins",
+        "mas": "de plus",
+        "sinDescuento": "Sans remise",
+        "quitar": "Retirer l’exception",
+        "agregarCategoria": "Ajouter une catégorie",
+        "agregarMarca": "Ajouter une marque"
+      },
+      "fijos": {
+        "titulo": "Prix fixes par produit",
+        "descripcion": "Pour les produits à prix convenu. Saisissez-le ici ou importez-le depuis Excel. Avec des paliers, le prix baisse selon la quantité achetée.",
+        "importar": "Importer",
+        "exportar": "Exporter",
+        "buscar": "Rechercher par nom ou SKU…",
+        "producto": "Produit",
+        "normal": "Prix normal",
+        "enLista": "Prix dans la liste",
+        "diferencia": "Écart",
+        "porCantidad": "Par quantité",
+        "quitar": "Retirer le produit",
+        "agregar": "Ajouter un produit",
+        "conteo": "{n, plural, one {# produit à prix fixe} other {# produits à prix fixe}}",
+        "escalones": "{n, plural, one {# palier} other {# paliers}}",
+        "agregarEscalon": "Ajouter",
+        "escalonesAyuda": "Paliers de cette liste · les unités de la ligne comptent",
+        "desde": "À partir de",
+        "unidades": "u.",
+        "precioEscalon": "Prix du palier",
+        "quitarEscalon": "Retirer le palier",
+        "escalon": "Palier",
+        "precioDe": "Prix de {nombre} dans la liste",
+        "csv": {
+          "sku": "SKU",
+          "precio": "prix",
+          "cantidad": "à partir de la quantité",
+          "producto": "produit"
+        }
+      },
+      "redondeo": {
+        "titulo": "Arrondi",
+        "descripcion": "Uniquement pour les prix calculés avec %. Les prix fixes restent tels quels.",
+        "a": "Arrondir à :",
+        "no": "Non",
+        "hacia": "Vers :",
+        "modos": {
+          "down": "Le bas",
+          "nearest": "Le plus proche",
+          "up": "Le haut"
+        },
+        "ejemplo": "Ex. : 9 137 $ → 9 100 $ vers le bas, en faveur du client."
+      },
+      "aplica": {
+        "titulo": "Où s’applique-t-elle ?",
+        "descripcion": "Le client avec cette liste paie ces prix sur les canaux activés. Sur les autres, il paie le prix normal.",
+        "pos": "Point de vente",
+        "posAyuda": "Comptoir, tables et livraisons",
+        "web": "Boutique en ligne",
+        "webAyuda": "Avec la session du client ouverte",
+        "documentos": "Devis et factures",
+        "documentosAyuda": "Documents faits à la main dans Ventes",
+        "sedes": "Établissements",
+        "sedesAyuda": "Si un établissement a son propre prix pour le produit, le % est calculé sur ce prix.",
+        "todasSedes": "Tous les établissements"
+      },
+      "clientes": {
+        "titulo": "Clients",
+        "descripcion": "Chaque client a une seule liste. Attribuez un groupe du CRM, des clients individuels ou les deux.",
+        "grupo": "Groupe « {nombre} » · {n, plural, one {# client} other {# clients}}",
+        "directos": "{n, plural, one {# client un par un} other {# clients un par un}}",
+        "asignar": "Attribuer des clients",
+        "despues": "Enregistrez la liste puis attribuez des clients ou un groupe du CRM."
+      },
+      "palabras": {
+        "titulo": "En clair",
+        "general": "Les clients de « {nombre} » paient {ajuste} sur tout.",
+        "soloFijos": "Les clients de « {nombre} » ne paient que les prix fixes de la liste.",
+        "regla": "{quien} : {ajuste}.",
+        "sinDescuento": "{quien} : sans remise (prix normal).",
+        "fijos": "{n, plural, one {# produit a un prix fixe.} other {# produits ont un prix fixe.}}",
+        "vigenciaHasta": "Valable jusqu’au {hasta}.",
+        "sinFin": "Sans date de fin.",
+        "redondeo": "Les prix en % sont arrondis à {paso} ({modo}).",
+        "promociones": "Les promotions s’appliquent par-dessus."
+      },
+      "avisoCaro": {
+        "titulo": "Prix plus chers que le normal",
+        "linea": "{nombre} : {lista} contre {normal}",
+        "pie": "Est-ce voulu ? Vous pouvez enregistrer quand même."
+      }
+    },
+    "detalle": {
+      "volver": "Retour aux listes",
+      "duplicar": "Dupliquer",
+      "editar": "Modifier la liste",
+      "enTodo": "{ajuste} sur tout",
+      "preciosFijos": "{n, plural, one {# prix fixe} other {# prix fixes}}",
+      "canales": "Canaux : {canales}",
+      "sinDescuento": "sans remise",
+      "kpi": {
+        "etiqueta": "Chiffres de la liste",
+        "clientes": "Clients dans la liste",
+        "clientesDetalle": "{grupo} par groupe · {directos} un par un",
+        "ventas": "Ventes nettes avec la liste",
+        "ventasDetalle": "ce mois · {n, plural, one {# vente} other {# ventes}} · hors TVA",
+        "ahorro": "Économie de ces clients",
+        "ahorroDetalle": "ce mois, par rapport au prix normal"
+      },
+      "pestanas": {
+        "precios": "Prix",
+        "clientes": "Clients"
+      },
+      "precios": {
+        "producto": "Produit",
+        "normal": "Prix normal",
+        "enLista": "Prix dans la liste",
+        "diferencia": "Écart",
+        "porCantidad": "Par quantité",
+        "escalon": "{n}+ à {precio}",
+        "vacioTitulo": "Aucun prix fixe",
+        "vacioDescripcion": "Cette liste utilise ses règles en %. Ajoutez des prix fixes depuis « Modifier la liste » ou importez-les."
+      },
+      "clientes": {
+        "buscar": "Rechercher un client par nom ou document…",
+        "agregar": "Ajouter des clients",
+        "agregarGrupo": "Ajouter un groupe",
+        "gruposCrm": "Groupes du CRM",
+        "grupoDetalle": "CRM › Segments · {n, plural, one {# client} other {# clients}} · qui entre dans le groupe entre dans la liste",
+        "dinamico": "Dynamique",
+        "fijo": "Fixe",
+        "verCrm": "Voir dans le CRM",
+        "quitarGrupo": "Retirer",
+        "grupoQuitado": "Groupe retiré de la liste",
+        "cliente": "Client",
+        "documento": "Document",
+        "comoLlego": "Comment il est arrivé",
+        "porGrupo": "Groupe « {grupo} »",
+        "unoAUno": "Un par un",
+        "ultimaCompra": "Dernier achat",
+        "sinCompras": "Aucun achat",
+        "ventasMes": "Ventes nettes · mois",
+        "ahorroMes": "Économie · mois",
+        "ver": "Voir le client",
+        "quitar": "Retirer de la liste",
+        "quitado": "Client retiré de la liste",
+        "vacioTitulo": "Personne n’a encore cette liste",
+        "vacioDescripcion": "Ajoutez des clients un par un ou un groupe du CRM.",
+        "singular": "client",
+        "plural": "clients",
+        "regla": "Un client a une seule liste. L’attribution un par un l’emporte sur le groupe. Retirer quelqu’un d’ici ne le sort pas du groupe du CRM : il reste « sans liste » et paie le prix normal."
+      }
+    },
+    "agregar": {
+      "titulo": "Ajouter des clients à « {nombre} »",
+      "descripcion": "Un par un ou un groupe du CRM. Un client ne peut avoir qu’une liste.",
+      "pestanaClientes": "Clients",
+      "pestanaGrupo": "Groupe du CRM",
+      "buscar": "Rechercher par nom, document ou téléphone…",
+      "sinLista": "Sans liste",
+      "hoy": "Aujourd’hui : {lista}",
+      "yaEsta": "Déjà dans cette liste",
+      "sinResultados": "Aucun résultat",
+      "cambiaUno": "{nombre} passe de « {antes} » à « {despues} ». Dès son prochain achat, il paie les prix de cette liste.",
+      "cambianVarios": "{n} clients changent de liste et passent à « {despues} » dès leur prochain achat.",
+      "seleccionados": "{n, plural, =0 {Aucun sélectionné} one {# sélectionné} other {# sélectionnés}}",
+      "agregarN": "{n, plural, =0 {Ajouter des clients} one {Ajouter # client} other {Ajouter # clients}}",
+      "eligeAlguno": "Choisissez au moins un client",
+      "grupoAyuda": "Ils viennent de CRM › Segments. Les clients qui entrent ou sortent du groupe changent de liste automatiquement.",
+      "grupoDetalle": "{n, plural, one {# client} other {# clients}} · {tipo}",
+      "dinamico": "se met à jour seul",
+      "fijo": "fixe",
+      "asignado": "Attribué",
+      "sinGrupos": "Il n’y a pas de groupes dans le CRM",
+      "grupoConDirectos": "{n, plural, one {# client} other {# clients}} de « {grupo} » ont une liste attribuée un par un (« {lista} »). Ils gardent la leur : l’attribution un par un l’emporte sur le groupe.",
+      "cambianAGrupo": "{n, plural, one {# client passe} other {# clients passent}} à cette liste",
+      "agregarGrupo": "Ajouter le groupe",
+      "eligeGrupo": "Choisissez un groupe",
+      "listoClientes": "{n, plural, one {# client ajouté} other {# clients ajoutés}}",
+      "listoGrupo": "Groupe « {nombre} » ajouté"
+    },
+    "ficha": {
+      "titulo": "Liste de prix",
+      "verLista": "Voir la liste",
+      "resumen": "{resumen}. Sur {canales}.",
+      "reglaEn": "{ajuste} sur {quien}",
+      "sinDescuentoEn": "sans remise sur {quien}",
+      "fijosEn": "prix fixe sur {n, plural, one {# produit} other {# produits}}",
+      "porGrupo": "Par le groupe « {grupo} » du CRM",
+      "unoAUno": "Attribuée un par un",
+      "ahorroMes": "Économie ce mois",
+      "ahorroDetalle": "par rapport au prix normal, sur {n, plural, one {# achat} other {# achats}}",
+      "sinLista": "Sans liste : paie le prix normal.",
+      "sinListaExplicita": "Sans liste (retirée à la main) : paie le prix normal même s’il est dans un groupe avec liste.",
+      "cambiar": "Changer de liste",
+      "opcionSinLista": "Sans liste · paie le prix normal",
+      "avisoCambio": "Si vous en choisissez une autre, elle est attribuée un par un et l’emporte sur le groupe. S’applique dès la prochaine vente.",
+      "cambiada": "Liste du client mise à jour"
+    },
+    "pos": {
+      "aviso": "Liste « {lista} » · économise {ahorro} par rapport au prix normal",
+      "quitada": "Prix normal pour cette vente (liste « {lista} » retirée)",
+      "usarNormal": "Utiliser le prix normal",
+      "volverALista": "Revenir à la liste",
+      "error": "Impossible de changer le prix du panier.",
+      "linea": "Liste {lista} · {detalle}",
+      "lineaSola": "Liste {lista}",
+      "normalTitulo": "Prix normal {precio}",
+      "detalle": {
+        "escalon": "{n}+"
+      },
+      "supervisor": {
+        "titulo": "Demandez à un superviseur",
+        "descripcion": "Utiliser le prix normal dans une vente à un client avec liste demande la permission « Changer les prix dans la vente ». Demandez à un superviseur de le faire depuis sa session.",
+        "entendido": "Compris"
+      }
+    },
+    "documentos": {
+      "selector": "Liste de prix",
+      "delCliente": "{lista} (celle du client)",
+      "precioNormal": "Prix normal",
+      "aviso": "Liste « {lista} ». Si vous changez de client ou de liste, les prix sont recalculés. Ceux saisis à la main sont conservés.",
+      "avisoNormal": "Prix normal dans ce document. Si vous revenez à la liste du client, les prix sont recalculés.",
+      "avisoFactura": "Sur la facture, le prix unitaire est celui de la liste ; la promotion apparaît comme remise de la ligne.",
+      "lista": "Liste",
+      "escalon": "{n}+",
+      "normal": "normal {precio}",
+      "aMano": "À la main"
+    }
+  },
+  "contraentregaCondiciones": {
+    "fila": {
+      "titulo": "Paiement à la livraison",
+      "conCondiciones": "Avec conditions",
+      "sinCondiciones": "Sans conditions",
+      "apagada": "Désactivé en livraison",
+      "sinEfectivo": "Sans le mode Espèces",
+      "condiciones": "Conditions",
+      "nuevo": "Nouveau",
+      "sedeResumen": "{sede} : {resumen}",
+      "masSedes": "et {n} autres succursales avec conditions",
+      "cargando": "Chargement des conditions…",
+      "errorCarga": "Impossible de lire les conditions du paiement à la livraison."
+    },
+    "dialogo": {
+      "titulo": "Paiement à la livraison",
+      "descripcion": "Site web › Ventes en ligne › Moyens de paiement · le client paie à la réception de la commande",
+      "guardar": "Enregistrer",
+      "pie": "Les changements sont visibles dans la boutique dès l’enregistrement. Les commandes déjà passées ne changent pas.",
+      "guardado": "Conditions enregistrées",
+      "error": "Échec de l’enregistrement : {mensaje}",
+      "sede": "Succursale",
+      "sedeAyuda": "Chaque succursale a ses conditions : c’est la succursale qui expédie la commande qui décide.",
+      "sedeConCondiciones": "{sede} · avec conditions",
+      "quitarCondiciones": "Retirer les conditions de cette succursale",
+      "quitadas": "Conditions retirées : le paiement à la livraison fonctionne comme avant dans cette succursale",
+      "sinEfectivoTitulo": "Votre organisation n’a pas le mode Espèces",
+      "sinEfectivoDescripcion": "Le paiement à la livraison est le mode Espèces avec des conditions. Activez-le d’abord dans Finances › Moyens de paiement.",
+      "irFinanzas": "Aller à Finances › Moyens de paiement",
+      "efectivoOculto": "Le mode Espèces est masqué sur le site : les conditions sont enregistrées, mais la boutique ne le propose pas tant que vous ne l’affichez pas dans Finances › Moyens de paiement.",
+      "sinSedes": "Votre organisation n’a aucune succursale active."
+    },
+    "ofrecer": {
+      "titulo": "Proposer le paiement à la livraison dans la boutique",
+      "ayuda": "Le client paie à la réception de la commande. S’applique seulement à « Livraison » : avec « Retrait en boutique », il paie au retrait."
+    },
+    "monto": {
+      "titulo": "Montant de la commande",
+      "ayuda": "On compte la valeur des produits remises incluses, sans la livraison. Vide = sans limite.",
+      "minimo": "Commande minimale",
+      "maximo": "Commande maximale",
+      "errorRango": "Le minimum ne peut pas dépasser le maximum."
+    },
+    "zonas": {
+      "titulo": "Où il est proposé",
+      "ayuda": "Zones de Logistique › Zones.",
+      "todas": "Dans toutes les zones de livraison",
+      "algunas": "Seulement dans ces zones",
+      "sinZonas": "Cette succursale n’a aucune zone de livraison active. Créez-les dans Logistique › Zones pour limiter où il est proposé.",
+      "errorVacias": "Choisissez au moins une zone.",
+      "transportadora": "Aussi avec un transporteur (envoi national)",
+      "transportadoraAyuda": "Le transporteur encaisse à la livraison et vous reverse le montant. Désactivez-le si vous voulez le paiement à la livraison seulement avec vos livreurs."
+    },
+    "productos": {
+      "titulo": "À quels produits il s’applique",
+      "ayuda": "Si le panier contient un produit non concerné, la boutique indique lequel au client et lui permet de le retirer ou de tout payer en ligne.",
+      "todos": "Tous",
+      "solo": "Seulement certains",
+      "excepto": "Tous sauf certains",
+      "agregar": "Ajouter une catégorie ou un produit",
+      "buscar": "Rechercher une catégorie ou un produit",
+      "buscarAyuda": "Saisissez au moins 2 lettres",
+      "categoria": "Catégorie",
+      "producto": "Produit",
+      "quitar": "Retirer {nombre}",
+      "sinResultados": "Aucun résultat",
+      "errorVacios": "Ajoutez au moins une catégorie ou un produit."
+    },
+    "medios": {
+      "titulo": "Comment il peut payer à la réception",
+      "ayuda": "Le livreur enregistre le moyen à la livraison et il arrive dans son rapprochement.",
+      "cash": "Espèces",
+      "card": "Terminal de paiement",
+      "transfer": "Virement",
+      "qr": "Nequi ou virement (QR)",
+      "errorVacios": "Choisissez au moins un moyen."
+    },
+    "anticipo": {
+      "titulo": "Acompte pour confirmer la commande",
+      "ayuda": "Confirme que la commande est sérieuse. Le reste se paie à la réception.",
+      "pedir": "Demander un acompte en ligne",
+      "envio": "Le montant de la livraison",
+      "envioAyuda": "Le client paie aujourd’hui la livraison et le reste à la réception. Ex. : aujourd’hui {anticipo} et à la réception {resto}.",
+      "porcentaje": "Un pourcentage de la commande",
+      "porcentajeAyuda": "Du total livraison comprise.",
+      "fijo": "Un montant fixe",
+      "fijoAyuda": "Le même pour toutes les commandes.",
+      "errorPorcentaje": "Saisissez un pourcentage entre 1 et 100.",
+      "errorFijo": "Saisissez un montant supérieur à zéro.",
+      "envioGratisAviso": "Votre boutique offre la livraison gratuite à partir de {monto}. Sur ces commandes, l’acompte « montant de la livraison » serait de {cero}. Que faisons-nous ?",
+      "envioGratisAvisoSinMonto": "Si une commande a la livraison gratuite, l’acompte « montant de la livraison » serait de {cero}. Que faisons-nous ?",
+      "envioGratisNoPedir": "Ne pas demander d’acompte sur ces commandes",
+      "envioGratisFijo": "Demander un montant fixe de",
+      "errorEnvioGratis": "Saisissez le montant fixe pour les commandes avec livraison gratuite.",
+      "seCobraCon": "Encaissé avec",
+      "cualquiera": "N’importe laquelle des actives (le client choisit)",
+      "conectada": "{nombre} · connectée",
+      "sinPasarela": "Vous n’avez pas de passerelle connectée : sans elle l’acompte ne peut pas être encaissé et le paiement à la livraison n’est pas proposé. Connectez-la dans Intégrations.",
+      "plazo": "Délai pour le payer",
+      "plazoMinutos": "{n} minutes",
+      "siNoRecibe": "Si le client ne reçoit pas la commande",
+      "devolver": "Rembourser l’acompte",
+      "retener": "La boutique le garde pour couvrir la livraison",
+      "siNoRecibeAyuda": "Affiché au paiement en une ligne : « {linea} ».",
+      "lineaDevolver": "Si vous ne recevez pas la commande, nous vous remboursons l’acompte.",
+      "lineaRetener": "Si vous ne recevez pas la commande, l’acompte couvre la livraison et n’est pas remboursé.",
+      "avisoPlazo": "S’il n’est pas payé dans les {n} minutes, la commande est annulée automatiquement et les produits retournent en stock, comme un paiement en ligne non finalisé."
+    },
+    "quien": {
+      "titulo": "Qui peut l’utiliser",
+      "soloEntregados": "Seulement les clients avec des commandes livrées",
+      "soloEntregadosAyuda": "Au moins 1 commande livrée. Les autres voient « Disponible dès votre deuxième achat » et paient en ligne.",
+      "sinRechazos": "Ne pas le proposer à qui a refusé une commande à la porte",
+      "sinRechazosAyuda": "Si un client n’a pas accepté une commande payable à la livraison, la prochaine fois il paie en ligne."
+    },
+    "texto": {
+      "titulo": "Texte affiché au client",
+      "ayuda": "Sous l’option au moment du paiement.",
+      "porDefecto": "Payez en espèces, par terminal ou Nequi à la réception de votre commande.",
+      "porDefectoAnticipo": "Payez en espèces, par terminal ou Nequi à la réception de votre commande. Pour la confirmer, vous ne payez aujourd’hui que la livraison.",
+      "contador": "{n} / {max}"
+    },
+    "cliente": {
+      "titulo": "Ce que voit votre client",
+      "opcion": "Paiement à la livraison",
+      "hoyEnLinea": "Aujourd’hui, en ligne ({base})",
+      "alRecibir": "À la réception",
+      "baseEnvio": "livraison",
+      "basePorcentaje": "acompte",
+      "baseFijo": "acompte",
+      "sinAnticipo": "Vous payez {total} à la réception.",
+      "noDisponibleEjemplo": "Avec une commande de {total}, il n’est pas proposé : vérifiez les conditions.",
+      "motivosTitulo": "Si une condition n’est pas remplie, l’option apparaît désactivée avec le motif :",
+      "motivoMinimo": "Disponible dès {minimo} — il vous manque {faltan}",
+      "motivoMaximo": "Seulement pour les commandes jusqu’à {maximo}",
+      "motivoProductos": "Indisponible pour {n} produits de votre panier · Voir lesquels",
+      "motivoZona": "Ne dessert pas votre adresse : seulement {zonas}",
+      "motivoTransportadora": "Indisponible avec un transporteur",
+      "motivoPrimeraCompra": "Disponible dès votre deuxième achat",
+      "motivoRechazo": "Pour cet achat, le paiement est en ligne",
+      "apagada": "La boutique ne propose pas le paiement à la livraison dans cette succursale.",
+      "resumenTitulo": "Résumé des règles"
+    },
+    "resumen": {
+      "sinCondiciones": "Sans conditions : tout se paie à la réception",
+      "apagada": "Désactivé en livraison",
+      "montoEntre": "De {minimo} à {maximo}",
+      "montoDesde": "Dès {minimo}",
+      "montoHasta": "Jusqu’à {maximo}",
+      "nZonas": "{n} zones",
+      "sinTransportadora": "sans transporteur",
+      "soloProductos": "seulement {lista}",
+      "todoMenos": "tout sauf {lista}",
+      "uno": "{primero}",
+      "primeroYMas": "{primero} et {n} de plus",
+      "nElementos": "{n} éléments",
+      "anticipoEnvio": "acompte : la livraison",
+      "anticipoPorcentaje": "acompte : {porcentaje} %",
+      "anticipoFijo": "acompte : {valor}",
+      "soloConEntregas": "seulement clients avec livraisons",
+      "sinRechazos": "pas pour qui a refusé"
+    },
+    "reglas": {
+      "apagada": "Non proposé en livraison",
+      "cualquierMonto": "Tout montant",
+      "montoEntre": "Commandes de {minimo} à {maximo}",
+      "montoDesde": "Commandes dès {minimo}",
+      "montoHasta": "Commandes jusqu’à {maximo}",
+      "zonas": "{zonas}",
+      "nZonas": "{n} zones",
+      "todasLasZonas": "Toutes les zones de livraison",
+      "conTransportadora": "Aussi avec un transporteur",
+      "sinTransportadora": "Sans transporteur",
+      "todosLosProductos": "Tous les produits",
+      "anticipoCon": "Acompte : {anticipo}, avec {pasarela}, {minutos} min",
+      "anticipoCualquiera": "Acompte : {anticipo}, avec la passerelle choisie par le client, {minutos} min",
+      "sinAnticipo": "Sans acompte : tout se paie à la réception",
+      "baseEnvio": "la livraison",
+      "basePorcentaje": "{porcentaje} %",
+      "baseFijo": "{valor}",
+      "soloConEntregas": "Seulement les clients avec des commandes livrées",
+      "sinRechazos": "Pas pour qui a refusé une commande à la porte"
+    }
+  },
+  "contraentregaPedidos": {
+    "lista": {
+      "insignia": "Paiement à la livraison",
+      "cobrar": "Encaisser {valor}",
+      "anticipoVence": "Acompte avant {hora}",
+      "kpi": "À encaisser à la livraison",
+      "kpiDetalle": "{n, plural, =0 {Aucune commande en cours} one {# commande payée à la livraison} other {# commandes payées à la livraison}}"
+    },
+    "filtro": {
+      "etiqueta": "Paiement à la réception",
+      "solo": "Paiement à la livraison uniquement",
+      "chip": "Paiement : à la livraison"
+    },
+    "estados": {
+      "sin_anticipo": "Sans acompte",
+      "pendiente": "Acompte en attente",
+      "pagado": "Acompte payé",
+      "vencido": "Acompte expiré"
+    },
+    "medios": {
+      "cash": "Espèces",
+      "card": "Terminal de paiement",
+      "transfer": "Virement",
+      "qr": "Nequi ou QR"
+    },
+    "detalle": {
+      "titulo": "Paiement à la livraison",
+      "faltaAnticipo": "Impossible de confirmer pour l'instant : l'acompte manque.",
+      "aviso": "L'acompte de {monto} expire à {hora} (dans {min} min). S'il n'est pas payé, la commande est annulée automatiquement et la réservation de stock est libérée.",
+      "anticipoEnvio": "Acompte (la livraison)",
+      "anticipo": "Acompte",
+      "cobrarAlEntregar": "À encaisser à la livraison",
+      "medios": "Moyens à la réception",
+      "notaSinAnticipo": "La boutique ne demande pas d'acompte (ou la livraison était gratuite). Tout est encaissé à la porte.",
+      "seCobraCon": "Encaissé avec",
+      "vence": "Échéance",
+      "venceValor": "{hora} · reste {min} min",
+      "alEntregar": "À la livraison",
+      "notaPendiente": "Impossible de confirmer pour l'instant : l'acompte manque. La réservation de stock reste active jusqu'à l'échéance.",
+      "enviarEnlace": "Envoyer le lien de paiement par WhatsApp",
+      "marcarRecibido": "Marquer l'acompte reçu…",
+      "referencia": "Référence",
+      "notaPagado": "La commande peut être confirmée. Le livreur encaisse {monto} ; l'acompte est rapproché dans Processeurs de paiement.",
+      "estadoPedido": "Statut de la commande",
+      "canceladoSinCobro": "Annulée · sans encaissement",
+      "vencio": "Expiré",
+      "stock": "Stock",
+      "stockLiberado": "Libéré {hora}",
+      "notaVencido": "Le client n'a pas payé l'acompte à temps. Rien à rembourser.",
+      "escribirCliente": "Écrire au client",
+      "mensajeWhatsApp": "Bonjour, pour confirmer votre commande {numero}, payez l'acompte de {monto} avant {hora} : {url}",
+      "mensajeVencido": "Bonjour, votre commande {numero} a été annulée car l'acompte n'a pas été payé à temps. Nous pouvons vous aider à la refaire.",
+      "sinTelefono": "La commande n'a pas de numéro WhatsApp valide.",
+      "cobraAlEntregar": "À encaisser à la livraison",
+      "notaEntrega": "Lors de l'affectation du livreur, {monto} passe à sa livraison et à son rapprochement dans Logistique › Rapprochements.",
+      "chip": {
+        "pendiente": "Paiement à la livraison · acompte en attente",
+        "pagado": "Paiement à la livraison · acompte payé",
+        "vencido": "Paiement à la livraison · acompte expiré"
+      },
+      "fecha": "Date",
+      "verAnticipo": "Voir l'acompte",
+      "registrarCobro": "Enregistrer l’encaissement"
+    },
+    "marcar": {
+      "titulo": "Marquer l'acompte reçu",
+      "descripcion": "Le client a payé {monto} par un autre moyen. Demandez le justificatif : l'historique enregistre qui l'a marqué.",
+      "confirmar": "Marquer reçu",
+      "medio": "Moyen",
+      "comprobante": "Justificatif ou référence",
+      "comprobanteAyuda": "Numéro du virement ou du reçu.",
+      "motivo": "Note (facultatif)",
+      "yaPagado": "L'acompte était déjà payé.",
+      "hecho": "Acompte de {monto} marqué comme reçu",
+      "errores": {
+        "SIN_PERMISO": "Vous n'avez pas l'autorisation de marquer les paiements des commandes web.",
+        "COMPROBANTE_REQUERIDO": "Saisissez le justificatif ou la référence.",
+        "PEDIDO_CERRADO": "La commande est déjà close (expirée ou annulée).",
+        "METODO_INVALIDO": "Ce moyen de paiement n'est pas actif.",
+        "SIN_ANTICIPO": "Cette commande n'a pas d'acompte.",
+        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous.",
+        "OTRO": "Impossible de marquer l'acompte. Réessayez."
+      }
+    },
+    "totales": {
+      "anticipoPagadoEnvio": "Acompte payé en ligne (livraison)",
+      "anticipoPagado": "Acompte payé en ligne",
+      "anticipoPendiente": "Acompte en attente",
+      "porCobrar": "À encaisser à la livraison"
+    },
+    "cuadre": {
+      "yaPagado": "Déjà payé en ligne",
+      "nota": "{numero} · Acompte de {monto} déjà payé avec {pasarela} : ne pas l'encaisser à la porte.",
+      "enLinea": "paiement en ligne",
+      "explicacion": "« Attendu » ne compte que ce que le livreur encaisse à la porte (total − acompte). Les acomptes passent par la passerelle et sont rapprochés dans Finances › Processeurs de paiement."
     }
   }
 }

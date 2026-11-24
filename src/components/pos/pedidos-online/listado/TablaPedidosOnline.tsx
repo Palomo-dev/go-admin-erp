@@ -15,6 +15,7 @@ import { esDomicilio, mesaCortaDelPedido, tipoEntregaEfectivo, zonaDelPedido } f
 import { duracionPromesa, origenDelPedido, promesaDelPedido, type TonoPromesa } from '@/lib/pos/pedidosWeb/listadoPedidos';
 import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
+import { PagoContraentregaCelda, muestraCeldaContraentrega } from '@/components/pos/pedidos-online/contraentrega/PagoContraentregaCelda';
 
 export { metodoDePago };
 
@@ -229,12 +230,16 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
     {
       id: 'pago',
       encabezado: t('columnas.pago'),
-      celda: (o) => (
-        <div className="flex min-w-0 flex-col items-start gap-0.5">
-          <StatusBadge estado={o.payment_status} etiqueta={t(`pagos.${o.payment_status}`)} tono={TONO_PAGO[o.payment_status] ?? 'neutro'} tamano="sm" />
-          <span className="truncate text-xs text-fg-secondary">{metodoDePago(o)}</span>
-        </div>
-      ),
+      celda: (o) =>
+        // Contraentrega abierta (Figma 3014:194407 › 04): «Cobrar $ X» o «Anticipo vence HH:MM».
+        muestraCeldaContraentrega(o) ? (
+          <PagoContraentregaCelda pedido={o} timezone={timezone} formatear={formatear} />
+        ) : (
+          <div className="flex min-w-0 flex-col items-start gap-0.5">
+            <StatusBadge estado={o.payment_status} etiqueta={t(`pagos.${o.payment_status}`)} tono={TONO_PAGO[o.payment_status] ?? 'neutro'} tamano="sm" />
+            <span className="truncate text-xs text-fg-secondary">{metodoDePago(o)}</span>
+          </div>
+        ),
     },
     {
       id: 'total',

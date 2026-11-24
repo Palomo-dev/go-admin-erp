@@ -41,6 +41,7 @@ import { useRecalcularAlCambiarPromociones } from '@/lib/pos/venta/recalculoProm
 // `CartProduct` y `requiresPreparation` se movieron literales a lineaCarrito.ts (paso 6): las usa también la línea.
 import { requiresPreparation, type CartProduct } from '@/lib/pos/venta/lineaCarrito';
 import { LineasCarrito } from '@/components/pos/venta/carrito/LineasCarrito';
+import { AvisoListaCarrito } from '@/components/listasPrecios/pos/ListaPreciosCarrito';
 
 type KitchenTicketStatus = KitchenTicket['status'];
 
@@ -869,6 +870,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         )}
       </header>
       {isOnHoldWithDebt && <p className="-mt-1 text-xs text-warning-text">{tCarrito('deudaRegistradaAviso')}</p>}
+      {/* Listas de precios (Figma «05 POS y ventas» 07): la lista del cliente y «Usar precio normal». */}
+      <AvisoListaCarrito cart={cart} onCartUpdate={onCartUpdate} formatear={formatear} />
 
       {isEmpty ? (
         <EmptyState variante="empty" icono={ShoppingCart} titulo={tCarrito('vacioTitulo')} descripcion={tCarrito('vacioDescripcion')} />

@@ -35,7 +35,7 @@
  *     paquete con precio, N limita los paquetes completos a
  *     floor(unidades que entran / N). NULL = sin repetición;
  *   - no combinables: gana la que MÁS descuenta en esta cuenta (empate:
- *     mayor prioridad y luego la más antigua por `created_at`), y compite
+ *     mayor prioridad y luego la MÁS RECIENTE por `created_at`), y compite
  *     contra la suma de las combinables. Una no combinable que no toca la
  *     cuenta no bloquea a las demás;
  *   - monto fijo repartido en proporción y topado al subtotal aplicable;
@@ -57,12 +57,18 @@
  *     Sin productos incluidos, el precio de paquete no se aplica. Sin
  *     precio, el porcentaje, con la misma repetición que un porcentaje.
  *
+ *   - precio por volumen (`volume_tiers`, 2026-11-24), marca (`promotion_rules.brand`),
+ *     grupo de clientes y usos por cliente: NO se reescriben aquí. Viven en
+ *     `precioVolumen.ts`, el MISMO archivo byte a byte en la tienda
+ *     (`lib/promociones/precioVolumen.ts`); lo prueba `precioVolumen.contrato.test.ts`
+ *     con los mismos números que `scripts/verify-precio-volumen.mjs` de la tienda.
+ *
  * Diferencias que QUEDAN con el sitio (2026-10-07), a cerrar en ese repo:
  *   1. Redondeo: aquí a centavos; el sitio, a pesos enteros (`Math.round`).
  *   2. `usage_limit = 0`: aquí «agotada»; el sitio lo trata como sin límite
  *      (`p.usage_limit &&`). Hoy ninguna fila tiene 0.
- *   3. Empate entre no combinables: aquí prioridad y luego `created_at`; el
- *      sitio, prioridad y luego el orden en que lleguen de la base.
+ *   3. (Cerrada 2026-11-24) Empate entre no combinables: los dos usan
+ *      `compararCompetidoras` de `precioVolumen.ts` (gana la más reciente).
  *   4. «Lleve X pague Y» con productos por peso o medida: aquí no aplica; el
  *      sitio no lo distingue.
  *   5. Tope de línea: aquí ninguna línea descuenta más que su total; el sitio
@@ -76,6 +82,17 @@ import type { WeekDay } from '@/components/pos/promociones/types';
 import { appliesToBranch, diaEnZona, vigenteEnHorario } from '@/lib/promotions/vigencia';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
 import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
+import {
+  calcularDescuentoVolumen,
+  compararCompetidoras,
+  grupoDeLinea,
+  modoConteo,
+  normalizarEscalones,
+  promocionHabilitadaParaCliente,
+  reglaMarcaCoincide,
+  type ClientePromocion,
+  type FilaEscalon,
+} from '@/lib/promotions/precioVolumen';
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +105,10 @@ export interface ReglaPromocion {
   category_id?: number | null;
   /** Unidades de este producto en un paquete. Nulo = 1. */
   quantity?: number | string | null;
+  /** `include_brand` / `exclude_brand`: marca (`products.brand`). Nulo = regla antigua por producto. */
+  brand?: string | null;
+  /** Precio por volumen con `product_group`: grupo de conteo de este producto. */
+  tier_group?: number | string | null;
 }
 
 /**
@@ -139,6 +160,14 @@ export interface FilaPromocion {
   applies_to_finances?: boolean | null;
   /** Métodos de cobro con los que aplica (20261028180000). Nulo/ausente/vacío = cualquiera. */
   payment_method_codes?: unknown;
+  /** Precio por volumen: cómo se cuentan las unidades (`precioVolumen.modoConteo`). */
+  tiers_count_mode?: string | null;
+  /** Escalones (`promotion_tiers`) de una promoción `volume_tiers`. */
+  promotion_tiers?: FilaEscalon[] | null;
+  /** Solo clientes de este segmento del CRM. Sin cliente identificado no aplica. */
+  customer_segment_id?: string | null;
+  /** Máximo de usos por cliente. Sin cliente identificado no aplica. */
+  usage_limit_per_customer?: number | string | null;
   rules?: ReglaPromocion[] | null;
   promotion_rules?: ReglaPromocion[] | null;
 }
@@ -149,6 +178,8 @@ export interface LineaPromocion {
   /** Producto padre si es una variante: una regla sobre el padre la alcanza. */
   parent_product_id?: number | null;
   category_id?: number | null;
+  /** `products.brand`: lo usan las reglas de marca con `brand`. */
+  brand?: string | null;
   quantity: number;
   unit_price: number;
   /** `products.sale_mode`. «Lleve X pague Y» no aplica a peso ni medida. */
@@ -175,6 +206,11 @@ export interface ContextoPromocion {
    * elegido no aplica (se recalcula al elegirlo).
    */
   metodosPago?: readonly string[] | null;
+  /**
+   * Cliente de la venta con sus segmentos y usos (lo arma `promotionEngine` en el servidor o con
+   * la sesión). Sin cliente, las promociones con grupo de clientes o usos por cliente no aplican.
+   */
+  cliente?: ClientePromocion | null;
 }
 
 export interface PromocionAplicada {
@@ -187,6 +223,13 @@ export interface PromocionAplicada {
   lineas: number[];
   /** product_id de esas líneas (compatibilidad con la UI de siempre). */
   items_affected: number[];
+  /**
+   * Lo que esta promoción descontó en cada línea (posición → monto, ya topado). Suma
+   * `discount_amount`. Con él se registra la venta en `sale_promotions`.
+   */
+  montos_linea?: Record<number, number>;
+  /** Precio por volumen: escalón alcanzado por línea (posición → `desde` del escalón). */
+  escalon_linea?: Record<number, number>;
 }
 
 export interface ResultadoPromociones {
@@ -274,6 +317,7 @@ export function promocionVigente(p: FilaPromocion, ctx: ContextoPromocion, _dia?
   if (!vigenteEnHorario(p, ctx.ahora, ctx.zonaHoraria)) return false;
   if (!appliesToBranch(p, ctx.sucursalId)) return false;
   if (!promocionAplicaConMetodos(p.payment_method_codes, ctx.metodosPago ?? null)) return false;
+  if (!promocionHabilitadaParaCliente(p, ctx.cliente)) return false;
   return true;
 }
 
@@ -308,12 +352,16 @@ export function lineaCumpleReglas(linea: LineaPromocion, p: FilaPromocion): bool
   for (const r of reglas) {
     switch (r.rule_type) {
       case 'include_product':
-      case 'include_brand': // la marca se resuelve vía producto (igual que el sitio)
         if (coincideProducto(r.product_id)) incluida = true;
         break;
+      case 'include_brand': // por `brand` si la trae; si no, vía producto (igual que el sitio)
+        if (reglaMarcaCoincide(r, linea)) incluida = true;
+        break;
       case 'exclude_product':
-      case 'exclude_brand':
         if (coincideProducto(r.product_id)) excluida = true;
+        break;
+      case 'exclude_brand':
+        if (reglaMarcaCoincide(r, linea)) excluida = true;
         break;
       case 'include_category':
         if (coincideCategoria(r.category_id)) incluida = true;
@@ -332,6 +380,8 @@ export function lineaCumpleReglas(linea: LineaPromocion, p: FilaPromocion): bool
 interface CalculoPromocion {
   total: number;
   porLinea: Map<number, number>; // índice de línea → monto
+  /** Precio por volumen: índice de línea → `desde` del escalón alcanzado. */
+  escalones?: Map<number, number>;
 }
 
 /** Reparte `monto` en proporción a `pesos`; la última entrada absorbe el redondeo. */
@@ -437,6 +487,7 @@ function descuentoPorPaquetes(
 
 export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], indices: number[]): CalculoPromocion {
   let porLinea = new Map<number, number>();
+  const escalones = new Map<number, number>();
   const valor = num(p.discount_value);
   const pesos: Array<[number, number]> = indices.map((i) => [i, totalLinea(lineas[i])]);
   const subtotal = pesos.reduce((s, [, w]) => s + w, 0);
@@ -514,6 +565,29 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
       }
       break;
     }
+    case 'volume_tiers': {
+      // Precio por volumen: el módulo compartido con la tienda (`precioVolumen.ts`) decide el
+      // escalón de cada línea; aquí solo se redondea a centavos con `sumar`.
+      const modo = modoConteo(p.tiers_count_mode);
+      const reglas = reglasDe(p);
+      const r = calcularDescuentoVolumen(
+        normalizarEscalones(p.promotion_tiers),
+        indices.map((i) => ({
+          producto: lineas[i].product_id,
+          padre: lineas[i].parent_product_id ?? null,
+          cantidad: num(lineas[i].quantity),
+          precio: num(lineas[i].unit_price),
+          grupo: modo === 'product_group' ? grupoDeLinea(reglas, lineas[i].product_id, lineas[i].parent_product_id) : null,
+        })),
+        modo,
+      );
+      indices.forEach((idx, k) => {
+        sumar(idx, r.porLinea[k]);
+        const e = r.escalonPorLinea[k];
+        if (e) escalones.set(idx, e.desde);
+      });
+      break;
+    }
     // 'free_shipping' no descuenta productos.
   }
 
@@ -523,7 +597,7 @@ export function calcularPromocion(p: FilaPromocion, lineas: LineaPromocion[], in
     porLinea = repartir(tope, Array.from(porLinea.entries()));
     total = tope;
   }
-  return { total, porLinea };
+  return escalones.size > 0 ? { total, porLinea, escalones } : { total, porLinea };
 }
 
 // ── Evaluación de la cuenta completa ─────────────────────────────────────────
@@ -589,22 +663,18 @@ function componentesDe(calculos: CalculoListo[]): CalculoListo[][] {
 
 /**
  * Entre no combinables que compiten (mismo grupo de líneas): gana la de
- * mayor `priority`. Empate: la que más descuenta. Sigue el empate: la más
- * antigua (`created_at`) y luego el id. Con todas en 0 —el valor por
- * defecto— el primer criterio no mueve nada y queda la regla de siempre.
+ * mayor `priority`. Empate: la que más descuenta. Mismo ahorro: la MÁS
+ * RECIENTE (`created_at`) y luego el id. La regla vive en `precioVolumen.ts`
+ * (`compararCompetidoras`), la MISMA función que usa la tienda.
  */
-function compararCompetidoras(a: CalculoListo, b: CalculoListo): number {
-  const pa = num(a.promo.priority);
-  const pb = num(b.promo.priority);
-  if (pa !== pb) return pb - pa;
-  if (a.calc.total !== b.calc.total) return b.calc.total - a.calc.total;
-  return compararPrioridad(a.promo, b.promo);
+function compararCalculos(a: CalculoListo, b: CalculoListo): number {
+  return compararCompetidoras(a.promo, a.calc.total, b.promo, b.calc.total);
 }
 
 /** Dentro de un grupo: la no combinable ganadora contra la suma de las combinables. */
 function elegirEnComponente(grupo: CalculoListo[]): FilaPromocion[] {
   const combinables = grupo.filter((c) => !!c.promo.is_combinable);
-  const exclusivas = grupo.filter((c) => !c.promo.is_combinable).sort(compararCompetidoras);
+  const exclusivas = grupo.filter((c) => !c.promo.is_combinable).sort(compararCalculos);
   const suma = combinables.reduce((s, c) => s + c.calc.total, 0);
   const mejor = exclusivas[0] ?? null;
   if (mejor && mejor.calc.total >= suma) return [mejor.promo];
@@ -682,6 +752,7 @@ export function evaluarPromociones(
     if (!c) continue;
     let aportado = 0;
     const tocadas: number[] = [];
+    const montos: Record<number, number> = {};
     for (const [idx, monto] of Array.from(c.calc.porLinea.entries())) {
       // Una línea nunca descuenta más que su propio total.
       const cabe = Math.max(0, centavos(totalLinea(lineas[idx]) - lineDiscounts[idx]));
@@ -690,6 +761,7 @@ export function evaluarPromociones(
       lineDiscounts[idx] = centavos(lineDiscounts[idx] + d);
       aportado = centavos(aportado + d);
       tocadas.push(idx);
+      montos[idx] = centavos(d);
     }
     if (aportado <= 0) continue;
     applied.push({
@@ -700,6 +772,10 @@ export function evaluarPromociones(
       discount_amount: aportado,
       lineas: tocadas.sort((a, b) => a - b),
       items_affected: c.indices.map((i) => lineas[i].product_id),
+      montos_linea: montos,
+      ...(c.calc.escalones
+        ? { escalon_linea: Object.fromEntries(tocadas.filter((i) => c.calc.escalones?.has(i)).map((i) => [i, c.calc.escalones?.get(i) as number])) }
+        : {}),
     });
   }
 

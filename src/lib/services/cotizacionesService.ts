@@ -34,6 +34,8 @@ export interface QuotationItem {
   tax_rate?: number;
   tax_included: boolean;
   total_line: number;
+  /** Lista de precios de la línea (solo para las promociones «no aplica con listas»; no se envía). */
+  price_list_id?: string | null;
 }
 
 /** Cotización como la entrega el servidor: `status` es el estado VIVO ('expired' derivado al leer). */
@@ -165,7 +167,7 @@ export class CotizacionesService {
       // por categoría y por variante.
       const promo = await promotionEngine.evaluate({
         channel: 'finances',
-        items: items.map((it) => ({ product_id: it.product_id || 0, quantity: Number(it.qty) || 0, unit_price: Number(it.unit_price) || 0 })),
+        items: items.map((it) => ({ product_id: it.product_id || 0, quantity: Number(it.qty) || 0, unit_price: Number(it.unit_price) || 0, price_list_id: it.price_list_id ?? null })),
         organization_id: getOrganizationId(),
         branch_id: datos.branch_id ?? undefined,
       });

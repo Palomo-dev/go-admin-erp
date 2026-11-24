@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
@@ -13,6 +13,8 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { webOrdersService, type WebOrder, type WebOrderStatus } from '@/lib/services/webOrdersService';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { type EstimatedTime, timeToMs, formatEstimatedTime } from '../components';
+import { useTiemposPedidos } from '@/components/pos/pedidos-online/tiempos/useTiemposPedidos';
+import { aTiempoDialogo, resolverTiempos, verticalDeTipo } from '@/lib/pos/pedidosWeb/tiemposPedidos';
 
 /** Mensaje de un error de Supabase o de JS, sin suponer su forma. */
 function mensajeDeError(error: unknown): string | undefined {
@@ -71,6 +73,8 @@ interface UseWebOrderDetailReturn {
   avisoStock: string[];
   /** Último cobro rechazado porque la sede no tiene caja abierta. */
   sinCajaAbierta: boolean;
+  /** «Vienen de Configuración › Punto de venta › Pedidos online (Sede X)…»; null = tiempos de siempre. */
+  avisoTiempos: string | null;
   loadOrder: () => Promise<void>;
 }
 
@@ -105,10 +109,34 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     isRetail ? { value: 5, unit: 'days' } : { value: 30, unit: 'minutes' }
   );
   const [markAsPaid, setMarkAsPaid] = useState(false);
+  // Tiempos de Configuración › Punto de venta › Pedidos online: los de la sede y el tipo de
+  // entrega del pedido. Sin fila guardada no se toca nada (los de siempre, arriba).
+  const tiemposConfig = useTiemposPedidos();
+  const tTiempos = useTranslations('pedidosOnlineTiempos');
+  const [avisoTiempos, setAvisoTiempos] = useState<string | null>(null);
+  const tiemposAplicados = useRef<string | null>(null);
   const [sinCajaAbierta, setSinCajaAbierta] = useState(false);
   const [cobroDialogo, setCobroDialogo] = useState<{ abierto: boolean; entregar: boolean }>({ abierto: false, entregar: false });
   const [avisoStock, setAvisoStock] = useState<string[]>([]);
   const { formatear } = useMonedaOrganizacion();
+
+  // Una vez por pedido (una recarga no pisa lo que la persona ya escribió en el diálogo).
+  const ordenId = order?.id ?? null;
+  const ordenSede = order?.branch_id ?? null;
+  const ordenTipo = order?.delivery_type ?? null;
+  const ordenSedeNombre = (order as { branch?: { name?: string | null } | null } | null)?.branch?.name ?? null;
+  useEffect(() => {
+    if (!ordenId || !tiemposConfig.ajustes || tiemposAplicados.current === ordenId) {
+      // Sin pedido o sin configuración guardada: los tiempos de siempre.
+      return;
+    }
+    tiemposAplicados.current = ordenId;
+    const r = resolverTiempos(tiemposConfig.ajustes, { sedeId: ordenSede, deliveryType: ordenTipo, vertical: verticalDeTipo(orgTypeId) });
+    setPrepTime(aTiempoDialogo(r.alistar));
+    if (r.entrega) setTransitTime(aTiempoDialogo(r.entrega));
+    const sede = ordenSedeNombre ?? tiemposConfig.sedes.find((s) => s.id === ordenSede)?.nombre ?? null;
+    setAvisoTiempos(sede ? tTiempos('confirmar.origen', { sede }) : tTiempos('confirmar.origenSinSede'));
+  }, [ordenId, ordenSede, ordenTipo, ordenSedeNombre, tiemposConfig.ajustes, tiemposConfig.sedes, orgTypeId, tTiempos]);
 
   const loadOrder = useCallback(async () => {
     try {
@@ -528,6 +556,7 @@ export function useWebOrderDetail(orderId: string): UseWebOrderDetailReturn {
     cerrarCobro,
     avisoStock,
     sinCajaAbierta,
+    avisoTiempos,
     loadOrder,
   };
 }

@@ -87,6 +87,25 @@ export const GUIAS: readonly Guia[] = [
     ],
   },
   {
+    // Listas de precios por cliente (Figma «05 POS y ventas» 3018:198730, 2026-11-24).
+    id: 'listas-precios',
+    titulo: 'Dar precios especiales a un cliente o a un grupo (lista de precios)',
+    palabras: ['lista de precios', 'listas de precios', 'precio mayorista', 'mayorista', 'precio por cliente', 'precios especiales', 'precio de lista'],
+    pasos: [
+      'Abre Ventas > Listas de precios y crea una lista: regla general en % sobre el precio normal, excepciones por categoría o marca y precios fijos por producto (con escalones por cantidad).',
+      'También puedes importar los precios fijos desde Excel o CSV (SKU, precio y cantidad mínima).',
+      'En la lista, agrega clientes uno a uno o un grupo del CRM. Un cliente tiene una sola lista; lo asignado uno a uno gana sobre el grupo.',
+      'Desde la ficha del cliente también puedes ver o cambiar su lista.',
+      'En el POS, las cotizaciones y las facturas, al elegir el cliente cada línea toma el precio de su lista; las promociones se calculan encima.',
+      '«Usar precio normal» en el POS pide el permiso «Cambiar precios en la venta».',
+    ],
+    rutas: [
+      { ruta: '/app/pos/listas-precios', nombre: 'Ventas > Listas de precios' },
+      { ruta: '/app/pos/listas-precios/nueva', nombre: 'Nueva lista de precios' },
+    ],
+    permisos: ['pos.listas_precios.gestionar', 'pos.precios.cambiar_en_venta'],
+  },
+  {
     id: 'quitar-promocion',
     titulo: 'Dejar que el cajero quite una promoción de una línea',
     palabras: ['quitar promocion', 'quitar la promocion', 'quite una promocion', 'remover promocion', 'cajero promocion', 'pos.promotions.remove'],

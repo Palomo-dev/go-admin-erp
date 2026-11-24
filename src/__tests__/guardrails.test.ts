@@ -3996,7 +3996,8 @@ describe('44. Detalles en celular: una sola «←», la del MobileHeader del she
     // reemplazó al detalle del turno, que ahora redirige.
     'app/app/pos/pedidos-online/[id]/components/OrderNotFoundState.tsx': 1, // pedido no encontrado
     'components/pms/checkout/CheckoutDialog.tsx': 1, // «Atrás» entre pasos del diálogo
-    'components/pos/promociones/nuevo/PromotionWizard.tsx': 1, // «Anterior» entre pasos del asistente
+    // `components/pos/promociones/nuevo/PromotionWizard.tsx` salió el 2026-11-24: Promociones V2
+    // (Figma A2 2999:193484) es una sola pantalla, sin «Anterior» entre pasos.
   };
   const APP = path.join(SRC_ROOT, 'app', 'app');
   const FORMULARIO = new Set(['nuevo', 'nueva', 'crear', 'editar', 'new', 'edit', 'create']);

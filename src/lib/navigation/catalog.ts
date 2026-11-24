@@ -289,6 +289,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/pos/cargos-servicio', nombre: 'Cargos de servicio', icono: Coins, grupo: 'Restaurante' },
       { href: '/app/pos/cupones', nombre: 'Cupones', icono: Ticket, grupo: 'Promociones' },
       { href: '/app/pos/promociones', nombre: 'Promociones', icono: BadgePercent, grupo: 'Promociones' },
+      // Listas de precios por cliente (Figma «05 POS y ventas» 3018:198730, aprobada el 2026-11-24).
+      { href: '/app/pos/listas-precios', nombre: 'Listas de precios', icono: Tags, grupo: 'Promociones' },
     ],
   },
   {

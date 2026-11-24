@@ -3611,7 +3611,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         ],
       },
       { key: 'show_video', label: 'Mostrar video', type: 'boolean', defaultValue: false, group: 'content' },
-      { key: 'show_badges', label: 'Mostrar badges', type: 'boolean', defaultValue: true, group: 'content' },
+      // `show_badges` (sin cambiar clave ni default): la tienda lo lee como «etiquetas sobre la
+      // foto». `false` oculta las etiquetas A de la ficha aunque Información del producto las pida
+      // (panel «Etiquetas», `labels_placement` = foto o ambas). Solo cambió el nombre visible.
+      { key: 'show_badges', label: 'Etiquetas sobre la foto', type: 'boolean', defaultValue: true, group: 'content', helpText: 'Apagado: no salen etiquetas sobre la foto, aunque Información del producto las pida.' },
       {
         key: 'thumb_size',
         label: 'Tamaño de miniaturas',

@@ -250,8 +250,9 @@ describe('Ventas (Figma 24, 2026-11-23): el POS es una página del módulo', () 
   test('grupos Vender · Movimientos · Restaurante · Promociones, sin perder ninguna página', () => {
     const m = moduloPorCodigo('pos')!;
     expect([...new Set(m.paginas.map((p) => p.grupo))]).toEqual(['Vender', 'Movimientos', 'Restaurante', 'Promociones']);
-    expect(paginasPropias(m)).toHaveLength(13);
-    expect(m.paginas).toHaveLength(14);
+    // 2026-11-24: + «Listas de precios» (Promociones; Figma «05 POS y ventas» 3018:198730).
+    expect(paginasPropias(m)).toHaveLength(14);
+    expect(m.paginas).toHaveLength(15);
   });
 
   test('abre en «Todas las ventas», no en la pantalla del POS', () => {

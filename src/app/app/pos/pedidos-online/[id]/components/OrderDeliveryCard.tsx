@@ -14,6 +14,7 @@ import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { esDomicilio, mesaCortaDelPedido, mesaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { clasesBoton } from '@/components/kit';
 import { IconoCabecera } from './IconoCabecera';
+import { CobraAlEntregarFila } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
 
 interface OrderDeliveryCardProps {
   order: WebOrder;
@@ -193,6 +194,9 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
             <span className="dark:text-gray-200">{t('orderDeliveryCard.entregaAprox', { time: formatTime(order.estimated_delivery_at) })}</span>
           </div>
         )}
+
+        {/* Contraentrega: lo que cobra el domiciliario (Figma 3014:194407 › 05). */}
+        <CobraAlEntregarFila order={order} />
 
         {/* Botón para asignar delivery propio */}
         {canAssignDelivery && onAssignDelivery && (

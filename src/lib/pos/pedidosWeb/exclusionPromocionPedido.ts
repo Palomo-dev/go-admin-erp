@@ -6,12 +6,17 @@
  * `web_orders` no tiene saldo: lo que se cobra es `total`. Si el pedido ya
  * tiene venta y sigue abierta, la venta y sus líneas se actualizan con el
  * mismo reparto para que el cobro no use el descuento viejo.
+ *
+ * El motor recibe el cliente del pedido: sin él, las promociones «solo para el grupo …» y con usos
+ * por cliente se caían al recalcular. Los usos que este mismo pedido ya registró no cuentan contra
+ * su límite (`usos_ya_contados`). Al final se rehace `sale_promotions` del pedido con lo que quedó.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { lineasVentaPedidoWeb, planExclusionPromocionPedido } from '@/lib/services/webOrderTotals';
 import type { WebOrder, WebOrderItem } from '@/lib/services/webOrdersService';
+import { filasPromocionesPedido } from '@/lib/pos/pedidosWeb/promocionesPedido';
 
 const CERRADOS = new Set(['cancelled', 'rejected', 'expired', 'delivered', 'refunded']);
 
@@ -68,7 +73,7 @@ export async function aplicarExclusionPromocionPedido(
 
   const { data: pedido, error: ePedido } = await ctx.supabase
     .from('web_orders')
-    .select('id, organization_id, branch_id, status, payment_status, subtotal, tax_total, discount_total, delivery_fee, tip_amount, total, sale_id, order_number')
+    .select('id, organization_id, branch_id, customer_id, status, payment_status, subtotal, tax_total, discount_total, delivery_fee, tip_amount, total, sale_id, order_number')
     .eq('id', orderId)
     .eq('organization_id', ctx.organizationId)
     .maybeSingle();
@@ -92,11 +97,21 @@ export async function aplicarExclusionPromocionPedido(
   const idx = items.findIndex((it) => it.id === itemId);
   if (idx < 0) throw new ErrorExclusionPromocion('linea_no_encontrada', 'La línea no está en el pedido');
 
+  // Promociones que este pedido ya usó (registradas al crearlo): su uso por cliente ya está contado.
+  const { data: yaUsadas } = await ctx.supabase
+    .from('sale_promotions')
+    .select('promotion_id')
+    .eq('web_order_id', orderId)
+    .eq('organization_id', ctx.organizationId);
+  const usosYaContados = ((yaUsadas ?? []) as Array<{ promotion_id: string }>).map((f) => String(f.promotion_id));
+
   const evaluar = (flags: boolean[]) =>
     promotionEngine.evaluate({
       channel: 'web',
       organization_id: ctx.organizationId,
       branch_id: pedido.branch_id ?? undefined,
+      customer_id: (pedido as { customer_id?: string | null }).customer_id ?? null,
+      usos_ya_contados: usosYaContados,
       db: ctx.supabase,
       items: items.map((it, i) => ({
         product_id: Number(it.product_id),
@@ -251,6 +266,14 @@ export async function aplicarExclusionPromocionPedido(
     if (eSale) throw new ErrorExclusionPromocion('lectura_fallida', eSale.message);
   }
 
+  // Qué promoción quedó en el pedido (estadísticas de Promociones). Un fallo no deshace el cambio.
+  const filasPromo = filasPromocionesPedido(ahora.applied, items);
+  const { error: eRegistro } = await ctx.supabase.rpc('fn_pedido_web_promociones_guardar', {
+    p_order_id: orderId,
+    p_filas: filasPromo,
+  });
+  if (eRegistro) console.warn('[pedidosWeb] No se pudo registrar la promoción del pedido:', eRegistro.message);
+
   const { error: eAudit } = await ctx.supabase.from('ops_audit_log').insert({
     organization_id: ctx.organizationId,
     branch_id: pedido.branch_id ?? null,
@@ -278,3 +301,4 @@ export async function aplicarExclusionPromocionPedido(
     promo_excluded: excluded,
   };
 }
+

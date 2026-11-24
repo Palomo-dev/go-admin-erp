@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PageHeaderSkeleton, DetailSkeleton } from '@/components/common/PageSkeletons';
 import { PageHeader } from '@/components/kit/PageHeader';
-import { PromotionWizard } from '@/components/pos/promociones/nuevo';
+import { PromocionFormulario } from '@/components/pos/promociones/formulario/PromocionFormulario';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
 
 export default function NuevaPromocionPage() {
@@ -27,6 +27,7 @@ export default function NuevaPromocionPage() {
         <PageHeader
           variante="form"
           titulo={t('pantalla.nueva')}
+          subtitulo={t('v2.subtitulo')}
           volverA="/app/pos/promociones"
           migas={[
             migaVentas,
@@ -34,7 +35,7 @@ export default function NuevaPromocionPage() {
             { etiqueta: t('pantalla.nueva') },
           ]}
         />
-        <PromotionWizard />
+        <PromocionFormulario />
       </div>
     </div>
   );

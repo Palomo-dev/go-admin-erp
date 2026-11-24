@@ -73,6 +73,9 @@ const NOMBRE_ETIQUETA = {
   label_new: 'Nuevo',
   label_shipping: 'Envío gratis',
   label_sold_out: 'Agotado',
+  // Promoción real del producto («2 X 1», «-20 %»): visible por defecto; apagarla aquí la quita
+  // también de la ficha (`etiquetaPermitidaEnTarjeta`).
+  label_promotion: 'Promociones',
 } as const;
 
 type ClaveBoton = keyof typeof NOMBRE_BOTON;

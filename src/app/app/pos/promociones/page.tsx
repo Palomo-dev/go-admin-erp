@@ -14,6 +14,7 @@ import {
 import { Promotion, PromotionFilters } from '@/components/pos/promociones/types';
 import { estadoDePromocion } from '@/components/pos/promociones/estadoPromocion';
 import { usePuedeGestionarPromociones } from '@/components/pos/promociones/usePuedeGestionarPromociones';
+import { cargarResumenPromociones, type ResumenPromociones } from '@/components/pos/promociones/estadisticasPromociones';
 
 type EstadoCarga = 'cargando' | 'listo' | 'error' | 'sinPermiso';
 
@@ -33,6 +34,7 @@ export default function PromocionesPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [estado, setEstado] = useState<EstadoCarga>('cargando');
   const [filters, setFilters] = useState<PromotionFilters>({});
+  const [resumen, setResumen] = useState<ResumenPromociones | null>(null);
 
   const loadPromotions = useCallback(async () => {
     if (!organization?.id) return;
@@ -53,6 +55,19 @@ export default function PromocionesPage() {
     loadPromotions();
   }, [loadPromotions]);
 
+  // «Ahorro del mes»: aparte de la lista, para que un fallo aquí no la tumbe.
+  useEffect(() => {
+    if (!organization?.id || !timezone) return;
+    let vigente = true;
+    cargarResumenPromociones(organization.id, timezone, branchFilter ?? null)
+      .then((r) => { if (vigente) setResumen(r); })
+      .catch((error: unknown) => {
+        console.warn('[promociones] No se pudo cargar el ahorro del mes:', error);
+        if (vigente) setResumen(null);
+      });
+    return () => { vigente = false; };
+  }, [organization?.id, timezone, branchFilter, promotions]);
+
   const hayFiltros = Boolean(filters.search || filters.is_active !== undefined || filters.promotion_type);
 
   // «Activa ahora» con el mismo criterio que el motor: estado, fechas y horario semanal.
@@ -72,7 +87,7 @@ export default function PromocionesPage() {
     return (
       <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
         <PageHeaderSkeleton />
-        <StatsSkeleton count={3} />
+        <StatsSkeleton count={4} />
         <CardListSkeleton cards={5} columns="1" />
       </div>
     );
@@ -91,6 +106,7 @@ export default function PromocionesPage() {
           loading={estado === 'cargando'}
           sinPermiso={estado === 'sinPermiso'}
           puedeGestionar={puedeGestionar}
+          ahorroMes={resumen ? { ahorro: resumen.ahorro, ventas: resumen.ventas } : null}
         />
 
         <PromotionsList

@@ -35,6 +35,7 @@ import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
+import { EditorEtiquetasFicha } from './EditorEtiquetasFicha';
 import { CAMPOS_CUBIERTOS_FICHA, PanelSeccionFicha, esSeccionFichaConPanel } from './EditorSeccionesFicha';
 import { CLAVES_BARRA_FIJA_EDITOR, EditorBarraFija } from './EditorBarraFija';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
@@ -91,6 +92,8 @@ export interface InspectorSeccionProps {
   carruselSitio?: unknown;
   /** Copia el estilo de esta tarjeta a las demás secciones de productos de la página. */
   onAplicarTarjeta?: (estilo: EstiloTarjetaProducto) => void;
+  /** Abre Estilo del sitio › Tarjeta de producto (enlace del panel «Etiquetas» de la ficha). */
+  onAbrirEstiloTarjeta?: () => void;
 }
 
 export function InspectorSeccion(p: InspectorSeccionProps) {
@@ -432,6 +435,16 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           ) : (
             pintarConBloques(campos('contenido'))
           ))}
+        {/* Etiquetas de la tarjeta en la ficha: sobre la foto, junto al título o ambas (Figma 3040:78682). */}
+        {pestana === 'contenido' && s.section_type === 'product_info' && (
+          <EditorEtiquetasFicha
+            contenido={contenido}
+            onCambiar={onCambiarContenido}
+            estiloTarjetaSitio={p.estiloTarjetaSitio}
+            colorPrimario={p.paleta?.primary}
+            onAbrirEstiloTarjeta={p.onAbrirEstiloTarjeta}
+          />
+        )}
         {/* Barra fija al bajar, celular y computador (Figma 2836:69391, propuesta 9). */}
         {pestana === 'contenido' && s.section_type === 'product_actions' && (
           <EditorBarraFija contenido={contenido} onCambiar={onCambiarContenido} />

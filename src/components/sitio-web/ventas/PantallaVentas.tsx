@@ -29,6 +29,9 @@ import { ICONO_TEMA_VENTA } from './iconosVentas';
 import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '../ui/iconosSitio';
 import { useTextosVentas } from './textos';
 import { useVentasSitio } from './useVentasSitio';
+import { DialogoContraentrega } from './contraentrega/DialogoContraentrega';
+import { FilaContraentrega, sedeInicialDe } from './contraentrega/FilaContraentrega';
+import { useContraentregaSitio } from './contraentrega/useContraentregaSitio';
 
 export const RUTA_VENTAS = `${RAIZ_SITIO_WEB}/ventas`;
 const RUTA_CONEXIONES = '/app/integraciones/conexiones';
@@ -56,6 +59,9 @@ export function PantallaVentas() {
   const [enviosAbierto, setEnviosAbierto] = useState(false);
   const [detalle, setDetalle] = useState<TemaVenta | null>(null);
   const [reservasOcupado, setReservasOcupado] = useState(false);
+  const [contraentregaAbierta, setContraentregaAbierta] = useState(false);
+  // «Pago contra entrega» (Figma «05 POS y ventas» 01–03): se lee cuando el tablero ya cargó.
+  const contraentrega = useContraentregaSitio(!!datos && datos.estado === 'listo');
 
   const estado: EstadoVistaSitio = cargando
     ? 'cargando'
@@ -181,6 +187,14 @@ export function PantallaVentas() {
                   onGestionarTarifas={() => setEnviosAbierto(true)}
                   onAlternarReservas={(v) => void onAlternarReservas(v)}
                   reservasOcupado={reservasOcupado}
+                  extraPagos={
+                    <FilaContraentrega
+                      datos={contraentrega.datos}
+                      cargando={contraentrega.cargando}
+                      fallo={contraentrega.fallo}
+                      onCondiciones={() => setContraentregaAbierta(true)}
+                    />
+                  }
                 />
               ),
             )}
@@ -226,6 +240,17 @@ export function PantallaVentas() {
         />
       )}
 
+      {contraentrega.datos && (
+        <DialogoContraentrega
+          abierto={contraentregaAbierta}
+          onAbiertoChange={setContraentregaAbierta}
+          datos={contraentrega.datos}
+          sedeInicial={sedeInicialDe(contraentrega.datos)}
+          onGuardar={contraentrega.guardar}
+          buscarProductos={contraentrega.buscarProductos}
+        />
+      )}
+
       <SeccionEnvios
         abierto={enviosAbierto}
         onAbiertoChange={setEnviosAbierto}
@@ -262,6 +287,17 @@ export function PantallaVentas() {
                 }}
                 onAlternarReservas={(v) => void onAlternarReservas(v)}
                 reservasOcupado={reservasOcupado}
+                extraPagos={
+                  <FilaContraentrega
+                    datos={contraentrega.datos}
+                    cargando={contraentrega.cargando}
+                    fallo={contraentrega.fallo}
+                    onCondiciones={() => {
+                      setDetalle(null);
+                      setContraentregaAbierta(true);
+                    }}
+                  />
+                }
               />
             </PanelAdaptable>
           ))}

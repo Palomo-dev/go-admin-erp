@@ -22,6 +22,7 @@ import {
   type ResultadoConfirmacionCompleta,
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { bloqueoConfirmarPorAnticipo } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 import {
   debeCobrarseEnCaja,
   esMetodoCobroEnCaja,
@@ -235,6 +236,13 @@ class WebOrderConfirmationService {
   ): Promise<ConfirmOrderResult> {
     const userId = await getCurrentUserId();
     if (!userId) throw new Error('No se pudo obtener el usuario actual');
+    // Contraentrega con anticipo pendiente (Figma 3014:194407 › 06 B): no se confirma hasta que
+    // entre el anticipo (webhook de la tienda o «Marcar anticipo recibido…»).
+    if (bloqueoConfirmarPorAnticipo(order)) {
+      throw new Error(`FALTA_ANTICIPO: el anticipo del pedido ${order.order_number} aún no está pagado`);
+    } else {
+      // Sin anticipo pendiente: como siempre.
+    }
 
     // Confirmación en una sola transacción (E2/E3) detrás del interruptor de
     // despliegue. Si la base aún no tiene la función, sigue el camino de siempre.

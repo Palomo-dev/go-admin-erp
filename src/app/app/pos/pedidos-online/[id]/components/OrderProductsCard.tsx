@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Receipt } from 'lucide-react';
 import { OrderItemsList, OrderTotals } from '@/components/pos/pedidos-online';
+import { TotalesContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
@@ -87,6 +88,8 @@ export function OrderProductsCard({ order, puedeQuitarPromocion = false, onCambi
           tipAmount={order.tip_amount}
           total={order.total}
         />
+        {/* Contraentrega: anticipo pagado en línea y lo que se cobra al entregar (Figma 3014:194407 › 05). */}
+        <TotalesContraentrega order={order} />
       </CardContent>
     </Card>
   );

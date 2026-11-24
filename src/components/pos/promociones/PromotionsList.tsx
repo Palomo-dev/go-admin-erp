@@ -22,6 +22,7 @@ import { lineasHorario } from './horario/textoHorario';
 import { PromotionsService } from './promotionsService';
 import { EdicionMasivaHorario } from './EdicionMasivaHorario';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { normalizarEscalones } from '@/lib/promotions/precioVolumen';
 import { toast } from 'sonner';
 
 interface PromotionsListProps {
@@ -122,6 +123,13 @@ export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onL
         if (x > 0 && y > 0 && y < x) return `${x}x${y}`;
         if (x > 0 && y > 0) return t('lista.compraGratis', { x, y });
         return '-';
+      }
+      case 'volume_tiers': {
+        const primero = normalizarEscalones(promo.tiers ?? [])[0];
+        if (!primero) return '-';
+        return primero.precioUnidad !== null
+          ? t('v2.lista.volumenPrecio', { n: primero.desde, precio: formatear(primero.precioUnidad) })
+          : t('v2.lista.volumenPorcentaje', { n: primero.desde, pct: primero.porcentaje ?? 0 });
       }
       case 'bundle': {
         const base = (promo.bundle_price ?? 0) > 0

@@ -15,6 +15,7 @@ import {
   type ResultadoConfirmacionCompleta,
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { tiemposAutoConfirmacion } from './webOrders/tiemposPedidosServer';
 import { resolveLineTaxWith } from './taxResolverCore';
 import { resolveOrgCurrency } from './monedaOrganizacion';
 import { redimirCuponPedidoWeb } from './cuponPedidoWeb';
@@ -414,12 +415,20 @@ export const webOrderServerConfirmation = {
   /**
    * Minutos de preparación para la comanda del pedido pagado en línea: los
    * mismos defaults del paso 9 (restaurante 30 min; las demás verticales,
-   * 1 día de empacado).
+   * 1 día de empacado). Si el negocio encendió «Usar estos tiempos al
+   * confirmarse solo» (Configuración › Punto de venta › Pedidos online), los
+   * de su sede y tipo de entrega.
    */
   async minutosPreparacion(
     supabase: SupabaseClient,
-    order: Pick<WebOrder, 'organization_id'>,
+    order: Pick<WebOrder, 'organization_id'> & Partial<Pick<WebOrder, 'branch_id' | 'delivery_type' | 'delivery_address'>>,
   ): Promise<number> {
+    const configurados = await tiemposAutoConfirmacion(supabase, order);
+    if (configurados) {
+      return configurados.prepMin;
+    } else {
+      // Sin configuración (o apagada): lo de siempre, abajo.
+    }
     const { data } = await supabase
       .from('organizations')
       .select('type_id')
@@ -896,17 +905,28 @@ export const webOrderServerConfirmation = {
     // - Restaurant (type_id=1): 30 min listo, 60 min entrega (mismo ciudad)
     // - Retail (type_id=3): 1 día empacado, N días entrega (según shipping_rates)
     // - Otros: defaults razonables
-    const { data: orgForType } = await supabase
-      .from('organizations')
-      .select('type_id')
-      .eq('id', order.organization_id)
-      .maybeSingle();
+    // Si el negocio encendió «Usar estos tiempos al confirmarse solo»
+    // (Configuración › Punto de venta › Pedidos online), mandan sus tiempos
+    // por sede y tipo de entrega (`tiemposPedidos.ts`); si no, lo de siempre.
+    const configurados = await tiemposAutoConfirmacion(supabase, order);
+    const { data: orgForType } = configurados
+      ? { data: null }
+      : await supabase
+          .from('organizations')
+          .select('type_id')
+          .eq('id', order.organization_id)
+          .maybeSingle();
     const orgTypeId = orgForType?.type_id ?? 3;
 
     let estimatedReadyAt: string;
     let estimatedDeliveryAt: string | null = null;
 
-    if (orgTypeId === 1) {
+    if (configurados) {
+      estimatedReadyAt = configurados.estimatedReadyAt.toISOString();
+      if (esDomicilio(order.delivery_type) && configurados.estimatedDeliveryAt) {
+        estimatedDeliveryAt = configurados.estimatedDeliveryAt.toISOString();
+      }
+    } else if (orgTypeId === 1) {
       // Restaurante: minutos
       estimatedReadyAt = new Date(Date.now() + 30 * 60000).toISOString();
       if (esDomicilio(order.delivery_type)) {

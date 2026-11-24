@@ -29,6 +29,27 @@ describe('contraentregaDePedidoWeb', () => {
     expect(contraentregaDePedidoWeb({ total: 100, payment_method: 'otra_pasarela', payment_reference: 'TX-1' }).cod_amount).toBe(0);
   });
 
+  it('anticipo PAGADO: la puerta cobra total − anticipo; pendiente o vencido no descuenta', () => {
+    expect(contraentregaDePedidoWeb({
+      total: 151000, payment_status: 'partial', payment_method: 'cash', advance_amount: 9000, advance_status: 'paid',
+    })).toEqual({ cod_amount: 142000, cod_status: 'pending' });
+    expect(contraentregaDePedidoWeb({
+      total: 151000, payment_status: 'pending', payment_method: 'cash', advance_amount: '9000.00', advance_status: 'pending',
+    }).cod_amount).toBe(151000);
+    expect(contraentregaDePedidoWeb({
+      total: 151000, payment_status: 'failed', payment_method: 'cash', advance_amount: 9000, advance_status: 'expired',
+    }).cod_amount).toBe(151000);
+    // Sin anticipo (null): idéntico a hoy.
+    expect(contraentregaDePedidoWeb({ total: 58900, payment_method: 'cash', advance_amount: null, advance_status: null }))
+      .toEqual({ cod_amount: 58900, cod_status: 'pending' });
+  });
+
+  it('anticipo que cubre todo: nada que cobrar en la puerta', () => {
+    expect(contraentregaDePedidoWeb({
+      total: 50000, payment_status: 'partial', payment_method: 'cash', advance_amount: 50000, advance_status: 'paid',
+    })).toEqual({ cod_amount: 0, cod_status: null });
+  });
+
   it('total cero o inválido: sin contraentrega', () => {
     expect(contraentregaDePedidoWeb({ total: 0 }).cod_amount).toBe(0);
     expect(contraentregaDePedidoWeb({ total: 'abc' }).cod_amount).toBe(0);

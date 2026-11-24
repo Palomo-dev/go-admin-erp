@@ -12,7 +12,7 @@ import { useKitT } from './useIdiomaKit';
 export interface KpiStripProps {
   children: ReactNode;
   /** Columnas en escritorio (por defecto 4). */
-  columnas?: 2 | 3 | 4 | 5 | 6;
+  columnas?: 2 | 3 | 4 | 5 | 6 | 7;
   /** Nombre del grupo para lectores de pantalla («Resumen de clientes»). */
   etiqueta?: string;
   className?: string;
@@ -24,6 +24,7 @@ const COLUMNAS: Record<NonNullable<KpiStripProps['columnas']>, string> = {
   4: 'lg:grid-cols-4',
   5: 'lg:grid-cols-5',
   6: 'lg:grid-cols-6',
+  7: 'lg:grid-cols-7',
 };
 
 export function KpiStrip({ children, columnas = 4, etiqueta: etiquetaProp, className }: KpiStripProps) {

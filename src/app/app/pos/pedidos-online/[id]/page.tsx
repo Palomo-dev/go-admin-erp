@@ -35,6 +35,10 @@ import {
 import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-online';
 import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/ValoracionVisitaCard';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
+import { AvisoAnticipoPendiente, TarjetaContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
+
+/** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
+const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
 
 export default function WebOrderDetailPage() {
   const params = useParams();
@@ -77,6 +81,7 @@ export default function WebOrderDetailPage() {
     cerrarCobro,
     avisoStock,
     sinCajaAbierta,
+    avisoTiempos,
     loadOrder,
   } = useWebOrderDetail(orderId);
   const t = useTranslations('pedidoWeb');
@@ -154,6 +159,8 @@ export default function WebOrderDetailPage() {
         onReenviarAviso={() => void reenviarAviso()}
         onCancelar={['pending', 'confirmed'].includes(order.status) || (['preparing', 'ready'].includes(order.status) && order.payment_status !== 'paid') ? () => setCancelDialogOpen(true) : undefined}
       />
+      {/* Contraentrega con anticipo pendiente (Figma 3014:194407 › 06): vence y se cancela solo. */}
+      <AvisoAnticipoPendiente order={order} timezone={timezone} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
@@ -207,7 +214,17 @@ export default function WebOrderDetailPage() {
               {cambios.abierto?.estado === 'pending_payment' ? t('cambio.verLink') : t('cambio.boton')}
             </button>
           )}
+          {/* «Pago contra entrega» (Figma 3014:194407 › 05/06): solo en pedidos contraentrega. */}
+          <TarjetaContraentrega
+            order={order}
+            timezone={timezone}
+            onCambio={() => void loadOrder()}
+            pagos={trazabilidad.pagos}
+            onVerAnticipo={() => document.getElementById(ID_PAGOS_PEDIDO)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? () => abrirCobro(false) : undefined}
+          />
           {/* «Pagos» arriba de Cliente y Entrega (Figma 2725:192149). */}
+          <div id={ID_PAGOS_PEDIDO} className="scroll-mt-20">
           <OrderPaymentsCard
             order={order}
             pagos={trazabilidad.pagos}
@@ -225,6 +242,7 @@ export default function WebOrderDetailPage() {
                 : undefined
             }
           />
+          </div>
           <OrderCustomerCard order={order} />
           {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
           {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
@@ -271,6 +289,7 @@ export default function WebOrderDetailPage() {
         onMarkAsPaidChange={setMarkAsPaid}
         isLoading={actionLoading}
         yaPagado={order.payment_status === 'paid'}
+        avisoTiempos={avisoTiempos}
       />
 
       <CobrarPedidoDialog

@@ -20,6 +20,8 @@ export interface OpcionSegmento<V extends string> {
   deshabilitada?: boolean;
   /** Para opciones solo con icono (vista tabla/cuadrícula). */
   soloIcono?: boolean;
+  /** Insignia de advertencia tras la etiqueta («Nuevo» en una pestaña recién estrenada). */
+  insignia?: string;
 }
 
 export interface SegmentedControlProps<V extends string> {
@@ -128,6 +130,11 @@ export function SegmentedControl<V extends string>({
                 )}
               >
                 {o.contador}
+              </span>
+            )}
+            {o.insignia && !o.soloIcono && (
+              <span className="rounded-full border border-line-warning bg-warning-subtle px-1.5 text-[11px] font-medium leading-4 text-warning-text">
+                {o.insignia}
               </span>
             )}
           </button>

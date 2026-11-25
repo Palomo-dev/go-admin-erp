@@ -1018,6 +1018,47 @@ export function textoResumenResenas(promedio: number | null | undefined, cantida
   return `${valor} de ${total} ${cantidad === 1 ? 'reseña' : 'reseñas'}`;
 }
 
+// ─── testimonials: columnas por dispositivo (grid y carousel) ───────────────────────────────
+
+/**
+ * «Columnas en celular»: una tarjeta por fila, dos, o un carrusel que se desliza con el dedo y deja
+ * asomar la siguiente. «Columnas en tableta»: de 1 a 3. «Columnas» (`columns`, GRID_FIELDS) sigue
+ * siendo el computador.
+ */
+export const COLUMNAS_CELULAR_TESTIMONIOS = ['1', '2', 'carousel'] as const;
+export const COLUMNAS_TABLETA_TESTIMONIOS = ['1', '2', '3'] as const;
+export const VARIANTES_COLUMNAS_TESTIMONIOS = ['grid', 'carousel'] as const;
+
+export type CeldaCelularTestimonios = (typeof COLUMNAS_CELULAR_TESTIMONIOS)[number];
+
+export interface ColumnasTestimonios {
+  escritorio: 1 | 2 | 3 | 4 | 5 | 6;
+  tableta: 1 | 2 | 3;
+  celular: CeldaCelularTestimonios;
+}
+
+/**
+ * Sin clave, lo que la sección hace por defecto en cada dispositivo: en el computador 3 columnas;
+ * en la tableta 2 (o menos si el computador pide menos); en el celular una por fila en «Grid» y el
+ * carrusel deslizable en «Carrusel». Nunca 3 columnas en el celular (QA 2026-11-25, org 338).
+ */
+export function celularPorDefectoTestimonios(variante: string | null | undefined): CeldaCelularTestimonios {
+  return variante === 'carousel' ? 'carousel' : '1';
+}
+
+export function columnasTestimonios(content: Record<string, unknown> | null | undefined, variante?: string | null): ColumnasTestimonios {
+  const c = content ?? {};
+  // `columns` es un número; versiones viejas del editor guardaban `{ desktop, tablet, mobile }`.
+  const viejo = c.columns && typeof c.columns === 'object' && !Array.isArray(c.columns) ? (c.columns as Record<string, unknown>) : null;
+  const escritorio = enteroEntre(viejo ? viejo.desktop : c.columns, 1, 6, 3) as ColumnasTestimonios['escritorio'];
+  const tabletaGuardada = enteroEntre(c.columns_tablet ?? viejo?.tablet, 1, 3, 0);
+  const tableta = (tabletaGuardada || Math.min(escritorio, 2)) as ColumnasTestimonios['tableta'];
+  const crudo = c.columns_mobile ?? viejo?.mobile;
+  const n = enteroEntre(crudo, 1, 2, 0);
+  const celular: CeldaCelularTestimonios = crudo === 'carousel' ? 'carousel' : n === 1 ? '1' : n === 2 ? '2' : celularPorDefectoTestimonios(variante);
+  return { escritorio, tableta, celular };
+}
+
 // ─── products_grid · editorial («Rejilla editorial», Atelier) y pestañas (ajuste) ──────────
 
 export const ESTILOS_FILTRO_EDITORIAL = ['text', 'chips'] as const;
@@ -1431,7 +1472,7 @@ export const CLAVES_AJUSTE_TIENDA: Readonly<Record<string, readonly string[]>> =
   'image_text.image_right': ['thumbnails'],
   'gallery.carousel': ['stagger'],
   promo_banners: ['banners[].coupon_code', 'banners[].valid_until'],
-  testimonials: ['show_summary', 'summary_source'],
+  testimonials: ['show_summary', 'summary_source', 'columns_tablet', 'columns_mobile'],
   'testimonials.quotes': ['image_url', 'pager'],
   products_grid: ['tabs_style'],
   categories_grid: ['category_text_position', 'category_card_color', 'category_cta_icon'],

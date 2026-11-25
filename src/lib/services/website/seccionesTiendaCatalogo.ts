@@ -29,6 +29,8 @@ import {
   AYUDAS_BOTON,
   CAPAS_MARCA,
   CHIPS_CALIFICACION,
+  COLUMNAS_CELULAR_TESTIMONIOS,
+  COLUMNAS_TABLETA_TESTIMONIOS,
   COLORES_MANIJA,
   COLORES_TARJETA_CATEGORIA,
   DEFAULT_ANTES_DESPUES,
@@ -91,6 +93,7 @@ import {
   TIPOS_TARJETA_FLOTANTE,
   VARIANTES_TIENDA,
   VARIANTE_BOTON_ENLACE,
+  celularPorDefectoTestimonios,
   type TipoSeccionTienda,
 } from '@/lib/website/contrato/seccionesTienda';
 
@@ -571,6 +574,28 @@ const CAMPOS_TESTIMONIOS: ContentFieldDef[] = [
     options: opciones(PAGINADORES_CITAS, { none: 'Sin paginador (como hoy)', fraction: '«1 / 5»' }),
     showIf: solo('quotes'),
   },
+  // Columnas por dispositivo (QA 2026-11-25: «Columnas» se veía también en el celular, 3 de ~90 px).
+  // «Columnas» sigue siendo el computador; sin clave, cada dispositivo usa lo de abajo.
+  {
+    key: 'columns_tablet',
+    label: 'Columnas en tableta',
+    type: 'select',
+    group: 'layout',
+    defaultValue: '2',
+    helpText: 'Desde 768 px. Sin elegir: 2 (o 1 si «Columnas» es 1).',
+    options: opciones(COLUMNAS_TABLETA_TESTIMONIOS, { 1: '1', 2: '2', 3: '3' }),
+    showIf: solo('grid', 'carousel'),
+  },
+  ...(['grid', 'carousel'] as const).map((variante): ContentFieldDef => ({
+    key: 'columns_mobile',
+    label: 'Columnas en celular',
+    type: 'select',
+    group: 'layout',
+    defaultValue: celularPorDefectoTestimonios(variante),
+    helpText: '«Carrusel»: una tarjeta a la vez que se desliza con el dedo y deja asomar la siguiente.',
+    options: opciones(COLUMNAS_CELULAR_TESTIMONIOS, { 1: '1 por fila', 2: '2 por fila', carousel: 'Carrusel' }),
+    showIf: solo(variante),
+  })),
 ];
 
 // ─── categories_grid (ajuste, B2): estilo «Título arriba» y color, texto y flecha ──────────
@@ -839,6 +864,9 @@ const CAMPOS_POR_TIPO: Readonly<Record<string, readonly ContentFieldDef[]>> = {
 /** Dónde va cada campo de ajuste dentro de la lista de su tipo: después de esta clave. */
 const INSERTAR_DESPUES: Readonly<Record<string, string>> = {
   'categories_grid.category_text_position': 'category_style',
+  // Junto a «Columnas» (el computador): tableta y celular.
+  'testimonials.columns_tablet': 'columns',
+  'testimonials.columns_mobile': 'columns',
 };
 
 /** Variantes de tienda de un tipo existente, con su nombre visible del contrato. */

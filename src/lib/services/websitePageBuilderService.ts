@@ -877,7 +877,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       // FASE 6 — Grid + Card compartidos
       // Filtrar campos de CARD_FIELDS que no aplican a testimonios
       // (show_description, show_compare_price, price_style, currency_position son de productos)
-      ...GRID_FIELDS,
+      // «Columnas» es el computador: tableta y celular tienen su propio campo (seccionesTiendaCatalogo).
+      ...GRID_FIELDS.map((f) => (f.key === 'columns' ? { ...f, label: 'Columnas en computador', helpText: 'Desde 1024 px.', max: 6 } : f)),
       ...CARD_FIELDS.filter((f) => ![
         'show_description',
         'show_compare_price',

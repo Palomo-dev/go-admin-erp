@@ -39521,7 +39521,9 @@
         "texto": "Texte",
         "deLaTarjeta": "Celui de la carte",
         "ayudaFilaPropias": "Chaque étiquette personnalisée a son coin et ses couleurs : modifiez-les plus bas, dans « Étiquettes personnalisées ».",
-        "ayudaCuales": "Une étiquette désactivée sur la carte (Style de carte › Étiquettes) ne s'affiche pas non plus ici. Les promotions s'affichent d'elles-mêmes quand le produit fait partie d'une promotion web en cours ; celles d'un groupe de clients, seulement aux membres du groupe.",
+        "ayudaCuales": "Chacune ne s’affiche que si le produit la remplit : « Nouveau » s’il a été créé récemment, « Épuisé » sans unités, « Unités vendues » avec des ventes en boutique, « Prix dégressif » avec des paliers. Une étiquette désactivée sur la carte (Style de carte › Étiquettes) ne s’affiche pas ici non plus ; « Livraison gratuite » ne s’affiche que si elle est activée sur la carte. Les promotions s’affichent seules quand le produit est dans une promotion web en cours ; celles d’un groupe de clients, uniquement aux membres du groupe.",
+        "ayudaPromoPropia": "Si une étiquette personnalisée dit la même chose que la promotion (p. ex. « 2 X 1 »), une seule s’affiche : la personnalisée, avec ses couleurs, et en la touchant à côté du titre elle explique la promotion.",
+        "ayudaVistaPrevia": "Dans l’aperçu, celles que ce produit ne remplit pas s’affichent en exemple pour voir le style. En boutique, elles ne s’affichent que si le produit les remplit.",
         "estilo": "Style",
         "forma": "Forme",
         "formas": {
@@ -39529,8 +39531,10 @@
           "pill": "Pilule",
           "rounded": "Arrondie",
           "semi": "Semi",
-          "square": "Carrée"
+          "square": "Carrée",
+          "circle": "Cercle"
         },
+        "ayudaCirculo": "Cercle de taille fixe pour les textes courts comme « -83 % », « 2x1 » ou « Nouveau ». Si le texte ne tient pas (plus de 6 caractères, p. ex. « 776 vendus »), l’étiquette s’affiche en pilule.",
         "relleno": "Remplissage",
         "rellenos": {
           "tarjeta": "Celui de la carte",

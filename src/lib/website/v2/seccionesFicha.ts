@@ -711,9 +711,37 @@ export type UbicacionEtiquetasFicha = (typeof UBICACIONES_ETIQUETAS_FICHA)[numbe
 export const ESQUINAS_ETIQUETA_FICHA = ['top_left', 'top_right', 'bottom_left', 'bottom_right'] as const;
 export type EsquinaEtiquetaFicha = (typeof ESQUINAS_ETIQUETA_FICHA)[number];
 
-/** `tarjeta` = la forma o el relleno de «Estilo de tarjeta › Etiquetas». */
-export const FORMAS_ETIQUETA_FICHA = ['tarjeta', 'pill', 'rounded', 'semi', 'square'] as const;
+/**
+ * `tarjeta` = la forma o el relleno de «Estilo de tarjeta › Etiquetas». `circle` (pedido del dueño,
+ * 2026-11-25): diámetro fijo para textos cortos («-83 %», «2x1», «Nuevo»); si el texto no cabe
+ * ({@link cabeEnCirculo}), esa etiqueta sale como píldora.
+ */
+export const FORMAS_ETIQUETA_FICHA = ['tarjeta', 'pill', 'rounded', 'semi', 'square', 'circle'] as const;
 export type FormaEtiquetaFicha = (typeof FORMAS_ETIQUETA_FICHA)[number];
+/** Forma ya resuelta (sin «De la tarjeta»). */
+export type FormaEtiquetaPintada = Exclude<FormaEtiquetaFicha, 'tarjeta'>;
+
+/**
+ * Radio de cada forma, en `em` para que se distingan igual en «Chico» y «Mediano». Antes «Redonda»
+ * (6 px) y «Semi» (10 px) se veían como la píldora en una etiqueta de 20 px de alto: elegir otra
+ * forma parecía no hacer nada. Lo usan la tienda y la muestra del editor.
+ */
+export const RADIO_FORMA_ETIQUETA: Readonly<Record<FormaEtiquetaPintada, string>> = {
+  pill: '9999px',
+  rounded: '0.3em',
+  semi: '0.55em',
+  square: '0px',
+  circle: '9999px',
+};
+
+/** Caracteres que caben en el círculo (con espacios: «-83 %» son 5). */
+export const MAX_CARACTERES_CIRCULO = 6;
+
+/** ¿El texto cabe en el círculo? Si no, la etiqueta sale como píldora. */
+export function cabeEnCirculo(texto: string): boolean {
+  const t = texto.trim();
+  return t.length > 0 && t.length <= MAX_CARACTERES_CIRCULO;
+}
 export const RELLENOS_ETIQUETA_FICHA = ['tarjeta', 'solid', 'soft', 'outline'] as const;
 export type RellenoEtiquetaFicha = (typeof RELLENOS_ETIQUETA_FICHA)[number];
 export const TAMANOS_ETIQUETA_FICHA = ['sm', 'md'] as const;

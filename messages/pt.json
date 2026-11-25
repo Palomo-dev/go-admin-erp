@@ -39531,7 +39531,9 @@
         "texto": "Texto",
         "deLaTarjeta": "Do cartão",
         "ayudaFilaPropias": "Cada etiqueta própria tem seu canto e suas cores: edite-as abaixo, em «Etiquetas próprias».",
-        "ayudaCuales": "Uma etiqueta desligada no cartão (Estilo do cartão › Etiquetas) também não aparece aqui. As promoções aparecem sozinhas quando o produto está em uma promoção web vigente; as de um grupo de clientes, só para quem pertence ao grupo.",
+        "ayudaCuales": "Cada uma aparece só quando o produto a cumpre: «Novo» se foi criado há pouco, «Esgotado» sem unidades, «Unidades vendidas» com vendas na loja, «Preço por volume» com faixas. Uma etiqueta desligada no cartão (Estilo do cartão › Etiquetas) também não aparece aqui; «Frete grátis» aparece só se estiver ligada no cartão. As promoções aparecem sozinhas quando o produto está numa promoção web vigente; as de um grupo de clientes, só para quem pertence ao grupo.",
+        "ayudaPromoPropia": "Se uma etiqueta própria disser o mesmo que a promoção (p. ex. «2 X 1»), aparece uma só: a própria, com suas cores, e ao tocá-la junto ao título ela explica a promoção.",
+        "ayudaVistaPrevia": "Na pré-visualização, as que este produto não cumpre aparecem como amostra para você ver o estilo. Na loja só aparecem quando o produto as cumpre.",
         "estilo": "Estilo",
         "forma": "Forma",
         "formas": {
@@ -39539,8 +39541,10 @@
           "pill": "Pílula",
           "rounded": "Arredondada",
           "semi": "Semi",
-          "square": "Quadrada"
+          "square": "Quadrada",
+          "circle": "Círculo"
         },
+        "ayudaCirculo": "Círculo de tamanho fixo para textos curtos como «-83 %», «2x1» ou «Novo». Se o texto não couber (mais de 6 caracteres, p. ex. «776 vendidos»), essa etiqueta aparece como pílula.",
         "relleno": "Preenchimento",
         "rellenos": {
           "tarjeta": "Do cartão",

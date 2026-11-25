@@ -81,6 +81,46 @@ describe('Panel «Etiquetas» de la ficha', () => {
     expect((ultimo(onCambiar).labels_items as Array<{ id: string }>).map((i) => i.id).slice(0, 4)).toEqual(['free_shipping', 'discount', 'volume', 'promotion']);
   });
 
+  test('Forma «Círculo»: se guarda, explica que un texto largo sale como píldora y la muestra lo refleja', () => {
+    const onCambiar = jest.fn();
+    const { rerender } = render(<EditorEtiquetasFicha contenido={ENCENDIDO} onCambiar={onCambiar} />);
+    const forma = screen.getByRole('radiogroup', { name: 'Forma' });
+    expect(within(forma).getAllByRole('radio').map((r) => r.textContent)).toEqual(['De la tarjeta', 'Píldora', 'Redonda', 'Semi', 'Cuadrada', 'Círculo']);
+    expect(screen.queryByText(/Círculo de tamaño fijo/)).toBeNull();
+    fireEvent.click(within(forma).getByRole('radio', { name: 'Círculo' }));
+    expect(ultimo(onCambiar)).toEqual({ ...ENCENDIDO, labels_shape: 'circle' });
+
+    rerender(<EditorEtiquetasFicha contenido={{ ...ENCENDIDO, labels_shape: 'circle' }} onCambiar={onCambiar} />);
+    expect(screen.getByText(/Círculo de tamaño fijo/)).toBeTruthy();
+    const lista = screen.getByRole('list', { name: 'Cuáles' });
+    const muestra = (texto: string) => within(lista).getAllByText(texto).map((el) => el.closest('[data-forma]')).find(Boolean)?.getAttribute('data-forma');
+    expect(muestra('-20 %')).toBe('circle');
+    expect(muestra('Nuevo')).toBe('circle');
+    expect(muestra('776 vendidos')).toBe('pill');
+  });
+
+  test('Forma «Redonda» y «Semi»: radios distintos de la píldora en la muestra', () => {
+    const radio = (forma: string) => {
+      const { unmount } = render(<EditorEtiquetasFicha contenido={{ ...ENCENDIDO, labels_shape: forma }} onCambiar={jest.fn()} />);
+      const r = (within(screen.getByRole('list', { name: 'Cuáles' })).getAllByText('Nuevo').map((el) => el.closest('[data-forma]')).find(Boolean) as HTMLElement).style.borderRadius;
+      unmount();
+      return r;
+    };
+    const radios = ['pill', 'rounded', 'semi', 'square'].map(radio);
+    expect(new Set(radios).size).toBe(4);
+  });
+
+  test('«Etiquetas propias»: la muestra es la etiqueta real del sitio, y hay ayuda de promoción y vista previa', () => {
+    const sitio = { labels_custom: [{ id: 'et1', label: '2 X 1', bg: '#E11D2E', text: '#FFFFFF' }] };
+    render(<EditorEtiquetasFicha contenido={ENCENDIDO} onCambiar={jest.fn()} estiloTarjetaSitio={sitio} />);
+    const lista = screen.getByRole('list', { name: 'Cuáles' });
+    const fila = within(lista).getAllByRole('listitem').find((li) => li.textContent?.startsWith('Etiquetas propias'));
+    expect(fila?.textContent).toContain('2 X 1');
+    expect(fila?.textContent).not.toContain('Originales');
+    expect(screen.getByText(/sale una sola: la propia/)).toBeTruthy();
+    expect(screen.getByText(/salen de muestra/)).toBeTruthy();
+  });
+
   test('Estilo: «De la tarjeta» no escribe la clave; otra forma sí', () => {
     const onCambiar = jest.fn();
     render(<EditorEtiquetasFicha contenido={{ ...ENCENDIDO, labels_shape: 'square' }} onCambiar={onCambiar} />);

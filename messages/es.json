@@ -39519,7 +39519,9 @@
         "texto": "Texto",
         "deLaTarjeta": "De la tarjeta",
         "ayudaFilaPropias": "Cada etiqueta propia trae su esquina y sus colores: se editan abajo, en «Etiquetas propias».",
-        "ayudaCuales": "Una etiqueta apagada en la tarjeta (Estilo de tarjeta › Etiquetas) tampoco sale aquí. Las promociones salen solas cuando el producto está en una promoción web vigente; las de un grupo de clientes, solo a quien pertenece al grupo.",
+        "ayudaCuales": "Cada una sale solo cuando el producto la cumple: «Nuevo» si se creó hace poco, «Agotado» sin unidades, «Unidades vendidas» con ventas en la tienda, «Precio por volumen» con escalones. Una etiqueta apagada en la tarjeta (Estilo de tarjeta › Etiquetas) tampoco sale aquí; «Envío gratis» sale solo si está encendida en la tarjeta. Las promociones salen solas cuando el producto está en una promoción web vigente; las de un grupo de clientes, solo a quien pertenece al grupo.",
+        "ayudaPromoPropia": "Si una etiqueta propia dice lo mismo que la promoción (p. ej. «2 X 1»), sale una sola: la propia, con sus colores, y al tocarla junto al título explica la promoción.",
+        "ayudaVistaPrevia": "En la vista previa, las que este producto no cumple salen de muestra para que veas el estilo. En la tienda solo salen cuando el producto las cumple.",
         "estilo": "Estilo",
         "forma": "Forma",
         "formas": {
@@ -39527,8 +39529,10 @@
           "pill": "Píldora",
           "rounded": "Redonda",
           "semi": "Semi",
-          "square": "Cuadrada"
+          "square": "Cuadrada",
+          "circle": "Círculo"
         },
+        "ayudaCirculo": "Círculo de tamaño fijo para textos cortos como «-83 %», «2x1» o «Nuevo». Si el texto no cabe (más de 6 caracteres, p. ej. «776 vendidos»), esa etiqueta sale como píldora.",
         "relleno": "Relleno",
         "rellenos": {
           "tarjeta": "De la tarjeta",

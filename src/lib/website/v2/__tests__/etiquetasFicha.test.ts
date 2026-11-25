@@ -7,7 +7,9 @@
 import {
   CLAVES_NUEVAS_ETIQUETAS,
   ESQUINA_ETIQUETA_POR_DEFECTO,
+  RADIO_FORMA_ETIQUETA,
   TIPOS_ETIQUETA_FICHA,
+  cabeEnCirculo,
   etiquetasEn,
   itemsEtiquetasParaGuardar,
   leerItemsEtiquetasFicha,
@@ -33,8 +35,17 @@ describe('leerOpcionesEtiquetasFicha', () => {
   test('solo `true` enciende; valores fuera de lista vuelven a los de por defecto', () => {
     expect(leerOpcionesEtiquetasFicha({ labels_show: 'true' }).mostrar).toBe(false);
     expect(leerOpcionesEtiquetasFicha({ labels_show: 1 }).mostrar).toBe(false);
-    const o = leerOpcionesEtiquetasFicha({ labels_show: true, labels_placement: 'abajo', labels_shape: 'circle', labels_style: 'gradient', labels_size: 'lg' });
+    const o = leerOpcionesEtiquetasFicha({ labels_show: true, labels_placement: 'abajo', labels_shape: 'hexagono', labels_style: 'gradient', labels_size: 'lg' });
     expect(o).toMatchObject({ mostrar: true, ubicacion: 'titulo', forma: 'tarjeta', relleno: 'tarjeta', tamano: 'md' });
+  });
+
+  test('«Círculo» (2026-11-25): se lee, cabe hasta 6 caracteres y cada forma tiene su radio', () => {
+    expect(leerOpcionesEtiquetasFicha({ labels_show: true, labels_shape: 'circle' }).forma).toBe('circle');
+    expect(cabeEnCirculo('-83 %')).toBe(true);
+    expect(cabeEnCirculo('2x1')).toBe(true);
+    expect(cabeEnCirculo('Agotado')).toBe(false);
+    expect(cabeEnCirculo('  ')).toBe(false);
+    expect(new Set(['pill', 'rounded', 'semi', 'square'].map((f) => RADIO_FORMA_ETIQUETA[f as 'pill']))).toHaveProperty('size', 4);
   });
 
   test('lee lo guardado', () => {

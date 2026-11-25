@@ -39521,7 +39521,9 @@
         "texto": "Text",
         "deLaTarjeta": "From the card",
         "ayudaFilaPropias": "Each custom label has its own corner and colors: edit them below, under “Custom labels”.",
-        "ayudaCuales": "A label turned off on the card (Card style › Labels) doesn't show here either. Promotions show on their own when the product is in an active web promotion; customer-group promotions, only to members of the group.",
+        "ayudaCuales": "Each one shows only when the product meets it: “New” if it was created recently, “Sold out” with no units, “Units sold” with store sales, “Volume pricing” with tiers. A label turned off on the card (Card style › Labels) does not show here either; “Free shipping” shows only if it is on in the card. Promotions show automatically when the product is in an active web promotion; customer-group ones, only to members of the group.",
+        "ayudaPromoPropia": "If a custom label says the same as the promotion (e.g. “2 X 1”), only one shows: the custom one, with its colors, and tapping it next to the title explains the promotion.",
+        "ayudaVistaPrevia": "In the preview, the ones this product does not meet show as samples so you can see the style. In the store they only show when the product meets them.",
         "estilo": "Style",
         "forma": "Shape",
         "formas": {
@@ -39529,8 +39531,10 @@
           "pill": "Pill",
           "rounded": "Rounded",
           "semi": "Semi",
-          "square": "Square"
+          "square": "Square",
+          "circle": "Circle"
         },
+        "ayudaCirculo": "Fixed-size circle for short texts like “-83 %”, “2x1” or “New”. If the text does not fit (more than 6 characters, e.g. “776 sold”), that label shows as a pill.",
         "relleno": "Fill",
         "rellenos": {
           "tarjeta": "From the card",

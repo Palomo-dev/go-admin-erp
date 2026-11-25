@@ -19,6 +19,7 @@ interface FilaSuscripcion {
   stripe_subscription_id: string | null;
   stripe_customer_id: string | null;
   current_period_end: string | null;
+  metadata?: Record<string, unknown> | null;
   plans: { name: string | null } | { name: string | null }[] | null;
 }
 
@@ -49,6 +50,7 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
           stripe_subscription_id,
           stripe_customer_id,
           current_period_end,
+          metadata,
           plans ( name )
         `)
         .eq('organization_id', orgId)
@@ -59,9 +61,20 @@ export function TrialBanner({ orgId }: TrialBannerProps) {
         return;
       }
 
-      const sub = data as unknown as FilaSuscripcion;
+      const sub = data as unknown as FilaSuscripcion & { metadata?: Record<string, unknown> | null };
       const plan = Array.isArray(sub.plans) ? sub.plans[0] : sub.plans;
       setPlanName(plan?.name || '');
+
+      // Verificar si debe estar exenta de congelamiento (pago anual vigente o cortesía)
+      const { isExemptFromFreezing } = await import('@/lib/utils/subscriptionUtils');
+      const estaExenta = isExemptFromFreezing(sub);
+
+      // Si está exenta, no mostrar banners de prueba vencida ni días restantes
+      if (estaExenta) {
+        setBannerState('hidden');
+        setLoaded(true);
+        return;
+      }
 
       // Determinar estado del banner
       const now = new Date();

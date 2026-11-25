@@ -558,6 +558,17 @@ function escGuia(v: unknown): string {
  * IMAGEN del rotulo que genero el ERP con su vista previa (la misma que sale por ESC/POS), a lo
  * ancho imprimible del papel. Sin imagen, una version HTML sencilla con los mismos textos.
  */
+/**
+ * Tamano del numero de guia en la version HTML de respaldo: UNA sola linea (2026-11-25; la guia
+ * DEL-WO-... se partia en dos). Ancho util del papel en px CSS (puntos del cabezal a 203 ppp) entre
+ * los caracteres a ~0,72 em cada uno; nunca mas de 17 px ni menos de 8.
+ */
+function guideNumberFontPx(guideNumber: string, paper: PaperSpec): number {
+  const widthPx = (paper.charsPerLine * 12 * 96) / 203;
+  const chars = Math.max(1, Array.from(guideNumber).length);
+  return Math.max(8, Math.min(17, Math.floor((widthPx / (chars * 0.72)) * 10) / 10));
+}
+
 function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
   const l = resolveShipmentLabel(payload);
   const image = rasterToBmpDataUrl(l.raster, paper.charsPerLine * 12);
@@ -590,7 +601,7 @@ function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload, paper: Paper
     </div>
     ${l.handling ? `<div style="border:2px dashed #000;padding:3px 6px;margin:6px 0;text-align:center">${line(l.handling, 'font-size:10px;font-weight:bold;letter-spacing:0.4px')}</div>` : ''}
     ${line(l.guideLabel, 'font-size:8px;font-weight:600;margin-top:6px')}
-    ${line(l.guideNumber, 'font-size:17px;font-weight:bold')}
+    ${line(l.guideNumber, `font-size:${guideNumberFontPx(l.guideNumber, paper)}px;font-weight:bold;white-space:nowrap;overflow:hidden`)}
     ${line(l.qrCaptionLong, 'font-size:8px')}
     ${line(l.footer, 'font-size:9px;margin-top:4px')}
   </div>`;

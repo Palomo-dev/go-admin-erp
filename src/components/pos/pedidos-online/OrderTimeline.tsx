@@ -29,6 +29,29 @@ interface OrderTimelineProps<A extends AvisoDeLinea = AvisoDeLinea> {
   /** Avisos al cliente del pedido: van bajo el paso que los disparó. */
   avisos?: A[];
   renderAvisos?: (avisos: A[]) => React.ReactNode;
+  /**
+   * Hitos del envío del pedido (Figma 3239-355997): UNA sola línea de tiempo. Entran después de
+   * «En preparación» con su hora real y su fuente («Logística» o la transportadora); reemplazan
+   * «Listo», «En camino» y «Entregado» del pedido, que hasta ahora se quedaban en «pendiente».
+   */
+  pasosEnvio?: PasoEnvioHistorial[];
+}
+
+/** Un hito del envío ya resuelto para pintar (textos en el idioma de la organización). */
+export interface PasoEnvioHistorial {
+  clave: string;
+  /** Estado canónico del hito (`transport_events.canonical_status`). */
+  canonico: string;
+  estado: 'hecho' | 'fallo' | 'actual' | 'pendiente';
+  hora: string | null;
+  etiqueta: string;
+  detalle: string | null;
+  /** «Logística» o el nombre de la transportadora. */
+  fuente: string | null;
+  /** Lo que va a la derecha mientras está pendiente («aprox 23:05»). */
+  horaPendiente?: string | null;
+  /** Momento de aviso al cliente cuyos chips van debajo. */
+  momentoAviso?: string | null;
 }
 
 interface TimelineStep {
@@ -41,7 +64,7 @@ interface TimelineStep {
   isCancelled?: boolean;
 }
 
-export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, variant = 'vertical', timezone, avisos, renderAvisos }: OrderTimelineProps<A>) {
+export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, variant = 'vertical', timezone, avisos, renderAvisos, pasosEnvio }: OrderTimelineProps<A>) {
   const t = useTranslations('pedidoWeb');
   // «En preparación» con gorro de chef solo en restaurante; en una tienda, «Alistando».
   const rubro = useRubroPedidos();
@@ -196,26 +219,84 @@ export function OrderTimeline<A extends AvisoDeLinea = AvisoDeLinea>({ order, va
   const momentoDePaso: Record<string, string> = {
     created: 'recibido', confirmed: 'confirmado', ready: 'listo', in_delivery: 'en_camino', delivered: 'entregado', cancelled: 'rechazado',
   };
+
+  interface Fila {
+    key: string;
+    label: string;
+    hora: string | null;
+    pendiente: string | null;
+    hecho: boolean;
+    tono: 'normal' | 'actual' | 'fallo' | 'cancelado';
+    sub: string | null;
+    fuente: string | null;
+    momento: string | null;
+    motivoCancelacion: boolean;
+  }
+  const horaDe = (ts: string | null | undefined) => (ts ? (esHoy(ts) ? `hoy ${formatTime(ts)}` : formatDateTime(ts)) : null);
+  const deStep = (step: TimelineStep): Fila => {
+    const hecho = step.isCompleted || step.isCurrent;
+    return {
+      key: step.key,
+      label: step.label,
+      hora: horaDe(step.timestamp),
+      pendiente: hecho ? null : 'pendiente',
+      hecho,
+      tono: step.isCancelled ? 'cancelado' : 'normal',
+      sub: detalle(step.key),
+      fuente: null,
+      momento: momentoDePaso[step.key] ?? null,
+      motivoCancelacion: step.key === 'cancelled',
+    };
+  };
+
+  // Con envío: los pasos del pedido hasta «En preparación» y, desde ahí, los hitos del envío.
+  const conEnvio = !isPickup && !!pasosEnvio && pasosEnvio.length > 0;
+  let filas: Fila[];
+  if (conEnvio && pasosEnvio) {
+    const listoEnEnvio = pasosEnvio.some((p) => p.canonico === 'ready_for_pickup');
+    const entregadoEnEnvio = pasosEnvio.some((p) => p.canonico === 'delivered' && p.estado !== 'pendiente');
+    const delPedido = steps.filter((s) => !['in_delivery', 'delivered', 'cancelled'].includes(s.key) && !(s.key === 'ready' && listoEnEnvio));
+    const delEnvio: Fila[] = pasosEnvio.map((p) => ({
+      key: `envio-${p.clave}`,
+      label: p.etiqueta,
+      hora: p.estado === 'pendiente' ? null : horaDe(p.hora),
+      pendiente: p.estado === 'pendiente' ? p.horaPendiente ?? 'pendiente' : null,
+      hecho: p.estado !== 'pendiente',
+      tono: p.estado === 'fallo' ? 'fallo' : p.estado === 'actual' ? 'actual' : 'normal',
+      sub: p.detalle,
+      fuente: p.estado === 'pendiente' ? null : p.fuente,
+      momento: p.momentoAviso ?? null,
+      motivoCancelacion: false,
+    }));
+    const cierre = steps.filter((s) => s.key === 'cancelled' || (s.key === 'delivered' && order.status === 'delivered' && !entregadoEnEnvio));
+    // Si el pedido ya se entregó sin hito del envío, el «Entregado» pendiente del envío sobra.
+    const envioSinPendienteDuplicado = cierre.some((s) => s.key === 'delivered') ? delEnvio.filter((f) => !(f.key.endsWith('pendiente-delivered'))) : delEnvio;
+    filas = [...delPedido.map(deStep), ...envioSinPendienteDuplicado, ...cierre.map(deStep)];
+  } else {
+    filas = steps.map(deStep);
+  }
+
+  const punto = (f: Fila) =>
+    f.tono === 'cancelado' ? 'bg-danger' : f.tono === 'fallo' ? 'bg-warning' : f.tono === 'actual' ? 'bg-brand' : f.hecho ? 'bg-fg-secondary' : 'bg-line-strong';
   return (
     <ol className="space-y-3.5">
-      {steps.map((step) => {
-        const hecho = step.isCompleted || step.isCurrent;
-        const hora = step.timestamp ? (esHoy(step.timestamp) ? `hoy ${formatTime(step.timestamp)}` : formatDateTime(step.timestamp)) : null;
-        const sub = detalle(step.key);
-        const avisosPaso = (avisos ?? []).filter((a) => a.moment === momentoDePaso[step.key]);
+      {filas.map((fila) => {
+        const avisosPaso = fila.momento ? (avisos ?? []).filter((a) => a.moment === fila.momento) : [];
         return (
-          <li key={step.key} className="flex gap-3">
-            <span
-              aria-hidden="true"
-              className={`mt-1.5 size-2 shrink-0 rounded-full ${step.isCancelled ? 'bg-danger' : hecho ? 'bg-fg-secondary' : 'bg-line-strong'}`}
-            />
+          <li key={fila.key} className="flex gap-3">
+            <span aria-hidden="true" className={`mt-1.5 size-2 shrink-0 rounded-full ${punto(fila)}`} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-3">
-                <p className={`text-[13px] font-semibold ${step.isCancelled ? 'text-danger-text' : hecho ? 'text-fg' : 'text-fg-secondary'}`}>{step.label}</p>
-                <span className="shrink-0 text-xs tabular-nums text-fg-secondary">{hora ?? (hecho ? '' : 'pendiente')}</span>
+                <p className={`flex flex-wrap items-center gap-1.5 text-[13px] font-semibold ${fila.tono === 'cancelado' ? 'text-danger-text' : fila.tono === 'fallo' ? 'text-warning-text' : fila.hecho ? 'text-fg' : 'text-fg-secondary'}`}>
+                  {fila.label}
+                  {fila.fuente && (
+                    <span className="rounded-full border border-line-info bg-info-subtle px-1.5 py-px text-[11px] font-medium text-info-text">{fila.fuente}</span>
+                  )}
+                </p>
+                <span className="shrink-0 text-xs tabular-nums text-fg-secondary">{fila.hora ?? fila.pendiente ?? ''}</span>
               </div>
-              {sub && <p className="text-xs text-fg-muted">{sub}</p>}
-              {step.key === 'cancelled' && order.cancellation_reason && (
+              {fila.sub && <p className="text-xs text-fg-muted">{fila.sub}</p>}
+              {fila.motivoCancelacion && order.cancellation_reason && (
                 <p className="mt-0.5 text-xs text-danger-text">{t('orderTimeline.motivo', { cancellation_reason: order.cancellation_reason })}</p>
               )}
               {avisosPaso.length > 0 && renderAvisos && <div className="mt-1.5">{renderAvisos(avisosPaso)}</div>}

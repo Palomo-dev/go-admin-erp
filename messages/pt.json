@@ -73238,5 +73238,134 @@
       "descripcion": "{persona} fica como contato da empresa.",
       "creada": "{empresa} ficou vinculada ao cliente."
     }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Entrega",
+    "copiado": "Número de rastreio copiado",
+    "noCopiado": "Não foi possível copiar",
+    "cargando": "Carregando o envio…",
+    "indicacion": "Indicação: {texto}",
+    "envio": "Frete {monto}",
+    "envioPagado": "Frete {monto} · pago",
+    "sinGuia": "Sem etiqueta",
+    "whatsapp": "Olá, escrevo sobre o pedido {pedido}.",
+    "estados": {
+      "sin_envio": "Sem envio",
+      "recoger": "Pronto para retirar",
+      "recogerPreparando": "Para retirar",
+      "por_despachar": "A despachar",
+      "asignado": "Atribuído",
+      "en_camino": "A caminho",
+      "en_camino_transportadora": "A caminho (transportadora)",
+      "entregado": "Entregue",
+      "novedad": "Ocorrência",
+      "devuelto": "Devolvido",
+      "cancelado": "Cancelado"
+    },
+    "tipo": {
+      "recoger": "Retirada na loja",
+      "transportadora": "Transportadora",
+      "propio": "Entrega própria"
+    },
+    "cobro": {
+      "cobrar": "Cobrar na entrega",
+      "enCaja": "No caixa da filial",
+      "saldo": "Saldo = total {total} − sinal {anticipo}",
+      "contraentrega": "Pagamento na entrega: cobrado por quem entrega",
+      "cobrado": "Cobrado na entrega",
+      "cobradoNota": "Entra no acerto do entregador (Logística › Acertos)",
+      "pagado": "Pago · não cobrar",
+      "pagadoNota": "Nada é cobrado na porta"
+    },
+    "recoger": {
+      "listoDesde": "Pronto para retirar desde {hora}",
+      "preparando": "Sendo preparado para retirada",
+      "nota": "Sem etiqueta: entregue no balcão. Peça o número do pedido ({pedido}) e o nome de quem comprou."
+    },
+    "filas": {
+      "listo": "Pronto",
+      "listoAprox": "Pronto aprox.",
+      "asignado": "Atribuído",
+      "salio": "Saiu",
+      "entregadoTransportadora": "Entregue à transportadora",
+      "entregado": "Entregue",
+      "entregaAprox": "Entrega aprox."
+    },
+    "sinEnvio": {
+      "titulo": "Este pedido ainda não tem envio",
+      "nota": "É criado ao confirmar. Se não foi criado (pedido antigo ou erro), crie aqui: sai com a etiqueta DEL-WO-… e fica em «A despachar» na Logística.",
+      "error": "Não foi possível ler o envio deste pedido. Recarregue a página ou confira na Logística."
+    },
+    "acciones": {
+      "crearYAsignar": "Criar envio e atribuir entregador",
+      "asignar": "Atribuir",
+      "verGuia": "Ver etiqueta",
+      "imprimirGuia": "Imprimir etiqueta",
+      "verEnvio": "Ver envio",
+      "cambiar": "Trocar",
+      "verMapa": "Ver no mapa"
+    },
+    "guia": {
+      "titulo": "Número de rastreio",
+      "nuestra": "Nossa etiqueta (colada na caixa)",
+      "copiar": "Copiar número de rastreio",
+      "creada": "Criada {hora}",
+      "deTransportadora": "Rastreio {nombre}",
+      "deTransportadoraSinNombre": "Rastreio da transportadora",
+      "rastrearEn": "Rastrear em {nombre}",
+      "rastrear": "Rastrear na transportadora"
+    },
+    "entregado": {
+      "titulo": "Entregue {hora}",
+      "recibio": "Recebeu: {nombre}",
+      "codigo": "código de entrega verificado"
+    },
+    "novedad": {
+      "titulo": "Não foi possível entregar · tentativa {n}",
+      "desdeLogistica": "Reagendar ou devolver é feito na Logística."
+    },
+    "devuelto": {
+      "titulo": "Devolvido à filial",
+      "motivo": "Motivo: {motivo}",
+      "nota": "O pedido não é cancelado sozinho: decida se sai de novo ou se o dinheiro é devolvido."
+    },
+    "domiciliario": {
+      "rol": "Entregador",
+      "placa": "placa {placa}",
+      "llamar": "Ligar para {nombre}",
+      "whatsapp": "Escrever para {nombre} no WhatsApp",
+      "sinAsignar": "Sem atribuir"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# volume} other {# volumes}}",
+      "peso": "{kg} kg",
+      "fragil": "Frágil"
+    },
+    "entregar": {
+      "bloqueado": "O envio ainda não pode ser entregue",
+      "bloqueadoNota": "Marque-o «Pronto para sair» ou atribua um entregador na Logística; o pedido e o envio são marcados como entregues juntos."
+    },
+    "historial": {
+      "listo": "Pronto · envio a despachar",
+      "guia": "Etiqueta {numero}",
+      "paquetes": "{count, plural, one {# volume} other {# volumes}}",
+      "asignado": "Entregador atribuído",
+      "entregadoTransportadora": "Entregue à transportadora",
+      "recogido": "Retirado pelo entregador",
+      "enTransito": "Em trânsito",
+      "enCaminoIntento": "A caminho · {n}ª tentativa",
+      "enReparto": "Saiu para entrega",
+      "enCamino": "A caminho",
+      "salioDe": "Saiu de {sede}",
+      "novedadMotivo": "Ocorrência · {motivo}",
+      "novedad": "Ocorrência · não foi possível entregar",
+      "entregado": "Entregue",
+      "recibio": "Recebeu: {nombre}",
+      "devuelto": "Devolvido à filial",
+      "cancelado": "Envio cancelado",
+      "aprox": "aprox. {hora}",
+      "transportadora": "Transportadora",
+      "logistica": "Logística"
+    }
   }
 }

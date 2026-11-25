@@ -1,7 +1,7 @@
 'use client';
 
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
+import { esDomicilio, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import KitchenService from '@/lib/services/kitchenService';
@@ -46,6 +46,13 @@ import { BotonReenviarEnlace } from '@/components/pos/pedidos-online/pagos/Tarje
 import { estadoTarjetaPagos } from '@/lib/pos/pedidosWeb/intentosPago';
 import { cn } from '@/utils/Utils';
 import { FranjaRevisionFactura, TarjetaFacturaPedido } from '@/components/clientes/facturacion/TarjetaFacturaPedido';
+import { TarjetaEntregaEnvio } from './components/TarjetaEntregaEnvio';
+import { useEnvioDelPedido } from './hooks/useEnvioDelPedido';
+import { DialogoImprimirGuias } from '@/components/logistica/envios/DialogosEnvios';
+import { DialogoEntregar } from '@/components/logistica/envio/DialogosEnvio';
+import { useImpresionLogistica } from '@/components/logistica/useImpresionLogistica';
+import { avisarCliente } from '@/components/logistica/logisticaApi';
+import { accionMarcarEntregado, envioActivo } from '@/lib/pos/pedidosWeb/entregaEnvio';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
@@ -113,6 +120,12 @@ export default function WebOrderDetailPage() {
   // Zona de la sede del pedido: la misma con que la tarjeta «Pagos» pinta las horas.
   const { timezone: zonaSede } = useFormatDate(order?.branch_id);
   const [cambioAbierto, setCambioAbierto] = useState(false);
+  // Tarjeta «Entrega» con el envío real (Figma 3236-223013): el envío, «Ver guía» y la entrega de Logística.
+  const envioPedido = useEnvioDelPedido(order, organizationId);
+  const { imprimirGuias } = useImpresionLogistica();
+  const tEntrega = useTranslations('pedidoWebEntrega');
+  const [verGuiaAbierto, setVerGuiaAbierto] = useState(false);
+  const [entregarAbierto, setEntregarAbierto] = useState(false);
 
   // Estado de carga
   if (loading) {
@@ -159,6 +172,35 @@ export default function WebOrderDetailPage() {
       toast({ title: t(claveRubro('ficha.imprimirError', rubro)), variant: 'destructive' });
     }
   };
+  // Envío del pedido (si lo hay) y qué hace «Marcar entregado» (decisión 4 del 2026-11-25): con
+  // envío activo abre el registro de entrega de Logística, para que pedido y envío no diverjan.
+  const envio = envioPedido.envio;
+  const filaEnvio = envio?.fila ?? null;
+  const activo = envioActivo(envio?.envio.status);
+  const marcarEntregado = () => {
+    const accion = accionMarcarEntregado(envio?.envio.status);
+    if (accion === 'pedido') return void handleMarkDelivered();
+    if (accion === 'logistica') return setEntregarAbierto(true);
+    toast({ title: tEntrega('entregar.bloqueado'), description: tEntrega('entregar.bloqueadoNota'), variant: 'destructive' });
+  };
+  const envioParaGuia = filaEnvio
+    ? [{ id: filaEnvio.id, numero: filaEnvio.numero, status: filaEnvio.status, pedido: filaEnvio.pedido, branchId: filaEnvio.branchId, sourceType: 'web_order', sourceId: order.id, pagado: filaEnvio.pagado, sede: order.branch?.name ?? null }]
+    : [];
+  const esComerAqui = tipoEntregaEfectivo(order) === 'dine_in';
+  const tarjetaEntrega = (className?: string) => (
+    <TarjetaEntregaEnvio
+      className={className}
+      order={order}
+      envio={envio}
+      cargando={envioPedido.cargando}
+      error={envioPedido.error}
+      onAsignar={() => setAssignDeliveryOpen(true)}
+      onCrearEnvio={() => void handleCreateShipment().then(envioPedido.recargar)}
+      onVerGuia={filaEnvio ? () => setVerGuiaAbierto(true) : undefined}
+      onImprimirGuia={filaEnvio ? () => void imprimirGuias([filaEnvio]) : undefined}
+    />
+  );
+
   const reenviarAviso = async () => {
     await webOrdersService.avisarCambioEstado(order.id);
     toast({ title: t('ficha.avisoReenviado') });
@@ -206,7 +248,7 @@ export default function WebOrderDetailPage() {
         avisoStock={avisoStock}
         cajaEtiqueta={cajaDeLaSede}
         onImprimirComanda={trazabilidad.comandaId ? () => void imprimir() : undefined}
-        onMarcarEntregado={['ready', 'in_delivery'].includes(order.status) ? handleMarkDelivered : undefined}
+        onMarcarEntregado={['ready', 'in_delivery'].includes(order.status) ? marcarEntregado : undefined}
         onReenviarAviso={() => void reenviarAviso()}
         onCancelar={['pending', 'confirmed'].includes(order.status) || (['preparing', 'ready'].includes(order.status) && order.payment_status !== 'paid') ? () => setCancelDialogOpen(true) : undefined}
       />
@@ -236,6 +278,8 @@ export default function WebOrderDetailPage() {
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-6">
           {pagoRechazado && <div className="lg:hidden">{tarjetaPagos(true)}</div>}
+          {/* Celular (Figma 3236-223322): con el envío en la calle, «Entrega» va primero. */}
+          {activo && !esComerAqui && <div className="lg:hidden">{tarjetaEntrega()}</div>}
           <OrderProductsCard order={order} puedeQuitarPromocion={puedeQuitarPromocion} onCambio={() => void loadOrder()} />
           <OrderNotesCard
             order={order}
@@ -247,7 +291,7 @@ export default function WebOrderDetailPage() {
               return ok;
             }}
           />
-          <OrderTimelineCard order={order} timezone={timezone} />
+          <OrderTimelineCard order={order} timezone={timezone} envio={envio} />
           <OrderDocumentsCard
             order={order}
             factura={trazabilidad.factura}
@@ -265,7 +309,7 @@ export default function WebOrderDetailPage() {
             onStartPreparing={handleStartPreparing}
             onMarkReady={handleMarkReady}
             onStartDelivery={handleStartDelivery}
-            onMarkDelivered={handleMarkDelivered}
+            onMarkDelivered={marcarEntregado}
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
             onCobrar={abrirCobro}
@@ -275,6 +319,8 @@ export default function WebOrderDetailPage() {
             cajaEtiqueta={cajaEtiqueta}
             isLoading={actionLoading}
           />
+          {/* Envío activo: «Entrega» va justo bajo «Acciones» (Figma 3236-223044). */}
+          {activo && !esComerAqui && tarjetaEntrega('hidden lg:block')}
           {puedeCambiarProductos && (
             <button
               type="button"
@@ -315,17 +361,8 @@ export default function WebOrderDetailPage() {
           <TarjetaFacturaPedido order={order} onCambio={() => void loadOrder()} />
           {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
           {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
-          <OrderDeliveryCard
-            order={order}
-            onAssignDelivery={() => {
-              // Si es delivery propio y está listo, crear shipment primero
-              if (order.delivery_type === 'delivery_own' && order.status === 'ready') {
-                handleCreateShipment();
-              } else {
-                setAssignDeliveryOpen(true);
-              }
-            }}
-          />
+          {/* «Comer aquí» conserva su tarjeta (mesa); a domicilio y recoger, la del envío real. */}
+          {esComerAqui ? <OrderDeliveryCard order={order} /> : !activo && tarjetaEntrega()}
         </div>
       </div>
 
@@ -413,7 +450,36 @@ export default function WebOrderDetailPage() {
           onOpenChange={setAssignDeliveryOpen}
           webOrderId={order.id}
           organizationId={organizationId}
-          onAssigned={loadOrder}
+          onAssigned={() => {
+            void loadOrder();
+            envioPedido.recargar();
+          }}
+        />
+      )}
+
+      {/* «Ver guía» (Figma 3238-228068): el diálogo de Logística con el MISMO rótulo que se imprime. */}
+      {filaEnvio && (
+        <DialogoImprimirGuias
+          abierto={verGuiaAbierto}
+          onAbiertoChange={setVerGuiaAbierto}
+          envios={envioParaGuia}
+          onImprimir={async (opciones) => {
+            await imprimirGuias([filaEnvio], null, opciones);
+          }}
+        />
+      )}
+
+      {/* «Marcar entregado» con envío activo: el registro de entrega de Logística (código, quién recibe, cobro). */}
+      {filaEnvio && activo && (
+        <DialogoEntregar
+          abierto={entregarAbierto}
+          onAbiertoChange={setEntregarAbierto}
+          envio={filaEnvio}
+          onEntregado={(r) => {
+            if (envio) void avisarCliente({ source_type: envio.envio.source_type, source_id: envio.envio.source_id }, r.aviso);
+            void loadOrder();
+            envioPedido.recargar();
+          }}
         />
       )}
     </div>

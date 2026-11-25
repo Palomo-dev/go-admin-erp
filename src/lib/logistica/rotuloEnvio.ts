@@ -181,6 +181,25 @@ export function numeroGuia(e: Pick<EnvioParaRotulo, 'id' | 'shipment_number'>): 
   return texto(e.shipment_number) ?? e.id;
 }
 
+/**
+ * Ancho medio de un carácter de la guía en Inter ExtraBold (mayúsculas, dígitos y guiones), en em.
+ * Va un poco por encima de la media real para que «W» o «M» seguidas tampoco se salgan.
+ */
+const ANCHO_CARACTER_GUIA_EM = 0.74;
+const TAMANO_MINIMO_GUIA_PX = 8;
+
+/**
+ * Tamaño de letra (px de diseño) del número de guía para que quepa en UNA línea (decisión 5 del
+ * 2026-11-25, Figma 3238-228068): «DEL-WO-452-MX4K2P7F-A3QZ» se partía en dos en el 10 × 15. Se
+ * achica según los caracteres y el ancho disponible, nunca por encima de `maximoPx`. Puro: lo usan
+ * el rótulo (vista previa, PDF) y, por ser el mismo componente, la imagen de la térmica.
+ */
+export function tamanoNumeroGuia(numero: string, anchoDisponiblePx: number, maximoPx: number, espaciadoEm = 0.05): number {
+  const caracteres = Math.max(1, Array.from(numero ?? '').length);
+  const cabe = anchoDisponiblePx / (caracteres * (ANCHO_CARACTER_GUIA_EM + espaciadoEm));
+  return Math.max(TAMANO_MINIMO_GUIA_PX, Math.min(maximoPx, Math.floor(cabe * 10) / 10));
+}
+
 /** Contraentrega pendiente: ya cobrada o consignada no se vuelve a pedir en la puerta. */
 export function contraentregaPendiente(e: Pick<EnvioParaRotulo, 'cod_amount' | 'cod_status'>): number {
   if (e.cod_status === 'collected' || e.cod_status === 'remitted') return 0;

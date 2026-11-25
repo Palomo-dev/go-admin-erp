@@ -73226,5 +73226,134 @@
       "descripcion": "{persona} queda como contacto de la empresa.",
       "creada": "{empresa} quedó ligada al cliente."
     }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Entrega",
+    "copiado": "Número de guía copiado",
+    "noCopiado": "No se pudo copiar",
+    "cargando": "Cargando el envío…",
+    "indicacion": "Indicación: {texto}",
+    "envio": "Envío {monto}",
+    "envioPagado": "Envío {monto} · pagado",
+    "sinGuia": "Sin guía",
+    "whatsapp": "Hola, te escribo por el pedido {pedido}.",
+    "estados": {
+      "sin_envio": "Sin envío",
+      "recoger": "Listo para recoger",
+      "recogerPreparando": "Para recoger",
+      "por_despachar": "Por despachar",
+      "asignado": "Asignado",
+      "en_camino": "En camino",
+      "en_camino_transportadora": "En camino (transportadora)",
+      "entregado": "Entregado",
+      "novedad": "Novedad",
+      "devuelto": "Devuelto",
+      "cancelado": "Cancelado"
+    },
+    "tipo": {
+      "recoger": "Recoger en tienda",
+      "transportadora": "Transportadora",
+      "propio": "Domicilio propio"
+    },
+    "cobro": {
+      "cobrar": "Cobrar al entregar",
+      "enCaja": "En la caja de la sede",
+      "saldo": "Saldo = total {total} − anticipo {anticipo}",
+      "contraentrega": "Contraentrega: lo cobra quien entrega",
+      "cobrado": "Cobrado al entregar",
+      "cobradoNota": "Entra al cuadre del domiciliario (Logística › Cuadres)",
+      "pagado": "Pagado · no cobrar",
+      "pagadoNota": "No se cobra nada en la puerta"
+    },
+    "recoger": {
+      "listoDesde": "Listo para recoger desde las {hora}",
+      "preparando": "Se está preparando para recoger",
+      "nota": "Sin guía: se entrega en el mostrador. Pide el número del pedido ({pedido}) y el nombre de quien compró."
+    },
+    "filas": {
+      "listo": "Listo",
+      "listoAprox": "Listo aprox",
+      "asignado": "Asignado",
+      "salio": "Salió",
+      "entregadoTransportadora": "Entregado a la transportadora",
+      "entregado": "Entregado",
+      "entregaAprox": "Entrega aprox"
+    },
+    "sinEnvio": {
+      "titulo": "Este pedido aún no tiene envío",
+      "nota": "Se crea solo al confirmar. Si no se creó (pedido anterior o un error), créalo aquí: sale con su guía DEL-WO-… y queda en «Por despachar» en Logística.",
+      "error": "No se pudo leer el envío de este pedido. Recarga la página o revísalo en Logística."
+    },
+    "acciones": {
+      "crearYAsignar": "Crear envío y asignar domiciliario",
+      "asignar": "Asignar",
+      "verGuia": "Ver guía",
+      "imprimirGuia": "Imprimir guía",
+      "verEnvio": "Ver envío",
+      "cambiar": "Cambiar",
+      "verMapa": "Ver en el mapa"
+    },
+    "guia": {
+      "titulo": "Número de guía",
+      "nuestra": "Nuestra guía (pegada en la caja)",
+      "copiar": "Copiar número de guía",
+      "creada": "Creada {hora}",
+      "deTransportadora": "Guía de {nombre}",
+      "deTransportadoraSinNombre": "Guía de la transportadora",
+      "rastrearEn": "Rastrear en {nombre}",
+      "rastrear": "Rastrear en la transportadora"
+    },
+    "entregado": {
+      "titulo": "Entregado {hora}",
+      "recibio": "Recibió: {nombre}",
+      "codigo": "código de entrega verificado"
+    },
+    "novedad": {
+      "titulo": "No se pudo entregar · intento {n}",
+      "desdeLogistica": "Reprogramar o devolver se hace desde Logística."
+    },
+    "devuelto": {
+      "titulo": "Devuelto a la sede",
+      "motivo": "Motivo: {motivo}",
+      "nota": "El pedido no se cancela solo: decide si sale de nuevo o se devuelve el dinero."
+    },
+    "domiciliario": {
+      "rol": "Domiciliario",
+      "placa": "placa {placa}",
+      "llamar": "Llamar a {nombre}",
+      "whatsapp": "Escribir por WhatsApp a {nombre}",
+      "sinAsignar": "Sin asignar"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# paquete} other {# paquetes}}",
+      "peso": "{kg} kg",
+      "fragil": "Frágil"
+    },
+    "entregar": {
+      "bloqueado": "El envío aún no puede entregarse",
+      "bloqueadoNota": "Márcalo «Listo para salir» o asígnale domiciliario en Logística; el pedido y el envío se marcan entregados juntos."
+    },
+    "historial": {
+      "listo": "Listo · envío por despachar",
+      "guia": "Guía {numero}",
+      "paquetes": "{count, plural, one {# paquete} other {# paquetes}}",
+      "asignado": "Domiciliario asignado",
+      "entregadoTransportadora": "Entregado a la transportadora",
+      "recogido": "Recogido por el domiciliario",
+      "enTransito": "En tránsito",
+      "enCaminoIntento": "En camino · {n}.º intento",
+      "enReparto": "En reparto",
+      "enCamino": "En camino",
+      "salioDe": "Salió de {sede}",
+      "novedadMotivo": "Novedad · {motivo}",
+      "novedad": "Novedad · no se pudo entregar",
+      "entregado": "Entregado",
+      "recibio": "Recibió: {nombre}",
+      "devuelto": "Devuelto a la sede",
+      "cancelado": "Envío cancelado",
+      "aprox": "aprox {hora}",
+      "transportadora": "Transportadora",
+      "logistica": "Logística"
+    }
   }
 }

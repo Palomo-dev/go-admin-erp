@@ -73228,5 +73228,134 @@
       "descripcion": "{persona} devient contact de l’entreprise.",
       "creada": "{empresa} est maintenant liée au client."
     }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Livraison",
+    "copiado": "Numéro de suivi copié",
+    "noCopiado": "Impossible de copier",
+    "cargando": "Chargement de l’envoi…",
+    "indicacion": "Indication : {texto}",
+    "envio": "Livraison {monto}",
+    "envioPagado": "Livraison {monto} · payée",
+    "sinGuia": "Sans étiquette",
+    "whatsapp": "Bonjour, je vous écris au sujet de la commande {pedido}.",
+    "estados": {
+      "sin_envio": "Sans envoi",
+      "recoger": "Prêt à retirer",
+      "recogerPreparando": "À retirer",
+      "por_despachar": "À expédier",
+      "asignado": "Assigné",
+      "en_camino": "En route",
+      "en_camino_transportadora": "En route (transporteur)",
+      "entregado": "Livré",
+      "novedad": "Incident",
+      "devuelto": "Retourné",
+      "cancelado": "Annulé"
+    },
+    "tipo": {
+      "recoger": "Retrait en magasin",
+      "transportadora": "Transporteur",
+      "propio": "Livraison propre"
+    },
+    "cobro": {
+      "cobrar": "Encaisser à la livraison",
+      "enCaja": "À la caisse de l’agence",
+      "saldo": "Solde = total {total} − acompte {anticipo}",
+      "contraentrega": "Contre-remboursement : encaissé par le livreur",
+      "cobrado": "Encaissé à la livraison",
+      "cobradoNota": "Entre dans le décompte du livreur (Logistique › Décomptes)",
+      "pagado": "Payé · ne pas encaisser",
+      "pagadoNota": "Rien n’est encaissé à la porte"
+    },
+    "recoger": {
+      "listoDesde": "Prêt à retirer depuis {hora}",
+      "preparando": "En préparation pour le retrait",
+      "nota": "Sans étiquette : remis au comptoir. Demandez le numéro de commande ({pedido}) et le nom de l’acheteur."
+    },
+    "filas": {
+      "listo": "Prêt",
+      "listoAprox": "Prêt vers",
+      "asignado": "Assigné",
+      "salio": "Parti",
+      "entregadoTransportadora": "Remis au transporteur",
+      "entregado": "Livré",
+      "entregaAprox": "Livraison vers"
+    },
+    "sinEnvio": {
+      "titulo": "Cette commande n’a pas encore d’envoi",
+      "nota": "Il est créé à la confirmation. S’il ne l’a pas été (ancienne commande ou erreur), créez-le ici : il reçoit son étiquette DEL-WO-… et passe « À expédier » dans Logistique.",
+      "error": "Impossible de charger l’envoi de cette commande. Rechargez la page ou vérifiez-le dans Logistique."
+    },
+    "acciones": {
+      "crearYAsignar": "Créer l’envoi et assigner un livreur",
+      "asignar": "Assigner",
+      "verGuia": "Voir l’étiquette",
+      "imprimirGuia": "Imprimer l’étiquette",
+      "verEnvio": "Voir l’envoi",
+      "cambiar": "Changer",
+      "verMapa": "Voir sur la carte"
+    },
+    "guia": {
+      "titulo": "Numéro de suivi",
+      "nuestra": "Notre étiquette (collée sur le colis)",
+      "copiar": "Copier le numéro de suivi",
+      "creada": "Créée {hora}",
+      "deTransportadora": "Suivi {nombre}",
+      "deTransportadoraSinNombre": "Suivi du transporteur",
+      "rastrearEn": "Suivre sur {nombre}",
+      "rastrear": "Suivre chez le transporteur"
+    },
+    "entregado": {
+      "titulo": "Livré {hora}",
+      "recibio": "Reçu par : {nombre}",
+      "codigo": "code de livraison vérifié"
+    },
+    "novedad": {
+      "titulo": "Livraison impossible · tentative {n}",
+      "desdeLogistica": "La reprogrammation ou le retour se fait depuis Logistique."
+    },
+    "devuelto": {
+      "titulo": "Retourné à l’agence",
+      "motivo": "Motif : {motivo}",
+      "nota": "La commande n’est pas annulée automatiquement : décidez si elle repart ou si l’argent est remboursé."
+    },
+    "domiciliario": {
+      "rol": "Livreur",
+      "placa": "plaque {placa}",
+      "llamar": "Appeler {nombre}",
+      "whatsapp": "Écrire à {nombre} sur WhatsApp",
+      "sinAsignar": "Non assigné"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# colis} other {# colis}}",
+      "peso": "{kg} kg",
+      "fragil": "Fragile"
+    },
+    "entregar": {
+      "bloqueado": "L’envoi ne peut pas encore être livré",
+      "bloqueadoNota": "Marquez-le « Prêt à partir » ou assignez un livreur dans Logistique ; la commande et l’envoi sont marqués livrés ensemble."
+    },
+    "historial": {
+      "listo": "Prêt · envoi à expédier",
+      "guia": "Étiquette {numero}",
+      "paquetes": "{count, plural, one {# colis} other {# colis}}",
+      "asignado": "Livreur assigné",
+      "entregadoTransportadora": "Remis au transporteur",
+      "recogido": "Récupéré par le livreur",
+      "enTransito": "En transit",
+      "enCaminoIntento": "En route · tentative {n}",
+      "enReparto": "En cours de livraison",
+      "enCamino": "En route",
+      "salioDe": "Parti de {sede}",
+      "novedadMotivo": "Incident · {motivo}",
+      "novedad": "Incident · livraison impossible",
+      "entregado": "Livré",
+      "recibio": "Reçu par : {nombre}",
+      "devuelto": "Retourné à l’agence",
+      "cancelado": "Envoi annulé",
+      "aprox": "vers {hora}",
+      "transportadora": "Transporteur",
+      "logistica": "Logistique"
+    }
   }
 }

@@ -73228,5 +73228,134 @@
       "descripcion": "{persona} becomes a contact of the company.",
       "creada": "{empresa} is now linked to the customer."
     }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Delivery",
+    "copiado": "Tracking number copied",
+    "noCopiado": "Could not copy",
+    "cargando": "Loading the shipment…",
+    "indicacion": "Note: {texto}",
+    "envio": "Shipping {monto}",
+    "envioPagado": "Shipping {monto} · paid",
+    "sinGuia": "No label",
+    "whatsapp": "Hi, I'm writing about order {pedido}.",
+    "estados": {
+      "sin_envio": "No shipment",
+      "recoger": "Ready for pickup",
+      "recogerPreparando": "For pickup",
+      "por_despachar": "To dispatch",
+      "asignado": "Assigned",
+      "en_camino": "On the way",
+      "en_camino_transportadora": "On the way (carrier)",
+      "entregado": "Delivered",
+      "novedad": "Issue",
+      "devuelto": "Returned",
+      "cancelado": "Cancelled"
+    },
+    "tipo": {
+      "recoger": "Store pickup",
+      "transportadora": "Carrier",
+      "propio": "Own delivery"
+    },
+    "cobro": {
+      "cobrar": "Collect on delivery",
+      "enCaja": "At the branch register",
+      "saldo": "Balance = total {total} − deposit {anticipo}",
+      "contraentrega": "Cash on delivery: collected by whoever delivers",
+      "cobrado": "Collected on delivery",
+      "cobradoNota": "Goes to the courier's settlement (Logistics › Settlements)",
+      "pagado": "Paid · do not collect",
+      "pagadoNota": "Nothing is collected at the door"
+    },
+    "recoger": {
+      "listoDesde": "Ready for pickup since {hora}",
+      "preparando": "Being prepared for pickup",
+      "nota": "No label: handed over at the counter. Ask for the order number ({pedido}) and the buyer's name."
+    },
+    "filas": {
+      "listo": "Ready",
+      "listoAprox": "Ready approx.",
+      "asignado": "Assigned",
+      "salio": "Left",
+      "entregadoTransportadora": "Handed to the carrier",
+      "entregado": "Delivered",
+      "entregaAprox": "Delivery approx."
+    },
+    "sinEnvio": {
+      "titulo": "This order has no shipment yet",
+      "nota": "It is created on confirmation. If it wasn't (older order or an error), create it here: it gets its DEL-WO-… label and goes to «To dispatch» in Logistics.",
+      "error": "The shipment for this order could not be loaded. Reload the page or check it in Logistics."
+    },
+    "acciones": {
+      "crearYAsignar": "Create shipment and assign courier",
+      "asignar": "Assign",
+      "verGuia": "View label",
+      "imprimirGuia": "Print label",
+      "verEnvio": "View shipment",
+      "cambiar": "Change",
+      "verMapa": "View on map"
+    },
+    "guia": {
+      "titulo": "Tracking number",
+      "nuestra": "Our label (stuck on the box)",
+      "copiar": "Copy tracking number",
+      "creada": "Created {hora}",
+      "deTransportadora": "{nombre} tracking number",
+      "deTransportadoraSinNombre": "Carrier tracking number",
+      "rastrearEn": "Track on {nombre}",
+      "rastrear": "Track with the carrier"
+    },
+    "entregado": {
+      "titulo": "Delivered {hora}",
+      "recibio": "Received by: {nombre}",
+      "codigo": "delivery code verified"
+    },
+    "novedad": {
+      "titulo": "Could not deliver · attempt {n}",
+      "desdeLogistica": "Rescheduling or returning is done from Logistics."
+    },
+    "devuelto": {
+      "titulo": "Returned to the branch",
+      "motivo": "Reason: {motivo}",
+      "nota": "The order is not cancelled automatically: decide whether it goes out again or the money is refunded."
+    },
+    "domiciliario": {
+      "rol": "Courier",
+      "placa": "plate {placa}",
+      "llamar": "Call {nombre}",
+      "whatsapp": "Message {nombre} on WhatsApp",
+      "sinAsignar": "Unassigned"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# package} other {# packages}}",
+      "peso": "{kg} kg",
+      "fragil": "Fragile"
+    },
+    "entregar": {
+      "bloqueado": "The shipment can't be delivered yet",
+      "bloqueadoNota": "Mark it «Ready to leave» or assign a courier in Logistics; the order and the shipment are marked delivered together."
+    },
+    "historial": {
+      "listo": "Ready · shipment to dispatch",
+      "guia": "Label {numero}",
+      "paquetes": "{count, plural, one {# package} other {# packages}}",
+      "asignado": "Courier assigned",
+      "entregadoTransportadora": "Handed to the carrier",
+      "recogido": "Picked up by the courier",
+      "enTransito": "In transit",
+      "enCaminoIntento": "On the way · attempt {n}",
+      "enReparto": "Out for delivery",
+      "enCamino": "On the way",
+      "salioDe": "Left {sede}",
+      "novedadMotivo": "Issue · {motivo}",
+      "novedad": "Issue · could not deliver",
+      "entregado": "Delivered",
+      "recibio": "Received by: {nombre}",
+      "devuelto": "Returned to the branch",
+      "cancelado": "Shipment cancelled",
+      "aprox": "approx. {hora}",
+      "transportadora": "Carrier",
+      "logistica": "Logistics"
+    }
   }
 }

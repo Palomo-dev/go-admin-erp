@@ -650,10 +650,64 @@ export async function filaDespachoDePedidoWeb(db: SupabaseClient, organizationId
     .eq('organization_id', organizationId)
     .eq('source_type', 'web_order')
     .eq('source_id', webOrderId)
+    // El más reciente: un pedido no debería tener dos envíos, pero si los tiene no se cae.
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
   const envio = data as unknown as EnvioCrudo;
   const pedidos = await pedidosWebDe(db, organizationId, [webOrderId]);
   return aFilaDespacho(envio, pedidos.get(webOrderId) ?? null);
+}
+
+/** Lo que la tarjeta «Entrega» del pedido lee del envío además del detalle de Logística. */
+export interface ExtraEnvioPedido {
+  package_count: number | null;
+  weight_kg: number | string | null;
+  is_fragile: boolean | null;
+  picked_at: string | null;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  external_tracking_url: string | null;
+  carrier: { name: string | null; tracking_url_template: string | null } | null;
+}
+
+export type EnvioDePedido = DetalleEnvio & { extra: ExtraEnvioPedido };
+
+/**
+ * El envío de un pedido web con su detalle (Pedidos online › tarjeta «Entrega», Figma 3236-223013):
+ * el mismo `obtenerDetalleEnvio` de Logística (eventos, intentos, prueba, vehículo) más paquetes,
+ * peso, frágil, horas de salida y entrega y la transportadora. Si hubiera más de uno, el más
+ * reciente. Sesión del usuario (RLS de Logística) y filtrado por la organización. Columnas
+ * verificadas por MCP el 2026-11-25 (proyecto taqjemqjtumhwptchcxk).
+ */
+export async function envioDePedidoWeb(db: SupabaseClient, organizationId: number, webOrderId: string): Promise<EnvioDePedido | null> {
+  const { data, error } = await db
+    .from('shipments')
+    .select('id, package_count, weight_kg, is_fragile, picked_at, dispatched_at, delivered_at, external_tracking_url, carrier:transport_carriers(name, tracking_url_template)')
+    .eq('organization_id', organizationId)
+    .eq('source_type', 'web_order')
+    .eq('source_id', webOrderId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const fila = data as unknown as Omit<ExtraEnvioPedido, 'carrier'> & { id: string; carrier?: Uno<ExtraEnvioPedido['carrier']> };
+  const detalle = await obtenerDetalleEnvio(db, organizationId, fila.id);
+  if (!detalle) return null;
+  return {
+    ...detalle,
+    extra: {
+      package_count: fila.package_count,
+      weight_kg: fila.weight_kg,
+      is_fragile: fila.is_fragile,
+      picked_at: fila.picked_at,
+      dispatched_at: fila.dispatched_at,
+      delivered_at: fila.delivered_at,
+      external_tracking_url: fila.external_tracking_url,
+      carrier: uno(fila.carrier),
+    },
+  };
 }

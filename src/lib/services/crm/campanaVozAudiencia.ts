@@ -26,6 +26,7 @@ import {
 } from './voiceAgentService';
 import { normalizarNumeroRne } from './voiceAgent/rne';
 import { listarNumerosPrueba } from './voiceAgent/numerosPrueba';
+import { enmascararTelefono } from './telefonoEnmascarado';
 
 /** Objetivos que se revisan uno a uno (lote máximo de las RPC). */
 export const MAX_AUDIENCIA_PREVIA = 1000;
@@ -62,12 +63,7 @@ export class AudienciaPreviaError extends Error {
 }
 
 /** «+573004521234» → «+57 300 *** 1234». Otros países: prefijo y últimos 4. */
-export function enmascararTelefono(e164: string | null): string | null {
-  if (!e164) return null;
-  const m = /^\+57(\d{3})\d+(\d{4})$/.exec(e164);
-  if (m) return `+57 ${m[1]} *** ${m[2]}`;
-  return `${e164.slice(0, 4)} *** ${e164.slice(-4)}`;
-}
+export { enmascararTelefono };
 
 export interface ClientePrevio {
   id: string;

@@ -27,7 +27,7 @@ import { PhoneInput } from '@/components/kit/PhoneInput';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { pedirCrm, ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
-import { enmascararTelefono } from '@/lib/services/crm/campanaVozAudiencia';
+import { enmascararTelefono } from '@/lib/services/crm/telefonoEnmascarado';
 import { politicaValida } from './asistenteVozLogica';
 import type { AgenteVoz, Lectura, Telefonia } from './useDatosAsistenteVoz';
 

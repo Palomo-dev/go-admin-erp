@@ -69,7 +69,8 @@ const OCULTOS: [string, string, string[]][] = [
 /** [sección, repetidor, campos del ítem que ninguna variante lee: se quitan del repetidor]. */
 const ITEMS_QUITADOS: [string, string, string[]][] = [
   ['cta', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
-  ['membership_plans', 'plans', ['highlighted']],
+  // `membership_plans` ya no tiene el repetidor `plans` (planes inventados que la tienda nunca
+  // pintó): los planes salen de Membresías › Planes (Figma «16 Sitio web» E2, 2026-11-25).
   ['specialties', 'card_buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
 ];
 

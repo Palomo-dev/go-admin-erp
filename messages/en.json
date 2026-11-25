@@ -39914,6 +39914,33 @@
           "texto": "Goes back to today’s appearance on desktop and mobile. The style, the switch and the popular searches don’t change.",
           "confirmar": "Reset"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Use the arrows to reorder · the star marks “Popular” (only one).",
+        "cargando": "Loading your plans…",
+        "error": "We couldn't read your plans. Check your connection and try again.",
+        "reintentar": "Try again",
+        "vacioTitulo": "You don't have active plans yet",
+        "vacioTexto": "Plans are created in Memberships › Plans with their price, duration and benefits. Until there is one, your customers don't see this page.",
+        "crearPlan": "Create plan in Memberships",
+        "abrirPlanes": "Open Memberships › Plans",
+        "notaTitulo": "Plan details live in Memberships",
+        "nota": "Price, duration, benefits and whether the plan is active are changed in Memberships › Plans. Here only: order, which ones show and which one is “Popular”.",
+        "enLinea": "Online · {precio}",
+        "enLineaSinPrecio": "Online",
+        "consulta": "No price · “Ask” button",
+        "pausado": "Product paused · “Not available for now”",
+        "inactivo": "Inactive in Memberships · not published",
+        "inactivosEtiqueta": "Inactive plans",
+        "oculto": "Hidden in the store",
+        "subir": "Move {nombre} up",
+        "bajar": "Move {nombre} down",
+        "marcarPopular": "Mark {nombre} as “Popular”",
+        "quitarPopular": "Remove “Popular” from {nombre}",
+        "ocultar": "Hide {nombre} in the store",
+        "mostrar": "Show {nombre} in the store",
+        "paginaNoVisibleTitulo": "This page isn't visible in the store",
+        "paginaNoVisible": "You don't have active plans: your customers see “This page is not available” and the page leaves the menu and the sitemap. The canvas shows sample plans."
       }
     },
     "paginas": {

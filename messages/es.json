@@ -39912,6 +39912,33 @@
           "texto": "Vuelve a la apariencia de hoy en computador y celular. La forma, el interruptor y las búsquedas populares no cambian.",
           "confirmar": "Restablecer"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Usa las flechas para ordenar · la estrella marca «Popular» (uno solo).",
+        "cargando": "Cargando tus planes…",
+        "error": "No pudimos leer tus planes. Revisa la conexión e inténtalo de nuevo.",
+        "reintentar": "Reintentar",
+        "vacioTitulo": "Aún no tienes planes activos",
+        "vacioTexto": "Los planes se crean en Membresías › Planes con su precio, duración y beneficios. Mientras no haya ninguno, tus clientes no ven esta página.",
+        "crearPlan": "Crear plan en Membresías",
+        "abrirPlanes": "Abrir Membresías › Planes",
+        "notaTitulo": "Los datos del plan viven en Membresías",
+        "nota": "Precio, duración, beneficios y si el plan está activo se cambian en Membresías › Planes. Aquí solo: orden, cuáles se ven y cuál es «Popular».",
+        "enLinea": "En línea · {precio}",
+        "enLineaSinPrecio": "En línea",
+        "consulta": "Sin precio · botón «Consultar»",
+        "pausado": "Producto pausado · «No disponible por ahora»",
+        "inactivo": "Inactivo en Membresías · no se publica",
+        "inactivosEtiqueta": "Planes inactivos",
+        "oculto": "Oculto en la tienda",
+        "subir": "Subir {nombre}",
+        "bajar": "Bajar {nombre}",
+        "marcarPopular": "Marcar {nombre} como «Popular»",
+        "quitarPopular": "Quitar «Popular» de {nombre}",
+        "ocultar": "Ocultar {nombre} en la tienda",
+        "mostrar": "Mostrar {nombre} en la tienda",
+        "paginaNoVisibleTitulo": "Esta página no se ve en la tienda",
+        "paginaNoVisible": "No tienes planes activos: tus clientes ven «Esta página no está disponible» y la página sale del menú y del sitemap. En el lienzo ves planes de ejemplo."
       }
     },
     "paginas": {

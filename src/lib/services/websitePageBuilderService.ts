@@ -14,6 +14,7 @@ import {
   PRODUCT_CARD_INTERACTION_FIELDS,
   FILTER_COLOR_FIELDS,
 } from '@/lib/services/website/sectionFieldGroups';
+import { TEXTOS_PLANES } from '@/lib/website/contrato/paginaMembresias';
 import {
   CAMPOS_CARTA_QR,
   CAMPOS_PORTADA_MESA,
@@ -221,7 +222,12 @@ export interface ContentFieldDef {
     /** Contacto v2: canales de «Canales de contacto» (`channels`). */
     | 'contact_channels'
     /** Contacto v2: redes que muestra «Redes sociales» (`networks`). */
-    | 'social_networks';
+    | 'social_networks'
+    /**
+     * Planes de membresía (Figma «16 Sitio web» E2): lista de los planes reales con orden, ojo y
+     * estrella «Popular». Escribe `plan_order`, `hidden_plan_ids` y `popular_plan_id`.
+     */
+    | 'membership_plans';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -1977,36 +1983,50 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     variants: [
       { id: 'pricing_table', label: 'Tabla de precios' },
     ],
+    // Figma «16 Sitio web» E2 (3286-101346). Los planes (precio, duración, beneficios, activo) se
+    // crean en Membresías › Planes; aquí solo se decide cuáles se ven, en qué orden, cuál es
+    // «Popular» y los textos (src/lib/website/contrato/paginaMembresias.ts). Se quitaron «Planes a
+    // mostrar» (pedía categorías, no planes) y «Planes personalizados» (planes inventados que la
+    // tienda nunca pintó).
     contentFields: [
-      { key: 'title', label: 'Título', type: 'text', placeholder: 'Nuestros Planes' },
-      { key: 'subtitle', label: 'Subtítulo', type: 'textarea' },
+      { key: 'title', label: 'Título', type: 'text', section: 'Textos', placeholder: TEXTOS_PLANES.titulo },
+      { key: 'subtitle', label: 'Texto debajo del título', type: 'textarea', section: 'Textos', placeholder: TEXTOS_PLANES.subtitulo },
+      { key: 'plan_order', label: 'Planes que se muestran', type: 'membership_plans', section: 'Planes que se muestran' },
+      { key: 'cta_text', label: 'Texto si se compra en línea', type: 'text', section: 'Botón de cada plan', placeholder: TEXTOS_PLANES.boton },
       {
-        key: 'plan_ids',
-        label: 'Planes a mostrar',
-        type: 'entity',
-        entity: 'category',
-        multiple: true,
-        group: 'data',
-        helpText: 'Sin selección: se muestran todos los planes',
-      },
-      {
-        key: 'plans',
-        label: 'Planes personalizados',
-        type: 'repeater',
-        group: 'content',
-        itemLabelKey: 'name',
-        itemFields: [
-          { key: 'name', label: 'Nombre', type: 'text', placeholder: 'Básico' },
-          { key: 'price', label: 'Precio', type: 'text', placeholder: '$29.000/mes' },
-          { key: 'description', label: 'Descripción', type: 'textarea' },
-          { key: 'features', label: 'Características (una por línea)', type: 'textarea', placeholder: 'Gym ilimitado\nPool\nSauna' },
-          { key: 'cta_text', label: 'Texto del botón', type: 'text', placeholder: 'Suscribirme' },
-          { key: 'cta_url', label: 'URL del botón', type: 'url' },
-          { key: 'highlighted', label: 'Destacar', type: 'boolean', defaultValue: false },
+        key: 'offline_action',
+        label: 'Si el plan no se vende en línea',
+        type: 'select',
+        section: 'Botón de cada plan',
+        defaultValue: 'whatsapp',
+        options: [
+          { value: 'whatsapp', label: 'WhatsApp' },
+          { value: 'contact', label: 'Página Contacto' },
         ],
       },
+      {
+        key: 'whatsapp_message',
+        label: 'Mensaje de WhatsApp',
+        type: 'textarea',
+        section: 'Botón de cada plan',
+        placeholder: TEXTOS_PLANES.mensajeWhatsapp,
+        helpText: '{plan} se cambia por el nombre del plan. Número: Sitio web › WhatsApp.',
+        showIf: { field: 'offline_action', in: [undefined, null, '', 'whatsapp'] },
+      },
+      { key: 'show_description', label: 'Descripción', type: 'boolean', section: 'Qué mostrar en la tarjeta', defaultValue: true },
+      { key: 'show_duration', label: 'Duración', type: 'boolean', section: 'Qué mostrar en la tarjeta', defaultValue: true },
+      { key: 'show_compare_price', label: 'Precio anterior (tachado)', type: 'boolean', section: 'Qué mostrar en la tarjeta', defaultValue: false, helpText: 'Sale del precio anterior del producto del plan.' },
+      { key: 'show_payment_note', label: 'Nota «Pagas en línea…»', type: 'boolean', section: 'Qué mostrar en la tarjeta', defaultValue: true },
+      {
+        key: 'show_sample_plans',
+        label: 'Ver planes de ejemplo en el lienzo',
+        type: 'boolean',
+        section: 'Planes que se muestran',
+        defaultValue: true,
+        helpText: 'Solo aquí en el editor, marcados «Ejemplo», mientras no tengas planes activos. Nunca se publican.',
+      },
       ...GRID_FIELDS,
-      ...CARD_FIELDS_DESCRIPCION_VISIBLE,
+      ...CARD_FIELDS.filter((f) => f.key !== 'show_description' && f.key !== 'show_compare_price'),
     ],
   },
   {

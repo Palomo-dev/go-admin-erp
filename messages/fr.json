@@ -39914,6 +39914,33 @@
           "texto": "Revient à l’apparence actuelle sur ordinateur et mobile. La forme, l’interrupteur et les recherches populaires ne changent pas.",
           "confirmar": "Réinitialiser"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Utilisez les flèches pour réordonner · l'étoile marque « Populaire » (un seul).",
+        "cargando": "Chargement de vos formules…",
+        "error": "Impossible de lire vos formules. Vérifiez la connexion et réessayez.",
+        "reintentar": "Réessayer",
+        "vacioTitulo": "Vous n'avez pas encore de formules actives",
+        "vacioTexto": "Les formules se créent dans Abonnements › Formules avec leur prix, leur durée et leurs avantages. Tant qu'il n'y en a aucune, vos clients ne voient pas cette page.",
+        "crearPlan": "Créer une formule dans Abonnements",
+        "abrirPlanes": "Ouvrir Abonnements › Formules",
+        "notaTitulo": "Les données de la formule sont dans Abonnements",
+        "nota": "Le prix, la durée, les avantages et l'état actif se modifient dans Abonnements › Formules. Ici seulement : l'ordre, celles qui s'affichent et laquelle est « Populaire ».",
+        "enLinea": "En ligne · {precio}",
+        "enLineaSinPrecio": "En ligne",
+        "consulta": "Sans prix · bouton « Demander »",
+        "pausado": "Produit en pause · « Indisponible pour le moment »",
+        "inactivo": "Inactive dans Abonnements · non publiée",
+        "inactivosEtiqueta": "Formules inactives",
+        "oculto": "Masquée dans la boutique",
+        "subir": "Monter {nombre}",
+        "bajar": "Descendre {nombre}",
+        "marcarPopular": "Marquer {nombre} comme « Populaire »",
+        "quitarPopular": "Retirer « Populaire » de {nombre}",
+        "ocultar": "Masquer {nombre} dans la boutique",
+        "mostrar": "Afficher {nombre} dans la boutique",
+        "paginaNoVisibleTitulo": "Cette page n'est pas visible dans la boutique",
+        "paginaNoVisible": "Vous n'avez pas de formules actives : vos clients voient « Cette page n'est pas disponible » et la page sort du menu et du sitemap. Le canevas montre des formules d'exemple."
       }
     },
     "paginas": {

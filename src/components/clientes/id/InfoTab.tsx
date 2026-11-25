@@ -16,6 +16,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
 import { cargoImportado, contactoImportado, departamentoImportado, telefonosAdicionalesDe, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
+import { TarjetaFacturacionCliente } from '@/components/clientes/facturacion/TarjetaFacturacionCliente';
+import { AvisoRevisionFactura } from '@/components/clientes/facturacion/AvisoRevisionFactura';
+import { etiquetaDocumento } from '@/lib/clientes/facturacionElectronica';
 
 interface InfoTabProps {
   clienteId: string;
@@ -83,6 +86,9 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const [municipalityPostalCode, setMunicipalityPostalCode] = useState<string | null>(null);
   const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
   const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string | null; position: string | null; is_primary: boolean }>>([]);
+  // La tarjeta de facturación y el aviso de revisión se recargan juntos; la ficha, tras «Usar este».
+  const [versionFacturacion, setVersionFacturacion] = useState(0);
+  const [recargaFicha, setRecargaFicha] = useState(0);
 
   // Cargar datos completos del cliente
   useEffect(() => {
@@ -191,9 +197,10 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
     };
 
     fetchClienteData();
-  }, [clienteId, organizationId]);
+  }, [clienteId, organizationId, recargaFicha]);
 
-  if (loading) {
+  // Al recargar tras una revisión no se vuelve al esqueleto: la ficha se actualiza en su sitio.
+  if (loading && !clienteInfo) {
     return (
       <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2" aria-busy="true">
         {Array.from({ length: 4 }, (_, i) => (
@@ -224,7 +231,6 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
 
   const roles = clienteInfo.roles || [];
   const rolesFormatted = Array.isArray(roles) && roles.length > 0 ? roles.join(', ') : noEspecificado;
-  const fiscalResp = clienteInfo.fiscal_responsibilities || [];
 
   const isCompany = clienteInfo?.customer_type === 'company';
   const importacion = clienteInfo.metadata?.importacion;
@@ -238,7 +244,6 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const departamento = municipalityState || departamentoImportado(importacion, leadMeta);
   const preferencias = clienteInfo.preferences && typeof clienteInfo.preferences === 'object' ? Object.entries(clienteInfo.preferences) : [];
   const valorPreferencia = (v: unknown) => (v === null || v === undefined ? noEspecificado : typeof v === 'object' ? JSON.stringify(v) : String(v));
-  const hayFiscales = isCompany || !!clienteInfo.company_name || !!clienteInfo.trade_name || clienteInfo.dv != null || fiscalResp.length > 0;
 
   const datosPrincipales = (
     <Seccion
@@ -307,20 +312,18 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
     </Seccion>
   );
 
-  const fiscales = hayFiscales ? (
-    <Seccion
-      titulo={isCompany ? t('info.datosFiscales') : t('info.datosEmpresarialesFiscales')}
-      descripcion={t('info.datosFiscalesDescripcion')}
-      editar={editar}
-    >
-      {!isCompany && <Dato etiqueta={t('info.razonSocial')}>{clienteInfo.company_name || noEspecificado}</Dato>}
-      {!isCompany && <Dato etiqueta={t('info.nombreComercial')}>{clienteInfo.trade_name || noEspecificado}</Dato>}
-      {isCompany && <Dato etiqueta={t('info.razonSocial')}>{clienteInfo.company_name || clienteInfo.full_name || noEspecificado}</Dato>}
-      {isCompany && <Dato etiqueta={t('info.nombreComercial')}>{clienteInfo.trade_name || noEspecificado}</Dato>}
-      <Dato etiqueta={t('info.digitoVerificacion')}>{clienteInfo.dv != null ? clienteInfo.dv : noEspecificado}</Dato>
-      <Dato etiqueta={t('info.responsabilidadFiscal')}>{fiscalResp.length > 0 ? fiscalResp.join(' · ') : noEspecificado}</Dato>
-    </Seccion>
-  ) : null;
+  // «Facturación electrónica» (Figma 06 Clientes 3192-19436) reemplaza a «Datos empresariales y
+  // fiscales» con todos sus datos (razón social, nombre comercial, DV en el documento y
+  // responsabilidades) y se muestra siempre: sin documento, su estado vacío explica que la factura
+  // sale a «Consumidor final».
+  const fiscales = (
+    <TarjetaFacturacionCliente
+      clienteId={clienteInfo.id}
+      organizationId={organizationId}
+      version={versionFacturacion}
+      onCambio={() => setRecargaFicha((n) => n + 1)}
+    />
+  );
 
   const preferenciasContacto = (
     <Seccion titulo={t('info.preferenciasContacto')} descripcion={t('info.preferenciasDescripcion')} editar={editar} soloLectura={t('info.soloLectura')}>
@@ -354,6 +357,18 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Pedido web con otro documento para la factura (Figma 3192-19702): usar, ligar o mantener. */}
+      <AvisoRevisionFactura
+        clienteId={clienteInfo.id}
+        organizationId={organizationId}
+        documentoFicha={etiquetaDocumento(clienteInfo)}
+        esPersona={!isCompany}
+        version={versionFacturacion}
+        onRevisado={() => {
+          setVersionFacturacion((n) => n + 1);
+          setRecargaFicha((n) => n + 1);
+        }}
+      />
       {/* Figma 331:113517: dos columnas de tarjetas que se apilan en móvil. */}
       <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
         <div className="flex flex-col gap-3">

@@ -45,6 +45,7 @@ import { useIntentosPago } from '@/components/pos/pedidos-online/pagos/useIntent
 import { BotonReenviarEnlace } from '@/components/pos/pedidos-online/pagos/TarjetaPagosIntentos';
 import { estadoTarjetaPagos } from '@/lib/pos/pedidosWeb/intentosPago';
 import { cn } from '@/utils/Utils';
+import { FranjaRevisionFactura, TarjetaFacturaPedido } from '@/components/clientes/facturacion/TarjetaFacturaPedido';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
@@ -209,6 +210,8 @@ export default function WebOrderDetailPage() {
         onReenviarAviso={() => void reenviarAviso()}
         onCancelar={['pending', 'confirmed'].includes(order.status) || (['preparing', 'ready'].includes(order.status) && order.payment_status !== 'paid') ? () => setCancelDialogOpen(true) : undefined}
       />
+      {/* Factura electrónica con otro documento que la ficha (Figma 06 Clientes 3193-20582): «Revisar» baja a la tarjeta. */}
+      <FranjaRevisionFactura order={order} />
       {/* Contraentrega con anticipo pendiente (Figma 3014:194407 › 06): vence y se cancela solo. */}
       <AvisoAnticipoPendiente order={order} timezone={timezone} />
       {/* Anticipo pagado con el pedido vencido (Figma 3181-202769 › 05): reactivar o devolver. */}
@@ -308,6 +311,8 @@ export default function WebOrderDetailPage() {
             {tarjetaPagos(false)}
           </div>
           <OrderCustomerCard order={order} />
+          {/* «Factura electrónica» (Figma 06 Clientes 3193-20582): lo que pidió el comprador y la revisión. */}
+          <TarjetaFacturaPedido order={order} onCambio={() => void loadOrder()} />
           {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
           {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
           <OrderDeliveryCard

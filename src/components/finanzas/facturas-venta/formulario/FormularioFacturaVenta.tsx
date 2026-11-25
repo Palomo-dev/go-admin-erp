@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { AvisoRutNoResponsable } from '@/components/clientes/facturacion/AvisoRutNoResponsable';
 import { Barcode, Copy, FileMinus, FileText, Landmark, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
 import { DialogoCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/DialogoCuentaLinea';
 import { InterruptorCuentas, PieCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/PiezasCuentaLinea';
@@ -1071,6 +1072,11 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
             </FormField>
           )}
           <div className="flex flex-col gap-3 md:col-span-2">
+            {/* Empresa marcada 49 en el RUT que factura con IVA: aviso para pasar a 48 (no bloquea). */}
+            <AvisoRutNoResponsable
+              organizationId={getOrganizationId()}
+              lineas={lineas.flatMap((l) => l.impuestos.map((i) => ({ tax_rate: i.tarifa, tax_code: i.codigo })))}
+            />
             <label className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2.5 text-sm text-fg">
               <span className="flex flex-col">
                 <span className="flex items-center gap-2 font-medium">

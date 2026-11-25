@@ -33,6 +33,7 @@ import {
   type FactusPaymentDetail,
   type FactusSupportDocumentRequest,
 } from '@/lib/services/factusService';
+import { responsabilidadesParaDian, tributoDianCliente } from '@/lib/clientes/facturacionElectronica';
 
 // ─── Utilidades numéricas ────────────────────────────────────────────────────
 
@@ -212,7 +213,8 @@ export interface ClienteDocumento {
  */
 export function mapearCliente(cliente: ClienteDocumento | null | undefined, municipioCliente: string): FactusCustomer {
   const identificacion = (cliente?.identification_number || '').trim();
-  const responsabilidades = (cliente?.fiscal_responsibilities || []).filter((r) => typeof r === 'string' && r.trim().length > 0);
+  // Sin O-48 / O-49: la responsabilidad de IVA viaja como tributo (ver `tributoDianCliente`).
+  const responsabilidades = responsabilidadesParaDian(cliente?.fiscal_responsibilities);
 
   if (!cliente || !identificacion) {
     return {
@@ -243,10 +245,11 @@ export function mapearCliente(cliente: ClienteDocumento | null | undefined, muni
     ...(correo ? { email: correo } : {}),
     ...(cliente.phone ? { phone: cliente.phone } : {}),
     legal_organization_code: esEmpresa ? '1' : '2',
-    tribute_code: mapTribute(cliente.tribute_id ?? null),
+    // Responsabilidad de IVA del RUT (48 → «01», 49 → «ZZ»); sin ella, el tributo de la ficha.
+    tribute_code: tributoDianCliente(cliente.fiscal_responsibilities) ?? mapTribute(cliente.tribute_id ?? null),
     country_code: 'CO',
     municipality_code: municipioCliente,
-    responsibilities: responsabilidades.length > 0 ? responsabilidades : ['R-99-PN'],
+    responsibilities: responsabilidades,
   };
 }
 

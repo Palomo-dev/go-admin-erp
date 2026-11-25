@@ -28,6 +28,7 @@ import { todayInTz, toPlainDate } from '@/lib/utils/dateDisplay';
 import { obtenerAccesoFactus, invalidarAcceso, FacturacionNoActivadaError, verificarPendientesDeActivacion, type AccesoFactus } from './accesoFactus.server';
 import { clasificarHttp, decidirTrasFallo, type ClaseFallo } from './politicaReintentos';
 import { leerResultadoFactus } from './respuestaFactus';
+import { rutNoResponsableConIva } from '@/lib/clientes/facturacionElectronica';
 import {
   construirFactura,
   construirNotaCredito,
@@ -222,17 +223,17 @@ interface ContextoOrganizacion {
   tz: string;
   hoy: string;
   municipioOrg: string | null;
-  org: { name?: string | null; address?: string | null; phone?: string | null; email?: string | null };
+  org: { name?: string | null; address?: string | null; phone?: string | null; email?: string | null; fiscal_responsibilities?: string[] | null };
 }
 
 async function contextoOrganizacion(db: SupabaseClient, organizationId: number): Promise<ContextoOrganizacion> {
   const tz = await getOrganizationTimezone(organizationId, db);
   const { data: org } = await db
     .from('organizations')
-    .select('name, address, phone, email, municipality_id')
+    .select('name, address, phone, email, municipality_id, fiscal_responsibilities')
     .eq('id', organizationId)
     .maybeSingle();
-  const o = (org ?? {}) as { name?: string; address?: string; phone?: string; email?: string; municipality_id?: string };
+  const o = (org ?? {}) as { name?: string; address?: string; phone?: string; email?: string; municipality_id?: string; fiscal_responsibilities?: string[] | null };
   return { tz, hoy: todayInTz(tz), municipioOrg: await codigoMunicipio(db, o.municipality_id), org: o };
 }
 
@@ -365,6 +366,15 @@ async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<
     await db.from('invoice_sales').update({ reference_code: referencia }).eq('id', f.id as string).eq('organization_id', job.organization_id);
   }
 
+  // La empresa que factura marcada 49 (no responsable de IVA) en su RUT no debería cobrar IVA: se
+  // avisa que actualice el RUT a 48. Nunca bloquea el envío (decisión del dueño 2026-11-25). Se mira
+  // el RUT de hoy (la ficha de la organización, ya leída): el aviso es para que lo actualice ahora;
+  // el payload no cambia ni se consulta el perfil por vigencias (ver responsabilidadesEmisorPayload).
+  const avisos: string[] = eleccion.aviso ? [eleccion.aviso] : [];
+  if (rutNoResponsableConIva(ctx.org.fiscal_responsibilities ?? null, (lineas as LineaDocumento[] | null) ?? [])) {
+    avisos.push('La empresa está marcada 49 (no responsable de IVA) en su RUT y esta factura lleva IVA: actualice el RUT a 48 (responsable de IVA).');
+  }
+
   const { payload, total } = construirFactura({
     factura: f as never,
     lineas: await conCodigosUnidad(db, lineas as LineaDocumento[] | null),
@@ -379,7 +389,7 @@ async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<
     tipo: 'invoice',
     referencia,
     payload,
-    avisos: eleccion.aviso ? [eleccion.aviso] : [],
+    avisos,
     meta: {
       rango: eleccion.rango!.prefix,
       total_calculado: total,

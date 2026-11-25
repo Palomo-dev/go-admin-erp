@@ -35,7 +35,9 @@ import {
 import { AssignDeliveryDialog, cobroDelPedido } from '@/components/pos/pedidos-online';
 import { ValoracionVisitaCard } from '@/components/pos/mesas/solicitudes/ValoracionVisitaCard';
 import { usePermissionContext } from '@/hooks/usePermissionContext';
-import { AvisoAnticipoPendiente, TarjetaContraentrega } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
+import { AvisoAnticipoPendiente, TarjetaContraentrega, pagoDelAnticipo } from '@/components/pos/pedidos-online/contraentrega/TarjetaContraentrega';
+import { PanelAnticipoVencido, TarjetaAnticipoVencido } from '@/components/pos/pedidos-online/anticipoVencido/AnticipoVencidoDetalle';
+import { anticipoPagadoVencido } from '@/lib/pos/pedidosWeb/anticipoVencido';
 import { seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
 import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
@@ -53,6 +55,9 @@ const irA = (id: string) => document.getElementById(id)?.scrollIntoView({ behavi
 export default function WebOrderDetailPage() {
   const params = useParams();
   const orderId = params?.id as string;
+  // Anticipo pagado con el pedido vencido (Figma 3181-202769 › 05–08): diálogos de la página.
+  const [reactivarAbierto, setReactivarAbierto] = useState(false);
+  const [devolverAbierto, setDevolverAbierto] = useState(false);
   const { timezone } = useOrgTimezone();
 
   const {
@@ -121,6 +126,8 @@ export default function WebOrderDetailPage() {
   // Caja de la sede a la que entra el cobro (fn_caja_abierta_para, la regla de la RPC).
   // Sin E4 aplicada el cobro usa el respaldo sin caja: no se anuncia caja ni se bloquea.
   const cobro = cobroDelPedido(order);
+  const anticipoVencido = anticipoPagadoVencido(order);
+  const pagadoAnticipoEn = anticipoVencido ? pagoDelAnticipo(order, trazabilidad.pagos)?.fecha ?? null : null;
   // «Cambiar productos»: pagado, sin despachar, no de mesa, con permiso y sin líneas libres.
   const puedeCambiarProductos =
     cambios.puedeCambiar &&
@@ -204,6 +211,23 @@ export default function WebOrderDetailPage() {
       />
       {/* Contraentrega con anticipo pendiente (Figma 3014:194407 › 06): vence y se cancela solo. */}
       <AvisoAnticipoPendiente order={order} timezone={timezone} />
+      {/* Anticipo pagado con el pedido vencido (Figma 3181-202769 › 05): reactivar o devolver. */}
+      {anticipoVencido && (
+        <PanelAnticipoVencido
+          order={order}
+          timezone={timezone}
+          pagadoEn={pagadoAnticipoEn}
+          reactivarAbierto={reactivarAbierto}
+          onReactivarAbierto={setReactivarAbierto}
+          devolverAbierto={devolverAbierto}
+          onDevolverAbierto={setDevolverAbierto}
+          onConfirmar={() => setConfirmDialogOpen(true)}
+          onHecho={(ok, mensaje) => {
+            toast(ok ? { title: mensaje } : { title: mensaje, variant: 'destructive' });
+            if (ok) void loadOrder();
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
@@ -260,14 +284,24 @@ export default function WebOrderDetailPage() {
           )}
           {/* «Pago contra entrega» (Figma 3014:194407 › 05/06): solo en pedidos contraentrega. */}
           <div id={ID_CONTRAENTREGA} className="scroll-mt-20 empty:hidden">
-            <TarjetaContraentrega
-              order={order}
-              timezone={timezone}
-              onCambio={() => void loadOrder()}
-              pagos={trazabilidad.pagos}
-              onVerAnticipo={() => irA(ID_PAGOS_PEDIDO)}
-              onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? () => abrirCobro(false) : undefined}
-            />
+            {anticipoVencido ? (
+              <TarjetaAnticipoVencido
+                order={order}
+                timezone={timezone}
+                pagadoEn={pagadoAnticipoEn}
+                onReactivar={() => setReactivarAbierto(true)}
+                onDevolver={() => setDevolverAbierto(true)}
+              />
+            ) : (
+              <TarjetaContraentrega
+                order={order}
+                timezone={timezone}
+                onCambio={() => void loadOrder()}
+                pagos={trazabilidad.pagos}
+                onVerAnticipo={() => irA(ID_PAGOS_PEDIDO)}
+                onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? () => abrirCobro(false) : undefined}
+              />
+            )}
           </div>
           {/* «Pagos» arriba de Cliente y Entrega (Figma 2725:192149). Con pago rechazado, en el celular va arriba. */}
           <div id={ID_PAGOS_PEDIDO} className={cn('scroll-mt-20', pagoRechazado && 'hidden lg:block')}>

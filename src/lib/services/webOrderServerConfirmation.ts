@@ -87,6 +87,11 @@ export interface ServerConfirmResult {
    * (`membresia_sin_cliente`) o `error_activacion`. Queda en el log del servidor.
    */
   membresiaError?: string;
+  /**
+   * El anticipo llegó con el pedido vencido y la base no lo reactivó (sin stock o más de 24 h):
+   * «Anticipo pagado · vencido». No se confirmó nada; decide una persona (20261125121000).
+   */
+  anticipoVencido?: boolean;
 }
 
 /**
@@ -388,6 +393,9 @@ export const webOrderServerConfirmation = {
       } else if (decision === 'ya_confirmado') {
         // Reintento, o ya lo confirmó una persona: nada que hacer.
         return { saleId: order.sale_id ?? '', stockErrors: [] };
+      } else if (decision === 'anticipo_vencido') {
+        // Anticipo pagado con el pedido vencido y sin reactivar: nada que confirmar.
+        return { saleId: '', stockErrors: [], anticipoVencido: true };
       } else {
         throw new Error(`El pedido ${order.order_number} no está pagado (status: ${order.payment_status})`);
       }

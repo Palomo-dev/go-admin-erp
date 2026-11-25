@@ -103,9 +103,12 @@ export function seCobraAlEntregar(o: PedidoContraentrega): boolean {
  * - `confirmar`: contraentrega con el anticipo pagado, pago parcial (falta lo de la puerta) y aún
  *   «Pendiente» → se confirma con la misma regla que el botón «Confirmar pedido».
  * - `ya_confirmado`: el mismo pedido ya avanzó (lo confirmó una persona, o un reintento): nada.
+ * - `anticipo_vencido` (2026-11-25, base 20261125121000): el anticipo llegó con el pedido VENCIDO y
+ *   la base no lo pudo reactivar (sin stock o más de 24 h): «Anticipo pagado · vencido». No se
+ *   confirma; se avisa al cliente que lo estamos revisando y decide una persona.
  * - `no_aplica`: cualquier otro pedido (sin anticipo, anticipo sin pagar, de pasarela, cerrado…).
  */
-export type DecisionConfirmacionAnticipo = 'confirmar' | 'ya_confirmado' | 'no_aplica';
+export type DecisionConfirmacionAnticipo = 'confirmar' | 'ya_confirmado' | 'anticipo_vencido' | 'no_aplica';
 
 const AVANZADOS: ReadonlySet<string> = new Set(['confirmed', 'preparing', 'ready', 'in_delivery', 'delivered']);
 
@@ -114,6 +117,7 @@ export function confirmacionPorAnticipo(o: PedidoContraentrega): DecisionConfirm
     return 'no_aplica';
   }
   if (o.status === 'pending') return 'confirmar';
+  if (o.status === 'expired') return 'anticipo_vencido';
   return AVANZADOS.has(o.status ?? '') ? 'ya_confirmado' : 'no_aplica';
 }
 

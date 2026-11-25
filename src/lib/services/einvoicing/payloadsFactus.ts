@@ -197,6 +197,8 @@ export interface ClienteDocumento {
   last_name?: string | null;
   address?: string | null;
   email?: string | null;
+  /** Correo de la factura electrónica si es distinto del de contacto (20261125061424). */
+  billing_email?: string | null;
   phone?: string | null;
   customer_type?: string | null;
   legal_organization_id?: number | null;
@@ -229,6 +231,7 @@ export function mapearCliente(cliente: ClienteDocumento | null | undefined, muni
 
   const esEmpresa = cliente.customer_type === 'company' || cliente.customer_type === 'empresa' || cliente.legal_organization_id === 1;
   const nombres = `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
+  const correo = (cliente.billing_email || '').trim() || cliente.email;
   return {
     identification_document_code: mapIdentificationType(cliente.identification_type || undefined),
     identification: identificacion,
@@ -237,13 +240,96 @@ export function mapearCliente(cliente: ClienteDocumento | null | undefined, muni
     ...(cliente.trade_name ? { trade_name: cliente.trade_name } : {}),
     names: nombres || cliente.company_name || 'Cliente',
     address: (cliente.address || '').trim() || 'No informado',
-    ...(cliente.email ? { email: cliente.email } : {}),
+    ...(correo ? { email: correo } : {}),
     ...(cliente.phone ? { phone: cliente.phone } : {}),
     legal_organization_code: esEmpresa ? '1' : '2',
     tribute_code: mapTribute(cliente.tribute_id ?? null),
     country_code: 'CO',
     municipality_code: municipioCliente,
     responsibilities: responsabilidades.length > 0 ? responsabilidades : ['R-99-PN'],
+  };
+}
+
+// ─── Factura pedida en el checkout de la tienda web ──────────────────────────
+
+/**
+ * `web_orders.billing_data` (migración 20261125061424): la factura electrónica que el comprador
+ * pidió en el checkout de la tienda («Necesito factura a nombre de empresa»). La escribe
+ * `fn_web_order_documento_cliente` al crear el pedido.
+ */
+export interface FacturaPedidoWeb {
+  tipo: 'NIT' | 'CC' | 'CE' | 'PA';
+  numero: string;
+  dv: number | null;
+  razon_social: string;
+  correo: string;
+  /** Ficha que factura (la persona, o la empresa del NIT); null si no se pudo guardar en ninguna. */
+  customer_id: string | null;
+}
+
+const TIPO_ERP_FACTURA_PEDIDO: Record<FacturaPedidoWeb['tipo'], string> = { NIT: 'nit', CC: 'cc', CE: 'ce', PA: 'passport' };
+
+const texto = (v: unknown): string => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : '');
+
+/** `billing_data` leído de la base; null si no hay factura pedida o está incompleta. */
+export function leerFacturaPedidoWeb(valor: unknown): FacturaPedidoWeb | null {
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return null;
+  const v = valor as Record<string, unknown>;
+  const tipo = texto(v.tipo).toUpperCase();
+  if (!(tipo in TIPO_ERP_FACTURA_PEDIDO)) return null;
+  const numero = texto(v.numero);
+  const razon = texto(v.razon_social);
+  const correo = texto(v.correo);
+  if (!numero || !razon || !correo) return null;
+  const dv = Number.parseInt(texto(v.dv), 10);
+  return {
+    tipo: tipo as FacturaPedidoWeb['tipo'],
+    numero,
+    dv: tipo === 'NIT' && Number.isInteger(dv) ? dv : null,
+    razon_social: razon,
+    correo,
+    customer_id: texto(v.customer_id) || null,
+  };
+}
+
+const claveDocumento = (v: unknown): string => texto(v).toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/**
+ * Adquiriente de la factura de un pedido web con factura pedida en el checkout. Manda lo del
+ * pedido: documento, nombre o razón social y correo (aunque la ficha del cliente tenga otro
+ * documento: ese caso quedó marcado para revisión en el pedido, y la factura sale como la pidió el
+ * comprador). De la ficha que factura (`fichaFactura`, la de `billing_data.customer_id`) solo se
+ * toman los datos fiscales que el checkout no pide (tributo, responsabilidades, nombre comercial,
+ * tipo de persona), y solo si su documento es el del pedido. Dirección y teléfono: los de esa
+ * ficha o, si no, los del cliente de la factura. Sin factura pedida: el cliente de la factura,
+ * como siempre.
+ */
+export function clienteFacturaPedidoWeb(
+  factura: FacturaPedidoWeb | null,
+  clienteFactura: ClienteDocumento | null | undefined,
+  fichaFactura?: (ClienteDocumento & { id?: string | null }) | null,
+): ClienteDocumento | null {
+  if (!factura) return clienteFactura ?? null;
+  const claves = [claveDocumento(factura.numero), factura.dv !== null ? claveDocumento(`${factura.numero}${factura.dv}`) : ''].filter(Boolean);
+  const ficha = fichaFactura && claves.includes(claveDocumento(fichaFactura.identification_number)) ? fichaFactura : null;
+  const esEmpresa =
+    factura.tipo === 'NIT' &&
+    (ficha ? ficha.customer_type === 'company' || ficha.customer_type === 'empresa' || ficha.legal_organization_id === 1 : true);
+  return {
+    identification_type: TIPO_ERP_FACTURA_PEDIDO[factura.tipo],
+    identification_number: factura.numero,
+    dv: factura.tipo === 'NIT' ? factura.dv : null,
+    company_name: esEmpresa ? factura.razon_social : null,
+    trade_name: ficha?.trade_name ?? null,
+    first_name: factura.razon_social,
+    last_name: '',
+    address: ficha?.address || clienteFactura?.address || null,
+    email: factura.correo,
+    phone: ficha?.phone || clienteFactura?.phone || null,
+    customer_type: esEmpresa ? 'company' : 'person',
+    legal_organization_id: esEmpresa ? 1 : 2,
+    tribute_id: ficha?.tribute_id ?? null,
+    fiscal_responsibilities: ficha?.fiscal_responsibilities ?? null,
   };
 }
 

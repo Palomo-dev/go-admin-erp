@@ -94,6 +94,9 @@ import { estimacionEnZona, formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { todayInTz } from '@/lib/utils/dateCore';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
 import { esPedidoContraentrega, porCobrarAlEntregar, seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { anticipoPagadoVencido } from '@/lib/pos/pedidosWeb/anticipoVencido';
+import { listarAnticiposVencidos, type PedidoAnticipoVencidoFila } from '@/lib/services/anticipoVencidoCliente';
+import { AvisoAnticiposVencidos } from '@/components/pos/pedidos-online/anticipoVencido/AnticipoVencidoListado';
 import { useTiemposPedidos } from '@/components/pos/pedidos-online/tiempos/useTiemposPedidos';
 import { aMs, aTiempoDialogo, resolverTiempos, verticalDeTipo } from '@/lib/pos/pedidosWeb/tiemposPedidos';
 
@@ -104,6 +107,8 @@ interface FiltrosListado {
   payment_status?: PaymentStatus;
   /** «Pago: contraentrega» (Figma 3014:194407 › 04). Se aplica sobre lo cargado, no en la consulta. */
   contraentrega?: boolean;
+  /** «Pago: pagado · vencido» (Figma 3181-204030): anticipo pagado con el pedido vencido. Sobre lo cargado. */
+  anticipoVencido?: boolean;
 }
 
 const ESTADOS_FILTRO: readonly WebOrderStatus[] = ['pending', 'confirmed', 'preparing', 'ready', 'in_delivery', 'delivered', 'cancelled'];
@@ -139,6 +144,9 @@ export default function PedidosOnlinePage() {
   const tPedido = useTranslations('pedidoWeb');
   const tManual = useTranslations('pedidosManuales');
   const tCod = useTranslations('contraentregaPedidos');
+  const tVen = useTranslations('anticipoVencido');
+  // «Anticipo pagado · vencido» de la organización, de cualquier fecha (StatCard y aviso).
+  const [vencidos, setVencidos] = useState<PedidoAnticipoVencidoFila[]>([]);
   const migaVentas = useMigaVentas();
   // Pedido manual y reconstrucción de pedidos pagados (Pedidos online · pagos sin pedido).
   const [manualAbierto, setManualAbierto] = useState(false);
@@ -278,7 +286,14 @@ export default function PedidosOnlinePage() {
         anterior ? webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined) : Promise.resolve(null),
       ]);
       // «Pago: contraentrega»: filtro sobre lo cargado. Sin él, la lista de siempre.
-      setOrders(filtros.contraentrega ? ordersData.filter(esPedidoContraentrega) : ordersData);
+      const cargados = filtros.contraentrega ? ordersData.filter(esPedidoContraentrega) : ordersData;
+      // «Pago: pagado · vencido» (2026-11-25): igual, sobre lo cargado.
+      setOrders(filtros.anticipoVencido ? cargados.filter(anticipoPagadoVencido) : cargados);
+      if (organization?.id) {
+        setVencidos(await listarAnticiposVencidos(organization.id, branchFilter ?? null));
+      } else {
+        setVencidos([]);
+      }
       setStats(statsData);
       setPreviousStats(prevStatsData);
       setErrorCarga(false);
@@ -289,7 +304,7 @@ export default function PedidosOnlinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros, busqueda, rangos, branchFilter]);
+  }, [filtros, busqueda, rangos, branchFilter, organization?.id]);
 
   useEffect(() => {
     setLoading(true);
@@ -675,6 +690,7 @@ export default function PedidosOnlinePage() {
     filtros.source ? { clave: 'source', etiqueta: t('chips.origen', { valor: t(`origenes.${filtros.source}`) }) } : null,
     filtros.payment_status ? { clave: 'payment_status', etiqueta: t('chips.pago', { valor: t(`pagos.${filtros.payment_status}`) }) } : null,
     filtros.contraentrega ? { clave: 'contraentrega', etiqueta: tCod('filtro.chip') } : null,
+    filtros.anticipoVencido ? { clave: 'anticipoVencido', etiqueta: tVen('lista.filtroChip') } : null,
   ].filter((c): c is ChipFiltro => c !== null && (c.clave !== 'periodo' || periodo !== 'all'));
 
   const quitarChip = (clave: string) => {
@@ -867,7 +883,7 @@ export default function PedidosOnlinePage() {
         }
       />
 
-      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={hayContraentrega ? 7 : 6} className="hidden sm:grid">
+      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={hayContraentrega || vencidos.length > 0 ? 7 : 6} className="hidden sm:grid">
         <StatCard
           tamano="sm"
           etiqueta={periodo === 'today' ? t('kpis.pedidosHoy') : t('kpis.pedidos')}
@@ -932,7 +948,26 @@ export default function PedidosOnlinePage() {
             onClick={() => setFiltros((f) => ({ ...f, contraentrega: f.contraentrega ? undefined : true }))}
           />
         )}
+        {vencidos.length > 0 && (
+          <StatCard
+            tamano="sm"
+            etiqueta={tVen('lista.kpi')}
+            cargando={kpiCargando}
+            valor={vencidos.length.toLocaleString('es-CO')}
+            tono="peligro"
+            iconoDetalle={TriangleAlert}
+            detalle={tVen('lista.kpiDetalle')}
+            resaltada={!!filtros.anticipoVencido}
+            onClick={() => {
+              // Pueden ser de días anteriores: el filtro mira todo el periodo.
+              if (!filtros.anticipoVencido) setPeriodo('all');
+              setFiltros((f) => ({ ...f, anticipoVencido: f.anticipoVencido ? undefined : true }));
+            }}
+          />
+        )}
       </KpiStrip>
+
+      <AvisoAnticiposVencidos pedidos={vencidos} formatear={moneda.formatear} onVer={handleViewDetails} />
 
       <ListToolbar
         busqueda={
@@ -978,6 +1013,7 @@ export default function PedidosOnlinePage() {
             {campoSelect(t('filtros.origen'), filtros.source, ORIGENES_FILTRO, (v) => t(`origenes.${v}`), (v) => setFiltros((f) => ({ ...f, source: v as OrderSource | undefined })))}
             {campoSelect(t('filtros.pago'), filtros.payment_status, PAGOS_FILTRO, (v) => t(`pagos.${v}`), (v) => setFiltros((f) => ({ ...f, payment_status: v as PaymentStatus | undefined })))}
             {campoSelect(tCod('filtro.etiqueta'), filtros.contraentrega ? 'si' : undefined, ['si'], () => tCod('filtro.solo'), (v) => setFiltros((f) => ({ ...f, contraentrega: v ? true : undefined })))}
+            {campoSelect(tVen('lista.filtroEtiqueta'), filtros.anticipoVencido ? 'si' : undefined, ['si'], () => tVen('lista.filtroSolo'), (v) => setFiltros((f) => ({ ...f, anticipoVencido: v ? true : undefined })))}
           </FilterPanel>
         }
         chips={chips.length > 0 ? <FilterChips chips={chips} onQuitar={quitarChip} onLimpiarTodo={limpiarFiltros} /> : undefined}

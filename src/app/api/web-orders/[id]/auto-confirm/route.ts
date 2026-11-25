@@ -3,6 +3,7 @@ import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webh
 import { webOrderServerConfirmation } from '@/lib/services/webOrderServerConfirmation';
 import { avisarPagoConfirmadoPasarela } from '@/lib/services/orderStatusEmailService';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { avisarTrasAutoConfirmAnticipo } from '@/lib/services/avisosAnticipoVencido';
 
 /**
  * POST /api/web-orders/[id]/auto-confirm
@@ -49,7 +50,14 @@ export async function POST(
     // Aviso al cliente de que su pedido quedó confirmado (best-effort, nunca
     // falla la confirmación). El correo «Pago confirmado» lo manda la tienda
     // web desde el webhook; aquí sale lo demás (WhatsApp) una sola vez.
-    await avisarPagoConfirmadoPasarela(getServiceClient(), orderId);
+    // Anticipo pagado con el pedido vencido (20261125121000): «lo estamos revisando» si quedó
+    // vencido, o «sigue en pie» si la base lo reactivó, en lugar del «confirmado» de siempre.
+    const db = getServiceClient();
+    if (!(await avisarTrasAutoConfirmAnticipo(db, orderId, result))) {
+      await avisarPagoConfirmadoPasarela(db, orderId);
+    } else {
+      // Ya salió el aviso del anticipo tardío.
+    }
 
     return NextResponse.json({
       success: true,

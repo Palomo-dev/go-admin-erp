@@ -72555,5 +72555,98 @@
         "asignarPin": "Asignar PIN en Recursos humanos"
       }
     }
+  },
+  "anticipoVencido": {
+    "lista": {
+      "insignia": "Pagado · vencido",
+      "detalle": "Devolver o reactivar",
+      "cliente": "El cliente",
+      "aviso": "{numero}: {cliente} pagó el anticipo de {monto} después de que el pedido venció. Reactívalo o devuelve el anticipo.",
+      "avisoVarios": "{n} pedidos con el anticipo pagado después de vencer: reactívalos o devuelve el anticipo.",
+      "verPedido": "Ver pedido",
+      "kpi": "Pagado · vencido",
+      "kpiDetalle": "Reactivar o devolver",
+      "filtroChip": "Pago: pagado · vencido",
+      "filtroEtiqueta": "Anticipo pagado con el pedido vencido",
+      "filtroSolo": "Solo pagado · vencido"
+    },
+    "detalle": {
+      "titulo": "El cliente pagó el anticipo después de que el pedido venció",
+      "tituloSinStock": "El cliente pagó el anticipo después de que el pedido venció, y ya no hay stock",
+      "texto": "{cliente} pagó {monto} {tarde}. Al vencer se liberó la reserva. El dinero ya entró: reactiva el pedido o devuelve el anticipo.",
+      "minTarde": "{min} min después de vencer",
+      "tarde": "después de vencer",
+      "reactivar": "Reactivar pedido…",
+      "devolver": "Devolver anticipo…",
+      "cargandoStock": "Revisando el stock de la sede…",
+      "linea": {
+        "disponible": "Disponible",
+        "parcial": "Hay {hay} de {pide}",
+        "sin_stock": "Sin stock · {hay} de {pide}"
+      }
+    },
+    "tarjeta": {
+      "titulo": "Pago contra entrega",
+      "estado": "Estado",
+      "estadoValor": "Anticipo pagado · pedido vencido",
+      "anticipo": "Anticipo",
+      "referencia": "Referencia",
+      "fecha": "Fecha",
+      "porDevolver": "Por devolver o aplicar",
+      "contabilidad": "Contabilidad",
+      "cuenta": "2805 Anticipos de clientes",
+      "nota": "El dinero está en la pasarela y el anticipo en 2805. Si reactivas, sigue en 2805 y se aplica en la factura al entregar. Si devuelves, sale de 2805; la comisión de la pasarela no vuelve y queda como gasto."
+    },
+    "reactivar": {
+      "titulo": "Reactivar pedido {numero}",
+      "descripcion": "Se aparta el stock de todas las líneas y el pedido queda confirmado, con el anticipo aplicado.",
+      "continuar": "Continuar a confirmar",
+      "motivoDeshabilitado": "Falta stock de algún producto",
+      "listo": "Hay stock de todo: al continuar se confirma como siempre (venta, stock apartado y envío por el resto).",
+      "faltan": "{n, plural, one {Falta # producto} other {Faltan # productos}}. Ajusta el inventario o espera la reposición y vuelve a intentarlo; el reemplazo por otro producto llega en la siguiente fase."
+    },
+    "devolver": {
+      "titulo": "Devolver anticipo de {numero}",
+      "descripcion": "{cliente} pagó {monto} con {medio} el {fecha}.",
+      "monto": "Monto a devolver",
+      "montoAyuda": "Se devuelve completo: el pedido no se pudo atender.",
+      "medio": "Medio de devolución",
+      "pasarela": "Reverso en {pasarela}, al mismo medio",
+      "laPasarela": "la pasarela",
+      "pasarelaAyuda": "Haz el reverso en el panel de la pasarela y escribe aquí su número. Tarda unos días hábiles en llegarle al cliente.",
+      "transferencia": "Transferencia",
+      "transferenciaAyuda": "Pide la cuenta al cliente, transfiere y escribe aquí el número del comprobante.",
+      "referencia": "Número del reverso o del comprobante",
+      "devuelves": "Devuelves a {cliente}",
+      "comision": "¿La comisión de la pasarela vuelve?",
+      "comisionNo": "No: queda como gasto de la tienda",
+      "asiento": "Asiento que se registra",
+      "cuenta": "Cuenta",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "cuenta2805": "2805 Anticipos recibidos de clientes · {cliente}",
+      "cuentaPasarela": "138020xx {pasarela} por cobrar",
+      "cuentaBanco": "1110 Bancos",
+      "notaAsiento": "La comisión ya quedó como gasto (53051501) cuando la pasarela liquidó el pago: no se reversa.",
+      "motivo": "Motivo",
+      "motivoPorDefecto": "Sin stock: pagó el anticipo después de vencer",
+      "avisar": "Avisar a {cliente} por correo y WhatsApp",
+      "confirmar": "Devolver {monto}",
+      "hecho": "Anticipo devuelto: {monto}",
+      "yaRegistrado": "Esa devolución ya estaba registrada.",
+      "errores": {
+        "SIN_PERMISO": "No tienes permiso de devoluciones.",
+        "NO_ES_ANTICIPO_VENCIDO": "Este pedido ya no está vencido con el anticipo pagado.",
+        "YA_DEVUELTO": "El anticipo ya se devolvió.",
+        "MEDIO_INVALIDO": "Elige el medio de devolución.",
+        "COMPROBANTE_REQUERIDO": "Escribe el número del reverso o del comprobante.",
+        "ANTICIPO_SIN_PAGO": "No se encontró el pago del anticipo.",
+        "ANTICIPO_SIN_2805": "El anticipo no quedó en la cuenta 2805: revisa el asiento con el contador antes de devolver.",
+        "DEVOLUCION_COMPLETA": "El anticipo se devuelve completo.",
+        "CUENTA_NO_RESUELTA": "No se encontró la cuenta del dinero (pasarela o banco).",
+        "ASIENTO_NO_REGISTRADO": "No se pudo registrar el asiento (¿periodo cerrado?). No se guardó nada.",
+        "desconocido": "No se pudo registrar la devolución. Inténtalo de nuevo."
+      }
+    }
   }
 }

@@ -17,6 +17,7 @@ import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
 import { PagoContraentregaCelda, muestraCeldaContraentrega } from '@/components/pos/pedidos-online/contraentrega/PagoContraentregaCelda';
 import { PagoPasarelaCelda, muestraCeldaPasarela } from '@/components/pos/pedidos-online/listado/PagoPasarelaCelda';
+import { PagoVencidoCelda, muestraCeldaAnticipoVencido } from '@/components/pos/pedidos-online/anticipoVencido/AnticipoVencidoListado';
 import { ICONO_PREPARAR, useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 import { claveEstadoPedido, claveRubro, type RubroPedidos } from '@/lib/pos/pedidosWeb/rubroPedidos';
 
@@ -239,7 +240,10 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
       id: 'pago',
       encabezado: t('columnas.pago'),
       celda: (o) =>
-        // Contraentrega abierta (Figma 3014:194407 › 04): «Cobrar $ X» o «Anticipo vence HH:MM».
+        // Anticipo pagado con el pedido vencido (Figma 3181-202796): «Pagado · vencido».
+        muestraCeldaAnticipoVencido(o) ? (
+          <PagoVencidoCelda />
+        ) : // Contraentrega abierta (Figma 3014:194407 › 04): «Cobrar $ X» o «Anticipo vence HH:MM».
         muestraCeldaContraentrega(o) ? (
           <PagoContraentregaCelda pedido={o} timezone={timezone} formatear={formatear} />
         ) : muestraCeldaPasarela(o) ? (

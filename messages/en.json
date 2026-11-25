@@ -39271,6 +39271,7 @@
           "circle": "Circle",
           "square": "Square"
         },
+        "fondoAyudaCabecera": "It doesn't change the magnifier inside the search bar: only standalone icons (cart, account, favorites, currency and the magnifier with the «Icon» shape).",
         "colorFondo": "Background color",
         "colorFondoNulo": "Icon tint",
         "colorFondoNuloMenu": "Icon tint (active: brand)",

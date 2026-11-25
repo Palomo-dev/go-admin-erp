@@ -173,4 +173,11 @@ describe('textos del selector en 4 idiomas', () => {
     expect(es.length).toBeGreaterThan(60);
     for (const l of ['en', 'fr', 'pt']) expect(claves(leer(l))).toEqual(es);
   });
+  it('«Fondo del ícono» de la cabecera avisa que no cambia la lupa dentro de la barra de búsqueda', () => {
+    expect(leer('es').fondoAyudaCabecera).toMatch(/no cambia la lupa dentro de la barra de búsqueda/i);
+    for (const l of ['en', 'fr', 'pt']) expect(String(leer(l).fondoAyudaCabecera).length).toBeGreaterThan(30);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fuente = require('fs').readFileSync(require('path').join(__dirname, '../inspector/iconos/EstiloIconosSeccion.tsx'), 'utf8') as string;
+    expect(fuente).toMatch(/\{!esMenu && <p[^>]*>\{t\('fondoAyudaCabecera'\)\}<\/p>\}/);
+  });
 });

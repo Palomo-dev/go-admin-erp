@@ -39271,6 +39271,7 @@
           "circle": "Cercle",
           "square": "Carré"
         },
+        "fondoAyudaCabecera": "Ne modifie pas la loupe à l'intérieur de la barre de recherche : seulement les icônes seules (panier, compte, favoris, devise et la loupe en forme « Icône »).",
         "colorFondo": "Couleur du fond",
         "colorFondoNulo": "Teinte de l’icône",
         "colorFondoNuloMenu": "Teinte de l’icône (active : la marque)",

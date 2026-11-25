@@ -169,6 +169,8 @@ export function EstiloIconosSeccion({
         valor={bg?.shape ?? 'none'}
         onCambiar={(f) => poner({ bg: f === 'none' ? undefined : { shape: f, ...(bg?.color ? { color: bg.color } : {}) } })}
       />
+      {/* La lupa dentro de una barra de búsqueda solo toma el dibujo: el fondo es de los íconos sueltos. */}
+      {!esMenu && <p className="-mt-1.5 text-[11px] leading-[14px] text-fg-muted">{t('fondoAyudaCabecera')}</p>}
       {bg && (
         <ColorTema
           etiqueta={t('colorFondo')}

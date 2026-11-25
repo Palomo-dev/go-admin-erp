@@ -39281,6 +39281,7 @@
           "circle": "Círculo",
           "square": "Quadrado"
         },
+        "fondoAyudaCabecera": "Não muda a lupa dentro da barra de busca: só os ícones soltos (carrinho, conta, favoritos, moeda e a lupa com forma «Ícone»).",
         "colorFondo": "Cor do fundo",
         "colorFondoNulo": "Tom do ícone",
         "colorFondoNuloMenu": "Tom do ícone (ativo: a marca)",

@@ -42040,7 +42040,10 @@
       "errorMarcarPagado": "Impossible de marquer comme payée",
       "pendienteMarcarPagado": "Commande confirmée mais non marquée comme payée",
       "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée.",
-      "confirmarCanceladoAntiguo": "La commande {numero} a été annulée il y a {dias} jours. La marquer comme payée quand même ?"
+      "confirmarCanceladoAntiguo": "La commande {numero} a été annulée il y a {dias} jours. La marquer comme payée quand même ?",
+      "contraentregaEnEnvio": "L’envoi comporte un paiement à la livraison que le livreur encaisse : la caisse ne l’encaisse pas à part. Si le colis est encore au point de vente, utilisez « Encaisser et remettre ».",
+      "contraentregaEnCuadre": "Le livreur a déjà encaissé le paiement à la livraison : cet argent entre en caisse avec son arrêté de compte.",
+      "totalNoCoincide": "Le total de la commande ne correspond pas à ses produits ni à sa facture. Rechargez la commande et vérifiez-la avant d’encaisser."
     },
     "tipoCorto": {
       "pickup": "Retrait",
@@ -68401,7 +68404,10 @@
         "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s'encaisse pas en caisse.",
         "PEDIDO_SIN_CONFIRMAR": "La commande n'est pas encore confirmée.",
         "ORIGEN_NO_SOPORTADO": "Cette livraison ne vient ni d'une vente ni d'une commande en ligne.",
-        "RECIBOS_INVALIDOS": "Les montants du rapprochement ne sont pas valides. Actualisez l'écran et recomptez."
+        "RECIBOS_INVALIDOS": "Les montants du rapprochement ne sont pas valides. Actualisez l'écran et recomptez.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "Le total de la commande ne correspond pas à ses produits. Vérifiez-la avant d’encaisser.",
+        "FACTURA_NO_COINCIDE": "La facture ne correspond pas au total de la commande. Rechargez l’écran et réessayez.",
+        "MONTO_NO_COINCIDE": "Le montant ne correspond pas au solde de la commande."
       },
       "elegir": {
         "titulo": "De qui reçois-tu ?",
@@ -69378,7 +69384,10 @@
         "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s’encaisse pas en caisse.",
         "PEDIDO_SIN_CONFIRMAR": "Confirmez la commande avant de l’encaisser.",
         "FACTURA_REQUERIDA": "Impossible de préparer la facture de la commande. Réessayez.",
-        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous."
+        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "Le total de la commande ne correspond pas à ses produits. Vérifiez-la avant d’encaisser.",
+        "FACTURA_NO_COINCIDE": "La facture ne correspond pas au total de la commande. Rechargez l’écran et réessayez.",
+        "MONTO_NO_COINCIDE": "Le montant ne correspond pas au solde de la commande."
       },
       "chips": {
         "intento": "Tentative {n}",

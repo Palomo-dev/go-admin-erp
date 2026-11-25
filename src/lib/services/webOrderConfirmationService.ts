@@ -116,6 +116,16 @@ export type ErrorCobroEnCaja =
   /** «Marcar como pagado» de pasarela sobre un pedido que se cobra en caja. */
   | 'NO_ES_PASARELA'
   | 'SIN_PERMISO'
+  /**
+   * El envío lleva una contraentrega que cobra el domiciliario (pendiente) o que ya cobró y entra con
+   * su cuadre: la caja no la cobra aparte (migración 20261125195945, sin doble cobro).
+   */
+  | 'CONTRAENTREGA_EN_ENVIO'
+  | 'CONTRAENTREGA_EN_CUADRE'
+  /** El total del pedido, la factura o el monto no cuadran con lo que calcula la base. */
+  | 'TOTAL_PEDIDO_INCONSISTENTE'
+  | 'FACTURA_NO_COINCIDE'
+  | 'MONTO_NO_COINCIDE'
   | 'FUNCION_AUSENTE'
   | 'OTRO';
 
@@ -133,6 +143,8 @@ export function codigoErrorCobro(error: unknown): ErrorCobroEnCaja {
   for (const c of [
     'NO_OPEN_CASH_SESSION', 'PEDIDO_SIN_CONFIRMAR', 'COBRAR_EN_LA_MESA', 'METODO_INVALIDO',
     'PEDIDO_DE_PASARELA', 'NO_ES_PASARELA', 'SIN_PERMISO',
+    'CONTRAENTREGA_EN_ENVIO', 'CONTRAENTREGA_EN_CUADRE', 'TOTAL_PEDIDO_INCONSISTENTE', 'FACTURA_NO_COINCIDE',
+    'MONTO_NO_COINCIDE',
   ] as const) {
     if (m.includes(c)) return c;
   }
@@ -157,7 +169,18 @@ export function claveAvisoPendiente(codigo: ErrorCobroEnCaja, marcarPagado?: boo
 /** Clave i18n (`pedidoWeb.cobro.*`) del aviso para un cobro que no se pudo hacer. */
 export function claveAvisoCobro(
   codigo: ErrorCobroEnCaja,
-): 'sinCaja' | 'sinConfirmar' | 'deMesa' | 'metodoInvalido' | 'dePasarela' | 'noEsPasarela' | 'sinPermiso' | 'error' {
+):
+  | 'sinCaja'
+  | 'sinConfirmar'
+  | 'deMesa'
+  | 'metodoInvalido'
+  | 'dePasarela'
+  | 'noEsPasarela'
+  | 'sinPermiso'
+  | 'contraentregaEnEnvio'
+  | 'contraentregaEnCuadre'
+  | 'totalNoCoincide'
+  | 'error' {
   switch (codigo) {
     case 'NO_OPEN_CASH_SESSION':
       return 'sinCaja';
@@ -173,6 +196,14 @@ export function claveAvisoCobro(
       return 'noEsPasarela';
     case 'SIN_PERMISO':
       return 'sinPermiso';
+    case 'CONTRAENTREGA_EN_ENVIO':
+      return 'contraentregaEnEnvio';
+    case 'CONTRAENTREGA_EN_CUADRE':
+      return 'contraentregaEnCuadre';
+    case 'TOTAL_PEDIDO_INCONSISTENTE':
+    case 'FACTURA_NO_COINCIDE':
+    case 'MONTO_NO_COINCIDE':
+      return 'totalNoCoincide';
     default:
       return 'error';
   }

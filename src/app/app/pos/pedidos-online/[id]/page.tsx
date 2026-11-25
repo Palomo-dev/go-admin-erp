@@ -4,6 +4,7 @@ import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezon
 import { esDomicilio, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import KitchenService from '@/lib/services/kitchenService';
 import { webOrdersService } from '@/lib/services/webOrdersService';
 import { imprimirComanda, textosImpresionDe } from '@/lib/pos/cocina/imprimirComanda';
@@ -52,7 +53,7 @@ import { DialogoImprimirGuias } from '@/components/logistica/envios/DialogosEnvi
 import { DialogoEntregar } from '@/components/logistica/envio/DialogosEnvio';
 import { useImpresionLogistica } from '@/components/logistica/useImpresionLogistica';
 import { avisarCliente } from '@/components/logistica/logisticaApi';
-import { accionMarcarEntregado, envioActivo, montoCobrarYEntregar } from '@/lib/pos/pedidosWeb/entregaEnvio';
+import { accionMarcarEntregado, bloqueoCobroSimple, envioActivo, envioSinSalir, montoCobrarYEntregar } from '@/lib/pos/pedidosWeb/entregaEnvio';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
@@ -199,6 +200,27 @@ export default function WebOrderDetailPage() {
     }
     toast({ title: tEntrega('entregar.bloqueado'), description: tEntrega('entregar.bloqueadoNota'), variant: 'destructive' });
   };
+  // «Cobrar» sin entregar (migración 20261125195945, sin doble cobro): con la contraentrega del envío
+  // viva la caja no cobra aparte —la base lo rechaza—. Se avisa y, si el paquete sigue en la oficina,
+  // se ofrece «Cobrar y entregar», que entrega y cobra en un paso.
+  const cobrarSinEntregar = () => {
+    const bloqueo = bloqueoCobroSimple(envio?.envio ?? null);
+    if (!bloqueo) return abrirCobro(false);
+    const ofrecer =
+      bloqueo === 'en_envio' &&
+      accionMarcarEntregado(envio?.envio.status) === 'logistica' &&
+      envioSinSalir(envio?.envio.status);
+    toast({
+      title: t('cobro.error'),
+      description: t(bloqueo === 'en_cuadre' ? 'cobro.contraentregaEnCuadre' : 'cobro.contraentregaEnEnvio'),
+      variant: 'destructive',
+      action: ofrecer ? (
+        <ToastAction altText={t('cobro.cobrarYEntregar')} onClick={cobrarYEntregar}>
+          {t('cobro.cobrarYEntregar')}
+        </ToastAction>
+      ) : undefined,
+    });
+  };
   const envioParaGuia = filaEnvio
     ? [{ id: filaEnvio.id, numero: filaEnvio.numero, status: filaEnvio.status, pedido: filaEnvio.pedido, branchId: filaEnvio.branchId, sourceType: 'web_order', sourceId: order.id, pagado: filaEnvio.pagado, sede: order.branch?.name ?? null }]
     : [];
@@ -328,7 +350,7 @@ export default function WebOrderDetailPage() {
             onMarkDelivered={marcarEntregado}
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
-            onCobrar={(entregar) => (entregar ? cobrarYEntregar() : abrirCobro(false))}
+            onCobrar={(entregar) => (entregar ? cobrarYEntregar() : cobrarSinEntregar())}
             onMarcarPagadoPasarela={puedeMarcarPagado ? () => void handleMarcarPagadoPasarela() : undefined}
             onPrint={trazabilidad.comandaId ? () => void imprimir() : undefined}
             sinCajaAbierta={sinCaja}
@@ -364,7 +386,7 @@ export default function WebOrderDetailPage() {
                 onCambio={() => void loadOrder()}
                 pagos={trazabilidad.pagos}
                 onVerAnticipo={() => irA(ID_PAGOS_PEDIDO)}
-                onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? () => abrirCobro(false) : undefined}
+                onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? cobrarSinEntregar : undefined}
               />
             )}
           </div>

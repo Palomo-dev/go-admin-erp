@@ -42040,7 +42040,10 @@
       "errorMarcarPagado": "Couldn't mark as paid",
       "pendienteMarcarPagado": "Order confirmed but not marked as paid",
       "sinStockReactivar": "There is not enough stock to reactivate the order. Adjust the inventory of the missing products and try again; the order was not changed.",
-      "confirmarCanceladoAntiguo": "Order {numero} was cancelled {dias} days ago. Mark it as paid anyway?"
+      "confirmarCanceladoAntiguo": "Order {numero} was cancelled {dias} days ago. Mark it as paid anyway?",
+      "contraentregaEnEnvio": "The shipment carries a cash-on-delivery amount that the courier collects: the register does not charge it separately. If the package is still at the branch, use “Charge and hand over”.",
+      "contraentregaEnCuadre": "The courier already collected the cash on delivery: that money enters the register with their settlement.",
+      "totalNoCoincide": "The order total does not match its products or its invoice. Reload the order and review it before charging."
     },
     "tipoCorto": {
       "pickup": "Pickup",
@@ -68401,7 +68404,10 @@
         "PEDIDO_DE_PASARELA": "The order was paid online: it isn't collected at the register.",
         "PEDIDO_SIN_CONFIRMAR": "The order isn't confirmed yet.",
         "ORIGEN_NO_SOPORTADO": "This delivery doesn't come from a sale or an online order.",
-        "RECIBOS_INVALIDOS": "The settlement amounts are not valid. Refresh the screen and count again."
+        "RECIBOS_INVALIDOS": "The settlement amounts are not valid. Refresh the screen and count again.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "The order total does not match its products. Review it before charging.",
+        "FACTURA_NO_COINCIDE": "The invoice does not match the order total. Reload the screen and try again.",
+        "MONTO_NO_COINCIDE": "The amount does not match the order balance."
       },
       "elegir": {
         "titulo": "Who are you receiving from?",
@@ -69378,7 +69384,10 @@
         "PEDIDO_DE_PASARELA": "The order was paid online: it isn't charged at the register.",
         "PEDIDO_SIN_CONFIRMAR": "Confirm the order before charging it.",
         "FACTURA_REQUERIDA": "The order's invoice couldn't be prepared. Try again.",
-        "SESION_REQUERIDA": "Your session expired. Sign in again."
+        "SESION_REQUERIDA": "Your session expired. Sign in again.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "The order total does not match its products. Review it before charging.",
+        "FACTURA_NO_COINCIDE": "The invoice does not match the order total. Reload the screen and try again.",
+        "MONTO_NO_COINCIDE": "The amount does not match the order balance."
       },
       "chips": {
         "intento": "Attempt {n}",

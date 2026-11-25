@@ -236,6 +236,8 @@ export class EnvioError extends Error {
 }
 
 const CODIGOS_RPC = [
+  // Cobro en caja con el total de la base (migración 20261125195945): «Cobrar y entregar».
+  'TOTAL_PEDIDO_INCONSISTENTE', 'FACTURA_NO_COINCIDE', 'MONTO_NO_COINCIDE',
   // Entrega cerrada en la base (migración 20261125185658). Van primero: `find` busca por
   // subcadena y SIN_PERMISO_ENTREGA contiene SIN_PERMISO.
   'SIN_PERMISO_ENTREGA', 'ENTREGA_SOLO_POR_REGISTRO', 'PEDIDO_CON_ENVIO_ACTIVO', 'NO_OPEN_CASH_SESSION',

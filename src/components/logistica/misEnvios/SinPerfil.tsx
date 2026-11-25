@@ -103,7 +103,7 @@ export function SinPerfil({ sede, onRegistrado }: SinPerfilProps) {
 
   if (error) {
     return (
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pt-4 pb-28 sm:pt-6">
+      <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-28 sm:px-6 sm:pt-6">
         <PageHeader titulo={tm('titulo')} subtitulo={subtitulo} icono={Route} />
         <EmptyState variante="error" compacto titulo={tm('sinDomiciliario.titulo')} descripcion={tm('sinDomiciliario.descripcion')} onReintentar={() => setVersion((v) => v + 1)} />
       </div>
@@ -111,7 +111,7 @@ export function SinPerfil({ sede, onRegistrado }: SinPerfilProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pt-4 pb-28 sm:pt-6">
+    <div className="flex w-full flex-col gap-4 px-4 pt-4 pb-28 sm:px-6 sm:pt-6">
       <PageHeader
         titulo={tm('titulo')}
         subtitulo={subtitulo}

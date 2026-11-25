@@ -14869,7 +14869,8 @@
       "peso_inestable": "A leitura da balança não estava estável. {detalle}",
       "pesaje_no_coincide": "A quantidade não coincide com o peso lido da balança. {detalle}",
       "etiqueta_invalida": "A etiqueta de peso não traz o código lido. {detalle}",
-      "sin_permiso_quitar_promocion": "Tirar a promoção de uma linha exige a permissão “Tirar promoção”. {detalle}"
+      "sin_permiso_quitar_promocion": "Tirar a promoção de uma linha exige a permissão “Tirar promoção”. {detalle}",
+      "documento_requerido_credito": "Esta venda deixa saldo a receber e o cliente não tem documento. Registre o NIT ou a cédula dele, ou cobre a venda completa."
     },
     "ventaAnulada": "Venda cancelada: pagamentos, estoque e fatura foram revertidos.",
     "anulacionFallida": "Não foi possível cancelar a venda",
@@ -17146,7 +17147,8 @@
       "linea_invalida": "Revise as linhas: descrição, quantidade e preço.",
       "producto_invalido": "Um produto da fatura não pertence à organização.",
       "producto_eliminado": "Um produto da fatura foi excluído do estoque: remova-o ou restaure-o em Estoque.",
-      "vendedor_invalido": "O vendedor não é membro da organização."
+      "vendedor_invalido": "O vendedor não é membro da organização.",
+      "documento_requerido_credito": "A fatura fica com saldo a receber e o cliente não tem documento (NIT ou cédula). Registre-o antes de emiti-la."
     },
     "listado": {
       "sustantivo": {
@@ -73990,5 +73992,15 @@
       "netasPeriodo": "Vendas líquidas do período",
       "notaMedio": "Filtra as vendas pagas com estes métodos. «Arrecadado» soma os pagamentos aprovados do período por meio."
     }
+  },
+  "documentoCredito": {
+    "aviso": {
+      "titulo": "Para vender a prazo precisamos do documento do cliente",
+      "descripcion": "Esta venda deixa saldo a receber. Um fiado a consumidor final não pode ser cobrado nem declarado: registre o NIT ou a cédula do cliente."
+    },
+    "guardado": "Documento salvo. Salve a venda novamente.",
+    "errorCarga": "Não foi possível carregar os dados do cliente.",
+    "cambiarFacturarA": "Uma venda com saldo não pode ir para consumidor final. Em «Faturar para», escolha a pessoa ou uma empresa.",
+    "elegirCliente": "Uma venda com saldo precisa de um cliente com documento. Escolha o cliente da venda."
   }
 }

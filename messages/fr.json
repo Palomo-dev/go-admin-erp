@@ -14868,7 +14868,8 @@
       "peso_inestable": "La lecture de la balance n’était pas stable. {detalle}",
       "pesaje_no_coincide": "La quantité ne correspond pas au poids lu sur la balance. {detalle}",
       "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}",
-      "sin_permiso_quitar_promocion": "Retirer la promotion d’une ligne exige l’autorisation « Retirer la promotion ». {detalle}"
+      "sin_permiso_quitar_promocion": "Retirer la promotion d’une ligne exige l’autorisation « Retirer la promotion ». {detalle}",
+      "documento_requerido_credito": "Cette vente laisse un solde à payer et le client n’a pas de numéro d’identification. Enregistrez son NIT ou sa pièce d’identité, ou encaissez la vente en totalité."
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",
@@ -17145,7 +17146,8 @@
       "linea_invalida": "Vérifiez les lignes : description, quantité et prix.",
       "producto_invalido": "Un produit de la facture n’appartient pas à l’organisation.",
       "producto_eliminado": "Un produit de la facture a été supprimé de l’inventaire : retirez-le ou restaurez-le dans Inventaire.",
-      "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation."
+      "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation.",
+      "documento_requerido_credito": "La facture laisse un solde à payer et le client n’a pas de numéro d’identification (NIT ou pièce d’identité). Enregistrez-le avant de l’émettre."
     },
     "listado": {
       "sustantivo": {
@@ -73980,5 +73982,15 @@
       "netasPeriodo": "Ventes nettes de la période",
       "notaMedio": "Filtre les ventes payées avec ces moyens. « Encaissé » additionne les paiements approuvés de la période par moyen."
     }
+  },
+  "documentoCredito": {
+    "aviso": {
+      "titulo": "Pour vendre à crédit, il faut le numéro d’identification du client",
+      "descripcion": "Cette vente laisse un solde à payer. Un crédit à un consommateur final anonyme ne peut être ni recouvré ni déclaré : enregistrez le NIT ou la pièce d’identité du client."
+    },
+    "guardado": "Identifiant enregistré. Enregistrez de nouveau la vente.",
+    "errorCarga": "Impossible de charger les données du client.",
+    "cambiarFacturarA": "Une vente avec solde ne peut pas être facturée au consommateur final. Dans « Facturer à », choisissez la personne ou une entreprise.",
+    "elegirCliente": "Une vente avec solde nécessite un client identifié. Choisissez le client de la vente."
   }
 }

@@ -29,6 +29,8 @@ export const ERRORES_FACTURA = [
   'numero_duplicado',
   // «Facturar a» (20261125200000): la empresa no está ligada a la persona que recibe, o es de otra organización.
   'empresa_no_ligada',
+  // Factura con saldo (crédito) a consumidor final o a un cliente sin documento (Contador 2026-11-25, 20261126011000).
+  'documento_requerido_credito',
 ] as const;
 export type ErrorFactura = (typeof ERRORES_FACTURA)[number] | 'error_desconocido' | 'datos_invalidos';
 

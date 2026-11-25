@@ -22205,7 +22205,8 @@
       "peso_inestable": "The scale reading was not stable. {detalle}",
       "pesaje_no_coincide": "The quantity doesn't match the weight read from the scale. {detalle}",
       "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}",
-      "sin_permiso_quitar_promocion": "Removing a line's promotion requires the “Remove promotion” permission. {detalle}"
+      "sin_permiso_quitar_promocion": "Removing a line's promotion requires the “Remove promotion” permission. {detalle}",
+      "documento_requerido_credito": "This sale leaves a balance due and the customer has no ID number. Add their tax ID or national ID, or charge the full amount."
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",
@@ -24482,7 +24483,8 @@
       "linea_invalida": "Check the lines: description, quantity and price.",
       "producto_invalido": "A product on the invoice does not belong to the organization.",
       "producto_eliminado": "A product on the invoice was deleted from inventory: remove it or restore it in Inventory.",
-      "vendedor_invalido": "The salesperson is not a member of the organization."
+      "vendedor_invalido": "The salesperson is not a member of the organization.",
+      "documento_requerido_credito": "The invoice leaves a balance due and the customer has no ID number (tax ID or national ID). Add it before issuing."
     },
     "listado": {
       "sustantivo": {
@@ -73980,5 +73982,15 @@
       "netasPeriodo": "Net sales in the period",
       "notaMedio": "Filters sales paid with these methods. \"Collected\" adds the approved payments of the period by their method."
     }
+  },
+  "documentoCredito": {
+    "aviso": {
+      "titulo": "Selling on credit requires the customer’s ID",
+      "descripcion": "This sale leaves a balance due. Credit to an anonymous final consumer cannot be collected or reported: add the customer’s tax ID or national ID."
+    },
+    "guardado": "ID saved. Save the sale again.",
+    "errorCarga": "The customer’s details could not be loaded.",
+    "cambiarFacturarA": "A sale with a balance due cannot be billed to the final consumer. Under “Bill to”, choose the person or a company.",
+    "elegirCliente": "A sale with a balance due needs a customer with an ID. Choose the customer for this sale."
   }
 }

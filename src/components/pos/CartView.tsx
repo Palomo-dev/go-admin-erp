@@ -31,6 +31,9 @@ import type { KitchenTicket } from '@/lib/services/kitchenService';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { mensajeErrorCobro } from '@/lib/pos/erroresCobro';
+import { accionAnteRechazoCredito, esErrorDocumentoCredito } from '@/lib/cartera/documentoCredito';
+import { desdeGuardado } from '@/lib/clientes/facturarA';
+import { PedirDocumentoCreditoDialog } from '@/components/clientes/facturacion/PedirDocumentoCreditoDialog';
 import { aplicarNotaALinea, type CambioNotaLinea } from '@/lib/pos/cocina/lineasCarrito';
 import type { DestinoNota } from '@/components/pos/cocina/ChipsNotasRapidas';
 import { lineasParaAviso } from '@/lib/pos/venta/lineasSinImpuesto';
@@ -306,6 +309,9 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   
   // Estados para Hold with Debt
   const [showHoldWithDebtDialog, setShowHoldWithDebtDialog] = useState(false);
+  // Deuda a alguien sin documento (Contador 2026-11-25): se pide el documento sin salir del carrito.
+  const [pedirDocumentoCredito, setPedirDocumentoCredito] = useState(false);
+  const tDocumentoCredito = useTranslations('documentoCredito');
   const [holdWithDebtReason, setHoldWithDebtReason] = useState('');
   const [paymentTerms, setPaymentTerms] = useState(30);
   const [isProcessingHoldWithDebt, setIsProcessingHoldWithDebt] = useState(false);
@@ -593,6 +599,17 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       setPaymentTerms(30);
     } catch (error: unknown) {
       console.error('Error holding cart with debt:', error);
+      // Una deuda necesita el documento del cliente: se pide aquí mismo y se vuelve a registrar.
+      if (esErrorDocumentoCredito(error)) {
+        const accion = accionAnteRechazoCredito({
+          personaId: cart.customer_id,
+          facturarA: desdeGuardado(cart.facturar_a),
+          personaTieneDocumento: cart.facturar_a?.persona_tiene_documento ?? !!cart.customer?.doc_number,
+        });
+        if (accion === 'pedir_documento') setPedirDocumentoCredito(true);
+        else toast.error(tCarrito('errorDeuda'), { description: tDocumentoCredito(accion === 'cambiar_facturar_a' ? 'cambiarFacturarA' : 'elegirCliente') });
+        return;
+      }
       toast.error(tCarrito('errorDeuda'), {
         description: mensajeErrorCobro(error, tCobro, tCarrito('errorDeudaDescripcion'))
       });
@@ -1029,6 +1046,14 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             <Textarea value={holdReason} onChange={(e) => setHoldReason(e.target.value)} placeholder={tCarrito('esperaPlaceholder')} rows={3} />
         </FormField>
       </Dialogo>
+
+      <PedirDocumentoCreditoDialog
+        abierto={pedirDocumentoCredito}
+        onAbiertoChange={setPedirDocumentoCredito}
+        organizationId={cart.organization_id}
+        clienteId={cart.customer_id ?? null}
+        onGuardado={() => setPedirDocumentoCredito(false)}
+      />
 
       {/* Registrar deuda */}
       <Dialogo

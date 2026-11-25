@@ -54,6 +54,8 @@ export const CODIGOS_ERROR_COBRO = [
   'peso_inestable',
   'pesaje_no_coincide',
   'etiqueta_invalida',
+  // Venta a crédito o con saldo sin documento del cliente (Contador 2026-11-25, 20261126011000).
+  'documento_requerido_credito',
 ] as const;
 
 export type CodigoErrorCobro = (typeof CODIGOS_ERROR_COBRO)[number];

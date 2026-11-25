@@ -26,6 +26,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AvisoRutNoResponsable } from '@/components/clientes/facturacion/AvisoRutNoResponsable';
 import { FacturarASelector } from '@/components/clientes/facturacion/FacturarASelector';
+import { PedirDocumentoCreditoDialog } from '@/components/clientes/facturacion/PedirDocumentoCreditoDialog';
+import { accionAnteRechazoCredito, accionDocumentoCredito, type AccionDocumentoCredito } from '@/lib/cartera/documentoCredito';
 import { clienteDePrecios, partesFactura, type SeleccionFacturarA } from '@/lib/clientes/facturarA';
 import { Barcode, Copy, FileMinus, FileText, Landmark, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
 import { DialogoCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/DialogoCuentaLinea';
@@ -226,6 +228,11 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   // «Facturar a» (Figma «06 Clientes» 3206-26242 / 3207-26986): a nombre de quién sale la factura.
   const tFacturarA = useTranslations('clientesFacturarA');
   const [facturarA, setFacturarA] = useState<SeleccionFacturarA | null>(null);
+  // La factura manual se emite con saldo (el recibo va aparte): exige el documento del adquiriente
+  // (Contador 2026-11-25). Se pide aquí con «Editar datos de facturación» y «Facturar a» se recarga.
+  const [pedirDocumentoCredito, setPedirDocumentoCredito] = useState(false);
+  const [versionDocumento, setVersionDocumento] = useState(0);
+  const tDocumentoCredito = useTranslations('documentoCredito');
   const [numeroManual, setNumeroManual] = useState('');
   const [verNumeroManual, setVerNumeroManual] = useState(false);
   const [sucursal, setSucursal] = useState<number | null>(selectedBranchId ?? null);
@@ -708,7 +715,25 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     }
   };
 
+  const avisarDocumentoCredito = (accion: Exclude<AccionDocumentoCredito, 'ninguna'>) => {
+    if (accion === 'pedir_documento') setPedirDocumentoCredito(true);
+    else setErrorServidor(tDocumentoCredito(accion === 'cambiar_facturar_a' ? 'cambiarFacturarA' : 'elegirCliente'));
+  };
+
   const emitir = async (ls: LineaVenta[] = lineas) => {
+    // Con «Facturar a» ya cargado se sabe si el adquiriente tiene documento; si no, decide la base.
+    if (cliente && facturarA) {
+      const accion = accionDocumentoCredito({
+        saldo: totales.total,
+        personaId: cliente.id,
+        facturarA: facturarA.valor,
+        personaTieneDocumento: facturarA.personaTieneDocumento,
+      });
+      if (accion !== 'ninguna') {
+        avisarDocumentoCredito(accion);
+        return;
+      }
+    }
     const r = await guardar('emitir', ls);
     if (!r) return;
     if (ls.some((l) => (l.cuenta_contable ?? '').trim())) {
@@ -741,6 +766,13 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     } catch (err) {
       if (err instanceof ErrorPeticionFactura && err.codigo === 'stock_insuficiente') {
         setFaltantes({ lista: err.faltantes, cambios: ajustarAFaltantes(ls, err.faltantes).cambios });
+      } else if (err instanceof ErrorPeticionFactura && err.codigo === 'documento_requerido_credito') {
+        setErrorServidor(mensajeServidor(err));
+        avisarDocumentoCredito(accionAnteRechazoCredito({
+          personaId: cliente?.id ?? null,
+          facturarA: facturarA?.valor ?? null,
+          personaTieneDocumento: facturarA?.personaTieneDocumento ?? false,
+        }));
       } else {
         setErrorServidor(mensajeServidor(err));
       }
@@ -1176,8 +1208,21 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
           />
           {errores.cliente && <p className="text-sm text-danger-text">{errores.cliente}</p>}
           {cliente && (
+            <PedirDocumentoCreditoDialog
+              abierto={pedirDocumentoCredito}
+              onAbiertoChange={setPedirDocumentoCredito}
+              organizationId={getOrganizationId()}
+              clienteId={cliente.id}
+              onGuardado={() => {
+                setErrorServidor(null);
+                setFacturarA(null);
+                setVersionDocumento((v) => v + 1);
+              }}
+            />
+          )}
+          {cliente && (
             <FacturarASelector
-              key={cliente.id}
+              key={`${cliente.id}:${versionDocumento}`}
               organizationId={getOrganizationId()}
               personaId={cliente.id}
               valor={facturarA?.valor ?? null}

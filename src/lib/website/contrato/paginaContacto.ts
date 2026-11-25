@@ -20,6 +20,8 @@
  *   siempre; sin `channels`, los cuatro canales por defecto.
  * - Nombre y correo siempre se piden (el CRM los necesita para crear el cliente potencial).
  * - La casilla de datos, si se muestra, siempre es obligatoria.
+ * - Sin WhatsApp en Configuración, el teléfono de contacto hace de WhatsApp si es un celular
+ *   (`whatsappDeTienda`); la tarjeta Teléfono con ese número no se repite (`canalesConDato`).
  *
  * Código puro: sin imports, sin React ni Supabase.
  */
@@ -163,12 +165,50 @@ export function datosContactoDe(
   };
 }
 
+// ─── WhatsApp de la tienda ───────────────────────────────────────────────────────────────────
+
+/**
+ * ¿Es un celular de Colombia? 10 dígitos que empiezan por 3, con o sin el indicativo 57
+ * («+57 310 395 7409», «3103957409», «573103957409»). Un fijo («(601) 745 0000») o un número con
+ * otro indicativo no lo es. La regla va escrita aquí porque el contrato no importa nada (y la
+ * utilidad de teléfonos, con los metadatos «min» de libphonenumber, no distingue celular de fijo).
+ */
+export function esCelularColombia(numero: string | null | undefined): boolean {
+  if (typeof numero !== 'string') return false;
+  const crudo = numero.trim();
+  let d = crudo.replace(/\D/g, '');
+  if (crudo.startsWith('00')) d = d.slice(2);
+  const internacional = crudo.startsWith('+') || crudo.startsWith('00');
+  if (d.length === 12 && d.startsWith('57')) d = d.slice(2);
+  else if (internacional) return false;
+  return /^3\d{9}$/.test(d);
+}
+
+export interface WhatsappTienda {
+  /** Número tal como está en Configuración (el de WhatsApp o el teléfono de contacto). */
+  numero: string;
+  /** `true` = no hay WhatsApp configurado y se usa el teléfono de contacto (es un celular). */
+  delTelefono: boolean;
+}
+
+/**
+ * WhatsApp de la tienda: el de Configuración › WhatsApp o, si no hay, el teléfono de contacto
+ * cuando es un celular. `null` = no hay a dónde escribir. Es la única regla: la usan el canal
+ * WhatsApp, el botón de WhatsApp por sede y «WhatsApp al terminar» del formulario.
+ */
+export function whatsappDeTienda(datos: DatosContactoSitio): WhatsappTienda | null {
+  const propio = limpio(datos.whatsapp);
+  if (propio) return { numero: propio, delTelefono: false };
+  const telefono = limpio(datos.telefono);
+  return telefono && esCelularColombia(telefono) ? { numero: telefono, delTelefono: true } : null;
+}
+
 /** El dato que muestra un canal: el propio o el de la organización. `null` = el canal no sale. */
 export function valorDeCanal(canal: CanalContacto, datos: DatosContactoSitio): string | null {
   if (canal.source === 'own' || canal.type === 'custom') return canal.value.trim() || null;
   switch (canal.type) {
     case 'whatsapp':
-      return limpio(datos.whatsapp);
+      return whatsappDeTienda(datos)?.numero ?? null;
     case 'phone':
       return limpio(datos.telefono);
     case 'email':
@@ -178,6 +218,27 @@ export function valorDeCanal(canal: CanalContacto, datos: DatosContactoSitio): s
     default:
       return null;
   }
+}
+
+export interface CanalConDato {
+  canal: CanalContacto;
+  valor: string;
+}
+
+/**
+ * Canales que salen en la tienda, en su orden: los marcados «Mostrar» que tienen dato. Si el
+ * WhatsApp sale con el teléfono de contacto (no hay WhatsApp configurado y el teléfono es un
+ * celular), la tarjeta Teléfono con ese mismo número no se repite. Apagando el canal WhatsApp en
+ * el editor, vuelve la tarjeta Teléfono con «Llamar».
+ */
+export function canalesConDato(canales: readonly CanalContacto[], datos: DatosContactoSitio): CanalConDato[] {
+  const lista = canales
+    .filter((c) => c.visible)
+    .map((canal) => ({ canal, valor: valorDeCanal(canal, datos) }))
+    .filter((x): x is CanalConDato => x.valor !== null);
+  const whatsapp = whatsappDeTienda(datos);
+  const whatsappConTelefono = whatsapp?.delTelefono === true && lista.some((x) => x.canal.type === 'whatsapp' && x.canal.source === 'org');
+  return whatsappConTelefono ? lista.filter((x) => !(x.canal.type === 'phone' && x.canal.source === 'org')) : lista;
 }
 
 /** Enlace seguro de un canal propio: http(s), tel:, mailto:, wa.me o una ruta del sitio. */

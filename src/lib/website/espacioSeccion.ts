@@ -38,6 +38,29 @@ const SIN_RELLENO: ReadonlySet<string> = new Set([
   'table_service', 'table_order', 'table_bill', 'visit_feedback', 'restaurant_hero:mesa',
 ])
 
+/**
+ * Contacto v2 (Figma 3105:84692): sus secciones van más juntas que el resto, relleno `md` (32 px
+ * celular, 48 px computador) en vez de `lg` cuando el editor no fijó otro. «Horario y sedes» solo
+ * en la página Contacto: en un restaurante sigue con el de siempre.
+ */
+const RELLENO_MEDIO: ReadonlySet<string> = new Set([
+  'hero:page_header', 'contact_channels', 'contact_form:card_hours', 'social_networks',
+])
+const PAGINAS_CONTACTO: ReadonlySet<string> = new Set(['contacto', 'contact', 'contactanos'])
+
+/**
+ * Relleno vertical de la sección cuando nada lo fija (ni el Avanzado ni el estilo): `none` (Carta
+ * QR), `md` (Contacto v2) o `lg` (todas las demás). Misma regla en SectionWrapperBase.
+ */
+export function rellenoPorDefecto(tipo: string | null | undefined, variante?: string | null, pagina?: string | null): 'none' | 'md' | 'lg' {
+  const t = tipo ?? ''
+  const clave = `${t}:${variante ?? ''}`
+  if (SIN_RELLENO.has(t) || SIN_RELLENO.has(clave)) return 'none'
+  if (RELLENO_MEDIO.has(t) || RELLENO_MEDIO.has(clave)) return 'md'
+  if (t === 'hours_location' && PAGINAS_CONTACTO.has((pagina ?? '').trim().toLowerCase())) return 'md'
+  return 'lg'
+}
+
 export const MARGEN_MAX_PX = 200
 
 /** ¿El relleno tiene valor propio de celular? Solo entonces la tienda usa variables por dispositivo. */
@@ -84,6 +107,8 @@ export interface EntornoSeccion {
   ajustesSitio?: Record<string, unknown> | null
   /** `espaciado` del estilo de la sección (compacto / normal / amplio). */
   espaciado?: string | null
+  /** Slug de la página («contacto»): «Horario y sedes» va más junto en Contacto. */
+  pagina?: string | null
 }
 
 export interface LadoEspacio extends ParDispositivo {
@@ -120,7 +145,7 @@ export function espacioSeccion(contenidoGuardado: unknown, e: EntornoSeccion = {
     if (vacio(c.padding_bottom)) c.padding_bottom = esc
   }
   const tipo = e.tipo ?? ''
-  const sinRelleno = SIN_RELLENO.has(tipo) || SIN_RELLENO.has(`${tipo}:${e.variante ?? ''}`)
+  const porDefecto = rellenoPorDefecto(tipo, e.variante, e.pagina)
   const cartaQr = tipo === 'menu_full' && e.variante === 'qr'
   const primera = e.primera === true
   const solapa = tipo === 'hero' && heroSolapa(e.ajustesSitio as never, c.overlap_header)
@@ -144,7 +169,7 @@ export function espacioSeccion(contenidoGuardado: unknown, e: EntornoSeccion = {
   if (ptPx != null) {
     baseArriba = { ...par(ptPx), propio: true }
   } else {
-    const clave = ptExplicito ? String(c.padding_top) : (sinRelleno || cartaQr ? 'none' : 'lg')
+    const clave = ptExplicito ? String(c.padding_top) : (cartaQr ? 'none' : porDefecto)
     let p = escalaRelleno(clave)
     if (solapa) p = ptExplicito && c.padding_top !== 'lg' ? escalaRelleno(clave) : RELLENO_ESCALA_PX.none
     if (primera && !ptExplicito && !solapa) p = par(offset)
@@ -163,7 +188,7 @@ export function espacioSeccion(contenidoGuardado: unknown, e: EntornoSeccion = {
   let baseAbajo: LadoEspacio
   if (pbPx != null) baseAbajo = { ...par(pbPx), propio: true }
   else {
-    const clave = !vacio(c.padding_bottom) ? String(c.padding_bottom) : (sinRelleno ? 'none' : 'lg')
+    const clave = !vacio(c.padding_bottom) ? String(c.padding_bottom) : porDefecto
     baseAbajo = { ...escalaRelleno(clave), propio: !vacio(objeto(contenidoGuardado).padding_bottom) }
   }
   const rellenoAbajo: LadoEspacio = fPb != null || fPbM != null

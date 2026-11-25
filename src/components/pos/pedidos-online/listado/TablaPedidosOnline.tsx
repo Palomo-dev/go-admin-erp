@@ -16,6 +16,7 @@ import { duracionPromesa, origenDelPedido, promesaDelPedido, type TonoPromesa } 
 import type { WebOrder, WebOrderStatus } from '@/lib/services/webOrdersService';
 import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
 import { PagoContraentregaCelda, muestraCeldaContraentrega } from '@/components/pos/pedidos-online/contraentrega/PagoContraentregaCelda';
+import { PagoPasarelaCelda, muestraCeldaPasarela } from '@/components/pos/pedidos-online/listado/PagoPasarelaCelda';
 import { ICONO_PREPARAR, useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
 import { claveEstadoPedido, claveRubro, type RubroPedidos } from '@/lib/pos/pedidosWeb/rubroPedidos';
 
@@ -241,6 +242,9 @@ export function TablaPedidosOnline(props: TablaPedidosOnlineProps) {
         // Contraentrega abierta (Figma 3014:194407 › 04): «Cobrar $ X» o «Anticipo vence HH:MM».
         muestraCeldaContraentrega(o) ? (
           <PagoContraentregaCelda pedido={o} timezone={timezone} formatear={formatear} />
+        ) : muestraCeldaPasarela(o) ? (
+          // Pasarela sin pagar (diseño 2026-11-24 › 04): rechazado, en proceso, esperando o vencido.
+          <PagoPasarelaCelda pedido={o} timezone={timezone} />
         ) : (
           <div className="flex min-w-0 flex-col items-start gap-0.5">
             <StatusBadge estado={o.payment_status} etiqueta={t(`pagos.${o.payment_status}`)} tono={TONO_PAGO[o.payment_status] ?? 'neutro'} tamano="sm" />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
@@ -39,9 +39,16 @@ import { AvisoAnticipoPendiente, TarjetaContraentrega } from '@/components/pos/p
 import { seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
 import { claveRubro } from '@/lib/pos/pedidosWeb/rubroPedidos';
 import { useRubroPedidos } from '@/components/pos/pedidos-online/rubroPedidosUi';
+import { useIntentosPago } from '@/components/pos/pedidos-online/pagos/useIntentosPago';
+import { BotonReenviarEnlace } from '@/components/pos/pedidos-online/pagos/TarjetaPagosIntentos';
+import { estadoTarjetaPagos } from '@/lib/pos/pedidosWeb/intentosPago';
+import { cn } from '@/utils/Utils';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
+/** Ancla de «Pago contra entrega»: «Ver «Pago contra entrega»» de la tarjeta «Pagos» lleva ahí. */
+const ID_CONTRAENTREGA = 'pago-contra-entrega';
+const irA = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
 export default function WebOrderDetailPage() {
   const params = useParams();
@@ -96,6 +103,9 @@ export default function WebOrderDetailPage() {
   const { toast } = useToast();
   const trazabilidad = useTrazabilidadPedido(order);
   const cambios = useCambiosPedido(orderId, organizationId);
+  const intentosPago = useIntentosPago(order);
+  // Zona de la sede del pedido: la misma con que la tarjeta «Pagos» pinta las horas.
+  const { timezone: zonaSede } = useFormatDate(order?.branch_id);
   const [cambioAbierto, setCambioAbierto] = useState(false);
 
   // Estado de carga
@@ -121,6 +131,10 @@ export default function WebOrderDetailPage() {
   const sinCaja = trazabilidad.cobroEnCaja && !trazabilidad.cargando && (trazabilidad.cajaId === null || sinCajaAbierta);
   const cajaEtiqueta = cajaConocida ? t('cobro.entraACaja', { caja: trazabilidad.cajaId ?? '', sede }) : null;
   const cajaDeLaSede = cajaConocida ? t('pagos.cajaAbierta', { caja: trazabilidad.cajaId ?? '', sede }) : null;
+  // Pago rechazado (diseño 2026-11-24, captura 05): en el celular «Pagos» sube arriba de Productos
+  // y «Reenviar enlace por WhatsApp» va en la barra fija de abajo.
+  const estadoPagos = estadoTarjetaPagos(order, intentosPago.intentos);
+  const pagoRechazado = estadoPagos === 'C' || estadoPagos === 'C2';
 
   // «Imprimir comanda»: la comanda del pedido, por el mismo camino que Comandas.
   const imprimir = async () => {
@@ -147,6 +161,30 @@ export default function WebOrderDetailPage() {
     if (!hecho) void trazabilidad.recargar();
   };
 
+  // Tarjeta «Pagos»: la de la columna lateral y, con pago rechazado, la copia de arriba en el celular.
+  const tarjetaPagos = (movil: boolean) => (
+    <OrderPaymentsCard
+      order={order}
+      pagos={trazabilidad.pagos}
+      porCobrarEnCaja={cobro.puedeCobrar}
+      cajaEtiqueta={cajaDeLaSede}
+      cambios={cambios.cambios}
+      onVerCambio={() => setCambioAbierto(true)}
+      onReembolsoHecho={
+        cambios.puedeReembolsar
+          ? async (id) => {
+              const r = await cambios.reembolsoHecho(id);
+              toast(r.ok ? { title: t('cambio.reembolsoMarcado') } : { title: r.error ?? t('cambio.error'), variant: 'destructive' });
+              void cambios.recargar();
+            }
+          : undefined
+      }
+      intentosPago={intentosPago}
+      movil={movil}
+      onVerContraentrega={() => irA(ID_CONTRAENTREGA)}
+    />
+  );
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
@@ -170,6 +208,7 @@ export default function WebOrderDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna principal */}
         <div className="lg:col-span-2 space-y-6">
+          {pagoRechazado && <div className="lg:hidden">{tarjetaPagos(true)}</div>}
           <OrderProductsCard order={order} puedeQuitarPromocion={puedeQuitarPromocion} onCambio={() => void loadOrder()} />
           <OrderNotesCard
             order={order}
@@ -220,33 +259,19 @@ export default function WebOrderDetailPage() {
             </button>
           )}
           {/* «Pago contra entrega» (Figma 3014:194407 › 05/06): solo en pedidos contraentrega. */}
-          <TarjetaContraentrega
-            order={order}
-            timezone={timezone}
-            onCambio={() => void loadOrder()}
-            pagos={trazabilidad.pagos}
-            onVerAnticipo={() => document.getElementById(ID_PAGOS_PEDIDO)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? () => abrirCobro(false) : undefined}
-          />
-          {/* «Pagos» arriba de Cliente y Entrega (Figma 2725:192149). */}
-          <div id={ID_PAGOS_PEDIDO} className="scroll-mt-20">
-          <OrderPaymentsCard
-            order={order}
-            pagos={trazabilidad.pagos}
-            porCobrarEnCaja={cobro.puedeCobrar}
-            cajaEtiqueta={cajaDeLaSede}
-            cambios={cambios.cambios}
-            onVerCambio={() => setCambioAbierto(true)}
-            onReembolsoHecho={
-              cambios.puedeReembolsar
-                ? async (id) => {
-                    const r = await cambios.reembolsoHecho(id);
-                    toast(r.ok ? { title: t('cambio.reembolsoMarcado') } : { title: r.error ?? t('cambio.error'), variant: 'destructive' });
-                    void cambios.recargar();
-                  }
-                : undefined
-            }
-          />
+          <div id={ID_CONTRAENTREGA} className="scroll-mt-20 empty:hidden">
+            <TarjetaContraentrega
+              order={order}
+              timezone={timezone}
+              onCambio={() => void loadOrder()}
+              pagos={trazabilidad.pagos}
+              onVerAnticipo={() => irA(ID_PAGOS_PEDIDO)}
+              onRegistrarCobro={cobro.puedeCobrar && !sinCaja ? () => abrirCobro(false) : undefined}
+            />
+          </div>
+          {/* «Pagos» arriba de Cliente y Entrega (Figma 2725:192149). Con pago rechazado, en el celular va arriba. */}
+          <div id={ID_PAGOS_PEDIDO} className={cn('scroll-mt-20', pagoRechazado && 'hidden lg:block')}>
+            {tarjetaPagos(false)}
           </div>
           <OrderCustomerCard order={order} />
           {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
@@ -265,18 +290,24 @@ export default function WebOrderDetailPage() {
         </div>
       </div>
 
-      {/* Móvil (Figma 1982:946211): «Cobrar y entregar» fijo abajo */}
-      {cobro.cobraYEntrega && (
-        <div className="sticky bottom-0 -mx-4 border-t border-line bg-surface p-4 sm:hidden">
-          <button
-            type="button"
-            className={clasesBoton({ variante: 'primario', tamano: 'lg', anchoCompleto: true })}
-            onClick={() => abrirCobro(true)}
-            disabled={actionLoading || sinCaja}
-          >
-            {actionLoading ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <DollarSign className="size-5" aria-hidden="true" />}
-            {t('cobro.cobrarYEntregar')}
-          </button>
+      {/* Móvil (Figma 1982:946211): «Cobrar y entregar» fijo abajo; con pago rechazado, «Reenviar
+          enlace por WhatsApp» (captura 05). Si aplican los dos, van uno encima del otro. */}
+      {(cobro.cobraYEntrega || pagoRechazado) && (
+        <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-line bg-surface p-4 sm:hidden">
+          {pagoRechazado && estadoPagos && (
+            <BotonReenviarEnlace order={order} estado={estadoPagos} datos={intentosPago} timezone={zonaSede} tamano="lg" />
+          )}
+          {cobro.cobraYEntrega && (
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'primario', tamano: 'lg', anchoCompleto: true })}
+              onClick={() => abrirCobro(true)}
+              disabled={actionLoading || sinCaja}
+            >
+              {actionLoading ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <DollarSign className="size-5" aria-hidden="true" />}
+              {t('cobro.cobrarYEntregar')}
+            </button>
+          )}
         </div>
       )}
 

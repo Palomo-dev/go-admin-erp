@@ -150,6 +150,8 @@ const MODULOS: Record<string, string[]> = {
   hrmConfig: ['src/components/configuracion/panels/hrm', 'src/components/roles'],
   // RR. HH. › Empleados: lista, ficha, alta e importar (20.2–20.5), con el acceso a la app de cada empleado.
   hrmPersonas: ['src/components/hrm/personas', 'src/app/app/hrm/empleados'],
+  // Pagos del pedido online: método elegido e intentos (Figma 05 › 3087:201491, 2026-11-24).
+  pagosIntentos: ['src/components/pos/pedidos-online', 'src/app/app/pos/pedidos-online'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

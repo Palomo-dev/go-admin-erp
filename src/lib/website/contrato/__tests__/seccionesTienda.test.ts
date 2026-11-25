@@ -66,6 +66,9 @@ import {
   normalizarNubeEnlaces,
   normalizarPaginadorFicha,
   normalizarPestanasAncla,
+  DESTINOS_ANCLA,
+  DESTINOS_PESTANA_FICHA,
+  esDestinoPestanaFicha,
   normalizarPortadaBuscador,
   normalizarPortadaFlotante,
   normalizarPortadaMarca,
@@ -411,7 +414,26 @@ describe('secciones nuevas', () => {
     expect(normalizarPestanasAncla({ items: [{ label: 'Reseñas', target: 'product_reviews' }, { label: 'Otra', target: 'product_reviews' }], sticky: false })).toEqual({
       items: [{ label: 'Reseñas', target: 'product_reviews' }],
       sticky: false,
+      celular: 'acordeon',
     });
+  });
+
+  test('pestañas de la ficha (pestañas reales, Figma 3255-99475): diseño aprobado por defecto, lo guardado se lee igual', () => {
+    expect(DEFAULT_PESTANAS_ANCLA.items.map((i) => [i.label, i.target])).toEqual([
+      ['Descripción', 'product_description'],
+      ['Características', 'product_specs'],
+      ['Envío y devoluciones', 'product_shipping'],
+      ['Reseñas', 'product_reviews'],
+    ]);
+    expect(DEFAULT_PESTANAS_ANCLA.sticky).toBe(false);
+    expect(DEFAULT_PESTANAS_ANCLA.celular).toBe('acordeon');
+    expect(normalizarPestanasAncla({ sticky: true, mobile_mode: 'pestanas' })).toMatchObject({ sticky: true, celular: 'pestanas' });
+    expect(normalizarPestanasAncla({ mobile_mode: 'carrusel' }).celular).toBe('acordeon');
+    // «Resumen» guardado se sigue leyendo (la tienda no lo pinta como pestaña: su bloque se queda arriba).
+    expect(normalizarPestanasAncla({ items: [{ label: 'Resumen', target: 'product_info' }] }).items).toEqual([{ label: 'Resumen', target: 'product_info' }]);
+    for (const d of DESTINOS_PESTANA_FICHA) expect(DESTINOS_ANCLA).toContain(d);
+    expect(esDestinoPestanaFicha('product_info')).toBe(false);
+    expect(esDestinoPestanaFicha('product_reviews')).toBe(true);
   });
 
   test('ficha técnica: fuentes reales, sin repetir', () => {

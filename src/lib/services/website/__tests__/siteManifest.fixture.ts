@@ -356,6 +356,7 @@ export const siteManifestFixture: SectionManifest = {
       variants: ['tabs'],
       contentKeys: [
         'items',
+        'mobile_mode',
         'sticky',
       ],
     },

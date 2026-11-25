@@ -91,7 +91,7 @@ export const ETIQUETAS_VARIANTE_TIENDA: Readonly<Record<string, string>> = {
   'welcome_popup.coupon': 'Ventana de bienvenida',
   'link_cloud.pills': 'Nube de enlaces',
   'service_cards.over_image': 'Tarjetas sobre imagen',
-  'product_anchor_nav.tabs': 'Pestañas ancla',
+  'product_anchor_nav.tabs': 'Pestañas',
   'product_pager.default': 'Anterior y siguiente',
 };
 
@@ -1209,9 +1209,18 @@ export function normalizarDisenoFicha(content: Record<string, unknown> | null | 
   };
 }
 
-// ─── Ficha: product_anchor_nav · tabs («Pestañas ancla», Panorama) ──────────────────────────
+// ─── Ficha: product_anchor_nav · tabs («Pestañas de la ficha», Panorama) ────────────────────
+//
+// Pestañas de verdad (Figma «Ficha — pestañas reales» 3255-99475, aprobado el 2026-11-25): la
+// barra va debajo de las dos columnas, a todo el ancho, y cada pestaña muestra ahí mismo el
+// contenido de su bloque (Descripción, Características, Envío y devoluciones, Reseñas). En el
+// celular, acordeón con varias abiertas (`mobile_mode`).
+//
+// `items` y `sticky` se leen igual que antes. Solo los bloques de DESTINOS_PESTANA_FICHA pueden
+// ser pestaña; una pestaña guardada hacia otro bloque (p. ej. «Resumen» → `product_info`) no se
+// pinta y su bloque se queda donde está (nada desaparece).
 
-/** Bloques de la ficha a los que puede saltar una pestaña (el id del bloque es su tipo). */
+/** Bloques de la ficha a los que podía saltar una pestaña (se siguen leyendo). */
 export const DESTINOS_ANCLA = [
   'product_info',
   'product_description',
@@ -1226,19 +1235,46 @@ export const DESTINOS_ANCLA = [
 export type DestinoAncla = (typeof DESTINOS_ANCLA)[number];
 export const MAX_PESTANAS_ANCLA = 6;
 
+/**
+ * Bloques que pueden ser una pestaña: su contenido se muestra en el panel. Los demás (información,
+ * beneficios, relacionados…) se quedan arriba o abajo, donde estén.
+ */
+export const DESTINOS_PESTANA_FICHA = [
+  'product_description',
+  'product_specs',
+  'product_shipping',
+  'product_reviews',
+  'product_faq',
+] as const;
+export type DestinoPestanaFicha = (typeof DESTINOS_PESTANA_FICHA)[number] & DestinoAncla;
+
+/** ¿Este destino puede ser una pestaña? */
+export function esDestinoPestanaFicha(valor: unknown): valor is DestinoPestanaFicha {
+  return (DESTINOS_PESTANA_FICHA as readonly unknown[]).includes(valor);
+}
+
+/** En el celular: acordeón (varias abiertas a la vez; el aprobado) o las mismas pestañas. */
+export const CELULAR_PESTANAS_FICHA = ['acordeon', 'pestanas'] as const;
+export type CelularPestanasFicha = (typeof CELULAR_PESTANAS_FICHA)[number];
+
 export interface PestanasAncla {
   items: { label: string; target: DestinoAncla }[];
   sticky: boolean;
+  /** `mobile_mode`. */
+  celular: CelularPestanasFicha;
 }
 
 export const DEFAULT_PESTANAS_ANCLA: PestanasAncla = {
   items: [
-    { label: 'Resumen', target: 'product_info' },
+    { label: 'Descripción', target: 'product_description' },
     { label: 'Características', target: 'product_specs' },
-    { label: 'Envío', target: 'product_shipping' },
+    { label: 'Envío y devoluciones', target: 'product_shipping' },
     { label: 'Reseñas', target: 'product_reviews' },
   ],
-  sticky: true,
+  // Pestañas de verdad: la barra no se pega arriba (no hace falta desplazarse para ver el panel).
+  // Un `sticky: true` guardado se respeta.
+  sticky: false,
+  celular: 'acordeon',
 };
 
 /** Sin `items` válidos, las cuatro de siempre. El sitio quita las que apuntan a un bloque oculto. */
@@ -1255,6 +1291,7 @@ export function normalizarPestanasAncla(content: Record<string, unknown> | null 
   return {
     items: items.length > 0 ? items : DEFAULT_PESTANAS_ANCLA.items.map((i) => ({ ...i })),
     sticky: booleano(c.sticky, DEFAULT_PESTANAS_ANCLA.sticky),
+    celular: unoDe(c.mobile_mode, CELULAR_PESTANAS_FICHA, DEFAULT_PESTANAS_ANCLA.celular),
   };
 }
 
@@ -1381,7 +1418,7 @@ export const CLAVES_SECCION_TIENDA: Readonly<Record<string, readonly string[]>> 
   'welcome_popup.coupon': ['enabled', 'coupon_code', 'title', 'text', 'cta_text', 'cta_url', 'image_url', 'delay_s', 'frequency'],
   'link_cloud.pills': ['title', 'source', 'links', 'max'],
   'service_cards.over_image': ['image_url', 'cards'],
-  'product_anchor_nav.tabs': ['items', 'sticky'],
+  'product_anchor_nav.tabs': ['items', 'sticky', 'mobile_mode'],
   'product_pager.default': ['prev_text', 'next_text'],
 };
 

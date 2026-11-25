@@ -44,7 +44,8 @@ import {
   DEFAULT_PORTADA_BUSCADOR,
   DEFAULT_REJILLA_EDITORIAL,
   DEFAULT_VENTANA_BIENVENIDA,
-  DESTINOS_ANCLA,
+  CELULAR_PESTANAS_FICHA,
+  DESTINOS_PESTANA_FICHA,
   DISPOSICIONES_ENCABEZADO_CATEGORIA,
   ESTILOS_FILTRO_EDITORIAL,
   ESTILOS_PESTANAS,
@@ -1146,9 +1147,11 @@ export const SECCIONES_TIENDA_CATALOGO: SectionTypeDefinition[] = [
   },
   {
     type: 'product_anchor_nav',
-    label: 'Pestañas que llevan a cada parte',
+    label: 'Pestañas de la ficha',
     icon: 'Newspaper',
-    description: 'Pestañas fijas que saltan a cada bloque de la ficha (Resumen, Características, Envío, Reseñas).',
+    // Pestañas de verdad (Figma «Ficha — pestañas reales» 3255-99475, 2026-11-25): la barra va
+    // debajo de la foto y la información, y cada pestaña muestra ahí mismo su bloque.
+    description: 'Pestañas debajo de la foto y la información: Descripción, Características, Envío y devoluciones y Reseñas. Al tocar una cambia el contenido de abajo; en el celular, acordeón.',
     variants: variantesDe('product_anchor_nav'),
     contentFields: [
       {
@@ -1157,30 +1160,36 @@ export const SECCIONES_TIENDA_CATALOGO: SectionTypeDefinition[] = [
         type: 'repeater',
         itemLabelKey: 'label',
         maxItems: MAX_PESTANAS_ANCLA,
-        helpText: 'Vacío: las cuatro de siempre. La tienda quita las que apuntan a un bloque oculto.',
+        helpText: 'Orden, nombre y cuáles se ven. Vacío: las cuatro de siempre. Una pestaña cuyo bloque está oculto o no tiene datos no aparece; los bloques sin pestaña se quedan en su sitio.',
         defaultItems: DEFAULT_PESTANAS_ANCLA.items.map((i) => ({ ...i })),
         itemFields: [
-          { key: 'label', label: 'Texto', type: 'text' },
+          { key: 'label', label: 'Nombre', type: 'text' },
           {
             key: 'target',
-            label: 'Lleva a',
+            label: 'Muestra',
             type: 'select',
-            defaultValue: 'product_info',
-            options: opciones(DESTINOS_ANCLA, {
-              product_info: 'Información',
+            defaultValue: 'product_description',
+            options: opciones(DESTINOS_PESTANA_FICHA, {
               product_description: 'Descripción',
               product_specs: 'Características',
-              product_benefits: 'Beneficios',
-              product_shipping: 'Envío',
+              product_shipping: 'Envío y devoluciones',
               product_reviews: 'Reseñas',
-              product_faq: 'Preguntas',
-              related_products: 'Relacionados',
-              complete_the_look: 'Completa el look',
+              product_faq: 'Preguntas frecuentes',
             }),
           },
         ],
       },
-      { key: 'sticky', label: 'Fijas arriba al bajar', type: 'boolean', defaultValue: DEFAULT_PESTANAS_ANCLA.sticky },
+      {
+        key: 'mobile_mode',
+        label: 'En el celular',
+        type: 'select',
+        defaultValue: DEFAULT_PESTANAS_ANCLA.celular,
+        options: opciones(CELULAR_PESTANAS_FICHA, {
+          acordeon: 'Acordeón (varias abiertas)',
+          pestanas: 'Pestañas',
+        }),
+      },
+      { key: 'sticky', label: 'Barra fija arriba al bajar', type: 'boolean', defaultValue: DEFAULT_PESTANAS_ANCLA.sticky },
     ],
   },
   {

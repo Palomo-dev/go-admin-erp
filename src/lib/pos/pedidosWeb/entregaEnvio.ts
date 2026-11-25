@@ -13,6 +13,9 @@
  * 3. Cambiar domiciliario solo antes de «En camino»; después, desde Logística con motivo.
  * 4. «Marcar entregado» con envío activo abre el registro de entrega de Logística: el pedido y el
  *    envío nunca divergen (la regla de sincronización vive en la base).
+ * 5. «Cobrar y entregar» con envío activo abre ESE MISMO registro y cobra en la caja en un paso
+ *    (`logistica_entregar_y_cobrar_en_caja`). Sin envío activo, la caja cobra como siempre.
+ *    Quién puede entregar lo resuelve la base: domiciliario asignado o «Registrar entregas en oficina».
  */
 import { canonicoDeEstado, ESTADOS_ASIGNABLES, puedeEntregarse, type EstadoCanonico } from '@/lib/logistica/estadosEnvio';
 import { lineaDeTiempo, type EventoLinea } from '@/lib/logistica/detalleEnvio';
@@ -149,6 +152,20 @@ export function cobroDeEntrega(order: PedidoContraentrega, envio: EnvioParaCobro
     if (monto > 0) return { tipo: 'cobrar', monto, total, anticipo };
   }
   return { tipo: 'pagado' };
+}
+
+/**
+ * Saldo que muestra «Cobrar y entregar» cuando el pedido tiene envío activo (decisión del dueño
+ * 2026-11-25: abre el registro de entrega de Logística y cobra en la caja). Lo que se cobra lo
+ * decide la base (saldo de la factura menos el anticipo pagado); esto es solo lo que se anuncia.
+ */
+export function montoCobrarYEntregar(order: PedidoContraentrega, envio: EnvioParaCobro | null): number {
+  const c = cobroDeEntrega(order, envio);
+  if (c.tipo === 'cobrar') return c.monto;
+  if (order.payment_status === 'paid') return 0;
+  const total = Number(order.total) || 0;
+  const anticipo = estadoAnticipo(order) === 'pagado' ? Number(order.advance_amount) || 0 : 0;
+  return Math.max(total - anticipo, 0);
 }
 
 // ── Historial sincronizado (Figma 3239-355997) ────────────────────────────────────

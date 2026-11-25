@@ -52,7 +52,7 @@ import { DialogoImprimirGuias } from '@/components/logistica/envios/DialogosEnvi
 import { DialogoEntregar } from '@/components/logistica/envio/DialogosEnvio';
 import { useImpresionLogistica } from '@/components/logistica/useImpresionLogistica';
 import { avisarCliente } from '@/components/logistica/logisticaApi';
-import { accionMarcarEntregado, envioActivo } from '@/lib/pos/pedidosWeb/entregaEnvio';
+import { accionMarcarEntregado, envioActivo, montoCobrarYEntregar } from '@/lib/pos/pedidosWeb/entregaEnvio';
 
 /** Ancla de la tarjeta «Pagos»: «Ver el anticipo» de la contraentrega lleva ahí. */
 const ID_PAGOS_PEDIDO = 'pagos-del-pedido';
@@ -126,6 +126,8 @@ export default function WebOrderDetailPage() {
   const tEntrega = useTranslations('pedidoWebEntrega');
   const [verGuiaAbierto, setVerGuiaAbierto] = useState(false);
   const [entregarAbierto, setEntregarAbierto] = useState(false);
+  // «Cobrar y entregar» con envío activo: el mismo registro de entrega, cobrando en la caja.
+  const [entregarConCobro, setEntregarConCobro] = useState(false);
 
   // Estado de carga
   if (loading) {
@@ -180,7 +182,21 @@ export default function WebOrderDetailPage() {
   const marcarEntregado = () => {
     const accion = accionMarcarEntregado(envio?.envio.status);
     if (accion === 'pedido') return void handleMarkDelivered();
-    if (accion === 'logistica') return setEntregarAbierto(true);
+    if (accion === 'logistica') {
+      setEntregarConCobro(false);
+      return setEntregarAbierto(true);
+    }
+    toast({ title: tEntrega('entregar.bloqueado'), description: tEntrega('entregar.bloqueadoNota'), variant: 'destructive' });
+  };
+  // «Cobrar y entregar» (decisión del dueño 2026-11-25): con envío activo abre el MISMO registro de
+  // entrega de Logística y cobra en la caja en un solo paso; sin envío activo, el cobro de siempre.
+  const cobrarYEntregar = () => {
+    const accion = accionMarcarEntregado(envio?.envio.status);
+    if (accion === 'pedido') return abrirCobro(true);
+    if (accion === 'logistica') {
+      setEntregarConCobro(true);
+      return setEntregarAbierto(true);
+    }
     toast({ title: tEntrega('entregar.bloqueado'), description: tEntrega('entregar.bloqueadoNota'), variant: 'destructive' });
   };
   const envioParaGuia = filaEnvio
@@ -242,7 +258,7 @@ export default function WebOrderDetailPage() {
         order={order}
         porCobrarEnCaja={cobro.puedeCobrar}
         reservaActiva={trazabilidad.reservaActiva}
-        onCobrarYEntregar={cobro.cobraYEntrega ? () => abrirCobro(true) : undefined}
+        onCobrarYEntregar={cobro.cobraYEntrega ? cobrarYEntregar : undefined}
         cobrarDeshabilitado={sinCaja}
         isLoading={actionLoading}
         avisoStock={avisoStock}
@@ -312,7 +328,7 @@ export default function WebOrderDetailPage() {
             onMarkDelivered={marcarEntregado}
             onCancel={() => setCancelDialogOpen(true)}
             onConvertToSale={handleConvertToSale}
-            onCobrar={abrirCobro}
+            onCobrar={(entregar) => (entregar ? cobrarYEntregar() : abrirCobro(false))}
             onMarcarPagadoPasarela={puedeMarcarPagado ? () => void handleMarcarPagadoPasarela() : undefined}
             onPrint={trazabilidad.comandaId ? () => void imprimir() : undefined}
             sinCajaAbierta={sinCaja}
@@ -377,7 +393,7 @@ export default function WebOrderDetailPage() {
             <button
               type="button"
               className={clasesBoton({ variante: 'primario', tamano: 'lg', anchoCompleto: true })}
-              onClick={() => abrirCobro(true)}
+              onClick={cobrarYEntregar}
               disabled={actionLoading || sinCaja}
             >
               {actionLoading ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <DollarSign className="size-5" aria-hidden="true" />}
@@ -469,16 +485,23 @@ export default function WebOrderDetailPage() {
         />
       )}
 
-      {/* «Marcar entregado» con envío activo: el registro de entrega de Logística (código, quién recibe, cobro). */}
+      {/* «Marcar entregado» y «Cobrar y entregar» con envío activo: el registro de entrega de
+          Logística (código, quién recibe, cobro); con cobro, entra a la caja en la misma transacción. */}
       {filaEnvio && activo && (
         <DialogoEntregar
           abierto={entregarAbierto}
           onAbiertoChange={setEntregarAbierto}
           envio={filaEnvio}
+          cobroEnCaja={
+            entregarConCobro
+              ? { order, monto: montoCobrarYEntregar(order, envio?.envio ?? null), cajaEtiqueta: cajaDeLaSede }
+              : null
+          }
           onEntregado={(r) => {
             if (envio) void avisarCliente({ source_type: envio.envio.source_type, source_id: envio.envio.source_id }, r.aviso);
             void loadOrder();
             envioPedido.recargar();
+            if (r.cobradoEnCaja) void trazabilidad.recargar();
           }}
         />
       )}

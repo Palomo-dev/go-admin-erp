@@ -95,7 +95,10 @@ describe('Interruptores que el sitio no implementa: ocultos en el inspector', ()
     const claves = getSectionDefinition('product_actions')!.contentFields.map((f) => f.key);
     expect(claves).not.toContain('position');
     expect(claves).not.toContain('buttons');
-    expect(claves).toEqual(expect.arrayContaining(['sticky_mobile', 'show_price_in_button', 'button_hint']));
+    expect(claves).toEqual(expect.arrayContaining(['sticky_mobile', 'show_price_in_button', 'initial_variant']));
+    // «Pista antes de elegir variante» no hacía nada desde que la tienda elige siempre la primera
+    // talla: la reemplaza «Al abrir la ficha» (Figma «16 Sitio web», bloque 1).
+    expect(claves).not.toContain('button_hint');
   });
 });
 

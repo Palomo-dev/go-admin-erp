@@ -686,6 +686,89 @@ export function filasParaGuardar(filas: readonly { nombre: string; valor: string
   return limpias.length > 0 ? limpias : null;
 }
 
+// ─── Envío y devoluciones (`product_shipping`) ─────────────────────────────────────────────
+//
+// Figma «16 Sitio web», bloque 2, opción B del dueño (2026-11-25): cada línea usa el dato real
+// del ERP si existe (tiempo de entrega de las zonas de envío, «envío gratis desde»); si no, la
+// frase de siempre, que ahora el comercio puede cambiar desde el editor. Nada desaparece.
+
+/** Las frases de siempre (lo que la tienda pintaba fijo). Vacío en el editor = estas. */
+export const TEXTOS_ENVIO_FICHA = {
+  entrega: '24-48 horas hábiles',
+  costo: 'Calculado al finalizar la compra',
+  devoluciones: '30 días para devoluciones',
+  cobertura: 'Envíos a todo el país',
+} as const;
+
+export const CLAVES_TEXTOS_ENVIO = ['delivery_time_text', 'shipping_cost_text', 'return_policy_text', 'coverage_text', 'show_coverage'] as const;
+
+export interface TextosEnvioFicha {
+  entrega: string;
+  costo: string;
+  devoluciones: string;
+  cobertura: string;
+  /** «Cobertura» se pinta (hoy siempre). */
+  conCobertura: boolean;
+}
+
+export function leerTextosEnvio(content: Record<string, unknown> | null | undefined): TextosEnvioFicha {
+  const c = content ?? {};
+  const t = (v: unknown, porDefecto: string) => texto(v, MAX_VALOR_FILA) || porDefecto;
+  return {
+    entrega: t(c.delivery_time_text, TEXTOS_ENVIO_FICHA.entrega),
+    costo: t(c.shipping_cost_text, TEXTOS_ENVIO_FICHA.costo),
+    devoluciones: t(c.return_policy_text, TEXTOS_ENVIO_FICHA.devoluciones),
+    cobertura: t(c.coverage_text, TEXTOS_ENVIO_FICHA.cobertura),
+    conCobertura: c.show_coverage !== false,
+  };
+}
+
+// ─── Especificaciones «Por defecto» (`product_specs · default`) ─────────────────────────────
+//
+// Figma «16 Sitio web», bloque 5 (2026-11-25): la variante «Por defecto» buscaba una tabla de
+// atributos que no existe (`product_attributes`) y nunca pintaba nada. Ahora lee la misma ficha
+// técnica que la Descripción: las columnas del producto (Inventario › producto) y sus filas propias
+// (`products.specifications`). El editor elige qué filas salen y en qué orden (`spec_rows`).
+
+/** Id de la fila que trae las filas propias del producto. */
+export const FILA_PROPIAS = 'propias' as const;
+export type FilaEspecificacion = FilaFicha | typeof FILA_PROPIAS;
+export const FILAS_ESPECIFICACIONES: readonly FilaEspecificacion[] = [...FILAS_FICHA, FILA_PROPIAS];
+
+export interface EspecificacionesFicha {
+  /** Columnas del producto que salen, en orden. */
+  filas: FilaFicha[];
+  /** Filas propias del producto (y dónde van: después de la columna en la posición `posicionPropias`). */
+  filasPropias: boolean;
+  /** Índice en `filas` donde van las propias (al final si no se movieron). */
+  posicionPropias: number;
+}
+
+/** `spec_rows` = `[{ id, visible }]`. Sin lista: las seis columnas y las filas propias, en ese orden. */
+export function normalizarEspecificacionesFicha(content: Record<string, unknown> | null | undefined): EspecificacionesFicha {
+  const lista = (content ?? {}).spec_rows;
+  if (!Array.isArray(lista)) return { filas: [...FILAS_FICHA], filasPropias: true, posicionPropias: FILAS_FICHA.length };
+  const vistas = new Set<string>();
+  const orden: { id: FilaEspecificacion; visible: boolean }[] = [];
+  for (const crudo of lista) {
+    if (!crudo || typeof crudo !== 'object') continue;
+    const id = (crudo as Record<string, unknown>).id;
+    if (typeof id !== 'string' || !(FILAS_ESPECIFICACIONES as readonly string[]).includes(id) || vistas.has(id)) continue;
+    vistas.add(id);
+    orden.push({ id: id as FilaEspecificacion, visible: (crudo as Record<string, unknown>).visible !== false });
+  }
+  // Las que la lista no nombra van al final, encendidas (una fila nueva del catálogo no se pierde).
+  for (const id of FILAS_ESPECIFICACIONES) if (!vistas.has(id)) orden.push({ id, visible: true });
+  const filas: FilaFicha[] = [];
+  let posicionPropias = -1;
+  for (const f of orden) {
+    if (!f.visible) continue;
+    if (f.id === FILA_PROPIAS) posicionPropias = filas.length;
+    else filas.push(f.id);
+  }
+  return { filas, filasPropias: posicionPropias >= 0, posicionPropias: posicionPropias >= 0 ? posicionPropias : filas.length };
+}
+
 // ─── Etiquetas de la ficha (`product_info`) ─────────────────────────────────────────────────
 //
 // Figma «16 Sitio web», sección 3036:78040 (aprobada por el dueño el 2026-11-24): las etiquetas de

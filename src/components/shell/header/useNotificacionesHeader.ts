@@ -55,6 +55,21 @@ interface AvisoMiembroFila {
   created_at: string;
 }
 
+/** Cada cuántos tics del sondeo (30 s) se relee la campana completa: 10 tics = 5 minutos. */
+export const TICS_CARGA_COMPLETA = 10;
+
+/** ¿Este tic del sondeo relee todo (true) o solo los avisos del miembro (false)? */
+export function tocaCargaCompleta(tic: number): boolean {
+  return tic > 0 && tic % TICS_CARGA_COMPLETA === 0;
+}
+
+/** La lista «Mías»: notificaciones y avisos del miembro mezclados, de la más nueva a la más vieja, 15 a lo sumo. */
+export function mezclarConAvisos(notificaciones: NotificacionHeader[], avisos: NotificacionHeader[]): NotificacionHeader[] {
+  return [...notificaciones, ...avisos]
+    .sort((x, y) => (x.created_at < y.created_at ? 1 : x.created_at > y.created_at ? -1 : 0))
+    .slice(0, 15);
+}
+
 function avisoANotificacion(fila: AvisoMiembroFila): NotificacionHeader {
   const extra = fila.entity_type === 'task'
     ? { task_id: fila.entity_id }
@@ -107,15 +122,29 @@ export function useNotificacionesHeader(organizationId: string | null) {
   const inventarioActivo = canAccessModule('inventory');
   const { taskReminders, loading: cargandoTareas, refreshReminders } = useTaskReminders(organizationId);
 
-  const cargarRef = useRef<(silencioso?: boolean) => Promise<void>>(async () => {});
+  const cargarRef = useRef<(silencioso?: boolean, soloAvisos?: boolean) => Promise<void>>(async () => {});
+  // Sondeo liviano (solo avisos del miembro): las notificaciones «mías» de la última carga
+  // completa, SIN los avisos, para volver a mezclarlas con los avisos recién leídos. Las acciones
+  // locales (leer, descartar) se aplican también aquí con `actualizarMias`.
+  const baseMiasRef = useRef<NotificacionHeader[] | null>(null);
+  const avisosNoLeidosRef = useRef(0);
+  useEffect(() => {
+    avisosNoLeidosRef.current = avisosNoLeidos;
+  }, [avisosNoLeidos]);
+  const actualizarMias = useCallback((cambio: (lista: NotificacionHeader[]) => NotificacionHeader[]) => {
+    if (baseMiasRef.current) baseMiasRef.current = cambio(baseMiasRef.current);
+    setMias(cambio);
+  }, []);
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
   useEffect(() => {
-    const cargar = async (silencioso = false) => {
+    const cargar = async (silencioso = false, soloAvisos = false) => {
       if (!organizationId || !userId || !orgNum) return;
+      // Sin una carga completa previa no hay con qué mezclar: se hace la completa.
+      const liviana = soloAvisos && baseMiasRef.current !== null;
       if (!silencioso) setCargando(true);
       try {
         let consultaMias = supabase
@@ -169,6 +198,28 @@ export function useNotificacionesHeader(organizationId: string | null) {
           conteoAvisos = conteoAvisos.not('event', 'in', '(inventario.cero,inventario.bajo)');
         }
 
+        if (liviana) {
+          // Tic del sondeo: solo `member_notices` (2 consultas en vez de 8). Las notificaciones
+          // ya llegan por Realtime y se releen completas cada `TICS_CARGA_COMPLETA` tics.
+          const [rSoloAvisos, rSoloConteo] = await Promise.all([consultaAvisos, conteoAvisos]);
+          if (rSoloAvisos.error) {
+            console.error('[useNotificacionesHeader] avisos', rSoloAvisos.error.message);
+            return;
+          }
+          const avisosNuevos = ((rSoloAvisos.data ?? []) as AvisoMiembroFila[]).map(avisoANotificacion);
+          setMias(mezclarConAvisos(baseMiasRef.current ?? [], avisosNuevos));
+          if (rSoloConteo.error) {
+            console.error('[useNotificacionesHeader] conteo avisos', rSoloConteo.error.message);
+            return;
+          }
+          const noLeidos = rSoloConteo.count ?? 0;
+          const previos = avisosNoLeidosRef.current;
+          avisosNoLeidosRef.current = noLeidos;
+          setAvisosNoLeidos(noLeidos);
+          setNoLeidasMias((c) => Math.max(0, c - previos + noLeidos));
+          return;
+        }
+
         const [rMias, rTodas, rNoLeidasMias, rNoLeidasTodas, rAvisos, rConteoAvisos] = await Promise.all([
           consultaMias,
           consultaTodas,
@@ -205,11 +256,11 @@ export function useNotificacionesHeader(organizationId: string | null) {
         if (rAvisos.error) console.error('[useNotificacionesHeader] avisos', rAvisos.error.message);
         const noLeidosAvisos = rConteoAvisos.error ? 0 : (rConteoAvisos.count ?? 0);
         if (rConteoAvisos.error) console.error('[useNotificacionesHeader] conteo avisos', rConteoAvisos.error.message);
-        const combinadas = [...visibles(filasMias, 15), ...avisos]
-          .sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0))
-          .slice(0, 15);
+        const baseMias = visibles(filasMias, 15);
+        baseMiasRef.current = baseMias;
+        avisosNoLeidosRef.current = noLeidosAvisos;
 
-        setMias(combinadas);
+        setMias(mezclarConAvisos(baseMias, avisos));
         setTodas(visibles(filasTodas, 20));
         setAvisosNoLeidos(noLeidosAvisos);
         setNoLeidasMias(((rNoLeidasMias.data as number | null) ?? 0) + noLeidosAvisos);
@@ -231,11 +282,19 @@ export function useNotificacionesHeader(organizationId: string | null) {
     const refrescar = () => {
       if (activo) void cargarRef.current(true);
     };
+    let suscrito = false;
     const canalNotif = supabase
       .channel(`notifications-changes-${organizationId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `organization_id=eq.${organizationId}` }, refrescar)
       .subscribe((estado) => {
-        if (activo && (estado === 'CHANNEL_ERROR' || estado === 'TIMED_OUT')) console.warn('[useNotificacionesHeader] Realtime', estado);
+        if (!activo) return;
+        if (estado === 'CHANNEL_ERROR' || estado === 'TIMED_OUT') console.warn('[useNotificacionesHeader] Realtime', estado);
+        // Al RECONECTAR (no en la primera suscripción) se relee todo: lo que llegó mientras el
+        // canal estuvo caído no se vuelve a emitir.
+        if (estado === 'SUBSCRIBED') {
+          if (suscrito) refrescar();
+          suscrito = true;
+        }
       });
     const canalLecturas = supabase
       .channel(`notification-reads-${userId}`)
@@ -245,10 +304,21 @@ export function useNotificacionesHeader(organizationId: string | null) {
     // La suscripción filtrada por `recipient_user_id` fallaba en bucle en producción
     // ("invalid column for filter recipient_user_id") y reintentaba sin parar,
     // presionando el pool de conexiones. Solo se sondea con la pestaña visible.
+    //
+    // El tic relee SOLO los avisos (2 consultas). Antes releía las 8 de la campana cada 30 s por
+    // pestaña abierta (~25.000 consultas al día con 9 navegadores, medido el 2026-11-24), aunque
+    // las notificaciones ya llegan por Realtime. Como red de seguridad por si el canal pierde un
+    // evento, cada `TICS_CARGA_COMPLETA` tics (5 min) y al volver a la pestaña se relee todo.
+    const visible = () => typeof document === 'undefined' || document.visibilityState === 'visible';
     const refrescarSiVisible = () => {
-      if (typeof document === 'undefined' || document.visibilityState === 'visible') refrescar();
+      if (visible()) refrescar();
     };
-    const sondeoAvisos = setInterval(refrescarSiVisible, 30_000);
+    let tics = 0;
+    const sondeoAvisos = setInterval(() => {
+      if (!activo || !visible()) return;
+      tics += 1;
+      void cargarRef.current(true, !tocaCargaCompleta(tics));
+    }, 30_000);
     if (typeof document !== 'undefined') document.addEventListener('visibilitychange', refrescarSiVisible);
     return () => {
       activo = false;
@@ -261,7 +331,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
 
   const marcarLocal = (id: string) => {
     const marcar = (lista: NotificacionHeader[]) => lista.map((n) => (n.id === id ? { ...n, is_read_by_me: true } : n));
-    setMias(marcar);
+    actualizarMias(marcar);
     setTodas(marcar);
     setNoLeidasMias((c) => Math.max(0, c - 1));
     setNoLeidasTodas((c) => Math.max(0, c - 1));
@@ -280,7 +350,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
           console.error('[useNotificacionesHeader] aviso leído', error.message);
           return;
         }
-        setMias((lista) => lista.map((item) => (item.id === n.id ? { ...item, is_read_by_me: true, read_at: new Date().toISOString() } : item)));
+        actualizarMias((lista) => lista.map((item) => (item.id === n.id ? { ...item, is_read_by_me: true, read_at: new Date().toISOString() } : item)));
         setNoLeidasMias((c) => Math.max(0, c - 1));
         setAvisosNoLeidos((c) => Math.max(0, c - 1));
         return;
@@ -290,7 +360,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
       if (!error || error.code === '23505') marcarLocal(n.id);
       else console.error('[useNotificacionesHeader] marcar leída', error.message);
     },
-    [userId]
+    [userId, actualizarMias]
   );
 
   const marcarTodas = useCallback(
@@ -303,7 +373,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
       }
       const insertadas = (data as number | null) ?? 0;
       const todasLeidas = (lista: NotificacionHeader[]) => lista.map((n) => ({ ...n, is_read_by_me: true }));
-      setMias(todasLeidas);
+      actualizarMias(todasLeidas);
       setNoLeidasMias(0);
       if (alcance === 'all') {
         setTodas(todasLeidas);
@@ -321,7 +391,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
       if (errorAvisos) console.error('[useNotificacionesHeader] avisos leídos', errorAvisos.message);
       else setAvisosNoLeidos(0);
     },
-    [orgNum, userId]
+    [orgNum, userId, actualizarMias]
   );
 
   /** Solo para quien la descarta (antes la borraba para toda la organización). También la marca leída. */
@@ -344,7 +414,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
           setAvisosNoLeidos((c) => Math.max(0, c - 1));
         }
         const quitarAviso = (lista: NotificacionHeader[]) => lista.filter((x) => x.id !== n.id);
-        setMias(quitarAviso);
+        actualizarMias(quitarAviso);
         return true;
       }
       const { error } = await supabase.from('notification_dismissals').insert({ notification_id: n.id, user_id: userId });
@@ -354,11 +424,11 @@ export function useNotificacionesHeader(organizationId: string | null) {
       }
       if (!n.is_read_by_me) await marcarLeida(n);
       const quitar = (lista: NotificacionHeader[]) => lista.filter((x) => x.id !== n.id);
-      setMias(quitar);
+      actualizarMias(quitar);
       setTodas(quitar);
       return true;
     },
-    [userId, marcarLeida]
+    [userId, marcarLeida, actualizarMias]
   );
 
   /** Borra la lectura propia: vuelve a contar como pendiente solo para esta persona. */
@@ -375,7 +445,7 @@ export function useNotificacionesHeader(organizationId: string | null) {
           console.error('[useNotificacionesHeader] aviso no leído', error.message);
           return false;
         }
-        setMias((lista) => lista.map((x) => (x.id === n.id ? { ...x, is_read_by_me: false, read_at: null } : x)));
+        actualizarMias((lista) => lista.map((x) => (x.id === n.id ? { ...x, is_read_by_me: false, read_at: null } : x)));
         setNoLeidasMias((c) => c + 1);
         setAvisosNoLeidos((c) => c + 1);
         return true;
@@ -386,13 +456,13 @@ export function useNotificacionesHeader(organizationId: string | null) {
         return false;
       }
       const desmarcar = (lista: NotificacionHeader[]) => lista.map((x) => (x.id === n.id ? { ...x, is_read_by_me: false } : x));
-      setMias(desmarcar);
+      actualizarMias(desmarcar);
       setTodas(desmarcar);
       if (n.recipient_user_id === userId) setNoLeidasMias((c) => c + 1);
       setNoLeidasTodas((c) => c + 1);
       return true;
     },
-    [userId]
+    [userId, actualizarMias]
   );
 
   const recordatorios = pmActivo ? taskReminders : [];

@@ -146,8 +146,15 @@ export default function ResumenTab({ clienteId, organizationId, vacio, cartera, 
 
         // 1. Ventas del cliente, con sucursal y número de líneas para el historial.
         // Si el conteo embebido no estuviera disponible, se repite sin él: el resumen no se cae por un detalle.
+        // «Facturar a» (2026-11-25): también las que facturó a una empresa ligada y recibió él
+        // (contact_customer_id): su historial sigue en su ficha.
         const consultarVentas = (columnas: string) =>
-          supabase.from('sales').select(columnas).eq('customer_id', clienteId).eq('organization_id', organizationId).order('sale_date', { ascending: false });
+          supabase
+            .from('sales')
+            .select(columnas)
+            .or(`customer_id.eq.${clienteId},contact_customer_id.eq.${clienteId}`)
+            .eq('organization_id', organizationId)
+            .order('sale_date', { ascending: false });
         const BASE_VENTAS = 'id, total, sale_date, status, payment_status, user_id, branch:branches(name)';
         let ventasRes = await consultarVentas(`${BASE_VENTAS}, sale_items(count)`);
         if (ventasRes.error) ventasRes = await consultarVentas(BASE_VENTAS);

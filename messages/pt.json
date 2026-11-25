@@ -69402,20 +69402,40 @@
           "error": "Alguns envios não foram cancelados"
         },
         "guias": {
-          "titulo": "{count, plural, one {Imprimir # etiqueta} other {Imprimir # etiquetas}}",
-          "descripcion": "Etiqueta para colar no pacote, com o código de barras do envio.",
-          "confirmar": "{count, plural, one {Imprimir # etiqueta} other {Imprimir # etiquetas}}",
-          "cancelar": "Cancelar",
-          "pie": "São impressas na impressora de etiquetas da filial. Se não houver, abrem para imprimir ou salvar em PDF.",
+          "titulo": "{count, plural, one {Imprimir # guia} other {Imprimir # guias}}",
+          "descripcion": "O que você vê aqui é exatamente o que sai no papel.",
           "formato": "Formato",
-          "formatoTermica": "Etiqueta térmica de 80 mm",
+          "formatoTermica": "Térmica 80 mm",
+          "formatoRotulo": "Etiqueta 10 × 15 cm",
+          "formatoA4": "A4 · 4 por folha",
           "copias": "Cópias por envio",
-          "vistaPrevia": "Pré-visualização da etiqueta",
-          "para": "PARA: {nombre}",
-          "contraentrega": "PAGAMENTO NA ENTREGA {monto}",
-          "peso": "{kg} kg",
-          "bulto": "1 de 1",
-          "pedirCodigo": "Pedir código"
+          "resumenTermica": "{unidades, select, paquetes {{n, plural, one {# pacote} other {# pacotes}}} other {{n, plural, one {# envio} other {# envios}}}} × {copias, plural, one {# cópia} other {# cópias}} = {count, plural, one {# tíquete} other {# tíquetes, com corte entre cada um}}.",
+          "resumenRotulo": "{unidades, select, paquetes {{n, plural, one {# pacote} other {# pacotes}}} other {{n, plural, one {# envio} other {# envios}}}} × {copias, plural, one {# cópia} other {# cópias}} = {count, plural, one {# etiqueta de 10 × 15 cm} other {# etiquetas, uma por página de 10 × 15 cm}}.",
+          "resumenA4": "{unidades, select, paquetes {{n, plural, one {# pacote} other {# pacotes}}} other {{n, plural, one {# envio} other {# envios}}}} × {copias, plural, one {# cópia} other {# cópias}} = {count, plural, one {# etiqueta} other {# etiquetas}} em {hojas, plural, one {# folha A4} other {# folhas A4}}.{libres, plural, =0 {} one { Sobra um quarto livre.} other { Sobram # quartos livres.}}",
+          "vistaPrevia": "Pré-visualização da guia",
+          "cargandoVista": "Preparando a pré-visualização…",
+          "errorVista": "Não foi possível montar a pré-visualização. Feche e tente novamente.",
+          "anterior": "Guia anterior",
+          "siguiente": "Próxima guia",
+          "posicion": "Guia {n} de {total} · {numero}",
+          "posicionHoja": "Folha {n} de {total}",
+          "escalaTermica": "Visualização a {pct} % · no papel: 80 mm de largura (72 mm úteis), altura conforme o conteúdo.",
+          "escalaRotulo": "Visualização a {pct} % · no papel: 100 × 150 mm.",
+          "escalaA4": "Visualização a {pct} % · cada etiqueta sai a 97 % (cabe em um quarto de A4).",
+          "avisoTermicaTitulo": "Imprime em «{impresora}» ({ancho}) · online",
+          "avisoTermica": "Impressora de etiquetas da filial. Se falhar, abre-se o PDF para imprimir ou salvar.",
+          "cambiar": "Alterar",
+          "avisoPdfTitulo": "O PDF abre em tamanho real",
+          "avisoPdf": "A impressora de etiquetas da filial é de rolo: este formato sai em PDF para imprimir ou salvar.",
+          "avisoSinImpresoraTitulo": "Esta filial não tem impressora de etiquetas online",
+          "avisoSinImpresora": "O PDF abre em tamanho real para imprimir ou salvar. Você pode cadastrar uma impressora em Configurações › Impressoras.",
+          "configurar": "Configurar",
+          "avisoA4Titulo": "Imprime na impressora comum da filial",
+          "avisoA4": "Recorte pelas linhas pontilhadas. Serve quando não há impressora de etiquetas.",
+          "confirmarTermica": "{count, plural, one {Imprimir # guia} other {Imprimir # guias}}",
+          "confirmarPdf": "{count, plural, one {Abrir PDF de # guia} other {Abrir PDF de # guias}}",
+          "confirmarA4": "{count, plural, one {Imprimir folha A4} other {Imprimir # folhas A4}}",
+          "cancelar": "Cancelar"
         }
       },
       "form": {
@@ -69585,6 +69605,53 @@
           "notaNuevo": "Ao criar, o envio fica “Criado” em A despachar; dali é atribuído e sai.",
           "notaEditar": "As alterações ficam no histórico do envio com seu nome."
         }
+      }
+    },
+    "rotulo": {
+      "remitente": "Remetente",
+      "destinatario": "Para · Destinatário",
+      "telefono": "Tel. {telefono}",
+      "indicaciones": "Indicações: {texto}",
+      "paquete": "Pacote",
+      "paqueteDe": "{numero} de {total}",
+      "peso": "Peso",
+      "pesoKg": "{kg} kg",
+      "entrega": "Entrega",
+      "entregaPropio": "Entrega própria",
+      "entregaTransportadora": "Transportadora: {nombre}",
+      "entregaTransportadoraSinNombre": "Transportadora",
+      "entregaRecoger": "Retirar na loja",
+      "guiaTransportadora": "Código da transportadora",
+      "cobrar": "COBRAR NA ENTREGA",
+      "cobrarUnaVez": "COBRAR NA ENTREGA · UMA VEZ",
+      "notaCobro": "Não entregue sem cobrar.",
+      "notaCobroAnticipo": "Saldo após o sinal pago online. Não entregue sem cobrar.",
+      "notaCobroPaquetes": "Total do envio de {total} pacotes. Entregue os {total} juntos.",
+      "notaCodigo": "Peça o código de entrega.",
+      "pagado": "PAGO · NÃO COBRAR",
+      "notaPagado": "O cliente já pagou. Não receba dinheiro.",
+      "guia": "Guia",
+      "qrCorto": "Acompanhe seu pedido",
+      "qrLargo": "Escaneie o QR para acompanhar seu pedido",
+      "pieDespachado": "Despachado {fecha}",
+      "pieTransportadora": "Entregue à transportadora {fecha}",
+      "pieImpreso": "Impresso {fecha}",
+      "pedidoWeb": "Pedido web {numero}",
+      "vehiculoMoto": "Moto {placa}",
+      "vehiculoCarro": "Carro {placa}",
+      "vehiculoFurgon": "Furgão {placa}",
+      "vehiculoOtro": "Placa {placa}",
+      "corte": "corte",
+      "pagina": {
+        "titulo": "Guias para imprimir",
+        "resumen": "{count, plural, one {# etiqueta de 10 × 15 cm, uma por página} other {# etiquetas de 10 × 15 cm, uma por página}}",
+        "resumenTermica": "{count, plural, one {# tíquete de 80 mm} other {# tíquetes de 80 mm, um por página}}",
+        "resumenA4": "{count, plural, one {# etiqueta} other {# etiquetas}} em {hojas, plural, one {# folha A4} other {# folhas A4}}, para recortar pelas linhas pontilhadas",
+        "tituloDocumento": "{count, plural, one {Guia {numero}} other {Guias (#)}}",
+        "imprimir": "Imprimir",
+        "cerrar": "Fechar",
+        "sinTrabajoTitulo": "Não há guias para imprimir",
+        "sinTrabajo": "Volte a Logística e escolha «Imprimir guia» novamente."
       }
     }
   },
@@ -72832,6 +72899,57 @@
       "titulo": "Sua empresa está marcada 49 (não contribuinte de IVA) e esta fatura tem IVA",
       "texto": "Se você cobra IVA (por exemplo, comissões de arrecadação), a DIAN espera que seu RUT diga 48 (contribuinte de IVA). Atualize o RUT e o perfil tributário. A fatura pode ser emitida mesmo assim.",
       "accion": "Ver perfil tributário"
+    }
+  },
+  "clientesFacturarA": {
+    "titulo": "Faturar para",
+    "cargando": "Carregando para quem faturar…",
+    "sinNombre": "Sem nome",
+    "clienteCarrito": "Cliente do carrinho: {nombre}",
+    "aviso": "Este cliente tem empresas: a fatura vai para uma delas?",
+    "avisoAyuda": "Se você não mudar nada, a fatura sai para {persona}.",
+    "opciones": {
+      "consumidorFinal": "Consumidor final",
+      "consumidorFinalSub": "222222222222 · sem dados",
+      "persona": "Pessoa (documento)",
+      "personaCorta": "Pessoa",
+      "personaSinDocumento": "Sem documento",
+      "empresa": "Empresa (NIT)",
+      "empresaCorta": "Empresa",
+      "empresaSub": "{n, plural, one {# empresa vinculada} other {# empresas vinculadas}}"
+    },
+    "empresasDe": "Empresas de {persona}",
+    "escogida": "escolhida",
+    "ningunaMarcada": "nenhuma vem marcada",
+    "ultimaVez": "Da última vez: {empresa}",
+    "principal": "principal na ficha",
+    "iva": {
+      "48": "48 · Responsável pelo IVA",
+      "49": "49 · Não responsável pelo IVA",
+      "sin": "IVA não definido"
+    },
+    "ivaCorto": "IVA {codigo}",
+    "agregarEmpresa": "Adicionar empresa com NIT",
+    "resumen": {
+      "adquiriente": "Adquirente · vai na fatura",
+      "recibe": "Recebe · contato",
+      "correo": "E-mail da fatura: {correo}",
+      "sinCorreo": "Sem e-mail da fatura",
+      "cartera": "Contas a receber e retenções em seu nome",
+      "noAdquiriente": "Não figura como adquirente; seu histórico continua na ficha"
+    },
+    "resumenCorto": {
+      "titulo": "Fatura em nome de",
+      "recibe": "recebe {persona}"
+    },
+    "aNombreDe": "para {empresa}",
+    "errores": {
+      "empresaNoLigada": "A empresa não está mais vinculada a este cliente ou não é da organização. Escolha novamente para quem sai a fatura."
+    },
+    "agregar": {
+      "titulo": "Adicionar empresa com NIT",
+      "descripcion": "{persona} fica como contato da empresa.",
+      "creada": "{empresa} ficou vinculada ao cliente."
     }
   }
 }

@@ -4,6 +4,7 @@ import type { WebOrder, WebOrderItem } from './webOrdersService';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 import { getOrganizationTimezone } from './organizationTimezoneService';
 import { contraentregaDePedidoWeb, type MedioCobroContraentrega } from '@/lib/logistica/contraentrega';
+import { limpiarIndicaciones } from '@/lib/logistica/indicacionesEntrega';
 import type { EstadoEnvio, ModoDespacho, MotivoNovedad } from '@/lib/logistica/estadosEnvio';
 import {
   leerResultadoAsignacion,
@@ -302,14 +303,13 @@ class DeliveryIntegrationService {
     // Extraer datos de dirección (soporta múltiples formatos)
     const addr = (webOrder.delivery_address || {}) as Record<string, unknown>;
 
-    // La tabla shipments no tiene columna delivery_country: el país se persiste en
-    // metadata y se anexa a delivery_instructions para que el mensajero lo vea.
+    // La tabla shipments no tiene columna delivery_country: el país se persiste en metadata
+    // (`delivery_country`, `delivery_state_code`). Ya NO se anexa a las indicaciones (2026-11-25):
+    // «País: COL (05)» era ruido en el rótulo y en la pantalla del domiciliario, y los datos de
+    // la factura electrónica que el checkout deja en las notas no viajan pegados en la caja.
     const country = (addr.country || '') as string;
     const stateCode = (addr.state_code || '') as string;
-    const baseInstructions = (addr.instructions || webOrder.customer_notes || '') as string;
-    const deliveryInstructions = country
-      ? `${baseInstructions}${baseInstructions ? ' | ' : ''}País: ${country}${stateCode ? ` (${stateCode})` : ''}`
-      : baseInstructions;
+    const deliveryInstructions = limpiarIndicaciones((addr.instructions || webOrder.customer_notes || '') as string) ?? '';
 
     // Día calendario en la zona de la organización, no el día UTC del instante.
     let expectedDeliveryDate: string | null = null;

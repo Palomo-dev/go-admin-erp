@@ -117,9 +117,21 @@ interface CartViewProps {
   onPedirCliente?: () => void;
   /** Línea por peso o medida: el chip «⚖ 0,735 kg» (o P) reabre «Pesar» para cambiar el peso. */
   onCambiarPeso?: (item: CartItem) => void;
+  /**
+   * Hoja del carrito en celular y tableta vertical (< 1024 px). No quita nada:
+   * reparte el alto de otra forma. Las líneas, el cupón y el resumen de
+   * impuestos comparten UN solo scroll y abajo queda fijo solo lo que se toca
+   * para vender («Cobrar» con el total y la fila de acciones). Con el reparto
+   * de escritorio, en un celular de 390 × 664 el pie fijo se comía todo el
+   * alto: la lista de productos medía 0 px y «Deuda» quedaba fuera de la
+   * pantalla. La cabecera interna se oculta porque repite lo que la hoja ya
+   * dice encima (título, pestaña con el conteo y cliente); las etiquetas de
+   * estado (espera, deuda, cocina) siguen a la vista.
+   */
+  compacto?: boolean;
 }
 
-export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onPedirCliente, onCambiarPeso }: CartViewProps) {
+export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda, className, cashSessionActive = true, atajosActivos = true, requiereCaja = true, onAbrirCaja, onPedirCliente, onCambiarPeso, compacto = false }: CartViewProps) {
   const { timezone } = useOrgTimezone();
   // «Descuento · D» (paso 10): diálogo con la pestaña «A un producto».
   const [showDiscountDialog, setShowDiscountDialog] = useState(false);
@@ -776,6 +788,8 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
   const isEmpty = cart.items.length === 0;
   const isOnHold = cart.status === 'hold';
   const isOnHoldWithDebt = cart.status === 'hold_with_debt';
+  // Espera, deuda o estado de cocina: lo único de la cabecera que la hoja del celular no repite.
+  const hayEtiquetasEstado = isOnHold || isOnHoldWithDebt || (!!cart.kitchen_ticket_id && !!kitchenStatus);
   const hasCustomer = !!cart.customer_id;
   const modo = isOnHoldWithDebt ? 'deuda' : isOnHold ? 'espera' : 'activo';
   // L35 + D4: sin caja «Abrir caja para cobrar · F9» si la organización la exige.
@@ -832,12 +846,12 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
         className,
       )}
     >
-      <header className="flex flex-wrap items-center gap-2">
-        <ShoppingCart aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
-        <h2 className="text-sm font-semibold text-fg">{tCarrito('titulo')}</h2>
+      <header className={cn('flex flex-wrap items-center gap-2', compacto && !hayEtiquetasEstado && 'sr-only')}>
+        <ShoppingCart aria-hidden="true" className={cn('size-4 text-fg-secondary', compacto && 'hidden')} strokeWidth={1.5} />
+        <h2 className={cn('text-sm font-semibold text-fg', compacto && 'sr-only')}>{tCarrito('titulo')}</h2>
         {/* Figma `906:115576-80`: «Carrito · N productos» y, a la derecha, «Cliente: X». */}
         {!isEmpty && (
-          <span className="text-sm text-fg-secondary" data-carrito-conteo="">
+          <span className={cn('text-sm text-fg-secondary', compacto && 'sr-only')} data-carrito-conteo="">
             <span aria-hidden="true">· </span>
             {tCarrito('nProductos', { n: cart.items.length })}
           </span>
@@ -864,7 +878,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
           );
         })()}
         {cart.customer?.full_name && (
-          <span className="ml-auto min-w-0 max-w-full truncate text-xs text-fg-secondary">
+          <span className={cn('ml-auto min-w-0 max-w-full truncate text-xs text-fg-secondary', compacto && 'sr-only')}>
             {tCarrito('clienteDe', { nombre: cart.customer.full_name })}
           </span>
         )}
@@ -876,9 +890,14 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
       {isEmpty ? (
         <EmptyState variante="empty" icono={ShoppingCart} titulo={tCarrito('vacioTitulo')} descripcion={tCarrito('vacioDescripcion')} />
       ) : (
-        // Paso 6 (POS-PLAN): las líneas se pintan con `CartLine` del kit. Los
-        // handlers son los mismos de siempre; nada se calcula en la línea.
-        <div className="min-h-0 flex-1 overflow-y-auto" data-carrito-lineas="">
+        // En escritorio este envoltorio no existe para el layout (`contents`):
+        // las líneas llevan su propio scroll y el resumen queda fijo debajo,
+        // como siempre. En la hoja del celular (`compacto`) es él quien hace
+        // scroll, con líneas, cupón y resumen dentro.
+        <div className={compacto ? 'flex min-h-24 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain' : 'contents'} data-carrito-cuerpo="">
+        {/* Paso 6 (POS-PLAN): las líneas se pintan con `CartLine` del kit. Los
+            handlers son los mismos de siempre; nada se calcula en la línea. */}
+        <div className={compacto ? 'shrink-0' : 'min-h-0 flex-1 overflow-y-auto'} data-carrito-lineas="">
           <LineasCarrito
             cartId={cart.id}
             branchId={cart.branch_id}
@@ -912,10 +931,7 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
             onRestaurarPromocion={(id) => void handleExcluirPromocion(id, false)}
           />
         </div>
-      )}
-
-      {!isEmpty && (
-        <div className="flex shrink-0 flex-col gap-3 border-t border-line pt-3">
+        <div className="flex shrink-0 flex-col gap-3 border-t border-line pt-3" data-carrito-resumen="">
           <form
             className="flex items-center gap-2"
             onSubmit={(e) => {
@@ -947,13 +963,21 @@ export function CartView({ cart, onCartUpdate, onCheckout, onHold, onSendComanda
           <TaxSummary
             key={cart.id}
             recordarPreferencia
+            lecturasEnMemoria
             cart={cart}
             taxIncluded={taxIncluded}
             onTaxIncludedChange={handleTaxIncludedChange}
             onAppliedTaxesChange={handleAppliedTaxesChange}
             onTotalsChange={handleTotalsChange}
           />
+        </div>
+        </div>
+      )}
+
+      {!isEmpty && (
+        <div className={cn('shrink-0', compacto && 'border-t border-line pt-3')}>
           <AccionesCarrito
+            compacto={compacto}
             modo={modo}
             total={formatear(cart.total)}
             estadoCobrar={estadoCobrar}

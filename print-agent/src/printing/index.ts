@@ -35,6 +35,8 @@ export type {
   ShipmentGuideItemPayload,
   ShipmentGuideDriverPayload,
   ShipmentGuidePrintPayload,
+  ShipmentLabelPayload,
+  ShipmentLabelCharge,
   TicketKind,
 } from './types';
 
@@ -51,7 +53,7 @@ export {
   printElectronicInvoice,
 } from './renderEscpos';
 
-export { buildRasterImageCommand, isValidRaster, writeRasterImage } from './escposImage';
+export { buildRasterImageCommand, isValidRaster, writeRasterImage, writeRasterPage, rasterToBmpDataUrl, MAX_PAGE_RASTER_HEIGHT } from './escposImage';
 
 export type { QuantityLine } from './quantity';
 export { formatQuantity, isMeasuredLine, itemsSummary, lineNamePrefix, linePriceDetail } from './quantity';

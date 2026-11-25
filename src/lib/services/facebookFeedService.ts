@@ -34,6 +34,13 @@ export const FACEBOOK_CATALOG_HEADERS: readonly string[] = COLUMNAS_META;
 
 const BUCKET_IMAGENES = 'product-images';
 const PAGINA = 1000;
+/**
+ * Ids por consulta al leer precios, fotos, existencias y etiquetas del feed. El lector pagina
+ * cada lote (`leerPorLotes`), así que un lote más grande no pierde filas: solo hace menos
+ * consultas. Con el valor por defecto (100), un catálogo de 7.700 productos eran ~308
+ * consultas por generación; 300 ids caben de sobra en la URL (~2 KB).
+ */
+const LOTE_FEED = { lote: 300 } as const;
 
 function db(): SupabaseClient {
   return getServiceClient();
@@ -81,15 +88,19 @@ export async function cargarProductosMeta(organizationId: number, sb: SupabaseCl
   const [precios, imagenes, stock, etiquetas] = await Promise.all([
     leerPorLotes<{ product_id: number; price: number | string; compare_price: number | string | null; effective_from: string; effective_to: string | null }>(ids, (lote, desde, hasta) =>
       sb.from('product_prices').select('product_id, price, compare_price, effective_from, effective_to').in('product_id', [...lote]).or(`effective_to.is.null,effective_to.gt.${ahoraIso}`).order('id', { ascending: true }).range(desde, hasta),
+      LOTE_FEED,
     ),
     leerPorLotes<{ product_id: number; storage_path: string; is_primary: boolean | null; display_order: number | null }>(ids, (lote, desde, hasta) =>
       sb.from('product_images').select('product_id, storage_path, is_primary, display_order').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+      LOTE_FEED,
     ),
     leerPorLotes<{ product_id: number; qty_on_hand: number | null; qty_reserved: number | null }>(ids, (lote, desde, hasta) =>
       sb.from('stock_levels').select('product_id, qty_on_hand, qty_reserved').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+      LOTE_FEED,
     ),
     leerPorLotes<{ product_id: number; product_tags: { name: string } | { name: string }[] | null }>(ids, (lote, desde, hasta) =>
       sb.from('product_tag_relations').select('product_id, product_tags(name)').in('product_id', [...lote]).order('product_id', { ascending: true }).order('tag_id', { ascending: true }).range(desde, hasta),
+      LOTE_FEED,
     ),
   ]);
 

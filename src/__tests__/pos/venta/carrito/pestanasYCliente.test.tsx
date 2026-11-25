@@ -25,7 +25,8 @@ jest.mock('@/lib/supabase/config', () => {
   (cadena as { then: unknown }).then = (r: (v: unknown) => unknown) => Promise.resolve(vacio).then(r);
   return { supabase: { from: () => cadena } };
 });
-jest.mock('@/components/shared/form-dialogs', () => ({ ClienteFormDialog: ({ open }: { open: boolean }) => (open ? <div>formulario-cliente</div> : null) }));
+// Directo al archivo, como lo importa `CustomerSelector` (el barril metía 3 MB en el arranque del POS).
+jest.mock('@/components/shared/form-dialogs/ClienteFormDialog', () => ({ ClienteFormDialog: ({ open }: { open: boolean }) => (open ? <div>formulario-cliente</div> : null) }));
 jest.mock('@/components/pos/OfflineCustomerDialog', () => ({ OfflineCustomerDialog: () => null }));
 
 import { CartTabs } from '@/components/pos/CartTabs';

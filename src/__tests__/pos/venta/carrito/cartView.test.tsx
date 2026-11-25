@@ -170,3 +170,87 @@ describe('CartView · espera y deuda', () => {
     expect(p.onCheckout).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * Hoja del carrito en celular (`compacto`). En un celular de 390 × 664 el pie
+ * fijo (cupón + resumen + «Cobrar» + dos filas de acciones) se comía todo el
+ * alto: la lista de productos medía 0 px y «Deuda» quedaba fuera de la
+ * pantalla. `compacto` reparte el alto de otra forma SIN quitar nada: estas
+ * pruebas fijan que todo sigue ahí y dónde queda cada cosa.
+ */
+describe('CartView · hoja del celular (compacto)', () => {
+  const conCocina = () => {
+    const base = carrito();
+    const items = [{ ...base.items[0], product: { ...base.items[0].product, category: { requires_preparation: true } } }] as Cart['items'];
+    return carrito({ items, customer_id: 'x', customer: { id: 'x', full_name: 'Ana Gómez' } as Customer });
+  };
+  const cuerpo = () => document.querySelector('[data-carrito-cuerpo]') as HTMLElement;
+  const acciones = () => document.querySelector('[data-carrito-acciones]') as HTMLElement;
+
+  test('las cuatro acciones siguen y van en una sola fila', () => {
+    const p = montar({ compacto: true, cart: conCocina(), onSendComanda: jest.fn(async () => undefined) });
+    for (const nombre of [/Descuento/, /Espera/, /Deuda/, /Cocina/]) {
+      expect(screen.getByRole('button', { name: nombre })).toBeTruthy();
+    }
+    expect(acciones().querySelectorAll('button')).toHaveLength(4);
+    expect(acciones().className).toContain('grid-cols-4');
+    expect(acciones().className).not.toContain('grid-cols-2');
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }));
+    expect(p.onCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  test('sin cocina son tres columnas: la fila nunca deja un hueco', () => {
+    montar({ compacto: true });
+    expect(acciones().querySelectorAll('button')).toHaveLength(3);
+    expect(acciones().className).toContain('grid-cols-3');
+  });
+
+  test('líneas, cupón y resumen comparten un solo scroll; «Cobrar» y las acciones quedan fijos fuera de él', () => {
+    montar({ compacto: true });
+    expect(cuerpo().className).toContain('overflow-y-auto');
+    expect(cuerpo().querySelector('[data-carrito-lineas]')).toBeTruthy();
+    expect(cuerpo().querySelector('[data-carrito-lineas]')?.className).not.toContain('overflow-y-auto');
+    expect(cuerpo().querySelector('#cupon-c1')).toBeTruthy();
+    expect(cuerpo().textContent).toContain('resumen');
+    expect(cuerpo().contains(screen.getByRole('button', { name: /^Cobrar/ }))).toBe(false);
+    expect(cuerpo().contains(acciones())).toBe(false);
+  });
+
+  test('la cabecera no se pinta (la hoja ya dice título, conteo y cliente) pero sigue para lectores de pantalla', () => {
+    montar({ compacto: true, cart: conCocina() });
+    const titulo = screen.getByRole('heading', { level: 2 });
+    expect(titulo.textContent).toBe('Carrito');
+    expect(titulo.closest('header')?.className).toContain('sr-only');
+    expect(screen.getByText('Cliente: Ana Gómez')).toBeTruthy();
+  });
+
+  test('en espera la etiqueta de estado sigue a la vista y «Reactivar» ocupa el lugar de «Espera»', () => {
+    montar({ compacto: true, cart: carrito({ status: 'hold' }) });
+    expect(screen.getByRole('heading', { level: 2 }).closest('header')?.className).not.toContain('sr-only');
+    expect(screen.getByRole('button', { name: /Reactivar/ })).toBeTruthy();
+    expect(screen.getByText('El carrito está en espera: reactívalo para cobrar')).toBeTruthy();
+  });
+
+  test('sin caja el botón no lleva importe: el total se pinta encima', () => {
+    montar({ compacto: true, cashSessionActive: false, requiereCaja: true, onAbrirCaja: jest.fn() });
+    expect(document.querySelector('[data-carrito-total-compacto]')?.textContent).toContain('$ 11900');
+    expect(screen.getByRole('button', { name: /Abrir caja para cobrar/ })).toBeTruthy();
+  });
+
+  test('con deuda: Ver factura, Imprimir y Anular siguen junto a «Cobrar deuda»', () => {
+    montar({ compacto: true, cart: carrito({ status: 'hold_with_debt', customer_id: 'x' }) });
+    for (const nombre of [/Cobrar deuda/, /Ver factura/, /Imprimir/, /Anular/]) {
+      expect(screen.getByRole('button', { name: nombre })).toBeTruthy();
+    }
+  });
+
+  test('escritorio (sin `compacto`) no cambia: scroll solo en las líneas y la botonera de siempre', () => {
+    montar({ cart: conCocina(), onSendComanda: jest.fn(async () => undefined) });
+    expect(cuerpo().className).toBe('contents');
+    expect(cuerpo().querySelector('[data-carrito-lineas]')?.className).toContain('overflow-y-auto');
+    expect(acciones().className).toContain('grid-cols-2');
+    expect(acciones().className).toContain('sm:grid-cols-4');
+    expect(document.querySelector('[data-carrito-total-compacto]')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2 }).className).not.toContain('sr-only');
+  });
+});

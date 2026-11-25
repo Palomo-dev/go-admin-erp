@@ -11,7 +11,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { decisionCorreoOperativo, veredictoCorreoOperativo, type DecisionCorreoOperativo } from '@/lib/services/cuentaCorreo';
+import { decisionCorreoOperativo, veredictoCorreoOperativo, veredictosCorreoOperativo, type DecisionCorreoOperativo } from '@/lib/services/cuentaCorreo';
 import { sendEmail } from '@/lib/services/crm/email/sendService';
 import { EmailError, type EmailMessageStatus } from '@/lib/services/crm/email/types';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
@@ -190,6 +190,10 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
   const nombres = new Map<number, string | undefined>();
   const cuentas = new Map<number, DecisionCorreoOperativo>();
   const atendidos = new Set<string>();
+  // El estado de la cuenta de todas las organizaciones con avisos pendientes, de una vez (dos
+  // consultas en vez de dos por organización). `decisionDe` queda de respaldo para la que falte.
+  const previos = await veredictosCorreoOperativo(db, ((data ?? []) as { organization_id: number }[]).map((fila) => Number(fila.organization_id)));
+  for (const [org, veredicto] of previos) cuentas.set(org, decisionCorreoOperativo(veredicto));
 
   async function decisionDe(org: number): Promise<DecisionCorreoOperativo> {
     const guardada = cuentas.get(org);

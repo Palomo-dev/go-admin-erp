@@ -7,6 +7,7 @@ import { sinRetenciones } from '@/lib/services/taxResolverCore';
 import { promotionEngine } from '@/lib/services/promotionEngine';
 import { combinarDescuentos, promocionesUsadas as promocionesEnLineas } from '@/lib/promotions/motorPromociones';
 import { esCobroDeVentaExistente } from '@/lib/pos/venta/cobroVentaExistente';
+import { crearMemoriaCorta } from '@/lib/pos/venta/memoriaCorta';
 import { getPosDisplayEmitter } from '@/lib/pos/display/posDisplay';
 import { enqueueOfflineSale, shouldCheckoutOffline, newLocalUuid, newSaleId } from '@/lib/offline/salesOutbox';
 import { buildCheckoutEnvelope, callCheckoutRpc, type LineaMesaSinCobrar } from '@/lib/offline/checkoutRpc';
@@ -46,6 +47,7 @@ import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
 import { aplicarListaALineas, type PrecioClienteFila } from '@/lib/listasPrecios/precioLista';
 import { resolverPreciosCliente } from '@/lib/services/listasPreciosService';
+import { aGuardado, clienteDePrecios, desdeGuardado, mismaEleccion, type FacturarA } from '@/lib/clientes/facturarA';
 import {
   calcularLineaDelCarrito,
   impuestosQueAplican,
@@ -68,6 +70,31 @@ import {
 } from '@/lib/pos/cocina/lineasCarrito';
 import { decimalesCantidad, esMedido, redondearCantidadProducto } from '@/lib/pos/peso/modoVenta';
 import type { Pesaje } from '@/lib/pos/peso/pesada';
+
+/**
+ * Lecturas que el carrito del POS repetía en cada toque (ver
+ * `src/lib/pos/venta/memoriaCorta.ts`). Solo las usa el carrito del mostrador,
+ * y solo cuando lo pide (`{ memoria: true }`): Mesas, el cobro y el PMS siguen
+ * leyendo de la base cada vez, y lo que leen refresca lo guardado.
+ *
+ * - Impuestos (de la organización y de cada producto): 60 s. Hoy el carrito ya
+ *   conserva los impuestos del último toque todo el tiempo que siga abierto;
+ *   esto añade, como mucho, un minuto.
+ * - Descuentos frecuentes de un producto: 10 min. Es una estadística del
+ *   histórico de ventas (los tres más usados): un minuto más o menos no cambia nada.
+ */
+const VIGENCIA_IMPUESTOS_MS = 60_000;
+const VIGENCIA_DESCUENTOS_FRECUENTES_MS = 10 * 60_000;
+/* eslint-disable @typescript-eslint/no-explicit-any -- filas de impuestos tal como las devuelve la base, igual que los métodos que las exponen */
+const memoriaImpuestosOrganizacion = crearMemoriaCorta<any[]>(VIGENCIA_IMPUESTOS_MS);
+const memoriaImpuestosProducto = crearMemoriaCorta<any[]>(VIGENCIA_IMPUESTOS_MS);
+/* eslint-enable @typescript-eslint/no-explicit-any */
+const memoriaDescuentosFrecuentes = crearMemoriaCorta<number[]>(VIGENCIA_DESCUENTOS_FRECUENTES_MS);
+
+/** Qué tan fresco se pide un dato del carrito: `memoria` acepta lo guardado hace poco. */
+export interface OpcionesLecturaPos {
+  memoria?: boolean;
+}
 
 export class POSService {
   /**
@@ -1412,38 +1439,55 @@ export class POSService {
     return this.mutateStoredCart(cartId, (cart) => aplicarRondaAlCarrito(cart, respuesta));
   }
 
+  /**
+   * Los tres descuentos más usados de un producto (chips del editor de
+   * descuento). Se recuerdan 10 min por producto: el carrito los pedía de
+   * nuevo —dos consultas por producto— cada vez que se abría, y en el celular
+   * la hoja del carrito se abre y se cierra en cada venta.
+   */
   static async getFrequentDiscounts(productId: number, organizationId: number): Promise<number[]> {
+    // Si una de las dos lecturas falla se muestra lo que haya, pero no se guarda.
+    let parcial: number[] | null = null;
     try {
-      const [saleItemsRes, invoiceItemsRes] = await Promise.all([
-        supabase
-          .from('sale_items')
-          .select('discount_amount')
-          .eq('product_id', productId)
-          .gt('discount_amount', 0),
-        supabase
-          .from('invoice_items')
-          .select('discount_amount')
-          .eq('product_id', productId)
-          .gt('discount_amount', 0),
-      ]);
+      return await memoriaDescuentosFrecuentes.obtener(`${organizationId}|${productId}`, async () => {
+        const [saleItemsRes, invoiceItemsRes] = await Promise.all([
+          supabase
+            .from('sale_items')
+            .select('discount_amount')
+            .eq('product_id', productId)
+            .gt('discount_amount', 0),
+          supabase
+            .from('invoice_items')
+            .select('discount_amount')
+            .eq('product_id', productId)
+            .gt('discount_amount', 0),
+        ]);
 
-      const freqMap = new Map<number, number>();
+        const freqMap = new Map<number, number>();
 
-      saleItemsRes.data?.forEach((row: any) => {
-        const val = parseFloat(row.discount_amount);
-        if (val > 0) freqMap.set(val, (freqMap.get(val) ?? 0) + 1);
+        saleItemsRes.data?.forEach((row: any) => {
+          const val = parseFloat(row.discount_amount);
+          if (val > 0) freqMap.set(val, (freqMap.get(val) ?? 0) + 1);
+        });
+
+        invoiceItemsRes.data?.forEach((row: any) => {
+          const val = parseFloat(row.discount_amount);
+          if (val > 0) freqMap.set(val, (freqMap.get(val) ?? 0) + 1);
+        });
+
+        const frecuentes = Array.from(freqMap.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3)
+          .map(([val]) => val);
+        const fallo = saleItemsRes.error ?? invoiceItemsRes.error;
+        if (fallo) {
+          parcial = frecuentes;
+          throw fallo;
+        }
+        return frecuentes;
       });
-
-      invoiceItemsRes.data?.forEach((row: any) => {
-        const val = parseFloat(row.discount_amount);
-        if (val > 0) freqMap.set(val, (freqMap.get(val) ?? 0) + 1);
-      });
-
-      return Array.from(freqMap.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([val]) => val);
     } catch (error) {
+      if (parcial) return parcial;
       console.error('Error getting frequent discounts:', error);
       return [];
     }
@@ -1477,6 +1521,8 @@ export class POSService {
 
       const cart = carts[cartIndex];
       cart.customer_id = customerId;
+      // «Facturar a» es de la persona anterior: con otro cliente vuelve a la de siempre.
+      cart.facturar_a = null;
 
       if (customerId) {
         // Obtener datos del cliente (fase 4D: del catálogo local sin red)
@@ -1567,6 +1613,32 @@ export class POSService {
     return true;
   }
 
+  /**
+   * «Facturar a» del cobro (Figma «06 Clientes» 3201-21438, 2026-11-25): guarda a nombre de quién sale
+   * la factura y recalcula el carrito (la lista de precios sale de la empresa escogida). Igual que
+   * `recalcularPromocionesPorMetodo`: cambia el carrito que recibe y lo guarda. Devuelve si cambió.
+   */
+  static async cambiarFacturarA(cart: Cart, facturarA: FacturarA | null, personaTieneDocumento: boolean): Promise<boolean> {
+    const siguiente = aGuardado(facturarA, personaTieneDocumento);
+    if (mismaEleccion(cart.facturar_a ?? null, siguiente)) return false;
+    cart.facturar_a = siguiente;
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    const carts = this.readAllCarts();
+    const i = this.indexOfLiveCart(carts, cart.id);
+    if (i !== -1) {
+      carts[i] = cart;
+      this.saveCartsToStorage(carts);
+    }
+    return true;
+  }
+
+  /**
+   * Vuelve a calcular el carrito con las promociones recién leídas de la base
+   * (nunca las de memoria): es lo que corre al abrir el carrito, al volver a la
+   * pestaña, cuando realtime avisa de un cambio de promociones y cada minuto.
+   * Los toques seguidos (agregar, «+», «−») sí reutilizan la lista 30 s.
+   */
   static async recalculateCart(cartId: string): Promise<Cart> {
     try {
       const carts = this.readAllCarts();
@@ -1575,7 +1647,7 @@ export class POSService {
       if (cartIndex === -1) throw new Error('Carrito no encontrado');
 
       const cart = carts[cartIndex];
-      await this.calculateCartTotals(cart);
+      await this.calculateCartTotals(cart, 'refrescar');
       cart.updated_at = new Date().toISOString();
 
       carts[cartIndex] = cart;
@@ -1808,7 +1880,8 @@ export class POSService {
       if (!cobraVentaExistente) {
         // Con los métodos REALES del cobro (los que tienen monto).
         cart.payment_methods = metodosConMonto(payments as Array<{ method?: string | null; amount?: number | null }>);
-        promocionesUsadas = await this.aplicarPromociones(cart);
+        // En el cobro, siempre las promociones recién leídas de la base.
+        promocionesUsadas = await this.aplicarPromociones(cart, 'refrescar');
       }
 
       // Calcular totales por item resolviendo tax_rate desde los impuestos del producto
@@ -2349,7 +2422,8 @@ export class POSService {
   }
 
   private static async impuestosDeOrganizacion(): Promise<ImpuestoDeLinea[]> {
-    const filas = await this.getOrganizationTaxes();
+    // Solo la usa el carrito del mostrador: acepta lo leído en el último minuto.
+    const filas = await this.getOrganizationTaxes({ memoria: true });
     return filas.map((tax) => this.filaImpuesto(tax)).filter((t): t is ImpuestoDeLinea => t !== null);
   }
 
@@ -2517,7 +2591,9 @@ export class POSService {
    * (`fn_pos_validar_linea_venta`) y marca `sale_items.price_list_id`.
    */
   private static async aplicarListaDePrecios(cart: Cart): Promise<void> {
-    const cliente = cart.customer_id ?? null;
+    // «Facturar a» (2026-11-25): con empresa escogida manda la lista de la empresa (la que valida
+    // pos_checkout_v1 con el adquiriente del sobre); si no, la de la persona del carrito.
+    const cliente = clienteDePrecios(cart.customer_id ?? null, desdeGuardado(cart.facturar_a));
     if (!cliente) {
       cart.price_list_cache = null;
       if (cart.items.some((i) => i.price_list_id)) cart.items = aplicarListaALineas(cart.items, new Map(), true);
@@ -2582,10 +2658,13 @@ export class POSService {
    * que quedaron en alguna línea. Si la evaluación falla, el carrito queda
    * como estaba (se avisa en consola).
    */
-  private static async aplicarPromociones(cart: Cart): Promise<string[]> {
+  private static async aplicarPromociones(cart: Cart, memoria: 'usar' | 'refrescar' = 'usar'): Promise<string[]> {
     try {
       const promoResult = await promotionEngine.evaluate({
         channel: 'pos',
+        // Toques seguidos reutilizan la lista de promociones (30 s); el
+        // recálculo del carrito y el cobro la piden fresca (`refrescar`).
+        memoria,
         items: cart.items.map(i => ({
           product_id: i.product_id,
           // Para que una promoción sobre el producto padre o la categoría alcance
@@ -2635,7 +2714,7 @@ export class POSService {
     }
   }
 
-  private static async calculateCartTotals(cart: Cart): Promise<void> {
+  private static async calculateCartTotals(cart: Cart, promociones: 'usar' | 'refrescar' = 'usar'): Promise<void> {
     // El cupón se vuelve a sumar abajo. Si se deja, una promoción fallida
     // lo contaría dos veces.
     cart.items.forEach((item) => {
@@ -2647,10 +2726,17 @@ export class POSService {
     // Listas de precios: primero el precio de la lista del cliente, después las promociones
     // (que se calculan sobre ese precio) y al final el cupón.
     await this.aplicarListaDePrecios(cart);
-    await this.aplicarPromociones(cart);
+    await this.aplicarPromociones(cart, promociones);
     this.sumarCupon(cart);
 
-    const deLaOrganizacion = await this.impuestosDeOrganizacion();
+    // Los impuestos de la organización y los de cada producto se piden A LA
+    // VEZ y una vez por producto (no por línea). Antes iban uno tras otro: con
+    // diez líneas, doce viajes en fila por cada toque. El bucle de abajo los
+    // encuentra ya leídos y calcula en el mismo orden de siempre.
+    const [deLaOrganizacion] = await Promise.all([
+      this.impuestosDeOrganizacion(),
+      this.precargarImpuestosDeProductos(cart.items),
+    ]);
     const lineas = [];
     for (const item of cart.items) {
       lineas.push(await this.calculateItemTaxes(item, cart, deLaOrganizacion));
@@ -2667,6 +2753,16 @@ export class POSService {
     cart.total = totales.total;
   }
 
+  /** Deja leídos, en paralelo, los impuestos propios de los productos del carrito. */
+  private static async precargarImpuestosDeProductos(items: CartItem[]): Promise<void> {
+    // Sin red (catálogo local) no hay memoria ni viajes que ahorrar.
+    if (this.usesLocalCatalog()) return;
+    const ids = Array.from(new Set(items.map((item) => item.product_id).filter((id) => id != null)));
+    // `getProductTaxes` nunca rechaza (devuelve [] si falla) y un fallo no se
+    // guarda: la línea lo vuelve a pedir en su turno, como antes.
+    await Promise.all(ids.map((id) => this.getProductTaxes(id, { memoria: true })));
+  }
+
   /**
    * Impuestos de la línea con la regla única. Si el producto no tiene,
    * usa los del carrito o los predeterminados. Si la línea no dice si el
@@ -2678,7 +2774,7 @@ export class POSService {
     deLaOrganizacion: ImpuestoDeLinea[],
   ): Promise<ReturnType<typeof calcularLineaDelCarrito>> {
     try {
-      const relaciones = await this.getProductTaxes(item.product_id);
+      const relaciones = await this.getProductTaxes(item.product_id, { memoria: true });
       const delProducto = (Array.isArray(relaciones) ? relaciones : [])
         .map((rel) => this.filaImpuesto(rel?.organization_taxes))
         .filter((t): t is ImpuestoDeLinea => t !== null);
@@ -2710,74 +2806,97 @@ export class POSService {
   // ===============================
   // MÉTODOS DE IMPUESTOS
   // ===============================
-  static async getOrganizationTaxes(): Promise<any[]> {
-    if (this.usesLocalCatalog()) return posOfflineReads.getOrganizationTaxes(this.organizationId);
-    try {
-      const { data, error } = await supabase
-        .from('organization_taxes')
-        .select('*')
-        .eq('organization_id', this.organizationId)
-        .eq('is_active', true)
-        .order('name');
+  /**
+   * Olvida los impuestos y descuentos frecuentes guardados en memoria. No hace
+   * falta en el uso normal (vencen solos); sirve a las pruebas y a quien acabe
+   * de cambiar impuestos en esta misma pestaña.
+   */
+  static olvidarLecturasEnMemoria(): void {
+    memoriaImpuestosOrganizacion.olvidar();
+    memoriaImpuestosProducto.olvidar();
+    memoriaDescuentosFrecuentes.olvidar();
+  }
 
-      if (error) throw error;
-      // Las retenciones (kind = 'withholding') no son impuestos de la venta:
-      // no se ofrecen ni se suman en el POS (taxResolverCore).
-      return sinRetenciones(data ?? []);
+  /**
+   * Impuestos activos de la organización. Sin opciones lee siempre de la base
+   * (Mesas, el cobro, el PMS). El carrito del mostrador pide `{ memoria: true }`
+   * y reutiliza lo leído en el último minuto. Un fallo nunca se guarda.
+   */
+  static async getOrganizationTaxes(opciones?: OpcionesLecturaPos): Promise<any[]> {
+    if (this.usesLocalCatalog()) return posOfflineReads.getOrganizationTaxes(this.organizationId);
+    const organizationId = this.organizationId;
+    try {
+      const filas = await memoriaImpuestosOrganizacion.obtener(
+        String(organizationId),
+        async () => {
+          const { data, error } = await supabase
+            .from('organization_taxes')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .eq('is_active', true)
+            .order('name');
+
+          if (error) throw error;
+          // Las retenciones (kind = 'withholding') no son impuestos de la venta:
+          // no se ofrecen ni se suman en el POS (taxResolverCore).
+          return sinRetenciones(data ?? []);
+        },
+        { fresco: !opciones?.memoria },
+      );
+      // Copia: quien la reciba puede ordenarla o filtrarla sin tocar lo guardado.
+      return [...filas];
     } catch (error) {
       console.error('Error getting organization taxes:', error);
       return [];
     }
   }
 
-  static async getProductTaxes(productId: number): Promise<any[]> {
+  /**
+   * Impuestos propios de un producto (`product_tax_relations`). Igual que
+   * `getOrganizationTaxes`: sin opciones lee siempre; con `{ memoria: true }`
+   * (carrito del mostrador) reutiliza lo leído en el último minuto. «El producto
+   * no tiene impuestos propios» sí se guarda; un error de lectura, no.
+   */
+  static async getProductTaxes(productId: number, opciones?: OpcionesLecturaPos): Promise<any[]> {
     if (this.usesLocalCatalog()) return posOfflineReads.getProductTaxes(this.organizationId, productId);
+    const organizationId = this.organizationId;
     try {
-      // Primero obtener las relaciones de impuestos del producto
-      const { data: relations, error: relationsError } = await supabase
-        .from('product_tax_relations')
-        .select('tax_id')
-        .eq('product_id', productId);
+      const filas = await memoriaImpuestosProducto.obtener(
+        `${organizationId}|${productId}`,
+        async () => {
+          // Primero obtener las relaciones de impuestos del producto
+          const { data: relations, error: relationsError } = await supabase
+            .from('product_tax_relations')
+            .select('tax_id')
+            .eq('product_id', productId);
 
-      if (relationsError) {
-        console.warn('Product tax relations error for product', productId, ':', relationsError);
-        return [];
-      }
-      
-      console.log('Product tax relations:', relations);
-      
-      if (!relations || relations.length === 0) {
-        return [];
-      }
+          if (relationsError) throw relationsError;
+          if (!relations || relations.length === 0) return [];
 
-      // Luego obtener los detalles de los impuestos
-      const taxIds = relations.map(rel => rel.tax_id);
-      const { data: taxes, error: taxesError } = await supabase
-        .from('organization_taxes')
-        .select('*, tax_templates(code)')
-        .in('id', taxIds)
-        .eq('organization_id', this.organizationId)
-        .eq('is_active', true);
+          // Luego obtener los detalles de los impuestos
+          const taxIds = relations.map(rel => rel.tax_id);
+          const { data: taxes, error: taxesError } = await supabase
+            .from('organization_taxes')
+            .select('*, tax_templates(code)')
+            .in('id', taxIds)
+            .eq('organization_id', organizationId)
+            .eq('is_active', true);
 
-      if (taxesError) {
-        console.error('Error getting tax details:', taxesError);
-        return [];
-      }
-      
-      console.log('Tax details:', taxes);
-      
-      // Mapear a la estructura esperada. Una retención relacionada (clase
-      // 'withholding') no es impuesto de la venta: no se suma a la línea (taxResolverCore).
-      const result = sinRetenciones(taxes ?? []).map(tax => ({
-        product_id: productId,
-        tax_id: tax.id,
-        organization_taxes: tax
-      })) || [];
-      
-      console.log('Final product taxes result:', result);
-      return result;
+          if (taxesError) throw taxesError;
+
+          // Mapear a la estructura esperada. Una retención relacionada (clase
+          // 'withholding') no es impuesto de la venta: no se suma a la línea (taxResolverCore).
+          return sinRetenciones(taxes ?? []).map(tax => ({
+            product_id: productId,
+            tax_id: tax.id,
+            organization_taxes: tax
+          }));
+        },
+        { fresco: !opciones?.memoria },
+      );
+      return [...filas];
     } catch (error) {
-      console.error('Error getting product taxes:', error);
+      console.warn('Error getting product taxes for product', productId, ':', error);
       return [];
     }
   }

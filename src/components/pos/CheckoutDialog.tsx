@@ -38,6 +38,9 @@ import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 import { useTranslations } from 'next-intl';
 import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
+import { FacturarASelector } from '@/components/clientes/facturacion/FacturarASelector';
+import { AvisoRutNoResponsable } from '@/components/clientes/facturacion/AvisoRutNoResponsable';
+import type { SeleccionFacturarA } from '@/lib/clientes/facturarA';
 import { esErrorMembresiaSinCliente } from '@/lib/pos/venta/membresias';
 import { useLineasSinImpuesto } from '@/hooks/useLineasSinImpuesto';
 import { AvisoSinImpuesto } from '@/components/shared/AvisoSinImpuesto';
@@ -194,6 +197,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // El cajero movió la casilla en este cobro: a partir de ahí manda ella,
   // no el flag que haya quedado en la línea o en el carrito.
   const [casillaMovida, setCasillaMovida] = useState(false);
+  // «Facturar a» (Figma «06 Clientes» 3201-21438, con el cambio del dueño: nunca bloquea el cobro).
+  const tFacturarA = useTranslations('clientesFacturarA');
+  const [facturarA, setFacturarA] = useState<SeleccionFacturarA | null>(null);
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotal: 0,
     totalTaxAmount: 0,
@@ -1131,6 +1137,23 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
   
+  // Cada cobro arranca en la persona (o consumidor final); al cerrar sin cobrar, el carrito vuelve
+  // a la lista de precios de la persona.
+  useEffect(() => {
+    setFacturarA(null);
+    if (!open && cart.facturar_a && !completedSale) {
+      void POSService.cambiarFacturarA(cart, null, false).catch((e) => console.warn('[cobro] no se pudo restablecer «Facturar a»', e));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cart.id, cart.customer_id]);
+  const facturarAVisible = open && !!cart.customer_id && !contextoMesa && !(cart.sale_id && cart.invoice_id);
+  const alCambiarFacturarA = (seleccion: SeleccionFacturarA) => {
+    setFacturarA(seleccion);
+    POSService.cambiarFacturarA(cart, seleccion.valor, seleccion.personaTieneDocumento)
+      .then((cambio) => { if (cambio) calculateCartTotals(); })
+      .catch((e) => console.warn('[cobro] no se pudo aplicar «Facturar a»', e));
+  };
+
   const calculateCartTotals = (vigente: () => boolean = () => true) => {
     if (!cart.items.length) {
       if (vigente()) setCalculatedTotals({ subtotal: 0, totalTaxAmount: 0, finalTotal: 0 });
@@ -1652,6 +1675,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       }
       // Rechazos del servidor con código estable (precio, descuento, línea…)
       // se muestran traducidos; el resto, como llegan.
+      // «Facturar a»: la empresa ya no está ligada a la persona (o es de otra organización).
+      if (String(error?.message ?? '').startsWith('empresa_no_ligada')) {
+        toast.error(tPos('errores.titulo'), { description: tFacturarA('errores.empresaNoLigada') });
+        return;
+      }
       const codigo = codigoErrorCobro(error);
       const errorMsg = codigo
         ? tCobro(`errores.${codigo}`, { detalle: detalleErrorCobro(error) })
@@ -1667,15 +1695,18 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
 
   const handlePrint = async () => {
     if (completedSale) {
-      // Asegurar datos del cliente para impresión
-      let printCustomerData = cart.customer;
-      if (cart.customer_id && !printCustomerData) {
+      // Asegurar datos del cliente para impresión. Con «Facturar a» una empresa, va la empresa
+      // (el adquiriente de la factura), no la persona del carrito.
+      const idEmpresaFactura = facturarA?.empresa?.id ?? null;
+      let printCustomerData = idEmpresaFactura ? undefined : cart.customer;
+      const idClienteImpresion = idEmpresaFactura ?? cart.customer_id;
+      if (idClienteImpresion && !printCustomerData) {
         try {
           const { supabase } = await import('@/lib/supabase/config');
           const { data: fetched } = await supabase
             .from('customers')
             .select('*')
-            .eq('id', cart.customer_id)
+            .eq('id', idClienteImpresion)
             .single();
           if (fetched) printCustomerData = fetched as any;
         } catch {
@@ -1866,11 +1897,14 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
         : estadoFactura === 'suspendida'
           ? tPos('factura.motivoSuspendida')
           : undefined;
-  const resumenFactura = sendToFactus
+  const resumenFacturaBase = sendToFactus
     ? eInvoiceAlwaysEnabled
       ? tPos('factura.activadaGlobal')
       : tPos('factura.activada')
     : tPos('factura.desactivada');
+  const resumenFactura = sendToFactus && facturarA?.empresa
+    ? `${resumenFacturaBase} · ${tFacturarA('aNombreDe', { empresa: facturarA.empresa.nombre })}`
+    : resumenFacturaBase;
   const resumenEntrega =
     deliveryType === 'pickup'
       ? tPos('entrega.resumen.recoger')
@@ -2066,6 +2100,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           pagado={totalPaid}
           falta={remaining}
           cambio={change}
+          facturaA={facturarA && (facturarA.empresa || facturarA.valor.modo === 'consumidor_final') ? (
+            <div className="flex flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-fg-secondary">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-fg-muted">{tFacturarA('resumenCorto.titulo')}</span>
+              <span className="text-sm font-semibold text-fg">{facturarA.empresa ? facturarA.empresa.nombre : tFacturarA('opciones.consumidorFinal')}</span>
+              {facturarA.empresa && (
+                <span>{[facturarA.empresa.documento, tFacturarA('resumenCorto.recibe', { persona: cart.customer?.full_name ?? '' })].filter(Boolean).join(' · ')}</span>
+              )}
+            </div>
+          ) : undefined}
         />
       )}
       pie={conRecibo ? undefined : (
@@ -2230,6 +2273,19 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
               </div>
               </div>
             </Tarjeta>
+
+            {/* «Facturar a» (Figma 3201-21518 / 3205-22900 / celular 3206-25127): después de Pagos.
+                No bloquea: arranca en la persona; con empresas ligadas, aviso y lista para escoger. */}
+            {facturarAVisible && cart.customer_id && (
+              <FacturarASelector
+                organizationId={cart.organization_id}
+                personaId={cart.customer_id}
+                valor={facturarA?.valor ?? null}
+                onCambio={alCambiarFacturarA}
+              />
+            )}
+            {/* Aviso RUT 49 (Figma 3205-24306): la organización no responsable de IVA vende algo gravado. Solo avisa. */}
+            <AvisoRutNoResponsable organizationId={cart.organization_id} lineas={cart.items} />
 
             {/* Secciones plegables (paso 12): cerradas, con resumen y atajo */}
             <SeccionPlegable

@@ -25,6 +25,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AvisoRutNoResponsable } from '@/components/clientes/facturacion/AvisoRutNoResponsable';
+import { FacturarASelector } from '@/components/clientes/facturacion/FacturarASelector';
+import { clienteDePrecios, partesFactura, type SeleccionFacturarA } from '@/lib/clientes/facturarA';
 import { Barcode, Copy, FileMinus, FileText, Landmark, ListPlus, Plus, ReceiptText, Save, Search, Send, StickyNote, User } from 'lucide-react';
 import { DialogoCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/DialogoCuentaLinea';
 import { InterruptorCuentas, PieCuentaLinea } from '@/components/finanzas/contabilidad/cuentas/PiezasCuentaLinea';
@@ -160,6 +162,8 @@ interface FacturaCargada {
   number: string | null;
   status: string;
   customer_id: string | null;
+  /** «Facturar a»: la persona que recibe cuando la factura sale a una empresa o a consumidor final. */
+  contact_customer_id?: string | null;
   branch_id: number | null;
   currency: string | null;
   payment_terms: number | null;
@@ -219,6 +223,9 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   const [oportunidades, setOportunidades] = useState<{ id: string; name: string; customer_id: string | null }[]>([]);
 
   const [cliente, setCliente] = useState<ClienteDocumento | null>(null);
+  // «Facturar a» (Figma «06 Clientes» 3206-26242 / 3207-26986): a nombre de quién sale la factura.
+  const tFacturarA = useTranslations('clientesFacturarA');
+  const [facturarA, setFacturarA] = useState<SeleccionFacturarA | null>(null);
   const [numeroManual, setNumeroManual] = useState('');
   const [verNumeroManual, setVerNumeroManual] = useState(false);
   const [sucursal, setSucursal] = useState<number | null>(selectedBranchId ?? null);
@@ -265,7 +272,8 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
   const formatear = useMemo(() => crearFormateadorMoneda(ctxMoneda), [ctxMoneda]);
   // Listas de precios (Figma «05 POS y ventas» 08): el unitario de la línea ES el de la lista del
   // cliente (a la DIAN va ese); la promoción sale aparte como descuento de la línea.
-  const listaPrecios = useListaPreciosDocumento({ clienteId: cliente?.id ?? null, sucursal, lineas, setLineas, listo: modo.tipo === 'editable' });
+  // «Facturar a»: con empresa escogida manda la lista de la empresa (la que va como adquiriente).
+  const listaPrecios = useListaPreciosDocumento({ clienteId: clienteDePrecios(cliente?.id ?? null, facturarA?.valor ?? null), sucursal, lineas, setLineas, listo: modo.tipo === 'editable' });
   const insigniasLista = useInsigniasListaDocumento();
   const nombreSucursal = branches.find((b) => b.id === sucursal)?.name ?? null;
   const opcionesImpuesto: OpcionImpuesto[] = useMemo(() => {
@@ -400,7 +408,16 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
       setModo({ tipo: 'noEditable', factura: f, lineas: ls, cliente: nombreCliente });
       return;
     }
-    if (f.customer_id) await cargarCliente(f.customer_id, cancelado);
+    // «Facturar a»: con contacto, el cliente del formulario es la persona y el adquiriente la empresa
+    // (o consumidor final, que solo se guarda así para una persona con documento).
+    if (f.contact_customer_id) {
+      await cargarCliente(f.contact_customer_id, cancelado);
+      setFacturarA({
+        valor: f.customer_id ? { modo: 'empresa', empresaId: f.customer_id } : { modo: 'consumidor_final', empresaId: null },
+        personaTieneDocumento: !f.customer_id,
+        empresa: null,
+      });
+    } else if (f.customer_id) await cargarCliente(f.customer_id, cancelado);
     if (cancelado()) return;
     setNumeroManual(f.number ?? '');
     setVerNumeroManual(!!f.number);
@@ -503,8 +520,31 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     setTerminos(dias);
     setVence(vencimientoPorTerminos(emision, dias));
   };
+  /** Plazo sugerido: el del adquiriente (empresa escogida) o el de la persona. */
+  const sugerirPlazo = (dias: number | null | undefined) => {
+    if (!dias || dias <= 0) return;
+    setTerminos(dias);
+    setTerminosPropios(!TERMINOS.includes(dias as (typeof TERMINOS)[number]));
+    setVence(vencimientoPorTerminos(emision, dias));
+  };
+  const cambiarFacturarA = (s: SeleccionFacturarA) => {
+    const antes = facturarA;
+    setFacturarA(s);
+    const cambio = !!antes && (antes.valor.modo !== s.valor.modo || antes.valor.empresaId !== s.valor.empresaId);
+    if (!cambio) return;
+    marcar();
+    // La lista de precios se recalcula sola (clienteDePrecios); el plazo sale del adquiriente.
+    if (s.empresa) {
+      void listarClientes({ organizationId: getOrganizationId(), branchId: null, criterios: { estado: 'todos' }, orden: null, desde: 0, tamano: 1, ids: [s.empresa.id] })
+        .then(({ filas }) => sugerirPlazo(filas[0]?.plazo_dias))
+        .catch(() => undefined);
+    } else {
+      sugerirPlazo(cliente?.plazoDias);
+    }
+  };
   const elegirCliente = (c: ClienteDocumento) => {
     marcar();
+    setFacturarA(null);
     setCliente(c);
     setErrores((e) => ({ ...e, cliente: undefined }));
     // M5: el plazo del cliente sugiere los términos (como compras con el proveedor).
@@ -566,9 +606,12 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
     (ls: LineaVenta[]): DatosFactura => {
       const tasa = Number(tasaComision) || 0;
       const conComision = !!vendedor && tasa > 0;
+      // «Facturar a»: adquiriente (customer_id) y quien recibe (contact_customer_id).
+      const partes = partesFactura(cliente?.id ?? null, facturarA?.valor ?? null, facturarA?.personaTieneDocumento ?? false);
       return {
         number: numeroManual.trim() || null,
-        customer_id: cliente?.id ?? null,
+        customer_id: partes.customer_id,
+        contact_customer_id: partes.contact_customer_id,
         branch_id: sucursal as number,
         issue_date: emision ? toInstant(emision) : null,
         due_date: vence ? toInstant(vence) : null,
@@ -588,11 +631,12 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
         items: ls.map((l) => lineaAItem(l, incluido, l.product_id ? seriales[l.product_id] : undefined)),
       };
     },
-    [numeroManual, cliente, sucursal, emision, vence, codigoMoneda, terminos, formaPago, notas, terminosCondiciones, incluido, vendedor, oportunidad, tasaComision, metodoComision, incluirArqueo, seriales, toInstant],
+    [numeroManual, cliente, facturarA, sucursal, emision, vence, codigoMoneda, terminos, formaPago, notas, terminosCondiciones, incluido, vendedor, oportunidad, tasaComision, metodoComision, incluirArqueo, seriales, toInstant],
   );
 
   const mensajeServidor = (e: unknown): string => {
     const codigo = e instanceof ErrorPeticionFactura ? e.codigo : 'error_desconocido';
+    if (codigo === 'empresa_no_ligada') return tFacturarA('errores.empresaNoLigada');
     return tv.has(`errores.${codigo}`) ? tv(`errores.${codigo}` as never) : tv('errores.error_desconocido');
   };
 
@@ -1123,6 +1167,7 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
             onCambiar={elegirCliente}
             onQuitar={() => {
               marcar();
+              setFacturarA(null);
               setCliente(null);
             }}
             onVer={cliente ? () => window.open(`/app/clientes/${cliente.id}`, '_blank', 'noopener') : undefined}
@@ -1130,6 +1175,16 @@ export default function FormularioFacturaVenta({ id: idInicial }: { id?: string 
             aria-invalid={!!errores.cliente}
           />
           {errores.cliente && <p className="text-sm text-danger-text">{errores.cliente}</p>}
+          {cliente && (
+            <FacturarASelector
+              key={cliente.id}
+              organizationId={getOrganizationId()}
+              personaId={cliente.id}
+              valor={facturarA?.valor ?? null}
+              onCambio={cambiarFacturarA}
+              variante="documento"
+            />
+          )}
           <AvisoListaDocumento
             listaNombre={listaPrecios.listaNombre}
             usarNormal={listaPrecios.usarNormal}

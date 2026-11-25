@@ -56,6 +56,14 @@ interface TaxSummaryProps {
    * aplicarlos a los carritos nuevos (`preferenciaImpuestos.ts`).
    */
   recordarPreferencia?: boolean;
+  /**
+   * Carrito del mostrador: los impuestos de la organización y de cada producto
+   * pueden salir de lo leído en el último minuto (`POSService`, memoria corta).
+   * El carrito ya los pidió para calcular; sin esto el resumen los volvía a
+   * pedir, producto por producto, en cada cambio de línea. El PMS no lo pasa:
+   * sigue leyendo siempre.
+   */
+  lecturasEnMemoria?: boolean;
   className?: string;
 }
 
@@ -69,6 +77,7 @@ export function TaxSummary({
   onAppliedTaxesChange,
   onTotalsChange,
   recordarPreferencia = false,
+  lecturasEnMemoria = false,
   className 
 }: TaxSummaryProps) {
   const moneda = useMonedaOrganizacion();
@@ -108,7 +117,7 @@ export function TaxSummary({
   useEffect(() => {
     const loadOrganizationTaxes = async () => {
       try {
-        const taxes = await POSService.getOrganizationTaxes();
+        const taxes = await POSService.getOrganizationTaxes({ memoria: lecturasEnMemoria });
         setOrganizationTaxes(taxes);
         
         // Inicializar impuestos aplicados: usar los del carrito si existen, sino los predeterminados
@@ -149,7 +158,7 @@ export function TaxSummary({
       setHasProductSpecificTaxes(false);
       return;
     }
-    Promise.all(ids.map((id) => POSService.getProductTaxes(id).catch(() => [])))
+    Promise.all(Array.from(new Set(ids)).map((id) => POSService.getProductTaxes(id, { memoria: lecturasEnMemoria }).catch(() => [])))
       .then((listas) => {
         if (!cancelado) setHasProductSpecificTaxes(listas.some((lista) => lista.length > 0));
       })
@@ -157,7 +166,7 @@ export function TaxSummary({
         if (!cancelado) setHasProductSpecificTaxes(false);
       });
     return () => { cancelado = true; };
-  }, [cart.items]);
+  }, [cart.items, lecturasEnMemoria]);
 
   // Comunicar totales al padre cuando cambien
   useEffect(() => {

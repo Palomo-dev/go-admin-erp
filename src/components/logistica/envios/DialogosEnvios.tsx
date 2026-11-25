@@ -2,7 +2,8 @@
 
 /**
  * Diálogos de Logística › Envíos (Figma «21 Logística», sección 12): cambiar estado de varios
- * 2965:9890, devolver a la sede 2965:9958, cancelar envío 2965:10022 e imprimir guías 2965:10078.
+ * 2965:9890, devolver a la sede 2965:9958, cancelar envío 2965:10022 e imprimir guías (diálogo
+ * 3226:15989 con el rótulo estándar de la sección 3223:15627).
  * Los usan la lista y el detalle del envío.
  *
  * Todo cambio de estado va por `logistica_cambiar_estado` (`deliveryIntegrationService.changeStatus`)
@@ -12,22 +13,29 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Ban, Printer, RefreshCw, RotateCcw } from 'lucide-react';
-import { CampoNumero, CodigoBarras, Dialogo, FormField, TarjetaSeleccionable } from '@/components/kit';
+import { Ban, ChevronLeft, ChevronRight, Printer, RefreshCw, RotateCcw } from 'lucide-react';
+import { normalizePaperWidth } from '@printing';
+import { CampoNumero, Dialogo, FormField, SegmentedControl, TarjetaSeleccionable } from '@/components/kit';
 import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import { canonicoDeEstado, MOTIVOS_NOVEDAD, type MotivoNovedad } from '@/lib/logistica/estadosEnvio';
 import { ESTADOS_CAMBIO_ESTADO, particionPorTransicion, type EstadoCambioEstado } from '@/lib/logistica/envios';
 import { avisarCliente } from '../logisticaApi';
+import { abrirConfiguracion } from '@/components/configuracion/dialogo/abrirConfiguracion';
+import { HojaRotulosA4 } from '../rotulo/HojaRotulosA4';
+import { RotuloEnvio } from '../rotulo/RotuloEnvio';
+import { formatoInicialRotulo, hayTermicaEnLinea, leerFormatoRecordado, recordarFormato, type EstacionRotulos } from '../rotulo/trabajoRotulos';
+import { useImpresionLogistica, type RotuloListo } from '../useImpresionLogistica';
+import { hojasA4, ROTULOS_POR_HOJA, type DatosRotulo, type FormatoRotulo } from '@/lib/logistica/rotuloEnvio';
 
 const claseCampo = 'h-10 border-line-strong bg-surface';
 
 /** Las props del campo para un `<input>`/`<textarea>`: `idEtiqueta` es para `aria-labelledby`, no va al DOM. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- se separa a propósito para no pasarlo al DOM.
 const control = ({ idEtiqueta: _idEtiqueta, ...resto }: { idEtiqueta: string; id: string; 'aria-describedby'?: string; 'aria-invalid'?: boolean; 'aria-required'?: boolean }) => resto;
 
 /** Lo que un diálogo necesita de cada envío (lo cumplen la fila de Envíos y la del detalle). */
@@ -407,50 +415,131 @@ export function DialogoCancelar({ abierto, onAbiertoChange, envios, onHecho }: D
   );
 }
 
-// ── Imprimir guías (2965:10078) ────────────────────────────────────────────────
+// ── Imprimir guías (Figma «21 Logística» 3226:15989) ──────────────────────────
 
 export interface EnvioParaGuia extends EnvioEnDialogo {
-  cliente: string | null;
-  telefono: string | null;
-  direccion: string | null;
-  barrio: string | null;
-  ciudad: string | null;
+  /** Sede del envío: decide la impresora de rótulos y el formato recordado. */
+  branchId?: number | null;
+  cliente?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  barrio?: string | null;
+  ciudad?: string | null;
   zona?: string | null;
-  contraentrega: number;
+  contraentrega?: number;
   pesoKg?: number | null;
-  codigoRequerido: boolean;
+  codigoRequerido?: boolean;
+}
+
+export interface OpcionesDialogoGuias {
+  copias: number;
+  formato: FormatoRotulo;
+  /** Los rótulos de la vista previa (paquetes × copias): se imprimen esos mismos. */
+  rotulos: RotuloListo[];
 }
 
 export interface DialogoImprimirGuiasProps {
   abierto: boolean;
   onAbiertoChange: (v: boolean) => void;
   envios: readonly EnvioParaGuia[];
-  organizacion: string | null;
-  onImprimir: (copias: number) => Promise<void> | void;
+  /** Se conserva por compatibilidad: la marca sale del propio rótulo (tienda y sede). */
+  organizacion?: string | null;
+  onImprimir: (opciones: OpcionesDialogoGuias) => Promise<void> | void;
 }
 
-export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, organizacion, onImprimir }: DialogoImprimirGuiasProps) {
+/** Escala de la vista previa por formato (Figma: térmica y 10 × 15 al 72 %, A4 al 36 %). */
+const ESCALA_VISTA: Record<FormatoRotulo, number> = { '80mm': 0.72, '10x15': 0.72, a4: 0.36 };
+
+/**
+ * «Imprimir guías»: la vista previa ES el rótulo (`RotuloEnvio`, la misma pieza del PDF y de la
+ * térmica) a escala. Se elige el formato (se recuerda por sede), las copias por envío, y se pasa
+ * de una guía a otra con las flechas. Si la sede tiene impresora de rótulos en línea la térmica
+ * va allá; si no, se abre el PDF a tamaño real.
+ */
+export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, onImprimir }: DialogoImprimirGuiasProps) {
   const t = useTranslations('logistica.envios.dialogos.guias');
-  const moneda = useMonedaOrganizacion();
+  const { prepararRotulos, resolverRotulos, estacionRotulos } = useImpresionLogistica();
   const [copias, setCopias] = useState<number | null>(1);
   const [enviando, setEnviando] = useState(false);
+  const [datos, setDatos] = useState<DatosRotulo[] | null | 'error'>(null);
+  const [estacion, setEstacion] = useState<EstacionRotulos | null>(null);
+  const [formato, setFormato] = useState<FormatoRotulo | null>(null);
+  const [indice, setIndice] = useState(0);
+  const sede = envios.find((e) => e.branchId != null)?.branchId ?? null;
+  const ids = envios.map((e) => e.id).join(',');
 
   useEffect(() => {
-    if (abierto) setCopias(1);
-  }, [abierto]);
+    if (!abierto) return;
+    setCopias(1);
+    setIndice(0);
+    setFormato(leerFormatoRecordado(sede));
+  }, [abierto, sede]);
 
-  const total = envios.length * Math.max(1, copias ?? 1);
-  const p = envios[0];
+  useEffect(() => {
+    if (!abierto || !ids) return;
+    let vigente = true;
+    setDatos(null);
+    prepararRotulos(ids.split(','))
+      .then((r) => vigente && setDatos(r.length > 0 ? r : 'error'))
+      .catch(() => vigente && setDatos('error'));
+    return () => {
+      vigente = false;
+    };
+    // prepararRotulos cambia con la organización; los rótulos se piden al abrir o al cambiar de envíos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, ids]);
+
+  useEffect(() => {
+    if (!abierto) return;
+    let vigente = true;
+    setEstacion(null);
+    estacionRotulos(sede).then((e) => {
+      if (!vigente) return;
+      setEstacion(e);
+      setFormato((f) => f ?? formatoInicialRotulo(sede, e));
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [abierto, sede, estacionRotulos]);
+
+  const elegido: FormatoRotulo = formato ?? '10x15';
+  const nCopias = Math.max(1, copias ?? 1);
+  const listos = Array.isArray(datos) ? datos : null;
+  // Lo que sale en papel (paquetes × copias) y, para pasar con las flechas, una vez cada guía.
+  const rotulos = useMemo(() => (listos ? resolverRotulos(listos, nCopias) : []), [listos, nCopias, resolverRotulos]);
+  const guias = useMemo(() => (listos ? resolverRotulos(listos, 1) : []), [listos, resolverRotulos]);
+  const hojas = useMemo(() => hojasA4(rotulos.map((r) => r.textos)), [rotulos]);
+  const paginas = elegido === 'a4' ? hojas.length : guias.length;
+  const actual = Math.min(indice, Math.max(0, paginas - 1));
+  useEffect(() => setIndice(0), [elegido]);
+
+  const termica = elegido === '80mm' && hayTermicaEnLinea(estacion);
+  const impresora = estacion?.impresoras[0] ?? null;
+  const total = rotulos.length || envios.length * nCopias;
+  const paquetes = listos ? guias.length : envios.length;
+  const unidades = paquetes === envios.length ? 'envios' : 'paquetes';
 
   const confirmar = async () => {
     setEnviando(true);
     try {
-      await onImprimir(Math.max(1, copias ?? 1));
+      recordarFormato(sede, elegido);
+      await onImprimir({ copias: nCopias, formato: elegido, rotulos });
       onAbiertoChange(false);
     } finally {
       setEnviando(false);
     }
   };
+
+  const primario =
+    elegido === 'a4' ? t('confirmarA4', { count: Math.max(1, hojas.length) }) : termica ? t('confirmarTermica', { count: total }) : t('confirmarPdf', { count: total });
+  const resumen =
+    elegido === 'a4'
+      ? t('resumenA4', { unidades, n: paquetes, copias: nCopias, count: total, hojas: Math.max(1, hojas.length), libres: hojas.length * ROTULOS_POR_HOJA - total })
+      : elegido === '80mm'
+        ? t('resumenTermica', { unidades, n: paquetes, copias: nCopias, count: total })
+        : t('resumenRotulo', { unidades, n: paquetes, copias: nCopias, count: total });
+  const configurar = { etiqueta: t('configurar'), onClick: () => abrirConfiguracion({ seccionId: 'pos.general' }) };
 
   return (
     <Dialogo
@@ -460,40 +549,95 @@ export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, organiz
       descripcion={t('descripcion')}
       icono={Printer}
       ancho={520}
-      primario={{ etiqueta: t('confirmar', { count: total }), onClick: () => void confirmar(), cargando: enviando, deshabilitada: envios.length === 0 }}
+      primario={{ etiqueta: primario, onClick: () => void confirmar(), cargando: enviando, deshabilitada: envios.length === 0 || datos === null || datos === 'error' }}
       textoCancelar={t('cancelar')}
-      pie={<span className="text-xs text-fg-muted">{t('pie')}</span>}
     >
       <div className="flex flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField etiqueta={t('formato')}>
-            {(cp) => (
-              <p id={cp.id} className="flex h-10 items-center rounded-lg border border-line bg-surface-muted px-3 text-sm text-fg-secondary">
-                {t('formatoTermica')}
-              </p>
-            )}
-          </FormField>
+        <FormField etiqueta={t('formato')}>
+          {(cp) => (
+            <SegmentedControl<FormatoRotulo>
+              id={cp.id}
+              aria-labelledby={cp.idEtiqueta}
+              anchoCompleto
+              valor={elegido}
+              onValorChange={setFormato}
+              opciones={[
+                { valor: '80mm', etiqueta: t('formatoTermica') },
+                { valor: '10x15', etiqueta: t('formatoRotulo') },
+                { valor: 'a4', etiqueta: t('formatoA4') },
+              ]}
+            />
+          )}
+        </FormField>
+        <div className="grid items-center gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,10rem)_1fr]">
           <FormField etiqueta={t('copias')}>
             {(cp) => <CampoNumero id={cp.id} aria-labelledby={cp.idEtiqueta} valor={copias} onValorChange={setCopias} decimales={0} minimo={1} maximo={10} alinear="izquierda" />}
           </FormField>
+          <p className="text-xs text-fg-muted sm:self-end sm:pb-2.5" aria-live="polite">
+            {resumen}
+          </p>
         </div>
-        {p && (
-          <div className="rounded-lg bg-surface-muted p-4" aria-label={t('vistaPrevia')}>
-            <div className="mx-auto flex max-w-[260px] flex-col gap-2 rounded-md border border-line bg-surface p-3 text-xs text-fg">
-              <div className="flex items-center justify-between gap-2 font-semibold">
-                <span className="truncate">{organizacion ?? ''}</span>
-                <span className="shrink-0">{p.numero}</span>
+
+        <div className="flex flex-col items-center gap-2 rounded-lg bg-surface-muted p-4" aria-label={t('vistaPrevia')} data-testid="vista-previa-guia">
+          {listos && paginas > 0 ? (
+            <>
+              <div className="max-w-full overflow-hidden rounded-sm border border-line bg-white shadow-sm" style={{ zoom: ESCALA_VISTA[elegido] }}>
+                {elegido === 'a4' ? (
+                  <HojaRotulosA4 rotulos={hojas[actual] ?? []} />
+                ) : (
+                  <RotuloEnvio textos={guias[actual].textos} formato={elegido === '80mm' ? '80mm' : '10x15'} />
+                )}
               </div>
-              <CodigoBarras valor={p.numero} textoSinCodigo={p.numero} className="h-10" />
-              <p className="font-semibold">{t('para', { nombre: [p.cliente, p.telefono].filter(Boolean).join(' · ') || '—' })}</p>
-              <p className="text-fg-secondary">{[p.direccion, [p.barrio, p.ciudad].filter(Boolean).join(', '), p.zona].filter(Boolean).join(' · ') || '—'}</p>
-              {p.contraentrega > 0 && <p className="font-semibold text-danger-text">{t('contraentrega', { monto: moneda.formatear(p.contraentrega) })}</p>}
-              <p className="text-fg-muted">
-                {[p.pesoKg != null ? t('peso', { kg: p.pesoKg }) : null, t('bulto'), p.codigoRequerido ? t('pedirCodigo') : null].filter(Boolean).join(' · ')}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={t('anterior')}
+                  disabled={actual === 0}
+                  onClick={() => setIndice(actual - 1)}
+                  className="inline-flex size-8 items-center justify-center rounded-md border border-line-strong bg-surface text-fg hover:bg-hover disabled:opacity-40"
+                >
+                  <ChevronLeft aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                </button>
+                <span className="min-w-0 truncate text-sm text-fg" aria-live="polite">
+                  {elegido === 'a4' ? t('posicionHoja', { n: actual + 1, total: paginas }) : t('posicion', { n: actual + 1, total: paginas, numero: guias[actual].textos.guideNumber })}
+                </span>
+                <button
+                  type="button"
+                  aria-label={t('siguiente')}
+                  disabled={actual >= paginas - 1}
+                  onClick={() => setIndice(actual + 1)}
+                  className="inline-flex size-8 items-center justify-center rounded-md border border-line-strong bg-surface text-fg hover:bg-hover disabled:opacity-40"
+                >
+                  <ChevronRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                </button>
+              </div>
+              <p className="text-xs text-fg-muted">
+                {elegido === 'a4' ? t('escalaA4', { pct: 36 }) : elegido === '80mm' ? t('escalaTermica', { pct: 72 }) : t('escalaRotulo', { pct: 72 })}
               </p>
-            </div>
-          </div>
-        )}
+            </>
+          ) : (
+            <p className="flex h-[300px] w-full max-w-[272px] items-center justify-center rounded-md border border-line bg-surface px-4 text-center text-xs text-fg-muted" aria-live="polite">
+              {datos === 'error' ? t('errorVista') : t('cargandoVista')}
+            </p>
+          )}
+        </div>
+
+        {estacion &&
+          (elegido === 'a4' ? (
+            <AvisoTonal tono="informacion" compacto titulo={t('avisoA4Titulo')} descripcion={t('avisoA4')} />
+          ) : termica && impresora ? (
+            <AvisoTonal
+              tono="informacion"
+              compacto
+              titulo={t('avisoTermicaTitulo', { impresora: impresora.name, ancho: normalizePaperWidth(impresora.paper_width).replace('mm', ' mm') })}
+              descripcion={t('avisoTermica')}
+              accion={{ etiqueta: t('cambiar'), onClick: configurar.onClick }}
+            />
+          ) : hayTermicaEnLinea(estacion) ? (
+            <AvisoTonal tono="informacion" compacto titulo={t('avisoPdfTitulo')} descripcion={t('avisoPdf')} />
+          ) : (
+            <AvisoTonal tono="advertencia" compacto titulo={t('avisoSinImpresoraTitulo')} descripcion={t('avisoSinImpresora')} accion={configurar} />
+          ))}
       </div>
     </Dialogo>
   );

@@ -298,6 +298,78 @@ export interface ShipmentGuidePrintPayload extends MoneyFormat {
   totalCost?: number;
 
   notes?: string;
+
+  /**
+   * Rotulo estandar de Logistica (Figma «21 Logistica», seccion 3223:15627), con todos los
+   * textos ya resueltos por el ERP (`src/lib/logistica/rotuloEnvio.ts`, `textosRotulo`). Si
+   * viene, la guia es ese rotulo: sin productos, precios, estados internos ni la marca GO Admin.
+   * Con `label.raster` la termica imprime la imagen del MISMO rotulo de la vista previa; sin
+   * raster (o si no cabe en el cabezal) sale una version en texto con los mismos datos.
+   */
+  label?: ShipmentLabelPayload;
+}
+
+/** Bloque de cobro del rotulo: o se cobra en la puerta o se avisa que no se cobra. */
+export interface ShipmentLabelCharge {
+  kind: 'collect' | 'paid';
+  /** «COBRAR AL ENTREGAR», «COBRAR AL ENTREGAR · UNA VEZ» o «PAGADO · NO COBRAR». */
+  title: string;
+  /** Saldo a cobrar con su moneda (solo `collect`). */
+  amount?: string | null;
+  note: string;
+}
+
+/**
+ * Textos del rotulo, en el idioma de la organizacion y ya formateados (montos, fechas, peso).
+ * El agente no traduce ni formatea nada: solo maqueta. Campos `null` = el bloque no sale.
+ */
+export interface ShipmentLabelPayload {
+  version: 2;
+  senderLabel: string;
+  storeName: string | null;
+  /** Iniciales de la tienda para el cuadro del logo cuando no hay logo. */
+  initials: string;
+  logoUrl: string | null;
+  /** «Sede Chapinero · Bogota · Tel. 601 555 0142». */
+  branchLine: string | null;
+  receiverLabel: string;
+  receiverName: string | null;
+  address: string | null;
+  neighborhood: string | null;
+  /** «BOGOTA D.C. · CUNDINAMARCA». */
+  destination: string | null;
+  /** «Tel. 300 555 1234». */
+  phone: string | null;
+  /** «Indicaciones: ...» ya limpias. */
+  instructions: string | null;
+  packageLabel: string;
+  /** «1 de 1». */
+  packageText: string;
+  weightLabel: string;
+  weightText: string | null;
+  deliveryLabel: string;
+  deliveryText: string | null;
+  carrierGuideLabel: string;
+  /** «Rapido Andino · 7012 4455 9981». */
+  carrierGuideText: string | null;
+  /** Codigo de barras de la guia de la transportadora. */
+  carrierGuideCode: string | null;
+  charge: ShipmentLabelCharge;
+  /** La guia impresa (`shipment_number`, con sufijo -k si hay varios paquetes). */
+  guideNumber: string;
+  /** «GUIA». */
+  guideLabel: string;
+  qrData: string;
+  /** «Sigue tu pedido» (solo si el QR lleva el seguimiento de la tienda). */
+  qrCaption: string | null;
+  /** «Escanea el QR para seguir tu pedido». */
+  qrCaptionLong: string | null;
+  /** «Despachado 25 nov 2026, 10:40 · Pedido web #412 · Moto KLM 48F». */
+  footer: string | null;
+  /** «corte» (linea de corte de la termica). */
+  cutLabel: string;
+  /** Imagen del rotulo de 80 mm (o 58 mm) a 203 ppp, generada en el ERP con la vista previa. */
+  raster?: MonochromeRaster | null;
 }
 
 /**

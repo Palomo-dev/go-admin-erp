@@ -33,7 +33,7 @@ const cache = new Map<string, MonochromeRaster | null>();
  * Empaqueta los pixeles en bits (8 por byte, MSB primero) y los codifica en
  * base64, que es el formato que viaja en el JSON del `print_job`.
  */
-function packToBase64(
+export function packToBase64(
   isBlack: (x: number, y: number) => boolean,
   width: number,
   height: number,

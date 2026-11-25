@@ -10,6 +10,9 @@
  * - «¿Es responsable de IVA?» Sí · 48 / No · 49, sin opción marcada de entrada (decisión 3).
  * - Documento repetido: «Guardar» queda bloqueado con «Unificar fichas», «Ligar como contacto» y
  *   «Ver la otra ficha» (decisión 5).
+ * - Modo «Agregar empresa con NIT» (`nuevaEmpresaDe`, Figma 3207-27029, «Facturar a» 2026-11-25): crea
+ *   una empresa nueva y deja a la persona como su contacto; con el NIT ya en otra empresa, «Ligar como
+ *   contacto» liga la persona a esa empresa.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -40,6 +43,7 @@ import {
 } from '@/lib/clientes/facturacionElectronica';
 import {
   catalogoResponsabilidades,
+  crearEmpresaFacturacion,
   empresasDeLaOrganizacion,
   esDocumentoRepetido,
   fichaConDocumento,
@@ -69,6 +73,26 @@ export interface EditarFacturacionDialogProps {
   organizationId: number;
   datos: DatosFacturacionCliente;
   onGuardado: () => void;
+  /**
+   * «Agregar empresa con NIT» desde «Facturar a»: `datos` es una empresa en blanco
+   * (`datosEmpresaNueva`) y al guardar se crea y se liga a esta persona como contacto.
+   */
+  nuevaEmpresaDe?: { personaId: string; personaNombre: string } | null;
+  /** Empresa creada o ligada en el modo `nuevaEmpresaDe` (el selector la deja escogida). */
+  onEmpresaLista?: (empresaId: string) => void;
+}
+
+/** Ficha en blanco de una empresa nueva (modo «Agregar empresa con NIT»). */
+export function datosEmpresaNueva(organizationId: number): DatosFacturacionCliente {
+  const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16));
+  return {
+    ficha: { id, organization_id: organizationId, customer_type: 'company', identification_type: 'nit', identification_number: '', dv: null, first_name: '', last_name: '', company_name: '', billing_email: null, fiscal_municipality_id: null, fiscal_responsibilities: [] },
+    municipio: null,
+    empresas: [],
+    personasLigadas: 0,
+  };
 }
 
 function formularioDe(datos: DatosFacturacionCliente): DatosFacturacionFormulario {
@@ -90,8 +114,10 @@ function formularioDe(datos: DatosFacturacionCliente): DatosFacturacionFormulari
   };
 }
 
-export function EditarFacturacionDialog({ abierto, onAbiertoChange, organizationId, datos, onGuardado }: EditarFacturacionDialogProps) {
+export function EditarFacturacionDialog({ abierto, onAbiertoChange, organizationId, datos, onGuardado, nuevaEmpresaDe = null, onEmpresaLista }: EditarFacturacionDialogProps) {
   const t = useTranslations('clientesFacturacion');
+  const tf = useTranslations('clientesFacturarA');
+  const nueva = nuevaEmpresaDe !== null;
   const etiquetas = useEtiquetasCatalogo();
   const ficha = datos.ficha;
   const [form, setForm] = useState<DatosFacturacionFormulario>(() => formularioDe(datos));
@@ -196,8 +222,14 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
     if (errores.size > 0 || bloqueado) return;
     setGuardando(true);
     try {
-      await guardarFacturacionCliente(organizationId, ficha.id, form);
-      toast.success(t('editar.guardado'));
+      if (nuevaEmpresaDe) {
+        await crearEmpresaFacturacion(organizationId, nuevaEmpresaDe.personaId, ficha.id, form);
+        toast.success(tf('agregar.creada', { empresa: form.razonSocial.trim() }));
+        onEmpresaLista?.(ficha.id);
+      } else {
+        await guardarFacturacionCliente(organizationId, ficha.id, form);
+        toast.success(t('editar.guardado'));
+      }
       onGuardado();
       onAbiertoChange(false);
     } catch (err) {
@@ -216,6 +248,15 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
     if (!otraFicha) return;
     setLigando(true);
     try {
+      if (nuevaEmpresaDe) {
+        // Agregar empresa: el NIT ya es de otra empresa → la persona queda como su contacto.
+        await ligarComoContacto(organizationId, nuevaEmpresaDe.personaId, otraFicha.id);
+        toast.success(t('editar.ligado', { empresa: otraFicha.nombre }));
+        onEmpresaLista?.(otraFicha.id);
+        onGuardado();
+        onAbiertoChange(false);
+        return;
+      }
       await ligarComoContacto(organizationId, ficha.id, otraFicha.id);
       toast.success(t('editar.ligado', { empresa: otraFicha.nombre }));
       // La persona conserva su propio documento; la empresa factura con su NIT.
@@ -239,8 +280,12 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
     <PanelAdaptable
       abierto={abierto}
       onAbiertoChange={onAbiertoChange}
-      titulo={t('editar.titulo')}
-      descripcion={nombreFicha ? t('editar.descripcion', { nombre: nombreFicha }) : t('editar.descripcionSinNombre')}
+      titulo={nuevaEmpresaDe ? tf('agregar.titulo') : t('editar.titulo')}
+      descripcion={
+        nuevaEmpresaDe
+          ? tf('agregar.descripcion', { persona: nuevaEmpresaDe.personaNombre || t('sinNombre') })
+          : nombreFicha ? t('editar.descripcion', { nombre: nombreFicha }) : t('editar.descripcionSinNombre')
+      }
       ancho={560}
       ocupado={guardando}
       pie={
@@ -262,6 +307,7 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
         </>
       }
     >
+      {!nueva && (
       <FormField etiqueta={t('editar.tipoPersona')}>
         {(campo) => (
           <SegmentedControl
@@ -277,6 +323,7 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
           />
         )}
       </FormField>
+      )}
 
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_72px] gap-3 max-sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] ">
         <FormField etiqueta={t('editar.tipoDocumento')} obligatorio error={mostrar('tipoDocumento') ? t('editar.errores.tipoDocumento') : null}>
@@ -312,11 +359,13 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
           <p className="text-[13px] font-semibold">{t('editar.duplicado.titulo', { documento: etiquetaDocumento(otraFicha) || form.numero, nombre: otraFicha.nombre || t('sinNombre') })}</p>
           <p className="text-xs">{t('editar.duplicado.texto')}</p>
           <div className="flex flex-wrap gap-2">
-            <a href={urlUnificarFichas(ficha.id, otraFicha.id)} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-              <Users className="size-4" aria-hidden="true" />
-              {t('editar.duplicado.unificar')}
-            </a>
-            {form.tipoPersona === 'person' && otraFicha.customer_type === 'company' && (
+            {!nueva && (
+              <a href={urlUnificarFichas(ficha.id, otraFicha.id)} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                <Users className="size-4" aria-hidden="true" />
+                {t('editar.duplicado.unificar')}
+              </a>
+            )}
+            {(form.tipoPersona === 'person' || nueva) && otraFicha.customer_type === 'company' && (
               <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => void ligar()} disabled={ligando}>
                 {ligando ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Link2 className="size-4" aria-hidden="true" />}
                 {t('editar.duplicado.ligar')}

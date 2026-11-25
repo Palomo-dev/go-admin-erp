@@ -89,8 +89,9 @@ describe('createShipmentFromWebOrder — una sola ruta', () => {
     const s = inserts.shipments[0] as Record<string, unknown> & { metadata: Record<string, unknown> };
     // De la ruta manual: fecha estimada
     expect(s.expected_delivery_date).toBe('2026-09-16');
-    // De la ruta automática: país en instrucciones y metadata de entrega
-    expect(s.delivery_instructions).toBe('Timbre 2 | País: CO (ANT)');
+    // Las indicaciones son las del cliente: el país va solo en metadata (desde 2026-11-25 ya no
+    // se anexa «País: CO (ANT)», que salía como ruido en el rótulo y en la app del domiciliario).
+    expect(s.delivery_instructions).toBe('Timbre 2');
     expect(s.metadata).toMatchObject({
       delivery_type: 'delivery_own',
       delivery_partner: 'servientrega',

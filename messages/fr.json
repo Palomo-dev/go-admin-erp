@@ -69393,19 +69393,39 @@
         },
         "guias": {
           "titulo": "{count, plural, one {Imprimer # étiquette} other {Imprimer # étiquettes}}",
-          "descripcion": "Étiquette à coller sur le colis, avec le code-barres de l’envoi.",
-          "confirmar": "{count, plural, one {Imprimer # étiquette} other {Imprimer # étiquettes}}",
-          "cancelar": "Annuler",
-          "pie": "Elles s’impriment sur l’imprimante d’étiquettes du site. Sinon, elles s’ouvrent pour imprimer ou enregistrer en PDF.",
+          "descripcion": "Ce que vous voyez ici est exactement ce qui sort sur papier.",
           "formato": "Format",
-          "formatoTermica": "Étiquette thermique de 80 mm",
+          "formatoTermica": "Thermique 80 mm",
+          "formatoRotulo": "Étiquette 10 × 15 cm",
+          "formatoA4": "A4 · 4 par feuille",
           "copias": "Copies par envoi",
+          "resumenTermica": "{unidades, select, paquetes {{n, plural, one {# colis} other {# colis}}} other {{n, plural, one {# envoi} other {# envois}}}} × {copias, plural, one {# copie} other {# copies}} = {count, plural, one {# ticket} other {# tickets, avec une découpe entre chacun}}.",
+          "resumenRotulo": "{unidades, select, paquetes {{n, plural, one {# colis} other {# colis}}} other {{n, plural, one {# envoi} other {# envois}}}} × {copias, plural, one {# copie} other {# copies}} = {count, plural, one {# étiquette 10 × 15 cm} other {# étiquettes, une par page de 10 × 15 cm}}.",
+          "resumenA4": "{unidades, select, paquetes {{n, plural, one {# colis} other {# colis}}} other {{n, plural, one {# envoi} other {# envois}}}} × {copias, plural, one {# copie} other {# copies}} = {count, plural, one {# étiquette} other {# étiquettes}} sur {hojas, plural, one {# feuille A4} other {# feuilles A4}}.{libres, plural, =0 {} one { Un quart reste vide.} other { # quarts restent vides.}}",
           "vistaPrevia": "Aperçu de l’étiquette",
-          "para": "POUR : {nombre}",
-          "contraentrega": "CONTRE-REMBOURSEMENT {monto}",
-          "peso": "{kg} kg",
-          "bulto": "1 sur 1",
-          "pedirCodigo": "Demander le code"
+          "cargandoVista": "Préparation de l’aperçu…",
+          "errorVista": "Impossible de générer l’aperçu. Fermez et réessayez.",
+          "anterior": "Étiquette précédente",
+          "siguiente": "Étiquette suivante",
+          "posicion": "Étiquette {n} sur {total} · {numero}",
+          "posicionHoja": "Feuille {n} sur {total}",
+          "escalaTermica": "Aperçu à {pct} % · sur papier : 80 mm de large (72 mm imprimables), hauteur selon le contenu.",
+          "escalaRotulo": "Aperçu à {pct} % · sur papier : 100 × 150 mm.",
+          "escalaA4": "Aperçu à {pct} % · chaque étiquette sort à 97 % (tient dans un quart de A4).",
+          "avisoTermicaTitulo": "S’imprime sur « {impresora} » ({ancho}) · en ligne",
+          "avisoTermica": "Imprimante d’étiquettes du site. En cas d’échec, le PDF s’ouvre pour imprimer ou enregistrer.",
+          "cambiar": "Modifier",
+          "avisoPdfTitulo": "Le PDF s’ouvre en taille réelle",
+          "avisoPdf": "L’imprimante d’étiquettes du site fonctionne en rouleau : ce format sort en PDF à imprimer ou enregistrer.",
+          "avisoSinImpresoraTitulo": "Ce site n’a pas d’imprimante d’étiquettes en ligne",
+          "avisoSinImpresora": "Le PDF s’ouvre en taille réelle pour imprimer ou enregistrer. Vous pouvez enregistrer une imprimante dans Paramètres › Imprimantes.",
+          "configurar": "Configurer",
+          "avisoA4Titulo": "S’imprime sur l’imprimante habituelle du site",
+          "avisoA4": "Découpez le long des pointillés. Utile quand il n’y a pas d’imprimante d’étiquettes.",
+          "confirmarTermica": "{count, plural, one {Imprimer # étiquette} other {Imprimer # étiquettes}}",
+          "confirmarPdf": "{count, plural, one {Ouvrir le PDF de # étiquette} other {Ouvrir le PDF de # étiquettes}}",
+          "confirmarA4": "{count, plural, one {Imprimer la feuille A4} other {Imprimer # feuilles A4}}",
+          "cancelar": "Annuler"
         }
       },
       "form": {
@@ -69575,6 +69595,53 @@
           "notaNuevo": "Une fois créé, l’envoi est « Créé » dans À expédier ; il y est attribué et expédié.",
           "notaEditar": "Les modifications restent dans l’historique de l’envoi avec votre nom."
         }
+      }
+    },
+    "rotulo": {
+      "remitente": "Expéditeur",
+      "destinatario": "À · Destinataire",
+      "telefono": "Tél. {telefono}",
+      "indicaciones": "Indications : {texto}",
+      "paquete": "Colis",
+      "paqueteDe": "{numero} sur {total}",
+      "peso": "Poids",
+      "pesoKg": "{kg} kg",
+      "entrega": "Livraison",
+      "entregaPropio": "Livraison par nos soins",
+      "entregaTransportadora": "Transporteur : {nombre}",
+      "entregaTransportadoraSinNombre": "Transporteur",
+      "entregaRecoger": "Retrait en magasin",
+      "guiaTransportadora": "Numéro du transporteur",
+      "cobrar": "À ENCAISSER À LA LIVRAISON",
+      "cobrarUnaVez": "À ENCAISSER À LA LIVRAISON · UNE FOIS",
+      "notaCobro": "Ne livrez pas sans encaisser.",
+      "notaCobroAnticipo": "Solde après l’acompte payé en ligne. Ne livrez pas sans encaisser.",
+      "notaCobroPaquetes": "Total de l’envoi de {total} colis. Livrez les {total} ensemble.",
+      "notaCodigo": "Demandez le code de livraison.",
+      "pagado": "PAYÉ · NE PAS ENCAISSER",
+      "notaPagado": "Le client a déjà payé. N’acceptez pas d’argent.",
+      "guia": "Bordereau",
+      "qrCorto": "Suivez votre commande",
+      "qrLargo": "Scannez le QR pour suivre votre commande",
+      "pieDespachado": "Expédié {fecha}",
+      "pieTransportadora": "Remis au transporteur {fecha}",
+      "pieImpreso": "Imprimé {fecha}",
+      "pedidoWeb": "Commande web {numero}",
+      "vehiculoMoto": "Moto {placa}",
+      "vehiculoCarro": "Voiture {placa}",
+      "vehiculoFurgon": "Fourgon {placa}",
+      "vehiculoOtro": "Plaque {placa}",
+      "corte": "découpe",
+      "pagina": {
+        "titulo": "Étiquettes à imprimer",
+        "resumen": "{count, plural, one {# étiquette 10 × 15 cm, une par page} other {# étiquettes 10 × 15 cm, une par page}}",
+        "resumenTermica": "{count, plural, one {# ticket de 80 mm} other {# tickets de 80 mm, un par page}}",
+        "resumenA4": "{count, plural, one {# étiquette} other {# étiquettes}} sur {hojas, plural, one {# feuille A4} other {# feuilles A4}}, à découper le long des pointillés",
+        "tituloDocumento": "{count, plural, one {Étiquette {numero}} other {Étiquettes (#)}}",
+        "imprimir": "Imprimer",
+        "cerrar": "Fermer",
+        "sinTrabajoTitulo": "Aucune étiquette à imprimer",
+        "sinTrabajo": "Revenez à Logistique et choisissez « Imprimer l’étiquette » à nouveau."
       }
     }
   },
@@ -72822,6 +72889,57 @@
       "titulo": "Votre entreprise est marquée 49 (non assujettie à la TVA) et cette facture comporte de la TVA",
       "texto": "Si vous facturez de la TVA (par exemple des commissions d'encaissement), la DIAN attend que votre RUT indique 48 (assujetti à la TVA). Mettez à jour le RUT et le profil fiscal. La facture peut être émise quand même.",
       "accion": "Voir le profil fiscal"
+    }
+  },
+  "clientesFacturarA": {
+    "titulo": "Facturer à",
+    "cargando": "Chargement du destinataire de la facture…",
+    "sinNombre": "Sans nom",
+    "clienteCarrito": "Client du panier : {nombre}",
+    "aviso": "Ce client a des entreprises : la facture va-t-elle à l’une d’elles ?",
+    "avisoAyuda": "Si vous ne touchez à rien, la facture est émise à {persona}.",
+    "opciones": {
+      "consumidorFinal": "Consommateur final",
+      "consumidorFinalSub": "222222222222 · sans données",
+      "persona": "Personne (pièce d’identité)",
+      "personaCorta": "Personne",
+      "personaSinDocumento": "Sans document",
+      "empresa": "Entreprise (NIT)",
+      "empresaCorta": "Entreprise",
+      "empresaSub": "{n, plural, one {# entreprise liée} other {# entreprises liées}}"
+    },
+    "empresasDe": "Entreprises de {persona}",
+    "escogida": "choisie",
+    "ningunaMarcada": "aucune n’est cochée",
+    "ultimaVez": "La dernière fois : {empresa}",
+    "principal": "principale sur la fiche",
+    "iva": {
+      "48": "48 · Assujetti à la TVA",
+      "49": "49 · Non assujetti à la TVA",
+      "sin": "TVA non définie"
+    },
+    "ivaCorto": "TVA {codigo}",
+    "agregarEmpresa": "Ajouter une entreprise avec NIT",
+    "resumen": {
+      "adquiriente": "Acquéreur · figure sur la facture",
+      "recibe": "Reçoit · contact",
+      "correo": "E-mail de facturation : {correo}",
+      "sinCorreo": "Pas d’e-mail de facturation",
+      "cartera": "Créances et retenues à son nom",
+      "noAdquiriente": "N’apparaît pas comme acquéreur ; son historique reste sur sa fiche"
+    },
+    "resumenCorto": {
+      "titulo": "Facture au nom de",
+      "recibe": "reçue par {persona}"
+    },
+    "aNombreDe": "à {empresa}",
+    "errores": {
+      "empresaNoLigada": "L’entreprise n’est plus liée à ce client ou n’appartient pas à l’organisation. Choisissez à nouveau au nom de qui émettre la facture."
+    },
+    "agregar": {
+      "titulo": "Ajouter une entreprise avec NIT",
+      "descripcion": "{persona} devient contact de l’entreprise.",
+      "creada": "{empresa} est maintenant liée au client."
     }
   }
 }

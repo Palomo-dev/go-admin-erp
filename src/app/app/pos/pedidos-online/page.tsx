@@ -78,6 +78,8 @@ import { DialogoPedidoManual } from '@/components/pos/pedidos-online/manual/Dial
 import { DialogoReconstruirPedido } from '@/components/pos/pedidos-online/manual/DialogoReconstruirPedido';
 import {
   webOrdersService,
+  estadisticasDePedidos,
+  type EstadisticasPedidos,
   type WebOrder,
   type WebOrderStatus,
   type DeliveryType,
@@ -126,6 +128,9 @@ interface Estadisticas {
   unconfirmed_orders: number;
   on_time_pct: number | null;
 }
+
+/** Cada cuánto se relee el periodo anterior de las tarjetas (la comparación «vs. ayer»). */
+const VIGENCIA_PERIODO_ANTERIOR_MS = 5 * 60_000;
 
 /** Escapa texto del cliente antes de escribirlo en la ventana de impresión. */
 function esc(valor: unknown): string {
@@ -183,6 +188,8 @@ export default function PedidosOnlinePage() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const loteEnCursoRef = useRef(false);
+  // Tarjetas del periodo anterior ya leídas (ver `loadOrders`).
+  const anteriorRef = useRef<{ clave: string; leidoEn: number; datos: EstadisticasPedidos } | null>(null);
   const [ahora, setAhora] = useState(() => new Date());
 
   // Diálogos. Confirmar admite varios pedidos («Confirmar pendientes»).
@@ -280,11 +287,25 @@ export default function PedidosOnlinePage() {
         date_to: actual.to,
         branch_id: branchFilter ?? undefined,
       };
-      const [ordersData, statsData, prevStatsData] = await Promise.all([
+      // Sin filtros ni búsqueda, el listado YA trae todos los pedidos del periodo: las tarjetas
+      // salen de esas mismas filas y no se piden otra vez. Con algún filtro, el listado es un
+      // subconjunto y las tarjetas (que no se filtran) sí necesitan su consulta.
+      const sinFiltros = !consulta.status && !consulta.delivery_type && !consulta.source && !consulta.payment_status && !consulta.search;
+      // El periodo anterior solo alimenta la comparación («vs. ayer a esta hora»): se relee cada
+      // 5 minutos o cuando cambia lo que se compara, no en cada ciclo de 30 s.
+      const claveAnterior = anterior ? `${periodo}|${customDateFrom}|${customDateTo}|${branchFilter ?? ''}|${anterior.from}` : '';
+      const guardado = anteriorRef.current;
+      const anteriorVigente = !!anterior && !!guardado && guardado.clave === claveAnterior && Date.now() - guardado.leidoEn < VIGENCIA_PERIODO_ANTERIOR_MS;
+      const [ordersData, statsConsultadas, prevStatsData] = await Promise.all([
         webOrdersService.getOrders(consulta),
-        webOrdersService.getOrderStats(actual.from, actual.to, branchFilter ?? undefined),
-        anterior ? webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined) : Promise.resolve(null),
+        sinFiltros ? Promise.resolve(null) : webOrdersService.getOrderStats(actual.from, actual.to, branchFilter ?? undefined),
+        !anterior
+          ? Promise.resolve(null)
+          : anteriorVigente
+            ? Promise.resolve(guardado.datos)
+            : webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined),
       ]);
+      if (anterior && !anteriorVigente && prevStatsData) anteriorRef.current = { clave: claveAnterior, leidoEn: Date.now(), datos: prevStatsData };
       // «Pago: contraentrega»: filtro sobre lo cargado. Sin él, la lista de siempre.
       const cargados = filtros.contraentrega ? ordersData.filter(esPedidoContraentrega) : ordersData;
       // «Pago: pagado · vencido» (2026-11-25): igual, sobre lo cargado.
@@ -294,7 +315,8 @@ export default function PedidosOnlinePage() {
       } else {
         setVencidos([]);
       }
-      setStats(statsData);
+      // Las tarjetas salen de TODOS los pedidos cargados (los filtros de pago son solo de la lista).
+      setStats(statsConsultadas ?? estadisticasDePedidos(ordersData));
       setPreviousStats(prevStatsData);
       setErrorCarga(false);
       setAhora(new Date());
@@ -304,7 +326,7 @@ export default function PedidosOnlinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros, busqueda, rangos, branchFilter, organization?.id]);
+  }, [filtros, busqueda, rangos, branchFilter, organization?.id, periodo, customDateFrom, customDateTo]);
 
   useEffect(() => {
     setLoading(true);

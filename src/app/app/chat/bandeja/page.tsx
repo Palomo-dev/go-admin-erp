@@ -52,6 +52,8 @@ import {
 import { cn } from '@/utils/Utils';
 
 const PAGINA = 20;
+/** Espera para juntar los eventos de tiempo real de un mismo mensaje en una sola recarga. */
+const ESPERA_RECARGA_MS = 400;
 const TODOS = '__todos__';
 const CLAVE_PANEL = 'chat.bandeja.panelDerecho';
 
@@ -163,12 +165,23 @@ function Bandeja() {
   recargarSilencioso.current = () => void cargar(true, Math.max(conversaciones.length, PAGINA));
   useEffect(() => {
     if (!organizationId) return;
+    // Un solo mensaje llega como varios eventos seguidos (el mensaje, su estado de entrega y la
+    // conversación que se actualiza): se juntan en UNA recarga, 400 ms después del último.
+    let espera: ReturnType<typeof setTimeout> | null = null;
+    const recargar = () => {
+      if (espera) clearTimeout(espera);
+      espera = setTimeout(() => {
+        espera = null;
+        recargarSilencioso.current();
+      }, ESPERA_RECARGA_MS);
+    };
     const canal = supabase
       .channel('chat-bandeja')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `organization_id=eq.${organizationId}` }, () => recargarSilencioso.current())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `organization_id=eq.${organizationId}` }, () => recargarSilencioso.current())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `organization_id=eq.${organizationId}` }, recargar)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `organization_id=eq.${organizationId}` }, recargar)
       .subscribe();
     return () => {
+      if (espera) clearTimeout(espera);
       void supabase.removeChannel(canal);
     };
   }, [organizationId]);

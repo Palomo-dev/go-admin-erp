@@ -69391,19 +69391,39 @@
         },
         "guias": {
           "titulo": "{count, plural, one {Imprimir # guía} other {Imprimir # guías}}",
-          "descripcion": "Rótulo para pegar en el paquete, con código de barras del envío.",
-          "confirmar": "{count, plural, one {Imprimir # guía} other {Imprimir # guías}}",
-          "cancelar": "Cancelar",
-          "pie": "Se imprimen en la impresora de rótulos de la sede. Si no hay, se abre para imprimir o guardar en PDF.",
+          "descripcion": "Lo que ves aquí es exactamente lo que sale en papel.",
           "formato": "Formato",
-          "formatoTermica": "Guía térmica de 80 mm",
+          "formatoTermica": "Térmica 80 mm",
+          "formatoRotulo": "Rótulo 10 × 15 cm",
+          "formatoA4": "A4 · 4 por hoja",
           "copias": "Copias por envío",
+          "resumenTermica": "{unidades, select, paquetes {{n, plural, one {# paquete} other {# paquetes}}} other {{n, plural, one {# envío} other {# envíos}}}} × {copias, plural, one {# copia} other {# copias}} = {count, plural, one {# tiquete} other {# tiquetes, con corte entre cada uno}}.",
+          "resumenRotulo": "{unidades, select, paquetes {{n, plural, one {# paquete} other {# paquetes}}} other {{n, plural, one {# envío} other {# envíos}}}} × {copias, plural, one {# copia} other {# copias}} = {count, plural, one {# rótulo de 10 × 15 cm} other {# rótulos, uno por página de 10 × 15 cm}}.",
+          "resumenA4": "{unidades, select, paquetes {{n, plural, one {# paquete} other {# paquetes}}} other {{n, plural, one {# envío} other {# envíos}}}} × {copias, plural, one {# copia} other {# copias}} = {count, plural, one {# rótulo} other {# rótulos}} en {hojas, plural, one {# hoja A4} other {# hojas A4}}.{libres, plural, =0 {} one { Queda un cuarto libre.} other { Quedan # cuartos libres.}}",
           "vistaPrevia": "Vista previa de la guía",
-          "para": "PARA: {nombre}",
-          "contraentrega": "CONTRAENTREGA {monto}",
-          "peso": "{kg} kg",
-          "bulto": "1 de 1",
-          "pedirCodigo": "Pedir código"
+          "cargandoVista": "Preparando la vista previa…",
+          "errorVista": "No se pudo armar la vista previa. Cierra y vuelve a intentarlo.",
+          "anterior": "Guía anterior",
+          "siguiente": "Guía siguiente",
+          "posicion": "Guía {n} de {total} · {numero}",
+          "posicionHoja": "Hoja {n} de {total}",
+          "escalaTermica": "Vista al {pct} % · en papel: 80 mm de ancho (72 mm útiles), alto según el contenido.",
+          "escalaRotulo": "Vista al {pct} % · en papel: 100 × 150 mm.",
+          "escalaA4": "Vista al {pct} % · cada rótulo sale al 97 % (cabe en un cuarto de A4).",
+          "avisoTermicaTitulo": "Se imprime en «{impresora}» ({ancho}) · en línea",
+          "avisoTermica": "Impresora de rótulos de la sede. Si falla, se abre el PDF para imprimir o guardar.",
+          "cambiar": "Cambiar",
+          "avisoPdfTitulo": "Se abre el PDF a tamaño real",
+          "avisoPdf": "La impresora de rótulos de la sede es de rollo: este formato sale en PDF para imprimir o guardar.",
+          "avisoSinImpresoraTitulo": "Esta sede no tiene impresora de rótulos en línea",
+          "avisoSinImpresora": "Se abre el PDF a tamaño real para imprimir o guardar. Puedes registrar una impresora en Configuración › Impresoras.",
+          "configurar": "Configurar",
+          "avisoA4Titulo": "Se imprime en la impresora normal de la sede",
+          "avisoA4": "Recorta por las líneas punteadas. Sirve cuando no hay impresora de rótulos.",
+          "confirmarTermica": "{count, plural, one {Imprimir # guía} other {Imprimir # guías}}",
+          "confirmarPdf": "{count, plural, one {Abrir PDF de # guía} other {Abrir PDF de # guías}}",
+          "confirmarA4": "{count, plural, one {Imprimir hoja A4} other {Imprimir # hojas A4}}",
+          "cancelar": "Cancelar"
         }
       },
       "form": {
@@ -69573,6 +69593,53 @@
           "notaNuevo": "Al crear, el envío queda «Creado» en Por despachar; desde ahí se asigna y sale.",
           "notaEditar": "Los cambios quedan en el historial del envío con tu nombre."
         }
+      }
+    },
+    "rotulo": {
+      "remitente": "Remitente",
+      "destinatario": "Para · Destinatario",
+      "telefono": "Tel. {telefono}",
+      "indicaciones": "Indicaciones: {texto}",
+      "paquete": "Paquete",
+      "paqueteDe": "{numero} de {total}",
+      "peso": "Peso",
+      "pesoKg": "{kg} kg",
+      "entrega": "Entrega",
+      "entregaPropio": "Domicilio propio",
+      "entregaTransportadora": "Transportadora: {nombre}",
+      "entregaTransportadoraSinNombre": "Transportadora",
+      "entregaRecoger": "Recoger en tienda",
+      "guiaTransportadora": "Guía de la transportadora",
+      "cobrar": "COBRAR AL ENTREGAR",
+      "cobrarUnaVez": "COBRAR AL ENTREGAR · UNA VEZ",
+      "notaCobro": "No entregue sin cobrar.",
+      "notaCobroAnticipo": "Saldo después del anticipo pagado en línea. No entregue sin cobrar.",
+      "notaCobroPaquetes": "Total del envío de {total} paquetes. Entregue los {total} juntos.",
+      "notaCodigo": "Pida el código de entrega.",
+      "pagado": "PAGADO · NO COBRAR",
+      "notaPagado": "El cliente ya pagó. No reciba dinero.",
+      "guia": "Guía",
+      "qrCorto": "Sigue tu pedido",
+      "qrLargo": "Escanea el QR para seguir tu pedido",
+      "pieDespachado": "Despachado {fecha}",
+      "pieTransportadora": "Entregado a la transportadora {fecha}",
+      "pieImpreso": "Impreso {fecha}",
+      "pedidoWeb": "Pedido web {numero}",
+      "vehiculoMoto": "Moto {placa}",
+      "vehiculoCarro": "Carro {placa}",
+      "vehiculoFurgon": "Furgón {placa}",
+      "vehiculoOtro": "Placa {placa}",
+      "corte": "corte",
+      "pagina": {
+        "titulo": "Guías para imprimir",
+        "resumen": "{count, plural, one {# rótulo de 10 × 15 cm, uno por página} other {# rótulos de 10 × 15 cm, uno por página}}",
+        "resumenTermica": "{count, plural, one {# tiquete de 80 mm} other {# tiquetes de 80 mm, uno por página}}",
+        "resumenA4": "{count, plural, one {# rótulo} other {# rótulos}} en {hojas, plural, one {# hoja A4} other {# hojas A4}}, para recortar por las líneas punteadas",
+        "tituloDocumento": "{count, plural, one {Guía {numero}} other {Guías (#)}}",
+        "imprimir": "Imprimir",
+        "cerrar": "Cerrar",
+        "sinTrabajoTitulo": "No hay guías para imprimir",
+        "sinTrabajo": "Vuelve a Logística y elige «Imprimir guía» otra vez."
       }
     }
   },
@@ -72820,6 +72887,57 @@
       "titulo": "Tu empresa está marcada 49 (no responsable de IVA) y esta factura lleva IVA",
       "texto": "Si cobras IVA (por ejemplo, comisiones por recaudo), la DIAN espera que tu RUT diga 48 (responsable de IVA). Actualiza el RUT y el perfil tributario. La factura se puede emitir igual.",
       "accion": "Ver perfil tributario"
+    }
+  },
+  "clientesFacturarA": {
+    "titulo": "Facturar a",
+    "cargando": "Cargando a nombre de quién factura…",
+    "sinNombre": "Sin nombre",
+    "clienteCarrito": "Cliente del carrito: {nombre}",
+    "aviso": "Este cliente tiene empresas: ¿la factura va a una de ellas?",
+    "avisoAyuda": "Si no tocas nada, la factura sale a {persona}.",
+    "opciones": {
+      "consumidorFinal": "Consumidor final",
+      "consumidorFinalSub": "222222222222 · sin datos",
+      "persona": "Persona (cédula)",
+      "personaCorta": "Persona",
+      "personaSinDocumento": "Sin documento",
+      "empresa": "Empresa (NIT)",
+      "empresaCorta": "Empresa",
+      "empresaSub": "{n, plural, one {# empresa ligada} other {# empresas ligadas}}"
+    },
+    "empresasDe": "Empresas de {persona}",
+    "escogida": "escogida",
+    "ningunaMarcada": "ninguna viene marcada",
+    "ultimaVez": "La última vez: {empresa}",
+    "principal": "principal en la ficha",
+    "iva": {
+      "48": "48 · Responsable de IVA",
+      "49": "49 · No responsable de IVA",
+      "sin": "IVA sin definir"
+    },
+    "ivaCorto": "IVA {codigo}",
+    "agregarEmpresa": "Agregar empresa con NIT",
+    "resumen": {
+      "adquiriente": "Adquiriente · va en la factura",
+      "recibe": "Recibe · contacto",
+      "correo": "Correo de factura: {correo}",
+      "sinCorreo": "Sin correo de factura",
+      "cartera": "Cartera y retenciones a su nombre",
+      "noAdquiriente": "No figura como adquiriente; su historial sigue en su ficha"
+    },
+    "resumenCorto": {
+      "titulo": "Factura a nombre de",
+      "recibe": "recibe {persona}"
+    },
+    "aNombreDe": "a {empresa}",
+    "errores": {
+      "empresaNoLigada": "La empresa ya no está ligada a este cliente o no es de la organización. Escoge de nuevo a nombre de quién sale la factura."
+    },
+    "agregar": {
+      "titulo": "Agregar empresa con NIT",
+      "descripcion": "{persona} queda como contacto de la empresa.",
+      "creada": "{empresa} quedó ligada al cliente."
     }
   }
 }

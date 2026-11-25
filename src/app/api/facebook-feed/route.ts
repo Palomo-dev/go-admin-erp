@@ -53,13 +53,21 @@ export async function GET(request: NextRequest) {
 
     await registrarLecturaFeed(organizationId, { productos: count, moneda: moneda ?? 'base', agente: request.headers.get('user-agent') });
 
-    // Commerce Manager exige text/csv inline y sin BOM. La caché de CDN es
-    // corta: un token regenerado deja de servir en ≤ 15 min aunque la URL vieja
-    // estuviera cacheada.
+    // Commerce Manager exige text/csv inline y sin BOM.
+    //
+    // Caché de CDN de 1 hora (antes 15 min). Quien lee es el robot de Meta
+    // (`facebookexternalhit`), cada 12 a 30 minutos por organización, y cada
+    // lectura sin caché regenera el catálogo entero: ~38.000 consultas al día
+    // entre dos organizaciones (medido el 2026-11-24). Meta programa la
+    // actualización del catálogo, como mucho, cada hora, así que una hora de
+    // caché no retrasa lo que el comprador ve en Facebook o Instagram.
+    // Consecuencia aceptada: un token regenerado puede seguir sirviendo la
+    // copia en caché hasta 1 hora (antes 15 min); el catálogo es información
+    // pública de la tienda.
     const headers: Record<string, string> = {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': 'inline',
-      'Cache-Control': 'public, max-age=300, s-maxage=900',
+      'Cache-Control': 'public, max-age=300, s-maxage=3600',
       'X-Product-Count': String(count),
       'Access-Control-Allow-Origin': '*',
     };

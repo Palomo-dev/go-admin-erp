@@ -39559,7 +39559,7 @@
           "etiqueta": "Preview",
           "donde": {
             "carrito": "Cart · below the total",
-            "ficha": "Product page · below the price"
+            "ficha": "Product page · above the buy button"
           },
           "linea": {
             "carrito": "Cash on delivery available: pay when you receive it.",

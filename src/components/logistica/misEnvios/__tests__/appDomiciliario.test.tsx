@@ -71,7 +71,7 @@ const ruta = {
   timezone: 'America/Bogota',
   zonaDe: () => 'America/Bogota',
 };
-jest.mock('../useMiRuta', () => ({ useParada: () => parada, useMiRuta: () => ruta }));
+jest.mock('../useMiRuta', () => ({ useParada: () => parada, useMiRuta: () => ruta, useUltimoCuadre: () => null }));
 
 import { EntregarPantalla } from '../EntregarPantalla';
 import { MisEnviosPantalla } from '../MisEnviosPantalla';

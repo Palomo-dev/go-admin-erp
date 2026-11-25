@@ -9,6 +9,7 @@ import {
   agruparMisEnvios,
   coincideParada,
   enlaceRutaGoogleMaps,
+  excepcionDeHoy,
   estadoCuadreJornada,
   kpisMisEnvios,
   numeroParada,
@@ -16,6 +17,7 @@ import {
   peorVigencia,
   pinesRuta,
   siguienteParada,
+  vehiculoDelDia,
   vigenciaDocumento,
   type EnvioDomiciliario,
 } from '../misEnvios';
@@ -191,5 +193,33 @@ describe('sin perfil de domiciliario', () => {
       porCuadrar: 412000,
       domiciliariosPorCuadrar: 2,
     });
+  });
+});
+
+describe('mi vehículo hoy', () => {
+  type ConVehiculo = EnvioDomiciliario & { vehicle_id?: string | null; metadata?: Record<string, unknown> | null };
+  const con = (p: Partial<ConVehiculo> & { id: string }): ConVehiculo => ({ ...env(p), ...p });
+
+  test('el vehículo congelado en los envíos de la ruta manda; sin él, el por defecto', () => {
+    const g1 = agruparMisEnvios([con({ id: 'a', vehicle_id: 'v1' }), con({ id: 'b', vehicle_id: 'v1' }), con({ id: 'c' })], HOY, () => ZONA);
+    expect(vehiculoDelDia(g1, 'v9')).toEqual({ vehicleId: 'v1', enviosConPlaca: 2 });
+    const g2 = agruparMisEnvios([con({ id: 'a' })], HOY, () => ZONA);
+    expect(vehiculoDelDia(g2, 'v9')).toEqual({ vehicleId: 'v9', enviosConPlaca: 0 });
+    expect(vehiculoDelDia(g2, null)).toEqual({ vehicleId: null, enviosConPlaca: 0 });
+  });
+
+  test('la excepción de HOY sale de los envíos de la ruta (la más reciente, con cuántos envíos)', () => {
+    const x = (at: string, motivo: string) => ({ excepcion_asignacion: { causas: [{ causa: 'soat' }, { causa: 'soat' }], motivo, autorizo: 'u1', at } });
+    const g3 = agruparMisEnvios(
+      [
+        con({ id: 'a', metadata: x('2026-11-25T12:52:00Z', 'primero') }),
+        con({ id: 'b', metadata: x('2026-11-25T13:10:00Z', 'segundo') }),
+        con({ id: 'c', metadata: x('2026-11-24T13:10:00Z', 'ayer') }),
+      ],
+      HOY,
+      () => ZONA,
+    );
+    expect(excepcionDeHoy(g3, HOY, () => ZONA)).toEqual({ motivo: 'segundo', at: '2026-11-25T13:10:00Z', autorizo: 'u1', causas: ['soat'], envios: 2 });
+    expect(excepcionDeHoy(agruparMisEnvios([con({ id: 'z' })], HOY, () => ZONA), HOY, () => ZONA)).toBeNull();
   });
 });

@@ -20,23 +20,22 @@ import { useTranslations } from 'next-intl';
 import { Banknote, Camera, CheckCircle2, Circle, CircleCheck, Clock, MapPin, Navigation, PackageCheck, XCircle } from 'lucide-react';
 import { AvisoTonal, EmptyState, PageHeader, Skeleton, clasesBoton } from '@/components/kit';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
-import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import {
   enlaceWaze,
   estadoDelPaso,
   estadoPromesa,
+  pinesRuta,
   porCobrar,
   puedeReportarNovedad,
   siguientePaso,
 } from '@/lib/logistica/misEnvios';
-import { avisarCliente } from '../logisticaApi';
 import { useParada } from './useMiRuta';
 import { useEnLinea } from './useEnLinea';
-import { ubicacionActual } from './ubicacion';
+import { useAvanzarParada } from './useAvanzarParada';
 import { HojaNovedad } from './HojaNovedad';
+import { MapaRutaDinamico } from './MapaRutaDinamico';
 import { AvisoPausaSinConexion, BarraInferior, Bloque, BotonesContacto, ChipPromesa, InsigniaEstadoApp, enlacesDe } from './piezas';
 import { RUTA_MIS_ENVIOS, rutaEntregar } from './rutas';
 
@@ -51,7 +50,8 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   const { resolveFor } = useOrgTimezone();
   const { orgId, envio, estado, recargar } = useParada(shipmentId);
   const enLinea = useEnLinea();
-  const [ocupado, setOcupado] = useState(false);
+  const { avanzar: avanzarParada, ocupadoId } = useAvanzarParada();
+  const ocupado = ocupadoId !== null;
   const [novedad, setNovedad] = useState(false);
   const [ahora, setAhora] = useState(() => new Date());
 
@@ -100,21 +100,11 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   const avanzar = async () => {
     const destino = estadoDelPaso(paso);
     if (!destino || !enLinea) return;
-    setOcupado(true);
-    try {
-      const ubicacion = await ubicacionActual(3000);
-      const r = await deliveryIntegrationService.changeStatus(envio.id, destino, ubicacion ?? {});
-      void avisarCliente(envio, r.aviso);
-      toastSuccess(t(`pasos.hecho.${destino}`));
-      recargar();
-    } catch (err) {
-      const codigo = err instanceof EnvioError ? err.codigo : 'ERROR';
-      toastError(t('errores.titulo'), t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.ERROR'));
-      recargar();
-    } finally {
-      setOcupado(false);
-    }
+    await avanzarParada(envio, destino);
+    recargar();
   };
+  // El punto de la parada en el mapa (el mismo mapa de la ruta, con un solo pin).
+  const pin = pinesRuta({ pendientes: [envio], entregados: [], novedades: [] })[0] ?? null;
 
   const pasos: Array<{ clave: 'recogido' | 'en_camino' | 'entregado'; hecho: boolean; hora: string | null }> = [
     { clave: 'recogido', hecho: !!envio.picked_at, hora: hora(envio.picked_at) },
@@ -172,9 +162,13 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
       </Bloque>
 
       {(enlaces.comoLlegar || waze) && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-line bg-subtle px-4 py-8 text-center">
-          <MapPin aria-hidden="true" className="size-6 text-fg-muted" strokeWidth={1.5} />
-          <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-line bg-subtle text-center">
+          {pin ? (
+            <MapaRutaDinamico pines={[pin]} etiqueta={t('mapa.etiquetaParada', { numero: envio.shipment_number })} className="h-44 w-full" />
+          ) : (
+            <MapPin aria-hidden="true" className="mt-8 size-6 text-fg-muted" strokeWidth={1.5} />
+          )}
+          <div className={pin ? 'flex w-full flex-wrap justify-center gap-2 px-4 pb-4' : 'flex flex-wrap justify-center gap-2 px-4 pb-8'}>
             {enlaces.comoLlegar && (
               <a href={enlaces.comoLlegar} target="_blank" rel="noopener noreferrer" className={clasesBoton({ variante: 'secundario' })}>
                 {t('contacto.googleMaps')}

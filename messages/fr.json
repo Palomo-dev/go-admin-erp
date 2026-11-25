@@ -67712,6 +67712,131 @@
           "guia": "ENV-000{n}",
           "direccion": "Adresse · quartier"
         }
+      },
+      "mapa": {
+        "ver": "Voir la carte de la tournée",
+        "titulo": "Tournée du jour",
+        "subtitulo": "Arrêt {n} sur {total} · {pendientes, plural, one {# en attente} other {# en attente}}",
+        "etiqueta": "Carte de la tournée du jour",
+        "etiquetaParada": "Carte de l’arrêt {numero}",
+        "abrirGoogle": "Ouvrir la tournée dans Google Maps",
+        "sinCoordenadas": "{n, plural, one {# arrêt n’a pas de coordonnées : Google Maps le situe par l’adresse écrite.} other {# arrêts n’ont pas de coordonnées : Google Maps les situe par l’adresse écrite.}}",
+        "sinPuntos": {
+          "titulo": "Les arrêts n’ont pas de coordonnées",
+          "descripcion": "Ouvre la tournée dans Google Maps : il les situe par l’adresse écrite."
+        }
+      },
+      "vehiculo": {
+        "titulo": "Mon véhicule et mes documents",
+        "vigencia": {
+          "vencido": "Expiré",
+          "enDias": "{n, plural, =0 {Expire aujourd’hui} one {Dans # jour} other {Dans # jours}}",
+          "vigente": "Valide",
+          "sin_dato": "Sans date"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Contrôle technique",
+          "licencia": "Permis de conduire",
+          "licenciaCategoria": "Permis de conduire {categoria}"
+        },
+        "sinFecha": "Aucune date enregistrée",
+        "vencio": "Expiré le {fecha}",
+        "vigenteHasta": "Valide jusqu’au {fecha}",
+        "vence": "Expire le {fecha}",
+        "dueno": {
+          "company": "de l’entreprise",
+          "driver": "du livreur",
+          "third_party": "d’un tiers"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Document expiré",
+        "porDefecto": "Par défaut",
+        "filaTitulo": "Mon véhicule aujourd’hui · {placa}",
+        "filaVencido": "{documento} expiré",
+        "filaPorVencer": "{documento} expire {n, plural, =0 {aujourd’hui} one {dans # jour} other {dans # jours}}",
+        "filaAlDia": "documents à jour",
+        "placaCongelada": "{n, plural, one {Cette plaque a été enregistrée sur ton envoi du jour à l’assignation : si tu changes de véhicule, l’envoi déjà assigné ne change pas.} other {Cette plaque a été enregistrée sur tes # envois du jour à l’assignation : si tu changes de véhicule, les envois déjà assignés ne changent pas.}}",
+        "sinVehiculo": {
+          "titulo": "Aucun véhicule enregistré",
+          "descripcion": "Tu n’as pas de véhicule assigné aujourd’hui. Si tu utilises une moto ou une voiture, demande à celui qui expédie de l’enregistrer sur ta fiche."
+        },
+        "documentosDelVehiculo": "Documents du véhicule",
+        "tusDocumentos": "Tes documents",
+        "avisoVencido": "{documento} : expiré le {fecha}. Si ton agence a activé le blocage par documents, le bureau ne pourra pas t’assigner d’envois tant qu’il n’est pas mis à jour sur ta fiche. Seul un superviseur d’expédition peut autoriser une exception avec son PIN.",
+        "avisoPorVencer": "{documento} : renouvelle-le avant le {fecha}. S’il expire et que ton agence a activé le blocage par documents, le bureau ne pourra pas t’assigner d’envois tant qu’il n’est pas mis à jour sur ta fiche. Seul un superviseur d’expédition peut autoriser une exception avec son PIN.",
+        "noEscribesPin": "Ce n’est pas toi qui saisis le PIN : le superviseur le tape sur son compte quand il assigne ou réassigne. Si personne n’autorise, tu verras « Aucun envoi en attente ».",
+        "cambiaste": "Tu as changé de véhicule ou renouvelé un document ? Préviens celui qui expédie : il le met à jour dans Logistique › Livreurs.",
+        "excepcion": {
+          "titulo": "Aujourd’hui on t’a assigné avec une exception",
+          "autorizo": "Autorisé par",
+          "hora": "Heure",
+          "conPin": "{hora} · avec son PIN",
+          "motivo": "Motif",
+          "envios": "Envois",
+          "enviosHoy": "{n, plural, one {# envoi du jour} other {# envois du jour}}",
+          "nota": "C’est consigné dans le journal de chaque envoi. Tant que tu ne renouvelles pas le document, chaque nouvelle assignation demande une autre exception."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logistique",
+        "vehiculoCorto": "véhicule {placa}",
+        "rutaDeHoy": "Tournée du jour",
+        "paradaDe": "Arrêt {n} sur {total}",
+        "entregadoMin": "livré {hora}",
+        "notaMapa": "Les arrêts sans coordonnées n’apparaissent pas sur la carte : Google Maps les situe par l’adresse écrite.",
+        "miVehiculo": "Mon véhicule aujourd’hui",
+        "dineroDeHoy": "Argent du jour",
+        "notaDinero": "À la fin, tu remets les espèces en caisse et le rapprochement est dans Logistique › Rapprochements. Ce qui n’a pas été encaissé aujourd’hui reste dans la tournée de demain.",
+        "notaTabla": "L’ordre vient de la tournée du jour : d’abord ce qui est en route, puis par heure promise. « Livrer » demande le code reçu par le client ; un incident ne se signale qu’une fois le colis parti.",
+        "verVehiculo": "Voir mon véhicule et mes documents",
+        "cuadrePendiente": "Rapprochement en attente",
+        "buscar": "Rechercher un envoi ou une adresse…",
+        "sinResultados": "Aucun arrêt ne correspond à la recherche",
+        "columnas": {
+          "parada": "Arrêt · envoi",
+          "direccion": "Adresse et commune",
+          "ventana": "Heure promise",
+          "contraentrega": "Paiement à la livraison",
+          "acciones": "Actions"
+        },
+        "entregadoA": "Livré {hora}",
+        "reprogramado": "Reprogrammé · {fecha}",
+        "porCobrar": "À encaisser",
+        "seCobraDespues": "Encaissé au nouvel essai",
+        "filtros": {
+          "todos": "Tous · {n}",
+          "pendientes": "En attente · {n}",
+          "entregados": "Livrés · {n}",
+          "novedades": "Incidents · {n}"
+        },
+        "kpis": {
+          "asignados": "Assignés aujourd’hui",
+          "enCamino": "En route",
+          "nadieEnCamino": "Aucun en route",
+          "entregados": "Livrés",
+          "aTiempo": "{n} sur {total} à l’heure",
+          "porCobrar": "Paiements à la livraison à encaisser",
+          "enviosHoy": "{n, plural, one {# envoi du jour} other {# envois du jour}}",
+          "nadaPorCobrar": "Rien à encaisser",
+          "cuadre": "Rapprochement en attente",
+          "enManoDetalle": "En poche · rapproché à la fin"
+        },
+        "acciones": {
+          "novedad": "Incident",
+          "verEntrega": "Voir la livraison",
+          "verNovedad": "Voir l’incident"
+        },
+        "dinero": {
+          "enMano": "Espèces en poche",
+          "porCobrar": "{n, plural, one {À encaisser aujourd’hui (# envoi)} other {À encaisser aujourd’hui (# envois)}}",
+          "otrosMedios": "TPE et virements",
+          "ultimoCuadre": "Dernier rapprochement",
+          "estado": {
+            "cuadrado": "Rapproché · sans écart",
+            "con_diferencia": "Clôturé avec écart"
+          }
+        }
       }
     },
     "domiciliario": {

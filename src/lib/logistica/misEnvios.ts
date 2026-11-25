@@ -659,3 +659,59 @@ export function coincideParada(
     sinTildes(t ?? '').includes(q),
   );
 }
+
+// ── Mi vehículo hoy ─────────────────────────────────────────────────────────
+
+/** Envíos que cuentan como «de hoy» para el vehículo: los de la ruta (pendientes y entregados hoy). */
+function deLaRuta<T extends EnvioDomiciliario>(g: GruposMisEnvios<T>): T[] {
+  return [...g.pendientes, ...g.entregados];
+}
+
+/**
+ * Vehículo del día: el congelado en los envíos de la ruta al asignarlos (Logística 1b), y si
+ * ninguno lo tiene, el vehículo por defecto del domiciliario.
+ */
+export function vehiculoDelDia<T extends EnvioDomiciliario & { vehicle_id?: string | null }>(
+  g: GruposMisEnvios<T>,
+  porDefecto: string | null | undefined,
+): { vehicleId: string | null; enviosConPlaca: number } {
+  const ruta = deLaRuta(g);
+  const delEnvio = ruta.find((e) => e.vehicle_id)?.vehicle_id ?? null;
+  const vehicleId = delEnvio ?? porDefecto ?? null;
+  return { vehicleId, enviosConPlaca: vehicleId ? ruta.filter((e) => e.vehicle_id === vehicleId).length : 0 };
+}
+
+export interface ExcepcionAsignacion {
+  motivo: string;
+  at: string;
+  autorizo: string | null;
+  causas: string[];
+  envios: number;
+}
+
+/**
+ * La excepción con PIN que autorizó un supervisor al asignarle la ruta de hoy
+ * (`shipments.metadata.excepcion_asignacion`, la escribe `logistica_asignar_domiciliario`). El
+ * domiciliario lee sus envíos; la bitácora (`shipment_assignment_log`) es solo de la oficina.
+ */
+export function excepcionDeHoy<T extends EnvioDomiciliario & { metadata?: Record<string, unknown> | null }>(
+  g: GruposMisEnvios<T>,
+  hoy: string,
+  zonaDe: (e: T) => string,
+): ExcepcionAsignacion | null {
+  const con = deLaRuta(g)
+    .map((e) => ({ e, x: (e.metadata ?? {}).excepcion_asignacion as Record<string, unknown> | undefined }))
+    .filter(({ e, x }) => x && typeof x.at === 'string' && diaEn(x.at as string, zonaDe(e)) === hoy);
+  if (con.length === 0) return null;
+  const ultima = con.reduce((m, c) => (String(c.x?.at) > String(m.x?.at) ? c : m)).x as Record<string, unknown>;
+  const causas = Array.isArray(ultima.causas)
+    ? (ultima.causas as Array<Record<string, unknown>>).map((c) => String(c?.causa ?? '')).filter(Boolean)
+    : [];
+  return {
+    motivo: String(ultima.motivo ?? ''),
+    at: String(ultima.at),
+    autorizo: typeof ultima.autorizo === 'string' ? ultima.autorizo : null,
+    causas: [...new Set(causas)],
+    envios: con.length,
+  };
+}

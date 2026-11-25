@@ -86,7 +86,7 @@ const ruta = {
   actualizadoEn: new Date('2026-11-25T15:58:00Z'),
   desde: '2026-11-24T05:00:00.000Z',
 };
-jest.mock('../useMiRuta', () => ({ useParada: () => parada, useMiRuta: () => ruta }));
+jest.mock('../useMiRuta', () => ({ useParada: () => parada, useMiRuta: () => ruta, useUltimoCuadre: () => null }));
 
 import { MisEnviosPantalla } from '../MisEnviosPantalla';
 import { ParadaPantalla } from '../ParadaPantalla';

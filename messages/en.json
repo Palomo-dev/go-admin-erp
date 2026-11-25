@@ -67712,6 +67712,131 @@
           "guia": "ENV-000{n}",
           "direccion": "Address · neighborhood"
         }
+      },
+      "mapa": {
+        "ver": "See route map",
+        "titulo": "Today’s route",
+        "subtitulo": "Stop {n} of {total} · {pendientes, plural, one {# pending} other {# pending}}",
+        "etiqueta": "Map of today’s route",
+        "etiquetaParada": "Map of stop {numero}",
+        "abrirGoogle": "Open the route in Google Maps",
+        "sinCoordenadas": "{n, plural, one {# stop has no coordinates: Google Maps finds it by the written address.} other {# stops have no coordinates: Google Maps finds them by the written address.}}",
+        "sinPuntos": {
+          "titulo": "The stops have no coordinates",
+          "descripcion": "Open the route in Google Maps: it finds them by the written address."
+        }
+      },
+      "vehiculo": {
+        "titulo": "My vehicle and documents",
+        "vigencia": {
+          "vencido": "Expired",
+          "enDias": "{n, plural, =0 {Expires today} one {In # day} other {In # days}}",
+          "vigente": "Valid",
+          "sin_dato": "No date"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Technical inspection",
+          "licencia": "Driver’s license",
+          "licenciaCategoria": "Driver’s license {categoria}"
+        },
+        "sinFecha": "No date recorded",
+        "vencio": "Expired {fecha}",
+        "vigenteHasta": "Valid until {fecha}",
+        "vence": "Expires {fecha}",
+        "dueno": {
+          "company": "company-owned",
+          "driver": "courier-owned",
+          "third_party": "third-party"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Expired document",
+        "porDefecto": "Default",
+        "filaTitulo": "My vehicle today · {placa}",
+        "filaVencido": "{documento} expired",
+        "filaPorVencer": "{documento} expires {n, plural, =0 {today} one {in # day} other {in # days}}",
+        "filaAlDia": "documents up to date",
+        "placaCongelada": "{n, plural, one {This plate was saved on today’s shipment when it was assigned: if you change vehicle, the assigned shipment doesn’t change.} other {This plate was saved on your # shipments today when they were assigned: if you change vehicle, the assigned shipments don’t change.}}",
+        "sinVehiculo": {
+          "titulo": "No vehicle registered",
+          "descripcion": "You have no vehicle assigned today. If you use a motorbike or car, ask whoever dispatches to register it on your profile."
+        },
+        "documentosDelVehiculo": "Vehicle documents",
+        "tusDocumentos": "Your documents",
+        "avisoVencido": "{documento}: expired on {fecha}. If your branch has the document block on, the office can’t assign you shipments until it’s updated on your profile. Only a dispatch supervisor can authorize an exception with their PIN.",
+        "avisoPorVencer": "{documento}: renew it before {fecha}. If it expires and your branch has the document block on, the office can’t assign you shipments until it’s updated on your profile. Only a dispatch supervisor can authorize an exception with their PIN.",
+        "noEscribesPin": "You don’t type the PIN: the supervisor enters it on their account when assigning or reassigning. If nobody authorizes, you’ll see “No pending shipments”.",
+        "cambiaste": "Changed vehicle or renewed a document? Tell whoever dispatches: they update it in Logistics › Couriers.",
+        "excepcion": {
+          "titulo": "Today you were assigned with an exception",
+          "autorizo": "Authorized by",
+          "hora": "Time",
+          "conPin": "{hora} · with their PIN",
+          "motivo": "Reason",
+          "envios": "Shipments",
+          "enviosHoy": "{n, plural, one {# shipment today} other {# shipments today}}",
+          "nota": "It is recorded in each shipment’s log. Until you renew the document, each new assignment needs another exception."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logistics",
+        "vehiculoCorto": "vehicle {placa}",
+        "rutaDeHoy": "Today’s route",
+        "paradaDe": "Stop {n} of {total}",
+        "entregadoMin": "delivered {hora}",
+        "notaMapa": "Stops without coordinates aren’t on the map: Google Maps finds them by the written address.",
+        "miVehiculo": "My vehicle today",
+        "dineroDeHoy": "Today’s money",
+        "notaDinero": "When you finish, you hand in the cash and the settlement is in Logistics › Settlements. Whatever wasn’t collected today stays on tomorrow’s route.",
+        "notaTabla": "The order comes from the day’s route: first what is on the way, then by promised time. “Deliver” asks for the code the customer received; an issue can only be reported once the package has left.",
+        "verVehiculo": "See my vehicle and documents",
+        "cuadrePendiente": "Settlement pending",
+        "buscar": "Search shipment or address…",
+        "sinResultados": "No stop matches the search",
+        "columnas": {
+          "parada": "Stop · shipment",
+          "direccion": "Address and city",
+          "ventana": "Promised time",
+          "contraentrega": "Cash on delivery",
+          "acciones": "Actions"
+        },
+        "entregadoA": "Delivered {hora}",
+        "reprogramado": "Rescheduled · {fecha}",
+        "porCobrar": "To collect",
+        "seCobraDespues": "Collected on retry",
+        "filtros": {
+          "todos": "All · {n}",
+          "pendientes": "Pending · {n}",
+          "entregados": "Delivered · {n}",
+          "novedades": "Issues · {n}"
+        },
+        "kpis": {
+          "asignados": "Assigned today",
+          "enCamino": "On the way",
+          "nadieEnCamino": "None on the way",
+          "entregados": "Delivered",
+          "aTiempo": "{n} of {total} on time",
+          "porCobrar": "Cash on delivery to collect",
+          "enviosHoy": "{n, plural, one {# shipment today} other {# shipments today}}",
+          "nadaPorCobrar": "Nothing to collect",
+          "cuadre": "Settlement pending",
+          "enManoDetalle": "On hand · settled at the end"
+        },
+        "acciones": {
+          "novedad": "Issue",
+          "verEntrega": "See delivery",
+          "verNovedad": "See issue"
+        },
+        "dinero": {
+          "enMano": "Cash on hand",
+          "porCobrar": "{n, plural, one {To collect today (# shipment)} other {To collect today (# shipments)}}",
+          "otrosMedios": "Card terminal and transfers",
+          "ultimoCuadre": "Last settlement",
+          "estado": {
+            "cuadrado": "Settled · no difference",
+            "con_diferencia": "Closed with difference"
+          }
+        }
       }
     },
     "domiciliario": {

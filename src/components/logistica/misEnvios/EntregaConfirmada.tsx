@@ -15,9 +15,7 @@ import { useTranslations } from 'next-intl';
 import { CheckCircle2, Navigation, Route } from 'lucide-react';
 import { PageHeader, Skeleton, clasesBoton } from '@/components/kit';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
-import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import type { EnvioApp } from '@/lib/services/logistica/misEnviosService';
 import {
   accionSiguienteParada,
@@ -27,10 +25,9 @@ import {
   siguienteParada,
   type MedioCobroApp,
 } from '@/lib/logistica/misEnvios';
-import { avisarCliente } from '../logisticaApi';
 import { useMiRuta } from './useMiRuta';
 import { useEnLinea } from './useEnLinea';
-import { ubicacionActual } from './ubicacion';
+import { useAvanzarParada } from './useAvanzarParada';
 import { TarjetaParada } from './TarjetaParada';
 import { AvisoPausaSinConexion, BarraInferior, Bloque } from './piezas';
 import { RUTA_MIS_ENVIOS, rutaParada } from './rutas';
@@ -55,7 +52,8 @@ export function EntregaConfirmada({ datos }: { datos: DatosEntrega }) {
   const moneda = useMonedaOrganizacion();
   const enLinea = useEnLinea();
   const { envios, estado, hoy, zonaDe } = useMiRuta();
-  const [ocupado, setOcupado] = useState(false);
+  const { avanzar, ocupadoId } = useAvanzarParada();
+  const ocupado = ocupadoId !== null;
   const [ahora, setAhora] = useState(() => new Date());
 
   useEffect(() => {
@@ -73,20 +71,8 @@ export function EntregaConfirmada({ datos }: { datos: DatosEntrega }) {
   const detalle = [hora, datos.codigoVerificado ? t('codigoVerificado') : null, datos.relacion].filter(Boolean).join(' · ');
 
   const iniciarRuta = async () => {
-    if (!siguiente) return;
-    setOcupado(true);
-    try {
-      const ubicacion = await ubicacionActual(3000);
-      const r = await deliveryIntegrationService.changeStatus(siguiente.id, 'out_for_delivery', ubicacion ?? {});
-      void avisarCliente(siguiente, r.aviso);
-      toastSuccess(tm('pasos.hecho.out_for_delivery'));
-      router.push(rutaParada(siguiente.id));
-    } catch (err) {
-      const codigo = err instanceof EnvioError ? err.codigo : 'ERROR';
-      toastError(tm('errores.titulo'), tm.has(`errores.${codigo}`) ? tm(`errores.${codigo}`) : tm('errores.ERROR'));
-    } finally {
-      setOcupado(false);
-    }
+    if (!siguiente || !enLinea) return;
+    if (await avanzar(siguiente, 'out_for_delivery')) router.push(rutaParada(siguiente.id));
   };
 
   return (

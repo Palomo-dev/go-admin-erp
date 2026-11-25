@@ -67710,6 +67710,131 @@
           "guia": "ENV-000{n}",
           "direccion": "Dirección · barrio"
         }
+      },
+      "mapa": {
+        "ver": "Ver mapa de la ruta",
+        "titulo": "Ruta de hoy",
+        "subtitulo": "Parada {n} de {total} · {pendientes, plural, one {# pendiente} other {# pendientes}}",
+        "etiqueta": "Mapa de la ruta de hoy",
+        "etiquetaParada": "Mapa de la parada {numero}",
+        "abrirGoogle": "Abrir la ruta en Google Maps",
+        "sinCoordenadas": "{n, plural, one {# parada no tiene coordenadas: Google Maps la ubica por la dirección escrita.} other {# paradas no tienen coordenadas: Google Maps las ubica por la dirección escrita.}}",
+        "sinPuntos": {
+          "titulo": "Las paradas no tienen coordenadas",
+          "descripcion": "Abre la ruta en Google Maps: las ubica por la dirección escrita."
+        }
+      },
+      "vehiculo": {
+        "titulo": "Mi vehículo y documentos",
+        "vigencia": {
+          "vencido": "Vencido",
+          "enDias": "{n, plural, =0 {Vence hoy} one {En # día} other {En # días}}",
+          "vigente": "Vigente",
+          "sin_dato": "Sin fecha"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Tecnomecánica",
+          "licencia": "Licencia de conducción",
+          "licenciaCategoria": "Licencia de conducción {categoria}"
+        },
+        "sinFecha": "Sin fecha registrada",
+        "vencio": "Venció {fecha}",
+        "vigenteHasta": "Vigente hasta {fecha}",
+        "vence": "Vence {fecha}",
+        "dueno": {
+          "company": "de la empresa",
+          "driver": "del domiciliario",
+          "third_party": "de un tercero"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Documento vencido",
+        "porDefecto": "Por defecto",
+        "filaTitulo": "Mi vehículo hoy · {placa}",
+        "filaVencido": "{documento} vencido",
+        "filaPorVencer": "{documento} vence {n, plural, =0 {hoy} one {en # día} other {en # días}}",
+        "filaAlDia": "documentos al día",
+        "placaCongelada": "{n, plural, one {Esta placa quedó guardada en tu envío de hoy al asignarlo: si cambias de vehículo, el envío ya asignado no cambia.} other {Esta placa quedó guardada en tus # envíos de hoy al asignarlos: si cambias de vehículo, los envíos ya asignados no cambian.}}",
+        "sinVehiculo": {
+          "titulo": "Sin vehículo registrado",
+          "descripcion": "Hoy no tienes un vehículo asignado. Si usas moto o carro, pídele a quien despacha que lo registre en tu ficha."
+        },
+        "documentosDelVehiculo": "Documentos del vehículo",
+        "tusDocumentos": "Tus documentos",
+        "avisoVencido": "{documento}: venció el {fecha}. Si tu sede tiene activo el bloqueo por documentos, la oficina no podrá asignarte envíos hasta que lo actualice en tu ficha. Solo un supervisor de despacho puede autorizar una excepción con su PIN.",
+        "avisoPorVencer": "{documento}: renuévalo antes del {fecha}. Si se vence y tu sede tiene activo el bloqueo por documentos, la oficina no podrá asignarte envíos hasta que lo actualice en tu ficha. Solo un supervisor de despacho puede autorizar una excepción con su PIN.",
+        "noEscribesPin": "Tú no escribes el PIN: lo digita el supervisor en su cuenta cuando asigna o reasigna. Si nadie autoriza, verás «No tienes envíos pendientes».",
+        "cambiaste": "¿Cambiaste de vehículo o renovaste un documento? Avísale a quien despacha: lo actualiza en Logística › Domiciliarios.",
+        "excepcion": {
+          "titulo": "Hoy te asignaron con excepción",
+          "autorizo": "Autorizó",
+          "hora": "Hora",
+          "conPin": "{hora} · con su PIN",
+          "motivo": "Motivo",
+          "envios": "Envíos",
+          "enviosHoy": "{n, plural, one {# envío de hoy} other {# envíos de hoy}}",
+          "nota": "Queda en la bitácora de cada envío. Mientras no renueves el documento, cada nueva asignación necesita otra excepción."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logística",
+        "vehiculoCorto": "vehículo {placa}",
+        "rutaDeHoy": "Ruta de hoy",
+        "paradaDe": "Parada {n} de {total}",
+        "entregadoMin": "entregado {hora}",
+        "notaMapa": "Las paradas sin coordenadas no salen en el mapa: Google Maps las ubica por la dirección escrita.",
+        "miVehiculo": "Mi vehículo hoy",
+        "dineroDeHoy": "Dinero de hoy",
+        "notaDinero": "Al terminar, entregas el efectivo en caja y el cuadre queda en Logística › Cuadres. Lo que no se cobró hoy sigue en la ruta de mañana.",
+        "notaTabla": "El orden sale de la ruta del día: primero lo que va en camino, luego por hora prometida. «Entregar» pide el código que el cliente recibió; la novedad solo se reporta cuando el paquete ya salió.",
+        "verVehiculo": "Ver mi vehículo y documentos",
+        "cuadrePendiente": "Cuadre pendiente",
+        "buscar": "Buscar envío o dirección…",
+        "sinResultados": "Ninguna parada coincide con la búsqueda",
+        "columnas": {
+          "parada": "Parada · envío",
+          "direccion": "Dirección y municipio",
+          "ventana": "Hora prometida",
+          "contraentrega": "Contraentrega",
+          "acciones": "Acciones"
+        },
+        "entregadoA": "Entregado {hora}",
+        "reprogramado": "Reprogramado · {fecha}",
+        "porCobrar": "Por cobrar",
+        "seCobraDespues": "Se cobra al reintentar",
+        "filtros": {
+          "todos": "Todos · {n}",
+          "pendientes": "Pendientes · {n}",
+          "entregados": "Entregados · {n}",
+          "novedades": "Novedades · {n}"
+        },
+        "kpis": {
+          "asignados": "Asignados hoy",
+          "enCamino": "En camino",
+          "nadieEnCamino": "Ninguno en camino",
+          "entregados": "Entregados",
+          "aTiempo": "{n} de {total} a tiempo",
+          "porCobrar": "Por cobrar contraentrega",
+          "enviosHoy": "{n, plural, one {# envío de hoy} other {# envíos de hoy}}",
+          "nadaPorCobrar": "Nada por cobrar",
+          "cuadre": "Cuadre pendiente",
+          "enManoDetalle": "En mano · se cuadra al terminar"
+        },
+        "acciones": {
+          "novedad": "Novedad",
+          "verEntrega": "Ver entrega",
+          "verNovedad": "Ver novedad"
+        },
+        "dinero": {
+          "enMano": "Efectivo en mano",
+          "porCobrar": "{n, plural, one {Por cobrar hoy (# envío)} other {Por cobrar hoy (# envíos)}}",
+          "otrosMedios": "Datáfono y transferencias",
+          "ultimoCuadre": "Último cuadre",
+          "estado": {
+            "cuadrado": "Cuadrado · sin diferencia",
+            "con_diferencia": "Cerrado con diferencia"
+          }
+        }
       }
     },
     "domiciliario": {

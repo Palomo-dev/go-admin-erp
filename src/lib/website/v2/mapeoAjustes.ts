@@ -269,6 +269,14 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    */
   search_popular: { zona: 'header', porDefecto: null, regla: { tipo: 'listaTextos', max: 8, largo: 30 }, nueva: true },
   mobile_search_same_as_desktop: { zona: 'header', porDefecto: false, regla: BOOL, nueva: true },
+  /**
+   * Apariencia del buscador (Figma 3241:99000, aprobado 2026-11-25): un objeto por dispositivo con
+   * bordes, esquinas, sombra, colores, lupa, botón, «Todas», anillo de foco y desplegable. `null` =
+   * lo de hoy. Lectura, plantillas y contraste: `aparienciaBuscador.ts` (copia idéntica en la tienda).
+   * `mobile_search_appearance` solo cuenta con el interruptor apagado; vacía = la del computador.
+   */
+  search_appearance: { zona: 'header', porDefecto: null, nueva: true },
+  mobile_search_appearance: { zona: 'header', porDefecto: null, nueva: true },
   mobile_show_topbar: { zona: 'header', porDefecto: false },
   header_opacity: { zona: 'header', porDefecto: 95 },
   header_bg_color: { zona: 'header', porDefecto: null },

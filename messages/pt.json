@@ -39581,6 +39581,76 @@
         "ficha": {
           "titulo": "Mostrar aviso de pagamento na entrega"
         }
+      },
+      "contactoV2": {
+        "recomendadasPagina": "para {pagina}",
+        "subir": "Subir {nombre}",
+        "bajar": "Descer {nombre}",
+        "quitar": "Remover",
+        "campos": {
+          "sinGuardar": "Este formulário usa seus campos de sempre. Se você mudar algo aqui, ele passa a usar esta lista.",
+          "etiqueta": "Rótulo (o que o cliente vê)",
+          "mostrar": "Mostrar",
+          "obligatorio": "Obrig.",
+          "etiquetaDe": "Rótulo de “{nombre}”",
+          "siempre": "Sempre pedido",
+          "mostrarDe": "Mostrar “{nombre}”",
+          "obligatorioDe": "“{nombre}” é obrigatório",
+          "tipo": "Tipo",
+          "desplegable": "Lista suspensa",
+          "textoLibre": "Texto livre",
+          "opciones": "Opções",
+          "textoEnlace": "Texto do link (ex. Política de privacidade)",
+          "enlaceA": "Link para a política",
+          "casillaObligatoria": "Se aparecer, é sempre obrigatória (lei de dados).",
+          "nombreCorreo": "Nome e e-mail são sempre pedidos: o CRM precisa deles para criar o lead.",
+          "campoNuevo": "Campo novo",
+          "anadir": "Adicionar campo próprio",
+          "tipos": {
+            "text": "Texto",
+            "textarea": "Texto longo",
+            "select": "Lista suspensa",
+            "checkbox": "Caixa de seleção"
+          }
+        },
+        "canales": {
+          "tipos": {
+            "whatsapp": "WhatsApp",
+            "phone": "Telefone",
+            "email": "E-mail",
+            "address": "Endereço",
+            "custom": "Canal próprio"
+          },
+          "sinDato": "Sem dado: não aparece na loja",
+          "mostrarDe": "Mostrar “{nombre}”",
+          "editar": "Editar “{nombre}”",
+          "origen": {
+            "whatsapp": "Vem de Site › Configuração › WhatsApp",
+            "phone": "Vem de Site › Configuração › Contato (ou do telefone da organização)",
+            "email": "Vem de Site › Configuração › Contato (ou do e-mail da organização)",
+            "address": "Vem do endereço da organização"
+          },
+          "editarConfiguracion": "Editar em Configuração",
+          "fuente": "De onde vem o dado",
+          "datoOrganizacion": "Dado da organização",
+          "textoPropio": "Texto próprio",
+          "soloSeccion": "Só muda o que aparece nesta seção.",
+          "nombre": "Nome do canal",
+          "ayuda": "Texto de ajuda",
+          "textoBoton": "Texto do botão",
+          "mensajeInicial": "Mensagem inicial",
+          "mensajeAyuda": "É escrita no chat do cliente.",
+          "enlace": "Para onde o botão leva",
+          "canalNuevo": "Canal novo",
+          "anadir": "Adicionar canal próprio",
+          "anadirAyuda": "Por exemplo uma linha gratuita ou um chat do Instagram. Um canal sem dado não aparece na loja."
+        },
+        "redes": {
+          "sinConfigurar": "Não configurado",
+          "mostrarDe": "Mostrar {nombre}",
+          "origen": "As contas vêm de Site › SEO e redes.",
+          "editarCuentas": "Editar contas"
+        }
       }
     },
     "paginas": {

@@ -889,6 +889,7 @@ function Editor() {
           ed.publishedBranches.find((b) => b.id === (ed.enV2 ? ed.sitioBranch : ed.selectedBranchId))?.branch_type ?? tipoSedeDesdeGiro(ed.giro)
         }
         tipoPagina={pagina.page_type}
+        slugPagina={pagina.slug}
         pagina={pagina.title}
         despuesDe={(() => {
           const i = ed.indiceInsercion() - 1;

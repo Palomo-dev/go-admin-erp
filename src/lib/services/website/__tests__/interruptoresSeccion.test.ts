@@ -43,7 +43,8 @@ function variantesVisibles(tipo: string, clave: string, contenido: Record<string
 describe('Portada (hero): cada interruptor solo donde el sitio lo pinta', () => {
   it('«Mostrar título» y «Mostrar botón» en todas las variantes, encendidos por defecto (el sitio los lee con `!== false`)', () => {
     for (const clave of ['show_title', 'show_cta']) {
-      expect(variantesVisibles('hero', clave).sort()).toEqual(['carousel_editorial', 'fullscreen', 'minimal', 'slider', 'split', 'video']);
+      // Contacto v2: «Encabezado de página» (`page_header`) también los lee con `!== false`.
+      expect(variantesVisibles('hero', clave).sort()).toEqual(['carousel_editorial', 'fullscreen', 'minimal', 'page_header', 'slider', 'split', 'video']);
       expect(campo('hero', clave).defaultValue).toBe(true);
     }
   });
@@ -155,7 +156,8 @@ describe('«Café de especialidad»: cada variante nueva con los defaults de su 
     expect(enEditorial('buttons').map((f) => f.maxItems)).toEqual([3]);
     expect(enEditorial('slides')[0].itemFields?.map((f) => f.key)).toEqual(['image_url', 'image_url_mobile', 'alt']);
     // Plantillas de tienda: «Tarjetas flotantes» trae su copia y «Dividida con productos» hereda la de «Dividido».
-    expect(variantesVisibles('hero', 'buttons').sort()).toEqual(['carousel_editorial', 'floating', 'fullscreen', 'minimal', 'slider', 'split', 'split_products', 'video']);
+    // Contacto v2: «Encabezado de página» pinta los botones con HeroButtons, como «Minimal».
+    expect(variantesVisibles('hero', 'buttons').sort()).toEqual(['carousel_editorial', 'floating', 'fullscreen', 'minimal', 'page_header', 'slider', 'split', 'split_products', 'video']);
     expect(variantesVisibles('hero', 'image_url')).not.toContain('carousel_editorial');
     expect(variantesVisibles('hero', 'eyebrow')).toEqual(['carousel_editorial']);
     expect(variantesVisibles('hero', 'slides_per_view')).toEqual(['slider']);

@@ -14,7 +14,7 @@ import { cn } from '@/utils/Utils';
 import { Dialogo, EmptyState, SearchInput } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import type { BranchType } from '@/types/branch';
-import { claveEntrada, esEntradaNueva, filtrarCatalogo, getSectionCatalogForBranch, type EntradaCatalogo } from '@/lib/services/website/sectionsByBranchType';
+import { RECOMENDADAS_POR_SLUG, claveEntrada, esEntradaNueva, filtrarCatalogo, getSectionCatalogForBranch, type EntradaCatalogo } from '@/lib/services/website/sectionsByBranchType';
 import { avisoFaltanDatos, type ConteoFuentes } from '@/lib/services/website/fuentesDatosSecciones';
 import { AvisoConAccion } from '@/components/organization/branding/editor/AvisoConAccion';
 import { SectionThumbnail } from '@/components/sitio-web/ui/SectionThumbnail';
@@ -29,6 +29,8 @@ export interface DialogoAnadirSeccionProps {
   onAnadir: (tipo: string, variante: string) => void;
   tipoSede?: BranchType | null;
   tipoPagina?: string | null;
+  /** Slug de la página: «Recomendadas para Contacto» (`RECOMENDADAS_POR_SLUG`). */
+  slugPagina?: string | null;
   pagina: string;
   despuesDe: string | null;
   /** Nombre de la sede si se edita una sede V2 (la sección es solo de ella). */
@@ -42,7 +44,7 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
   const [grupo, setGrupo] = useState<string>(RECOMENDADAS);
   // Una tarjeta es un tipo o un tipo con su variante destacada («Portada · Carrusel editorial»).
   const [elegida, setElegida] = useState<EntradaCatalogo | null>(null);
-  const catalogo = useMemo(() => getSectionCatalogForBranch(p.tipoSede, { pageType: p.tipoPagina }), [p.tipoSede, p.tipoPagina]);
+  const catalogo = useMemo(() => getSectionCatalogForBranch(p.tipoSede, { pageType: p.tipoPagina, pageSlug: p.slugPagina }), [p.tipoSede, p.tipoPagina, p.slugPagina]);
   const filtrado = useMemo(() => filtrarCatalogo(catalogo, busqueda), [catalogo, busqueda]);
   const buscando = busqueda.trim().length > 0;
 
@@ -51,10 +53,12 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
       .filter((g) => g.secciones.length > 0)
       .map((g) => ({ id: g.id as string, etiqueta: g.etiqueta, proposito: g.proposito, secciones: g.secciones, nuevo: g.nuevo === true }));
     if (filtrado.recomendadas.length > 0) {
-      lista.unshift({ id: RECOMENDADAS, etiqueta: t('anadir.recomendadas'), proposito: t('anadir.recomendadasProposito'), secciones: filtrado.recomendadas, nuevo: false });
+      // «Recomendadas para Contacto» (Figma 3112:87252) cuando la página tiene las suyas.
+      const porPagina = !!p.slugPagina && !!RECOMENDADAS_POR_SLUG[p.slugPagina];
+      lista.unshift({ id: RECOMENDADAS, etiqueta: t('anadir.recomendadas'), proposito: porPagina ? t('contactoV2.recomendadasPagina', { pagina: p.pagina }) : t('anadir.recomendadasProposito'), secciones: filtrado.recomendadas, nuevo: false });
     }
     return lista;
-  }, [filtrado, t]);
+  }, [filtrado, t, p.slugPagina, p.pagina]);
 
   useEffect(() => {
     if (!p.abierto) return;

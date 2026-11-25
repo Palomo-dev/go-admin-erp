@@ -13,6 +13,7 @@
 import type { PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documentoSitio';
 import type { TipoMiniaturaSeccion } from '@/components/sitio-web/ui/SectionThumbnail';
 import { SECCIONES_PAGINA_CARTA_QR } from '@/lib/website/contrato/seccionesMesa';
+import { seccionesContactoPorDefecto } from '@/lib/website/contrato/paginaContacto';
 import { DOCUMENTOS_LEGALES, type ClaveLegal } from '@/lib/website/configuracionSitio';
 import { datosVacios, metaLegal, plantillaLegal } from '@/lib/website/legales/plantillasLegales';
 
@@ -194,11 +195,9 @@ export const PLANTILLAS_PAGINA: readonly PlantillaPagina[] = [
     slug: 'contacto',
     miniatura: 'ubicacion_horario',
     giros: ['tienda', 'hotel', 'servicios', 'gimnasio', 'transporte', 'parqueadero'],
-    secciones: [
-      hero('Contáctanos', 'Estamos aquí para ayudarte'),
-      { tipo: 'contact_form', variante: 'split', contenido: {} },
-      { tipo: 'map', variante: 'full_width', contenido: { title: 'Encuéntranos', subtitle: 'Visítanos en nuestra sede' } },
-    ],
+    // Contacto v2 (Figma 3104:84056): encabezado, canales, formulario con horario, sedes, preguntas
+    // y redes. Las mismas secciones que arma la tienda cuando la organización no tiene la página.
+    secciones: seccionesContactoPorDefecto({ conPreguntas: true }).map((s) => ({ tipo: s.section_type, variante: s.section_variant, contenido: s.content })),
   },
   {
     id: 'servicios',

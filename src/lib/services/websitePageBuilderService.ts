@@ -41,6 +41,8 @@ import {
   SECCIONES_TIENDA_CATALOGO,
   conVariantesTienda,
 } from '@/lib/services/website/seccionesTiendaCatalogo';
+import { SECCIONES_CONTACTO_CATALOGO, conContactoV2 } from '@/lib/services/website/seccionesContactoCatalogo';
+import { seccionesContactoPorDefecto } from '@/lib/website/contrato/paginaContacto';
 import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { CLAVES_TARJETA_EN_SECCION } from '@/lib/website/tarjetaProducto';
@@ -213,7 +215,13 @@ export interface ContentFieldDef {
     /** Fondo común. Guarda el objeto `section_background`. */
     | 'section_background'
     /** Inspector del boletín. No guarda esta clave: escribe `newsletter_layout` y `newsletter`. */
-    | 'newsletter';
+    | 'newsletter'
+    /** Contacto v2: campos del formulario con «Mostrar», «Obligatorio» y la casilla de datos (`form_fields`). */
+    | 'contact_fields'
+    /** Contacto v2: canales de «Canales de contacto» (`channels`). */
+    | 'contact_channels'
+    /** Contacto v2: redes que muestra «Redes sociales» (`networks`). */
+    | 'social_networks';
   placeholder?: string;
   /** Texto de ayuda que explica para qué sirve el campo. */
   helpText?: string;
@@ -3984,7 +3992,12 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
 //
 // Plantillas de tienda (PLANO §3): `conVariantesTienda` suma a los tipos de siempre sus variantes
 // y opciones nuevas, y `SECCIONES_TIENDA_CATALOGO` trae los tipos nuevos (`seccionesTiendaCatalogo.ts`).
-const CATALOGO_CON_TIENDA: SectionTypeDefinition[] = [...RAW_CATALOG.map(conVariantesTienda), ...SECCIONES_TIENDA_CATALOGO];
+const CATALOGO_CON_TIENDA: SectionTypeDefinition[] = [
+  ...RAW_CATALOG.map(conVariantesTienda).map(conContactoV2),
+  ...SECCIONES_TIENDA_CATALOGO,
+  // Contacto v2 (Figma 3104:84056): «Canales de contacto» y «Redes sociales».
+  ...SECCIONES_CONTACTO_CATALOGO,
+];
 
 export const SECTION_CATALOG: SectionTypeDefinition[] = CATALOGO_CON_TIENDA.map((s) =>
   aplicarInterruptoresSitio({
@@ -4531,11 +4544,8 @@ class WebsitePageBuilderService {
       slug: 'contacto',
       show_in_header: true,
       header_order: 10,
-      sections: [
-        { section_type: 'hero', section_variant: 'minimal', content: { title: 'Contáctanos', subtitle: 'Estamos aquí para ayudarte' }, sort_order: 0 },
-        { section_type: 'contact_form', section_variant: 'split', content: {}, sort_order: 1 },
-        { section_type: 'map', section_variant: 'full_width', content: { title: 'Encuéntranos', subtitle: 'Visítanos en nuestra sede' }, sort_order: 2 },
-      ],
+      // Contacto v2 (Figma 3104:84056): las mismas secciones que arma la tienda sin página.
+      sections: seccionesContactoPorDefecto({ conPreguntas: true }).map((sec, i) => ({ ...sec, sort_order: i })),
     };
 
     const allPages = [...pages, contactPage];

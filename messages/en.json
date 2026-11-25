@@ -39571,6 +39571,76 @@
         "ficha": {
           "titulo": "Show cash on delivery notice"
         }
+      },
+      "contactoV2": {
+        "recomendadasPagina": "for {pagina}",
+        "subir": "Move {nombre} up",
+        "bajar": "Move {nombre} down",
+        "quitar": "Remove",
+        "campos": {
+          "sinGuardar": "This form uses its usual fields. If you change anything here, it switches to this list.",
+          "etiqueta": "Label (what the customer sees)",
+          "mostrar": "Show",
+          "obligatorio": "Req.",
+          "etiquetaDe": "Label for “{nombre}”",
+          "siempre": "Always required",
+          "mostrarDe": "Show “{nombre}”",
+          "obligatorioDe": "“{nombre}” is required",
+          "tipo": "Type",
+          "desplegable": "Dropdown",
+          "textoLibre": "Free text",
+          "opciones": "Options",
+          "textoEnlace": "Link text (e.g. Privacy policy)",
+          "enlaceA": "Link to the policy",
+          "casillaObligatoria": "If shown, it is always required (data protection law).",
+          "nombreCorreo": "Name and email are always required: the CRM needs them to create the lead.",
+          "campoNuevo": "New field",
+          "anadir": "Add custom field",
+          "tipos": {
+            "text": "Text",
+            "textarea": "Long text",
+            "select": "Dropdown",
+            "checkbox": "Checkbox"
+          }
+        },
+        "canales": {
+          "tipos": {
+            "whatsapp": "WhatsApp",
+            "phone": "Phone",
+            "email": "Email",
+            "address": "Address",
+            "custom": "Custom channel"
+          },
+          "sinDato": "No data: not shown in the store",
+          "mostrarDe": "Show “{nombre}”",
+          "editar": "Edit “{nombre}”",
+          "origen": {
+            "whatsapp": "Comes from Website › Settings › WhatsApp",
+            "phone": "Comes from Website › Settings › Contact (or the organization phone)",
+            "email": "Comes from Website › Settings › Contact (or the organization email)",
+            "address": "Comes from the organization address"
+          },
+          "editarConfiguracion": "Edit in Settings",
+          "fuente": "Where the data comes from",
+          "datoOrganizacion": "Organization data",
+          "textoPropio": "Custom text",
+          "soloSeccion": "Only changes what this section shows.",
+          "nombre": "Channel name",
+          "ayuda": "Help text",
+          "textoBoton": "Button text",
+          "mensajeInicial": "Initial message",
+          "mensajeAyuda": "It is typed in the customer’s chat.",
+          "enlace": "Where the button goes",
+          "canalNuevo": "New channel",
+          "anadir": "Add custom channel",
+          "anadirAyuda": "For example a toll-free line or an Instagram chat. A channel without data is not shown in the store."
+        },
+        "redes": {
+          "sinConfigurar": "Not set up",
+          "mostrarDe": "Show {nombre}",
+          "origen": "Accounts come from Website › SEO and social.",
+          "editarCuentas": "Edit accounts"
+        }
       }
     },
     "paginas": {

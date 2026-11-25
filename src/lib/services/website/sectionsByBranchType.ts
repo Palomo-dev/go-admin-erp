@@ -10,6 +10,13 @@ import {
   VARIANTE_RESERVA_PLANO,
 } from '@/lib/website/contrato/seccionesCafe';
 import { TIPOS_NUEVOS_TIENDA } from '@/lib/website/contrato/seccionesTienda';
+import {
+  TIPO_CANALES_CONTACTO,
+  TIPO_REDES_SOCIALES,
+  VARIANTE_ENCABEZADO_PAGINA,
+  VARIANTE_FORMULARIO_TARJETA,
+} from '@/lib/website/contrato/paginaContacto';
+import { TIPOS_NUEVOS_CONTACTO } from '@/lib/services/website/seccionesContactoCatalogo';
 
 /**
  * Catálogo del diálogo «Añadir sección» (Figma «16 Sitio web › 05 Editor»,
@@ -135,7 +142,7 @@ export const GRUPOS_SECCIONES: readonly DefinicionGrupo[] = [
     id: 'ubicacion',
     etiqueta: 'Ubicación',
     proposito: 'dónde estás y cómo contactarte',
-    tipos: ['hours_location', 'map', 'contact_form'],
+    tipos: [TIPO_CANALES_CONTACTO, 'contact_form', 'hours_location', 'map', TIPO_REDES_SOCIALES],
   },
   {
     id: 'ficha_producto',
@@ -271,13 +278,30 @@ export const VARIANTES_EN_CATALOGO: readonly VarianteEnCatalogo[] = [
     palabras: 'filtros lateral subcategorias casillas ordenar',
     nueva: true,
   },
+  // Contacto v2 (Figma 3112:87252), al final para no mover las tarjetas de antes: el encabezado de página y el formulario con horario al lado.
+  {
+    tipo: 'hero',
+    variante: VARIANTE_ENCABEZADO_PAGINA,
+    etiqueta: 'Encabezado de página',
+    descripcion: 'Título, texto e imagen, con las migas «Inicio › página».',
+    palabras: 'encabezado titulo migas pagina contacto imagen',
+    nueva: true,
+  },
+  {
+    tipo: 'contact_form',
+    variante: VARIANTE_FORMULARIO_TARJETA,
+    etiqueta: 'Formulario · Tarjeta con horario al lado',
+    descripcion: 'Llega al CRM y a tu correo; al lado, el horario y «¿Ya hiciste un pedido?».',
+    palabras: 'formulario contacto horario pedido crm correo',
+    nueva: true,
+  },
 ];
 
 /** Entrada de «Añadir sección»: un tipo, o un tipo con una variante destacada (`variants[0]`). */
 export type EntradaCatalogo = SectionTypeDefinition & { varianteDestacada?: string };
 
 /** Tipos nuevos de las plantillas de tienda (la tarjeta lleva «Nuevo»). */
-const TIPOS_NUEVOS: ReadonlySet<string> = new Set(TIPOS_NUEVOS_TIENDA);
+const TIPOS_NUEVOS: ReadonlySet<string> = new Set([...TIPOS_NUEVOS_TIENDA, ...TIPOS_NUEVOS_CONTACTO]);
 
 /** ¿La tarjeta es de las plantillas de tienda (tipo nuevo o variante marcada `nueva`)? */
 export function esEntradaNueva(entrada: EntradaCatalogo): boolean {
@@ -321,6 +345,14 @@ export const RECOMENDADAS_POR_TIPO: Readonly<Record<BranchType, readonly string[
   transport: ['trip_search', 'routes', 'booking_transport', 'fleet_showcase', 'coverage_map'],
   parking: ['parking_availability', 'parking_pricing', 'parking_pass_plans', 'parking_zones', 'parking_features'],
   services: ['services_list', 'features_grid', 'how_it_works', 'pricing_table', 'demo_cta', 'integrations'],
+};
+
+/**
+ * Recomendadas por página (slug), antes que las del tipo de sede: «Recomendadas para Contacto»
+ * (Figma 3112:87252).
+ */
+export const RECOMENDADAS_POR_SLUG: Readonly<Record<string, readonly string[]>> = {
+  contacto: [TIPO_CANALES_CONTACTO, 'contact_form', 'hours_location', 'faq', TIPO_REDES_SOCIALES, 'map', `hero:${VARIANTE_ENCABEZADO_PAGINA}`],
 };
 
 /** En las plantillas de detalle lo recomendado son sus propios bloques. */
@@ -409,6 +441,8 @@ const PALABRAS_CLAVE: Readonly<Record<string, string>> = {
   testimonials: 'opiniones resenas testimonios',
   map: 'mapa ubicacion direccion',
   contact_form: 'contacto formulario',
+  contact_channels: 'contacto canales whatsapp telefono correo direccion llamar',
+  social_networks: 'redes sociales instagram facebook tiktok youtube seguir',
   gallery: 'galeria fotos imagenes',
 };
 
@@ -438,7 +472,7 @@ export interface CatalogoSede {
  */
 export function getSectionCatalogForBranch(
   branchType: BranchType | null | undefined,
-  opciones: { pageType?: string | null; catalogo?: readonly SectionTypeDefinition[] } = {},
+  opciones: { pageType?: string | null; pageSlug?: string | null; catalogo?: readonly SectionTypeDefinition[] } = {},
 ): CatalogoSede {
   const catalogo = opciones.catalogo ?? SECTION_CATALOG;
   const porTipo = new Map(catalogo.map((s) => [s.type, s]));
@@ -481,7 +515,10 @@ export function getSectionCatalogForBranch(
   }
 
   const grupoDePagina = opciones.pageType ? RECOMENDADAS_POR_TIPO_DE_PAGINA[opciones.pageType] : undefined;
-  const tiposRecomendados = grupoDePagina
+  const porSlug = opciones.pageSlug ? RECOMENDADAS_POR_SLUG[opciones.pageSlug] : undefined;
+  const tiposRecomendados = porSlug
+    ? porSlug
+    : grupoDePagina
     ? GRUPOS_SECCIONES.find((g) => g.id === grupoDePagina)?.tipos ?? []
     : branchType
       ? RECOMENDADAS_POR_TIPO[branchType] ?? []

@@ -9,7 +9,29 @@ import { getSectionDefinition, SECTION_CATALOG, type ContentFieldDef } from '@/l
 jest.mock('@/lib/supabase/config', () => ({ supabase: { from: jest.fn() }, getProjectRef: jest.fn(() => 'test') }));
 jest.mock('@/lib/hooks/useOrganization', () => ({ useOrganization: () => ({ organization: { id: 120 } }), getOrganizationId: () => 120, ORGANIZATION_CHANGED_EVENT: 'org-cambio' }));
 
-const formFields = getSectionDefinition('contact_form')!.contentFields.find((c) => c.key === 'form_fields') as ContentFieldDef;
+// Contacto v2 (2026-11-24): `contact_form.form_fields` pasó a su editor propio (`contact_fields`,
+// EditoresContacto.tsx). El repetidor genérico se sigue probando con la misma definición de antes.
+const formFields: ContentFieldDef = {
+  key: 'form_fields',
+  label: 'Campos del formulario',
+  type: 'repeater',
+  group: 'content',
+  itemLabelKey: 'label',
+  itemFields: [
+    { key: 'name', label: 'Nombre del campo', type: 'text', placeholder: 'phone' },
+    { key: 'label', label: 'Etiqueta', type: 'text', placeholder: 'Teléfono' },
+    { key: 'type', label: 'Tipo', type: 'select', options: [
+      { value: 'text', label: 'Texto' },
+      { value: 'email', label: 'Email' },
+      { value: 'tel', label: 'Teléfono' },
+      { value: 'textarea', label: 'Texto largo' },
+      { value: 'select', label: 'Desplegable' },
+      { value: 'checkbox', label: 'Casilla' },
+    ]},
+    { key: 'required', label: 'Obligatorio', type: 'boolean', defaultValue: false },
+  ],
+};
+expect(getSectionDefinition('contact_form')!.contentFields.find((c) => c.key === 'form_fields')?.type).toBe('contact_fields');
 const categorias = { lista: [], cargando: false };
 
 describe('CONTAC-04: repetidor del kit', () => {

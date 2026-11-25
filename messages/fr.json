@@ -39571,6 +39571,76 @@
         "ficha": {
           "titulo": "Afficher l’avis de paiement à la livraison"
         }
+      },
+      "contactoV2": {
+        "recomendadasPagina": "pour {pagina}",
+        "subir": "Monter {nombre}",
+        "bajar": "Descendre {nombre}",
+        "quitar": "Retirer",
+        "campos": {
+          "sinGuardar": "Ce formulaire utilise ses champs habituels. Si vous modifiez quelque chose ici, il passe à cette liste.",
+          "etiqueta": "Libellé (ce que voit le client)",
+          "mostrar": "Afficher",
+          "obligatorio": "Oblig.",
+          "etiquetaDe": "Libellé de « {nombre} »",
+          "siempre": "Toujours demandé",
+          "mostrarDe": "Afficher « {nombre} »",
+          "obligatorioDe": "« {nombre} » est obligatoire",
+          "tipo": "Type",
+          "desplegable": "Liste déroulante",
+          "textoLibre": "Texte libre",
+          "opciones": "Options",
+          "textoEnlace": "Texte du lien (ex. Politique de confidentialité)",
+          "enlaceA": "Lien vers la politique",
+          "casillaObligatoria": "Si elle est affichée, elle est toujours obligatoire (loi sur les données).",
+          "nombreCorreo": "Le nom et l’e-mail sont toujours demandés : le CRM en a besoin pour créer le prospect.",
+          "campoNuevo": "Nouveau champ",
+          "anadir": "Ajouter un champ personnalisé",
+          "tipos": {
+            "text": "Texte",
+            "textarea": "Texte long",
+            "select": "Liste déroulante",
+            "checkbox": "Case à cocher"
+          }
+        },
+        "canales": {
+          "tipos": {
+            "whatsapp": "WhatsApp",
+            "phone": "Téléphone",
+            "email": "E-mail",
+            "address": "Adresse",
+            "custom": "Canal personnalisé"
+          },
+          "sinDato": "Sans donnée : non affiché dans la boutique",
+          "mostrarDe": "Afficher « {nombre} »",
+          "editar": "Modifier « {nombre} »",
+          "origen": {
+            "whatsapp": "Provient de Site web › Configuration › WhatsApp",
+            "phone": "Provient de Site web › Configuration › Contact (ou du téléphone de l’organisation)",
+            "email": "Provient de Site web › Configuration › Contact (ou de l’e-mail de l’organisation)",
+            "address": "Provient de l’adresse de l’organisation"
+          },
+          "editarConfiguracion": "Modifier dans Configuration",
+          "fuente": "D’où vient la donnée",
+          "datoOrganizacion": "Donnée de l’organisation",
+          "textoPropio": "Texte personnalisé",
+          "soloSeccion": "Ne change que ce qui s’affiche dans cette section.",
+          "nombre": "Nom du canal",
+          "ayuda": "Texte d’aide",
+          "textoBoton": "Texte du bouton",
+          "mensajeInicial": "Message initial",
+          "mensajeAyuda": "Il s’écrit dans le chat du client.",
+          "enlace": "Où mène le bouton",
+          "canalNuevo": "Nouveau canal",
+          "anadir": "Ajouter un canal personnalisé",
+          "anadirAyuda": "Par exemple une ligne gratuite ou un chat Instagram. Un canal sans donnée n’est pas affiché dans la boutique."
+        },
+        "redes": {
+          "sinConfigurar": "Non configuré",
+          "mostrarDe": "Afficher {nombre}",
+          "origen": "Les comptes proviennent de Site web › SEO et réseaux.",
+          "editarCuentas": "Modifier les comptes"
+        }
       }
     },
     "paginas": {

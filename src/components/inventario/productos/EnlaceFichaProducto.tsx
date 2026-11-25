@@ -1,47 +1,37 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ArrowUpRight } from 'lucide-react';
-import { cn } from '@/utils/Utils';
+import { NombreLinea, type AjusteNombreLinea } from '@/components/kit/documento/NombreLinea';
 import type { EnlaceLinea } from '@/lib/inventario/enlaceProducto';
 
 /**
  * Nombre de un producto en una línea de pedido, venta o devolución (Figma `2724:191376`):
  * enlace real (`<a>`: Ctrl/⌘ + clic abre otra pestaña) en el color de enlace con «↗»;
  * eliminado, texto con «Producto eliminado»; ítem libre, texto.
+ *
+ * Lo pinta `NombreLinea` del kit (la misma pieza de las líneas de factura), así
+ * un nombre largo no se monta sobre el total: `ajuste` decide si va en una
+ * línea con «…» o en hasta tres (tarjetas de celular).
  */
 export function EnlaceFichaProducto({
   nombre,
   enlace,
+  ajuste = 'truncar',
   className,
 }: {
   nombre: string;
   enlace: EnlaceLinea;
+  ajuste?: AjusteNombreLinea;
   className?: string;
 }) {
   const t = useTranslations('detallesMarca.producto');
   if (enlace.tipo === 'enlace') {
-    return (
-      <Link
-        href={enlace.href}
-        onClick={(e) => e.stopPropagation()}
-        title={t('abrirFicha')}
-        className={cn(
-          'inline-flex min-w-0 items-center gap-1 rounded font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-          className,
-        )}
-      >
-        <span className="truncate">{nombre}</span>
-        <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.75} />
-      </Link>
-    );
+    return <NombreLinea nombre={nombre} href={enlace.href} titulo={t('abrirFicha')} ajuste={ajuste} className={className} />;
   }
   return (
-    <span className={cn('inline-flex min-w-0 flex-wrap items-center gap-x-2 font-medium text-fg', className)}>
-      <span className="truncate">{nombre}</span>
+    <NombreLinea nombre={nombre} ajuste={ajuste} className={className}>
       {enlace.tipo === 'eliminado' && <SelloProductoEliminado />}
-    </span>
+    </NombreLinea>
   );
 }
 

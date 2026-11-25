@@ -2,14 +2,14 @@
   "noir_omakase": {
     "estiloExtendido": "aab84824b862fa6503d5c441602cc9fc60e5ef1ed4ef168ed62537696f54838e",
     "estiloBasico": "99692c5adeb7a0bf5fbf48a7ea3bf409b537042befe733312ce44c9d2ae47eed",
-    "completa": "3fbc0b31c79bceaac825f2854222338ef91015f20a756e2e8c3a780e3ab19890",
-    "completaSede": "cd845e28321679c4a3be2f6619c7f36f172522bc89c7bf1da0a3c4a432b4c027"
+    "completa": "97ec84c1bb375c3acf72f08e49554264f4fcafcdf8a411f75a3f9cce977ce9b1",
+    "completaSede": "f4f690bfe5e38cac1ee8a5f288dff8a6a753d7321cabed116d93bbe6f9f7ef75"
   },
   "velvet_lounge": {
     "estiloExtendido": "db3d914f9a8357350e4726aa5664f2357b37c5836131ecd6119cac74eb9c5104",
     "estiloBasico": "bdea71824f399c0b7b0f07407c6bf1a58851d4f5e4fc2115ba1e6f50dff5d35b",
-    "completa": "6bbb783bc914307573382e3fbec5b5df43dae1046a6146cfbfb91f050cffef49",
-    "completaSede": "f7c9db7510818e9a45b0e6315f9dc3bad23fb193b17c203b788fba45fe888475"
+    "completa": "1bad1e4d81f3782e2aa97267308f10bab795d2eaf984629a378852e14339fc52",
+    "completaSede": "832cca1d882bc165ad5de2dba7d6d514b094e7af9cac26ddb8854be4349b5a61"
   },
   "cafe_especialidad": {
     "estiloExtendido": "bed0f430c2d693d6bb709cd323d135839143de48c12a07106a57eebdc9b547d7",
@@ -20,38 +20,38 @@
   "fine_dining_oscuro": {
     "estiloExtendido": "b9c33f84a830d11e4c42b289249a7a950aeeb5eb92358954877d126cdec645c8",
     "estiloBasico": "1ced6225ebb830d0d502c5c99b7018fdf42d92e0a48340f32720327dcc193986",
-    "completa": "2bab41848ca64c87a5496943a53f136b2692e2f4cc2cc993665c82badee2051f",
-    "completaSede": "a44cb8f35f4ff580515f57daa62190ec823e8f22ad06f807451fce84de01d687"
+    "completa": "6e0fefca4d6903b16a4a3a77ee73948a49459294508cdd4d612b9a33db9fe440",
+    "completaSede": "6cec5fa68109d57ed0050598792939b730e0e2335dbe164af9d34d60af8eae24"
   },
   "editorial_marfil": {
     "estiloExtendido": "8f980b13ce91ef354ecbb045d61fbf8bb41bc4798430978c7aeceaffad7121b5",
     "estiloBasico": "fdae941c59bc79437ab6b343074715e8c5b6fac4ce1f0a2e722d507858d5f282",
-    "completa": "6d509802be922cc6a3bbb879b0c6e2e1a0e2c5704e4dccfa758d43b2bb44f4f3",
-    "completaSede": "6b7e54765707ba17c61931bbd3913e7bea5966a2e4cea77da2144e8ee76cba51"
+    "completa": "c0fd57bb4b9f083a2871fc34e3577bf26e95196cd00bfe2d448788fac905db85",
+    "completaSede": "6d7251275a2d9f2a5ef1c214c2b4e5eb39348abc7f18bbf41f3a02bdaf4762a0"
   },
   "mediterraneo": {
     "estiloExtendido": "a3696ff84c75e9945320053946631c8a465894527a1747c9e0c0f97bdfd3f2ac",
     "estiloBasico": "6d73f6fd562f8918b7f193278ef5d24735f306cc4f8112162b9fe1e587db9dba",
-    "completa": "51dd403a5dd761aabd95a97c4337f15e4bf2bf2abc2af263f97036dbd5fa32f9",
-    "completaSede": "4d290788f8468fa724a7a1cdc6ca724ec51c912dce59eda630b7a42c6132aca9"
+    "completa": "a03d8a8abb1ce91a920e2ffe1ac366d46473c92af6e977c6a97cf281454b2b34",
+    "completaSede": "0d59fc6c48e83cd2f4e7388f4ad8dec66d43594c930d5cf1bb7765a1e6bc4cde"
   },
   "bistro_ilustrado": {
     "estiloExtendido": "54460036eff0d8fd50c13b5d63e4b1e0a025226160114a27a7a62fa16d12af04",
     "estiloBasico": "d6ab85a62bdd7af40fe91cad5389f77d9f04750cc113b04663fc47bef6232246",
-    "completa": "c85e456e41efb6662ea8bd331526ebea8c9227cc285997240cb7e2c5fa8d2915",
-    "completaSede": "ea2cc1bdc1079d81a39c4c8574a93e088e23913f6f3d1677363e2111c5abe0c8"
+    "completa": "b899d3525170e7f4e5a933c4c6517498ad0dc7789a8138966f947a12d2023829",
+    "completaSede": "57af3733f2da0a8022e00789c11f13254da546f56b88f11b8861e5e8d84ba099"
   },
   "pop_callejero": {
     "estiloExtendido": "8efb2bf260f261b7cd4b0b7b7ce3718da9fab964357c7eef0483f6f080639e88",
     "estiloBasico": "c618377b815a15fbbf52d5ec2bb0beaa4b210bb271839a22440737eea87d038f",
-    "completa": "bcf1b568582ab1911e8274bd54c9c6f875b630eee1475fd9a81e5829485caa2d",
-    "completaSede": "3154e9df35542fd6243022a46eb994a198b49c798994a3d81d6aed2b4c132b1d"
+    "completa": "59222549c7bb8f389abeaabc9d278a9bcd75d42b45f7118acfe023519131ecdc",
+    "completaSede": "a39c2bf5163bef5c44d2008fa5f4f10c3fe655393f3dbee9b50c0ba7648c0cbb"
   },
   "carta_qr": {
     "estiloExtendido": "93a23d14a55bb8ec336d72f039dddb4b6deb69591cb2e5a4f901fcf455790674",
     "estiloBasico": "50bfcd5e5415379ac7538175757904ee4fb197458fe115f4bb3ab0bc4bc862f9",
-    "completa": "ce32a110fed14b70e6774d11a676ebad6ed3d5117415161d402a974e6ac0b7d3",
-    "completaSede": "79984a321a2f9c8dc5521e06769fc3363033a06b165608bdc121c7fb3a635b80"
+    "completa": "c95d0180ae0755394b4f717589e996ed7570408f84d5e69deb9f6b8a5cbd9a32",
+    "completaSede": "d65bcf9d0f14229e61bc1ffb8d7acf22f174eb4f144ac2b442bf89e5900803d2"
   },
   "retail_modern": {
     "estiloExtendido": "e34650707bfe1548bf40261494bd37714921dc5381be315619f59ae917f27b43",
@@ -80,121 +80,121 @@
   "hotel_luxury": {
     "estiloExtendido": "5ea19b10cb3edc46556e71f9926c2ea4e94658a8c7c7948002edd35e8188c8bf",
     "estiloBasico": "6504c617edee1c13d57b375823a2b32936b9e611c9d4ab30c2766fce15d9c6eb",
-    "completa": "d939ea2de8047fcc3088a9d32eb2d8dbf7fe82d15e62178d90d5c6c3ac83f56b",
-    "completaSede": "515a3350c33da95c0a9c89fb387c1da85f279bcce4f02cb9f7a3191dac0a8fa7"
+    "completa": "d9d67c59dbf4b6189b45051f8914ee319a62a99c211fc6ea5d9cc2eabe6c8c30",
+    "completaSede": "e9b29d82603fd9f104ec99a52dad3d959a067ff1602f18c8092cb816ebe618c1"
   },
   "hotel_boutique": {
     "estiloExtendido": "09dbbc9b444378f3951773d44ce4cba9343b0a9a77ca5fdbedaf0801bf892e86",
     "estiloBasico": "ac8004d28f9c6c047c40bd5089f6a201f1e11b40345e0c5b2ee90942a067371e",
-    "completa": "4769d004c08deeea288019a037b0c9949d1f6dca351493535c1ec71420a1f3d9",
-    "completaSede": "af867fefb4bc89a00467fb409643048845615edaba7acc70290783cb1a70bdbb"
+    "completa": "ed228641a66df97663447ab8af2af5a15fa84b980e3113e35ddffdc8bf5a568b",
+    "completaSede": "cb8f8e1288f095f17eb0d1b118ca574f573b888c0e67431336e56326c57b0cab"
   },
   "hotel_minimal": {
     "estiloExtendido": "f1c9bca64935b719a24997d455d47b41e325f24278aae281b54258c880b6da16",
     "estiloBasico": "b71acfcaa5355b81b9914883ddb4fce4ba5782cc0e213dd297dce285dc7b3e39",
-    "completa": "6f61f37206cb7a3c0eca3146af89aceb99c46e69399b25bcad494cedb397364d",
-    "completaSede": "5ea9846e9c62acb983811aed0404b90e42ea794a692e26e2269a02fd4b725b76"
+    "completa": "5c5734084737527134db0b0b4c04779fc059fd651ec8242b1092255ec5be9d63",
+    "completaSede": "1a0a52bef9c83188f21cc2e6bf36e5c54e9c2833c1c678b2dcf9f14231d26103"
   },
   "hotel_resort": {
     "estiloExtendido": "070a66caa47b6c78596b258ac431bf3bef5bf086250d1e80cc49249833dcbb2c",
     "estiloBasico": "cbdbc9d28e4b480d09fbfe9163474861e79a8ed48e34ad980e15c7660f1bcbc9",
-    "completa": "216963a86065d1ef2dd2c42c398507382d153577aa71ac3a590273e7e0d05159",
-    "completaSede": "0e01a92af2e92ec1b3437491e846abb979044f75b40962f96f90494d287565b3"
+    "completa": "26e04fd054e8f8a5dbcf9af450f99deabe839466a7f5f6944a60869ff18d631b",
+    "completaSede": "43e0b4d548b321c6fbc19357d1da4a867b65386fcc1b7f5f0201f6430cd27c02"
   },
   "gym_power": {
     "estiloExtendido": "3e86a4d21bf0f7df1325d7f7f23091c4540ba63bad3436fe92cd52fb0bf837d7",
     "estiloBasico": "13e68c45b06e63e88b33929d4e39963e1d0ba3adec544581ad4292b53cfb36a4",
-    "completa": "5b852f11167feb1be4aa5877cffbc64d49766b41ea2490a64a81a42fbe650231",
-    "completaSede": "172fa6d67028659b94e1b107fd1432c6c3cc828d983a3d4da777449114603d79"
+    "completa": "8d0f50ea901eb7d7a5aa0351a1fc9c741ff610a73630f48cb4b4264d716829ec",
+    "completaSede": "82c34c388c16ce12052dba68b1ca05fef15cc4ad0f7c03e026ceb42d20dc3320"
   },
   "gym_wellness": {
     "estiloExtendido": "69ee6f6f9e5fe73dbcf1201ce230377b0e7aa045ae3caf18d636de0ddacb5637",
     "estiloBasico": "c94a3f0904ba3c6d6df50a454def49b5caf7cf5f3b46993dde810e077ca78f2b",
-    "completa": "3afa3bff32de62053a63d6d250485244b83f7209af02b8e2fa715ccad25a1a99",
-    "completaSede": "826ad5726d7dd3865654659df3b71d1870ce66a4d68df1ee64b1b6817632b8d6"
+    "completa": "c1d08028b7926c645493c2fb2159cbb111eecef4f1cf67f761fd64a01e2f1a12",
+    "completaSede": "ca80191458f1562f8e46ecafb6e17ee2dccd764795916abc877ba01d1142bb07"
   },
   "gym_urban": {
     "estiloExtendido": "da35cba0378def8aa57a7e1b58f12612c568a70fa6774c6fc1e840d22a441166",
     "estiloBasico": "34143ec1f2b2c3119060a3bee10ccc302c8c2dbec85633799f547dacb208d944",
-    "completa": "450e4f5afd8633457205c4dc7b920907c0b7b39fb729ea07bd19ffa812861c34",
-    "completaSede": "bd9e4fd3773cf08b80fe358d22e2b316d1a0a5289facc7cab34dddd14bfbab74"
+    "completa": "a51be25e04f2fa5a7891c9fb9f24535b89245d60d5c173756b274083ff2c5bef",
+    "completaSede": "3405922ff1776a9b6416a817550d3c78c802a28fee9df9881067f3ad184a1d7f"
   },
   "gym_premium": {
     "estiloExtendido": "b2642613680ea34eebbdffc45bf04b9ab0791bd5f7657ef4b4448765402d4aca",
     "estiloBasico": "653f873ceef69a94626ff06b944df1a3edafebc5773e80ae6e5c1936889b7485",
-    "completa": "4ba1d15f102603b0b7b979a19a883c2ec2b5ac6b779fc057ae2938d6012372d6",
-    "completaSede": "b19b8ad3adec9de7dbbbce909380aeb7521874d5e53fd3730d19ac9fbd639fe6"
+    "completa": "80d84f443504a2f333271ba00c53bbe173346b91c474e6e4bf907bd7d8e9c27d",
+    "completaSede": "9572891d0522196e918d10e094e510c14e26957e40d4008fd0af3ca757f700fa"
   },
   "transport_corporate": {
     "estiloExtendido": "f3094f7a9650080c5eb3778639f72e52a45bdc52339c0b6927e49551f6faad8d",
     "estiloBasico": "eacf77b0d8e49b590440bd99d1a944e2bda0c4708ed8b182b33fdb3601e26ac0",
-    "completa": "632a815bd75f3666ad44802068553a3caf81f3b2ba9b4867d3227dc43cdca8d5",
-    "completaSede": "1248d43722e779de8904851a2fa297cae0c4d122fbaa305ffb0d2810600ed794"
+    "completa": "90ea162a7fa7152a74cefb7c1756751d4736beafa8cb52b08f0363b63aab1dc1",
+    "completaSede": "6b0b77a03b8e9d2c44eaa17f86145a6e3afecea02e8c0fdb9e4b60ea31250fa1"
   },
   "transport_dynamic": {
     "estiloExtendido": "944ab7a3a7e5ce61c87253a9792b93c851ac46fbd2d8f78208b75a882e92ae5d",
     "estiloBasico": "65076dfe88400143eeea540346f62843ea71782458534cf8681bed85deb7c85e",
-    "completa": "305bbaed9cb57ad4810b2f4dad4c527e09932a2ff35d4bcf35d8bfc1265ceceb",
-    "completaSede": "621f9af391ee32f1a4b52b819edcb43b08735dfa1a5933d637d81bdf7e0b59fe"
+    "completa": "41e6e3da5397b8cfec1f41d08a2574574aed51776dfc085143c3f871d9063097",
+    "completaSede": "6f005a6046a2c79b9f8790386ed7ccf8ef84599c6083f46864cb0a00be10747f"
   },
   "transport_classic": {
     "estiloExtendido": "73731548d4ca23041bf53b4c6c434f3f25bf045198d1f7da6ddbef6628e2f6a8",
     "estiloBasico": "fa73b19ed894991b0dbc56cd6958f932677096707232ad1059d461a31da78e67",
-    "completa": "33ca1b3c86a960141610e0c63d15270c612cc1d7207a29d6bdba571ef51a0d63",
-    "completaSede": "525e0ee2a32f68dc60c08ab684287422b999b46c6320bbcb78580d45b8ecc263"
+    "completa": "ab7c4ec7213d6b3981c235a2426ceed968392cf0d58e155f1055dde3bf9777ae",
+    "completaSede": "657caa29bb946d1f7bd091b7a19806c4a44a23198c71702763ff8ab96ae1b6a7"
   },
   "transport_eco": {
     "estiloExtendido": "437d1deebcfd3bd54913d522e39da023fefe22ce6700da23074976964fd1357e",
     "estiloBasico": "21ed01813c37b0635a3a1d7e7c051c1a80f133453d10cc53e285a885b5222fce",
-    "completa": "90164cecdfddf8b8c1362df710f7f3a9ddf7585d85b53b7adb5d79cb631fcd5d",
-    "completaSede": "a74a70006fb7a74fbb69f5e8c7cddf703b2660cbeb0f3659375169ec0dae488a"
+    "completa": "dd6f93b9d8b01de3ade9216b284e90dd772bd9d653f394cbcb7f72266240c3fd",
+    "completaSede": "02b32cb1c069a6bfa8cc57b8f7ec2c6b2d1b4bffaa1a25375d30c3329284b7be"
   },
   "parking_modern": {
     "estiloExtendido": "6b8bab95dc9ed435dea9966bc6643f576766b5f921a25a7f56ba7508183ae8a4",
     "estiloBasico": "766e37ff35a4d440acd150920bab9c8148e6430065db0ccfa49f97d50e51a6ad",
-    "completa": "9939164394fbb1914b57023e59a14dea501d31df4194c9d0919b7dc02ef82095",
-    "completaSede": "9ac2ac2aa86d8ed80cd6c6be403e9307dd04a7874b21fc46d50017c0d9f9ed35"
+    "completa": "afb2f32cab0ddf7826101d23bb8ed644a9087ebded749ecc18e2b859fb16feea",
+    "completaSede": "1a0e594d3fbb38d5c88ada2d2dcdf9c4665063870103260266443abe857c6bc7"
   },
   "parking_tech": {
     "estiloExtendido": "1c67bb3147f54769b18eb8b04f7ffd8b8954f38b94e287e6e92cb136935b6ca3",
     "estiloBasico": "62dec090a528d417558d00c194090dc66c2d992c94dfbfa0684fbb92dddb0d08",
-    "completa": "ba64aeb653c2e843270a7cf90209c9df12f57034c966c9ffbddc7ff51b5f363c",
-    "completaSede": "e09679c18c033eca8c81173024ceb6abc015e972b69c4f2e0d93533bfd6d1a07"
+    "completa": "d51c2aef855d7ef90f0018937d512ee02ca466b1e5304e7f72d741ecf4ce5f36",
+    "completaSede": "3744c4a5a4b6f207077ec17da1edfebf5bcf6ee62c2eb257ddc7ddb33c415da6"
   },
   "parking_urban": {
     "estiloExtendido": "c03b6a052473e4439b356f3ac9469b2fc99844fdd5858ea7f15e13a60cecf764",
     "estiloBasico": "cd054f61aeee8150f415975f77e9f1f62a3c8900ac105138ce20a12033ae169d",
-    "completa": "b38b8b8c620515bf95c0cf1564f7116f1f1825ae65db71d7e45a6ba9eb637fcc",
-    "completaSede": "f7c572a9e313c24f3e9e99fb9e7df8990175ee846e8bfc9c45326ba6e89d06c0"
+    "completa": "2f114254b60f3291ca3348ab2e335a675a9e15cec942e481c01c49fdd95c8d2d",
+    "completaSede": "5182064e6903b4ff9bc9d0126e227d8f759438aa4946797c2943c016320d4b72"
   },
   "parking_premium": {
     "estiloExtendido": "51e05f651b1e2cbdd089e1ccb14397bec402fe15d5d48a51b6890f57566edbf9",
     "estiloBasico": "1e3379e04dd3ef7394c198d5d08551babedf6642c2952769edb186707d3317a3",
-    "completa": "70ffebc7ac7e726853ef69c5d378ef0ba60203212301f657cb27e8e48260a256",
-    "completaSede": "795d37ae26b85cd04051c06a2c7e5e493c059203480b04efa49c0479560aa653"
+    "completa": "bf402a18410e5081066e3a30b3ca6d5e24f85ef23f470caa4e6327fe47c26985",
+    "completaSede": "6505992b611fd958cbd854f9dad14faf439b55d44cd169c037a8cacc5fa8ec58"
   },
   "services_modern": {
     "estiloExtendido": "fc8ddd955299a1e569c4fe574e596204096833f6552e8c985159e322f6168877",
     "estiloBasico": "9bf02dba3008f53b7cea549ef6f974b38fde7c286f32b86766e1d8084edeb216",
-    "completa": "667996d7cd49dffe5c47db0422331c0425798ceb3abc0bfe53bd04ad60140cf1",
-    "completaSede": "3141d429191334a8452497a2bd10e9aa116d6af8028826be42cf81262b1c6fd2"
+    "completa": "29c182d3238456be9effd9fcf57a732e2159ee3ea7215376a2d6f493426098f8",
+    "completaSede": "a50354185daf206c9eda9095c603fd05c3195d35ceba8ea160b433ad28b29347"
   },
   "services_corporate": {
     "estiloExtendido": "fe207835cfa06a5f9c33ab13d56a34eec27427e559340015473f64f0c6a3538a",
     "estiloBasico": "76ec25e83790d7e3f41657aa5a4e5f0eb92c91c0f5fa84859abe4077448fd5c5",
-    "completa": "a7ea46ea166d304635cfba8d2ac1084f009b6fb8e97c9fddd78705b7f232f0f5",
-    "completaSede": "6f1426e5b4b89c64817e20b03ab3d47fe1722ad9a3ad5004f20907939569e7cb"
+    "completa": "de9e342ea2ae9563af998340eaf72ab8425d0cb49858ac1118343fed39ca2d39",
+    "completaSede": "f88c1a91d847d8c29cab4a2119edc29c530cc8753c68b6de6a69fc56d659e37b"
   },
   "services_creative": {
     "estiloExtendido": "109d7f3d11cf1468ec2019add0b5f613aa29c5db32c9a8655ffe917bb70fc2ed",
     "estiloBasico": "58e8c3269bf97243095f4029e620b9a0791d0493352da765cbdcefdc330959d8",
-    "completa": "6efd0cf0cfd05e9fe5cb9b0cf76541ed9105da1f885e60fee3879bd61f149865",
-    "completaSede": "c1827c71fae6f3cc79644d4b5f9c9c5853dc60dac11f2bdd0c60fdae8283b8db"
+    "completa": "d250838950c0f4b552eb57769f8ca3161fbea3def3ea450de1e56fc2e75d49a4",
+    "completaSede": "031376396bb7395401fd99fc4c25be9abd7049daf5574bab9a0eab8723103309"
   },
   "services_minimal": {
     "estiloExtendido": "8b1f7fec95082f09e582a6ed5535f5935a3c5d52d50d7d19d80e5b067230d68a",
     "estiloBasico": "08619ec1c32224f635edc7c4682e54ce68872af6aaf83cb3a53e1723abbbfd7d",
-    "completa": "780f31280822509800e22d8e5a5582092046b0810026333f89b049a683a256e8",
-    "completaSede": "eeca969d75a50ab29e8c2e5e4f77dc1fd546eb632aa22cf62e3e4baa69bb8d52"
+    "completa": "2e919a2c6cba420dcfd88b551f5b258f086bde1852480bfffc84d3e5edbf26a7",
+    "completaSede": "6fea3eb070df9577da0f99d10672b6dc4bc154c116578c2230992c87b54cebc1"
   }
 }

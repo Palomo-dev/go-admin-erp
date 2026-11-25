@@ -357,6 +357,22 @@ const pagina = (titulo: string, slug: string, enMenu: boolean, secciones: string
 });
 
 /**
+ * Página Contacto del juego base, IGUAL en todos los giros: «Contacto v2» (Figma 3104:84056) con
+ * las secciones y los textos de `seccionesContactoPorDefecto()` (sin preguntas frecuentes, que
+ * solo trae la plantilla de página «Contacto» del editor). Antes cada giro sembraba el contacto
+ * viejo (portada mínima, formulario dividido y mapa) y «Plantilla completa» lo volvía a poner en
+ * sitios ya migrados (org 338, 2026-11-25). La prueba `contactoV2Sembrado.test.ts` falla si algún
+ * sembrado vuelve a crearlo.
+ */
+const paginaContacto = (): PaginaBase => ({
+  titulo: 'Contacto',
+  slug: 'contacto',
+  tipo: 'builtin',
+  enMenu: true,
+  secciones: seccionesContactoPorDefecto().map((s) => ({ tipo: s.section_type, variante: s.section_variant, contenido: s.content })),
+});
+
+/**
  * Juego base por giro: el MISMO que siembra la base al crear la organización
  * (`public.create_default_pages`, disparada por `trg_org_create_default_pages`; páginas, orden,
  * «en el encabezado» y secciones `tipo:variante` leídos por MCP el 2026-10-06). Es la fuente
@@ -366,7 +382,8 @@ const pagina = (titulo: string, slug: string, enMenu: boolean, secciones: string
  * la última migración que define la función (restaurante: `20261006125630_paginas_por_defecto_
  * restaurante`, aplicada). Inicio se incluye aquí porque la función también la siembra con
  * secciones propias del giro. Es también la plantilla con que nace el sitio de una SEDE de ese
- * tipo (`src/lib/website/v2/plantillaSede.ts`).
+ * tipo (`src/lib/website/v2/plantillaSede.ts`). Contacto es `paginaContacto()` en todos los giros
+ * (migración `20261125230000_contacto_v2_plantillas_y_restantes`).
  */
 export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
   restaurante: [
@@ -375,7 +392,7 @@ export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
     pagina('Pedir Online', 'domicilios', true, 'hero:minimal,products_grid:grid'),
     pagina('Reservar Mesa', 'reservas-mesa', true, 'hero:minimal,reservation:stepper,private_events:default,faq:accordion'),
     pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:two_columns,stats:counters,team:grid,chef_team:chef'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:embedded'),
+    paginaContacto(),
     pagina('Galería', 'galeria', false, 'gallery:masonry'),
   ],
   hotel: [
@@ -384,7 +401,7 @@ export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
     pagina('Servicios', 'servicios', true, 'hero:minimal,amenities:grid,services_list:cards'),
     pagina('Galería', 'galeria', true, 'gallery:masonry'),
     pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:centered,stats:counters,team:grid'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:embedded'),
+    paginaContacto(),
   ],
   tienda: [
     pagina('Inicio', 'home', true, 'hero:slider,categories_grid:horizontal,featured_products:grid,promo_banners:grid,products_grid:grid,testimonials:carousel,newsletter:simple,brands:logos'),
@@ -392,14 +409,14 @@ export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
     pagina('Categorías', 'categorias', true, 'hero:minimal,categories_grid:grid'),
     pagina('Ofertas', 'ofertas', true, 'hero:minimal,promo_banners:grid,featured_products:carousel,cta:banner'),
     pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:two_columns,stats:counters,team:grid,partners:logos'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:full_width'),
+    paginaContacto(),
   ],
   servicios: [
     pagina('Inicio', 'home', true, 'hero:split,partners:logos,features_grid:alternating,stats:counters,how_it_works:steps,pricing_table:three_columns,testimonials:carousel,faq:accordion,demo_cta:form'),
     pagina('Servicios', 'servicios', true, 'hero:minimal,features_grid:alternating,cta:centered'),
     pagina('Precios', 'precios', true, 'hero:minimal,pricing_table:three_columns,faq:two_columns,cta:banner'),
     pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:two_columns,stats:counters,team:grid'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:default'),
+    paginaContacto(),
   ],
   gimnasio: [
     pagina('Inicio', 'home', true, 'hero:video,membership_plans:pricing_table,gym_features:icons,class_schedule:grid,trainers:grid,transformation:before_after,testimonials:carousel,cta:with_image,gallery:grid'),
@@ -407,7 +424,7 @@ export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
     pagina('Clases', 'clases', true, 'hero:minimal,class_schedule:grid,trainers:grid'),
     pagina('Entrenadores', 'entrenadores', true, 'hero:minimal,trainers:grid'),
     pagina('Nosotros', 'nosotros', true, 'hero:fullscreen,text_block:centered,stats:counters,team:grid'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:full_width'),
+    paginaContacto(),
   ],
   transporte: [
     pagina('Inicio', 'home', true, 'hero:split,trip_search:form,routes:cards,stats:counters,fleet_showcase:grid,why_choose_us:icons,testimonials:carousel,partners:logos,cta:banner,contact_form:split'),
@@ -415,7 +432,7 @@ export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
     pagina('Rutas', 'rutas', true, 'hero:minimal,routes:cards,coverage_map:static'),
     pagina('Nuestra Flota', 'flota', true, 'hero:minimal,fleet_showcase:grid'),
     pagina('Nosotros', 'nosotros', true, 'hero:split,text_block:two_columns,stats:counters,team:grid'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:full_width'),
+    paginaContacto(),
   ],
   parqueadero: [
     pagina('Inicio', 'home', true, 'hero:split,parking_zones:grid,parking_pricing:cards,parking_features:icons,stats:counters,testimonials:carousel,faq:accordion,map:full_width'),
@@ -423,7 +440,7 @@ export const PAGINAS_BASE_GIRO: Record<Giro, readonly PaginaBase[]> = {
     pagina('Tarifas', 'tarifas', true, 'hero:minimal,parking_pricing:cards,parking_pass_plans:cards,faq:accordion,cta:centered'),
     pagina('Servicios', 'servicios', true, 'hero:minimal,parking_features:icons,services_list:grid'),
     pagina('Nosotros', 'nosotros', true, 'hero:minimal,text_block:left,stats:counters,team:grid'),
-    pagina('Contacto', 'contacto', true, 'hero:minimal,contact_form:split,map:full_width'),
+    paginaContacto(),
   ],
 };
 

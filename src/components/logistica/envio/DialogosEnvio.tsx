@@ -6,6 +6,11 @@
  * `logistica_marcar_entregado`, `registerFailedAttempt` → `logistica_registrar_novedad`); la
  * dirección es un dato del envío y se guarda con `shipmentsService.updateShipment`, el mismo de
  * Envíos.
+ *
+ * «Cobrar y entregar» de la caja con envío activo (decisión del dueño 2026-11-25) abre ESTE mismo
+ * registro con `cobroEnCaja`: quién recibe, código y medio, y al confirmar
+ * `logistica_entregar_y_cobrar_en_caja` entrega y cobra en la caja en una sola transacción. Quién
+ * puede entregar lo decide la base (domiciliario asignado o «Registrar entregas en oficina»).
  */
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -24,6 +29,8 @@ import { MEDIOS_COBRO_CONTRAENTREGA, MAX_INTENTOS_CODIGO, type MedioCobroContrae
 import { MOTIVOS_NOVEDAD, type MotivoNovedad } from '@/lib/logistica/estadosEnvio';
 import { RELACIONES_RECEPTOR } from '@/lib/logistica/misEnvios';
 import { faltanteEntregaAdmin } from '@/lib/logistica/detalleEnvio';
+import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
+import type { WebOrder } from '@/lib/services/webOrdersService';
 
 const claseCampo = 'h-10 border-line-strong bg-surface';
 
@@ -37,26 +44,50 @@ function useMensajeError() {
 
 // ── Marcar entregado ───────────────────────────────────────────────────────────
 
+/** «Cobrar y entregar» desde la caja: el pedido que se cobra, el saldo y la caja a la que entra. */
+export interface CobroEnCajaEntrega {
+  order: WebOrder;
+  /** Saldo que cobra la caja (lo calcula la base; aquí solo se muestra). */
+  monto: number;
+  /** «Entra a la caja N · Sede», o null si aún no se sabe. */
+  cajaEtiqueta: string | null;
+}
+
+/** Lo que devuelve la entrega: el aviso al cliente y, si cobró la caja, la factura. */
+export interface ResultadoDialogoEntregar {
+  aviso: 'entregado';
+  factura?: string | null;
+  cobradoEnCaja?: boolean;
+}
+
 export interface DialogoEntregarProps {
   abierto: boolean;
   onAbiertoChange: (v: boolean) => void;
   envio: { id: string; cliente: string | null; contraentrega: number; codStatus: string | null; codigoRequerido: boolean };
-  onEntregado: (r: { aviso: 'entregado' }) => void;
+  onEntregado: (r: ResultadoDialogoEntregar) => void;
+  /** Con esto el registro cobra en la caja al entregar («Cobrar y entregar» del pedido). */
+  cobroEnCaja?: CobroEnCajaEntrega | null;
 }
 
-export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }: DialogoEntregarProps) {
+export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado, cobroEnCaja = null }: DialogoEntregarProps) {
   const t = useTranslations('logistica.envio.entregar');
   const mensajeError = useMensajeError();
   const moneda = useMonedaOrganizacion();
-  const cobrar = envio.contraentrega > 0 && envio.codStatus !== 'collected' && envio.codStatus !== 'remitted';
+  const enCaja = cobroEnCaja !== null;
+  const montoCaja = cobroEnCaja?.monto ?? 0;
+  const cobrar = enCaja
+    ? montoCaja > 0
+    : envio.contraentrega > 0 && envio.codStatus !== 'collected' && envio.codStatus !== 'remitted';
+  const montoACobrar = enCaja ? montoCaja : envio.contraentrega;
 
   const [receptor, setReceptor] = useState('');
-  const [relacion, setRelacion] = useState<string>('titular');
+  const [relacion, setRelacion] = useState<string>('customer');
   const [documento, setDocumento] = useState('');
   const [codigo, setCodigo] = useState('');
   const [metodo, setMetodo] = useState<MedioCobroContraentrega | null>(null);
   const [monto, setMonto] = useState<string>('');
   const [notas, setNotas] = useState('');
+  const [referencia, setReferencia] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [intentado, setIntentado] = useState(false);
   const [restantes, setRestantes] = useState<number | null>(null);
@@ -64,22 +95,25 @@ export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }
   useEffect(() => {
     if (!abierto) return;
     setReceptor(envio.cliente ?? '');
-    setRelacion('titular');
+    setRelacion('customer');
     setDocumento('');
     setCodigo('');
     setMetodo(cobrar ? 'cash' : null);
-    setMonto(cobrar ? String(envio.contraentrega) : '');
+    setMonto(cobrar ? String(montoACobrar) : '');
     setNotas('');
+    setReferencia('');
     setIntentado(false);
     setRestantes(null);
-  }, [abierto, envio.cliente, envio.contraentrega, cobrar]);
+  }, [abierto, envio.cliente, montoACobrar, cobrar]);
 
-  const montoNum = monto.trim() === '' ? null : Number(monto.replace(',', '.'));
+  // En caja el monto es el saldo del pedido (no se edita); con el domiciliario, lo que recibió.
+  const montoNum = enCaja ? montoCaja : monto.trim() === '' ? null : Number(monto.replace(',', '.'));
+  const pideCodigo = envio.codigoRequerido && (cobrar || enCaja);
   const falta = faltanteEntregaAdmin({
     receptor,
-    requiereCodigo: envio.codigoRequerido && cobrar,
+    requiereCodigo: pideCodigo,
     codigo,
-    contraentrega: cobrar ? envio.contraentrega : 0,
+    contraentrega: cobrar ? montoACobrar : 0,
     metodo,
     monto: montoNum,
   });
@@ -88,15 +122,35 @@ export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }
     setIntentado(true);
     if (falta) return;
     setEnviando(true);
+    const prueba = {
+      recipientName: receptor.trim(),
+      recipientRelationship: relacion,
+      recipientDocNumber: documento.trim() || undefined,
+      notes: notas.trim() || undefined,
+    };
     try {
-      const r = await deliveryIntegrationService.markAsDelivered(
-        envio.id,
-        { recipientName: receptor.trim(), recipientRelationship: relacion, recipientDocNumber: documento.trim() || undefined, notes: notas.trim() || undefined },
-        {
-          codigo: envio.codigoRequerido && cobrar ? codigo.trim() : null,
-          cobro: cobrar && metodo && montoNum ? { metodo, monto: montoNum } : null,
-        },
-      );
+      if (cobroEnCaja) {
+        // La factura nueva (si la venta no tiene) la arma la misma regla de «Cobrar».
+        const factura = cobrar ? await webOrderConfirmationService.facturaParaCobroEnCaja(cobroEnCaja.order) : null;
+        const r = await deliveryIntegrationService.entregarYCobrarEnCaja(envio.id, prueba, {
+          codigo: pideCodigo ? codigo.trim() : null,
+          metodo: metodo ?? 'cash',
+          referencia,
+          factura,
+        });
+        if (!r.ok) {
+          setRestantes(r.intentosRestantes);
+          return;
+        }
+        toastSuccess(t('caja.ok'), r.invoiceNumber ? t('caja.factura', { numero: r.invoiceNumber }) : undefined);
+        onAbiertoChange(false);
+        onEntregado({ aviso: r.aviso, factura: r.invoiceNumber, cobradoEnCaja: r.cobradoEnCaja });
+        return;
+      }
+      const r = await deliveryIntegrationService.markAsDelivered(envio.id, prueba, {
+        codigo: pideCodigo ? codigo.trim() : null,
+        cobro: cobrar && metodo && montoNum ? { metodo, monto: montoNum } : null,
+      });
       if (!r.ok) {
         setRestantes(r.intentosRestantes);
         return;
@@ -105,7 +159,7 @@ export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }
       onAbiertoChange(false);
       onEntregado({ aviso: r.aviso });
     } catch (e) {
-      toastError(t('error'), mensajeError(e));
+      toastError(enCaja ? t('caja.error') : t('error'), mensajeError(e));
     } finally {
       setEnviando(false);
     }
@@ -117,11 +171,11 @@ export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }
     <Dialogo
       abierto={abierto}
       onAbiertoChange={(v) => !enviando && onAbiertoChange(v)}
-      titulo={t('titulo')}
-      descripcion={t('descripcion')}
+      titulo={enCaja ? t('caja.titulo') : t('titulo')}
+      descripcion={enCaja ? t('caja.descripcion') : t('descripcion')}
       icono={CheckCircle2}
       ancho={520}
-      primario={{ etiqueta: t('confirmar'), onClick: () => void confirmar(), cargando: enviando }}
+      primario={{ etiqueta: enCaja ? t('caja.confirmar') : t('confirmar'), onClick: () => void confirmar(), cargando: enviando }}
       textoCancelar={t('cancelar')}
     >
       <div className="flex flex-col gap-4">
@@ -150,10 +204,34 @@ export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }
           </FormField>
         </div>
 
+        {pideCodigo && !cobrar && (
+          <FormField etiqueta={t('codigo')} obligatorio ayuda={t('codigoAyuda')} error={err('codigo')}>
+            {(cp) => (
+              <Input
+                {...cp}
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                className={`${claseCampo} w-32 tracking-[0.4em] tabular-nums`}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+              />
+            )}
+          </FormField>
+        )}
+
         {cobrar && (
           <>
-            <AvisoTonal tono="advertencia" compacto titulo={t('cobroTitulo', { monto: moneda.formatear(envio.contraentrega) })} />
-            {envio.codigoRequerido && (
+            {enCaja ? (
+              <AvisoTonal
+                tono="informacion"
+                compacto
+                titulo={t('caja.cobroTitulo', { monto: moneda.formatear(montoACobrar) })}
+                descripcion={cobroEnCaja?.cajaEtiqueta ?? t('caja.cobroNota')}
+              />
+            ) : (
+              <AvisoTonal tono="advertencia" compacto titulo={t('cobroTitulo', { monto: moneda.formatear(envio.contraentrega) })} />
+            )}
+            {pideCodigo && (
               <FormField etiqueta={t('codigo')} obligatorio ayuda={t('codigoAyuda')} error={err('codigo')}>
                 {(cp) => (
                   <Input
@@ -192,9 +270,15 @@ export function DialogoEntregar({ abierto, onAbiertoChange, envio, onEntregado }
                   </Select>
                 )}
               </FormField>
-              <FormField etiqueta={t('monto')} obligatorio error={err('monto')}>
-                {(cp) => <Input {...cp} value={monto} onChange={(e) => setMonto(e.target.value)} className={claseCampo} inputMode="decimal" />}
-              </FormField>
+              {enCaja ? (
+                <FormField etiqueta={t('caja.referencia')} ayuda={t('caja.referenciaAyuda')}>
+                  {(cp) => <Input {...cp} value={referencia} onChange={(e) => setReferencia(e.target.value)} className={claseCampo} autoComplete="off" />}
+                </FormField>
+              ) : (
+                <FormField etiqueta={t('monto')} obligatorio error={err('monto')}>
+                  {(cp) => <Input {...cp} value={monto} onChange={(e) => setMonto(e.target.value)} className={claseCampo} inputMode="decimal" />}
+                </FormField>
+              )}
             </div>
           </>
         )}

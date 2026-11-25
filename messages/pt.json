@@ -41879,6 +41879,12 @@
       "migracion_pendiente": "Esta ação estará disponível quando as funções próprias forem ativadas na organização.",
       "error_red": "Sem conexão com o servidor. Tente novamente.",
       "error_interno": "Algo falhou ao salvar. Tente novamente."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Registrar entregas no escritório",
+        "descripcion": "Registrar a entrega de um envio sem ser o entregador atribuído: retirada no balcão, guichê ou «Cobrar e entregar» no caixa."
+      }
     }
   },
   "pedidoWeb": {
@@ -67597,7 +67603,9 @@
         "COBRO_REQUERIDO": "Registre a cobrança na entrega.",
         "MOTIVO_INVALIDO": "Escolha o que aconteceu.",
         "ESTADO_SIN_NOVEDAD": "Esta entrega não aceita ocorrência no status atual.",
-        "ENVIO_AJENO": "Este envio não está mais atribuído a você."
+        "ENVIO_AJENO": "Este envio não está mais atribuído a você.",
+        "SIN_PERMISO_ENTREGA": "Este envio não está atribuído a você e você não tem permissão para entregá-lo.",
+        "ENTREGA_SOLO_POR_REGISTRO": "A entrega é registrada em «Entregar»."
       },
       "entregar": {
         "titulo": "Entregar {numero}",
@@ -69296,7 +69304,17 @@
         "DIRECCION_REQUERIDA": "Falta o endereço de entrega.",
         "ERROR": "Não foi possível concluir. Tente novamente.",
         "DOMICILIARIO_NO_COBRA": "Esse entregador não cobra na entrega e o envio tem valor a cobrar.",
-        "ENVIO_AJENO": "Esse envio é de outro entregador."
+        "ENVIO_AJENO": "Esse envio é de outro entregador.",
+        "SIN_PERMISO_ENTREGA": "Só entrega o entregador atribuído ou quem tem a permissão «Registrar entregas no escritório».",
+        "ENTREGA_SOLO_POR_REGISTRO": "A entrega é registrada com «Marcar entregue» (comprovante, código e cobrança).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "O pedido tem um envio ativo: entregue-o com o registro de entrega da Logística.",
+        "NO_OPEN_CASH_SESSION": "Não há caixa aberto na filial. Abra o caixa para cobrar e entregar.",
+        "ORIGEN_NO_SOPORTADO": "Este envio não vem de um pedido online: entregue-o pela Logística.",
+        "METODO_INVALIDO": "Escolha a forma de pagamento.",
+        "PEDIDO_DE_PASARELA": "O pedido foi pago online: não é cobrado no caixa.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirme o pedido antes de cobrá-lo.",
+        "FACTURA_REQUERIDA": "Não foi possível montar a fatura do pedido. Tente de novo.",
+        "SESION_REQUERIDA": "Sua sessão expirou. Entre de novo."
       },
       "chips": {
         "intento": "{n}ª tentativa",
@@ -69471,7 +69489,11 @@
           "titular": "Titular",
           "familiar": "Familiar",
           "porteria": "Portaria",
-          "otro": "Outra pessoa"
+          "otro": "Outra pessoa",
+          "customer": "Titular",
+          "family": "Familiar",
+          "doorman": "Portaria",
+          "other": "Outra pessoa"
         },
         "cobroTitulo": "Pagamento na entrega: receber {monto}",
         "codigo": "Código de entrega",
@@ -69497,6 +69519,18 @@
           "codigo": "O código tem 4 dígitos.",
           "metodo": "Escolha o meio de recebimento.",
           "monto": "Informe o valor recebido."
+        },
+        "caja": {
+          "titulo": "Cobrar e entregar",
+          "descripcion": "O comprovante de entrega, a cobrança no caixa e a fatura ficam registrados juntos.",
+          "confirmar": "Cobrar e entregar",
+          "cobroTitulo": "Cobrar {monto} no caixa",
+          "cobroNota": "Entra no caixa aberto da filial. Não vai para o acerto do entregador.",
+          "referencia": "Referência",
+          "referenciaAyuda": "Opcional: número da maquininha ou da transferência.",
+          "ok": "Pedido cobrado e entregue",
+          "factura": "Fatura {numero}",
+          "error": "Não foi possível cobrar e entregar"
         }
       },
       "novedad": {

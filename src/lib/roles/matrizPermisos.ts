@@ -66,7 +66,8 @@ export function accionDe(codigo: string): AccionPermiso {
 /** Módulos del catálogo cuyo efecto es dar o quitar acceso a otras personas o a la organización. */
 const MODULOS_ACCESO = new Set(['admin', 'roles', 'users', 'organizations']);
 /** Verbos que mueven dinero aunque su módulo no sea `finance`. */
-const VERBOS_DINERO = new Set(['refund', 'void', 'discount', 'reverse', 'liquidar', 'cerrar_ajenas', 'ver_esperado']);
+// `entregar_oficina`: registrar la entrega es recibir la contraentrega (y en la caja, cobrarla).
+const VERBOS_DINERO = new Set(['refund', 'void', 'discount', 'reverse', 'liquidar', 'cerrar_ajenas', 'ver_esperado', 'entregar_oficina']);
 const SEGMENTOS_DINERO = new Set(['payroll', 'cajas', 'propinas', 'accounting']);
 const VERBOS_ELIMINAR = new Set(['delete', 'cancel', 'merge']);
 

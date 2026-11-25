@@ -217,6 +217,16 @@ export type ResultadoEntrega =
   | { ok: true; shipmentId: string; proofId: string; codStatus: string | null; aviso: 'entregado' }
   | { ok: false; error: 'CODIGO_INVALIDO'; intentosRestantes: number };
 
+/** Resultado de «Cobrar y entregar» con envío activo: la entrega y, si el pedido no estaba pagado, el cobro en caja. */
+export type ResultadoEntregaYCobro =
+  | (Extract<ResultadoEntrega, { ok: true }> & {
+      cobradoEnCaja: boolean;
+      invoiceNumber: string | null;
+      cashSessionId: number | null;
+      yaCobrado: boolean;
+    })
+  | Extract<ResultadoEntrega, { ok: false }>;
+
 /** Error de una RPC logistica_*: `codigo` es el RAISE de la base (TRANSICION_INVALIDA, COBRO_REQUERIDO…). */
 export class EnvioError extends Error {
   constructor(public readonly codigo: string, mensaje?: string) {
@@ -226,6 +236,11 @@ export class EnvioError extends Error {
 }
 
 const CODIGOS_RPC = [
+  // Entrega cerrada en la base (migración 20261125185658). Van primero: `find` busca por
+  // subcadena y SIN_PERMISO_ENTREGA contiene SIN_PERMISO.
+  'SIN_PERMISO_ENTREGA', 'ENTREGA_SOLO_POR_REGISTRO', 'PEDIDO_CON_ENVIO_ACTIVO', 'NO_OPEN_CASH_SESSION',
+  'ORIGEN_NO_SOPORTADO', 'METODO_INVALIDO', 'PEDIDO_DE_PASARELA', 'PEDIDO_SIN_CONFIRMAR', 'FACTURA_REQUERIDA',
+  'SESION_REQUERIDA',
   'ENVIO_NO_ENCONTRADO', 'SIN_ACCESO_SEDE', 'ESTADO_NO_ASIGNABLE', 'DOMICILIARIO_INVALIDO', 'VEHICULO_INVALIDO',
   'ESTADO_NO_PERMITIDO', 'TRANSICION_INVALIDA', 'YA_ENTREGADO', 'ESTADO_NO_ENTREGABLE', 'RECEPTOR_REQUERIDO',
   'CODIGO_NO_EMITIDO', 'CODIGO_BLOQUEADO', 'COBRO_REQUERIDO', 'MOTIVO_INVALIDO', 'ESTADO_SIN_NOVEDAD',
@@ -266,6 +281,35 @@ function errorDeRpc(error: { message?: string; code?: string }): EnvioError {
   const m = error.message ?? '';
   const codigo = CODIGOS_RPC.find((c) => m.includes(c)) ?? (error.code === '42501' ? 'SIN_ACCESO' : 'ERROR');
   return new EnvioError(codigo, m || codigo);
+}
+
+/** La prueba de entrega en el jsonb que leen las RPC de entrega. */
+function pruebaParaRpc(proofData: ProofInput): Record<string, unknown> {
+  return {
+    nombre: proofData.recipientName,
+    tipo_documento: proofData.recipientDocType ?? null,
+    documento: proofData.recipientDocNumber ?? null,
+    relacion: proofData.recipientRelationship ?? null,
+    firma_url: proofData.signatureUrl ?? null,
+    fotos: proofData.photoUrls ?? [],
+    notas: proofData.notes ?? null,
+    lat: proofData.latitude ?? null,
+    lng: proofData.longitude ?? null,
+    tipo_lugar: proofData.locationType ?? null,
+  };
+}
+
+function resultadoEntrega(r: Record<string, unknown>): ResultadoEntrega {
+  if (r.ok === false) {
+    return { ok: false, error: 'CODIGO_INVALIDO', intentosRestantes: Number(r.intentos_restantes) || 0 };
+  }
+  return {
+    ok: true,
+    shipmentId: String(r.shipment_id),
+    proofId: String(r.proof_id),
+    codStatus: (r.cod_status as string | null) ?? null,
+    aviso: 'entregado',
+  };
 }
 
 class DeliveryIntegrationService {
@@ -611,30 +655,42 @@ class DeliveryIntegrationService {
   ): Promise<ResultadoEntrega> {
     const r = await this.rpc<Record<string, unknown>>('logistica_marcar_entregado', {
       p_shipment_id: shipmentId,
-      p_prueba: {
-        nombre: proofData.recipientName,
-        tipo_documento: proofData.recipientDocType ?? null,
-        documento: proofData.recipientDocNumber ?? null,
-        relacion: proofData.recipientRelationship ?? null,
-        firma_url: proofData.signatureUrl ?? null,
-        fotos: proofData.photoUrls ?? [],
-        notas: proofData.notes ?? null,
-        lat: proofData.latitude ?? null,
-        lng: proofData.longitude ?? null,
-        tipo_lugar: proofData.locationType ?? null,
-      },
+      p_prueba: pruebaParaRpc(proofData),
       p_codigo: opts.codigo ?? null,
       p_cobro: opts.cobro ?? null,
     });
-    if (r.ok === false) {
-      return { ok: false, error: 'CODIGO_INVALIDO', intentosRestantes: Number(r.intentos_restantes) || 0 };
-    }
+    return resultadoEntrega(r);
+  }
+
+  /**
+   * «Cobrar y entregar» de la caja con envío activo (decisión del dueño 2026-11-25): el MISMO
+   * registro de entrega (`logistica_marcar_entregado`: quién entrega, receptor, código) y el cobro
+   * del pedido en la caja abierta de quien cobra (`fn_cobrar_pedido_web_en_caja`: factura + pago),
+   * en UNA transacción (`logistica_entregar_y_cobrar_en_caja`). La contraentrega cobrada en caja no
+   * entra al cuadre del domiciliario. Código errado: `ok: false` sin cobrar (el intento queda contado).
+   */
+  async entregarYCobrarEnCaja(
+    shipmentId: string,
+    proofData: ProofInput,
+    opts: { codigo?: string | null; metodo: MedioCobroContraentrega; referencia?: string | null; factura?: Record<string, unknown> | null },
+  ): Promise<ResultadoEntregaYCobro> {
+    const r = await this.rpc<Record<string, unknown>>('logistica_entregar_y_cobrar_en_caja', {
+      p_shipment_id: shipmentId,
+      p_prueba: pruebaParaRpc(proofData),
+      p_codigo: opts.codigo ?? null,
+      p_metodo: opts.metodo,
+      p_referencia: opts.referencia?.trim() || null,
+      p_factura: opts.factura ?? null,
+    });
+    const base = resultadoEntrega(r);
+    if (!base.ok) return base;
+    const cobro = (r.cobro ?? null) as Record<string, unknown> | null;
     return {
-      ok: true,
-      shipmentId: String(r.shipment_id),
-      proofId: String(r.proof_id),
-      codStatus: (r.cod_status as string | null) ?? null,
-      aviso: 'entregado',
+      ...base,
+      cobradoEnCaja: r.cobrado_en_caja === true,
+      invoiceNumber: (cobro?.invoice_number as string | null | undefined) ?? null,
+      cashSessionId: cobro?.cash_session_id != null ? Number(cobro.cash_session_id) : null,
+      yaCobrado: cobro?.ya_cobrado === true,
     };
   }
 

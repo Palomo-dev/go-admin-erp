@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import type { PermisoCatalogo } from '@/lib/roles/matrizPermisos';
 import { cn } from '@/utils/Utils';
+import { useEtiquetasRoles } from './useEtiquetasRoles';
 
 export interface FilaPermisoProps {
   permiso: PermisoCatalogo;
@@ -27,6 +28,8 @@ export interface FilaPermisoProps {
 
 export function FilaPermiso({ permiso, marcado, onAlternar, yaLoDaElRol, delta, deshabilitado, mostrarCodigo = true, className }: FilaPermisoProps) {
   const t = useTranslations('roles');
+  const { etiquetaPermiso } = useEtiquetasRoles();
+  const etiqueta = etiquetaPermiso(permiso);
   const id = useId();
   const bloqueado = Boolean(yaLoDaElRol);
   return (
@@ -42,8 +45,8 @@ export function FilaPermiso({ permiso, marcado, onAlternar, yaLoDaElRol, delta, 
         onCheckedChange={() => onAlternar?.()}
         className={cn('size-[18px] shrink-0 rounded border-line-strong', bloqueado && 'opacity-50')}
       />
-      <label htmlFor={id} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg">
-        <span className="min-w-0">{permiso.nombre}</span>
+      <label htmlFor={id} title={etiqueta.descripcion ?? undefined} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg">
+        <span className="min-w-0">{etiqueta.nombre}</span>
         {mostrarCodigo && <code className="hidden font-mono text-xs text-fg-muted sm:inline">{permiso.codigo}</code>}
         {permiso.sensible && (
           <Badge tono="advertencia" apariencia="suave" tamano="sm">

@@ -41869,6 +41869,12 @@
       "migracion_pendiente": "Cette action sera disponible lorsque les rôles personnalisés seront activés dans l'organisation.",
       "error_red": "Pas de connexion avec le serveur. Réessayez.",
       "error_interno": "Un problème est survenu lors de l'enregistrement. Réessayez."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Enregistrer des livraisons au bureau",
+        "descripcion": "Enregistrer la livraison d’un envoi sans être le livreur assigné : retrait au comptoir, guichet ou « Encaisser et livrer » en caisse."
+      }
     }
   },
   "pedidoWeb": {
@@ -67587,7 +67593,9 @@
         "COBRO_REQUERIDO": "Enregistre l'encaissement du paiement à la livraison.",
         "MOTIVO_INVALIDO": "Choisis ce qui s'est passé.",
         "ESTADO_SIN_NOVEDAD": "Cette livraison n'accepte pas d'incident dans son statut actuel.",
-        "ENVIO_AJENO": "Cet envoi ne vous est plus attribué."
+        "ENVIO_AJENO": "Cet envoi ne vous est plus attribué.",
+        "SIN_PERMISO_ENTREGA": "Cet envoi ne vous est pas assigné et vous n’avez pas l’autorisation de le livrer.",
+        "ENTREGA_SOLO_POR_REGISTRO": "La livraison s’enregistre depuis « Livrer »."
       },
       "entregar": {
         "titulo": "Livrer {numero}",
@@ -69286,7 +69294,17 @@
         "DIRECCION_REQUERIDA": "L’adresse de livraison manque.",
         "ERROR": "Impossible de terminer. Réessayez.",
         "DOMICILIARIO_NO_COBRA": "Ce livreur n'encaisse pas le paiement à la livraison et cet envoi a un montant à encaisser.",
-        "ENVIO_AJENO": "Cet envoi appartient à un autre livreur."
+        "ENVIO_AJENO": "Cet envoi appartient à un autre livreur.",
+        "SIN_PERMISO_ENTREGA": "Seul le livreur assigné ou une personne disposant de l’autorisation « Enregistrer des livraisons au bureau » peut livrer.",
+        "ENTREGA_SOLO_POR_REGISTRO": "La livraison s’enregistre avec « Marquer livré » (preuve, code et encaissement).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "La commande a un envoi actif : livrez-la avec l’enregistrement de livraison de Logistique.",
+        "NO_OPEN_CASH_SESSION": "Aucune caisse ouverte sur ce site. Ouvrez la caisse pour encaisser et livrer.",
+        "ORIGEN_NO_SOPORTADO": "Cet envoi ne provient pas d’une commande en ligne : livrez-le depuis Logistique.",
+        "METODO_INVALIDO": "Choisissez le moyen de paiement.",
+        "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s’encaisse pas en caisse.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirmez la commande avant de l’encaisser.",
+        "FACTURA_REQUERIDA": "Impossible de préparer la facture de la commande. Réessayez.",
+        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous."
       },
       "chips": {
         "intento": "Tentative {n}",
@@ -69461,7 +69479,11 @@
           "titular": "Titulaire",
           "familiar": "Membre de la famille",
           "porteria": "Accueil / gardien",
-          "otro": "Autre personne"
+          "otro": "Autre personne",
+          "customer": "Titulaire",
+          "family": "Membre de la famille",
+          "doorman": "Accueil / gardien",
+          "other": "Autre personne"
         },
         "cobroTitulo": "Paiement à la livraison : encaisser {monto}",
         "codigo": "Code de livraison",
@@ -69487,6 +69509,18 @@
           "codigo": "Le code comporte 4 chiffres.",
           "metodo": "Choisissez le moyen d’encaissement.",
           "monto": "Indiquez le montant encaissé."
+        },
+        "caja": {
+          "titulo": "Encaisser et livrer",
+          "descripcion": "La preuve de livraison, l’encaissement en caisse et la facture sont enregistrés ensemble.",
+          "confirmar": "Encaisser et livrer",
+          "cobroTitulo": "Encaisser {monto} en caisse",
+          "cobroNota": "Le montant entre dans la caisse ouverte du site. Il ne passe pas au règlement du livreur.",
+          "referencia": "Référence",
+          "referenciaAyuda": "Facultatif : numéro du terminal de paiement ou du virement.",
+          "ok": "Commande encaissée et livrée",
+          "factura": "Facture {numero}",
+          "error": "Impossible d’encaisser et de livrer"
         }
       },
       "novedad": {

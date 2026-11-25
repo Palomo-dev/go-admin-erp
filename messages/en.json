@@ -41869,6 +41869,12 @@
       "migracion_pendiente": "This action will be available once custom roles are enabled in the organization.",
       "error_red": "No connection to the server. Try again.",
       "error_interno": "Something failed while saving. Try again."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Record deliveries at the office",
+        "descripcion": "Record the delivery of a shipment without being the assigned courier: counter pickup, ticket office or \"Charge and deliver\" at the register."
+      }
     }
   },
   "pedidoWeb": {
@@ -67587,7 +67593,9 @@
         "COBRO_REQUERIDO": "Record the cash-on-delivery payment.",
         "MOTIVO_INVALIDO": "Choose what happened.",
         "ESTADO_SIN_NOVEDAD": "This delivery can't take an issue in its current status.",
-        "ENVIO_AJENO": "This shipment is no longer assigned to you."
+        "ENVIO_AJENO": "This shipment is no longer assigned to you.",
+        "SIN_PERMISO_ENTREGA": "This shipment isn't assigned to you and you don't have permission to deliver it.",
+        "ENTREGA_SOLO_POR_REGISTRO": "Deliveries are recorded from \"Deliver\"."
       },
       "entregar": {
         "titulo": "Deliver {numero}",
@@ -69286,7 +69294,17 @@
         "DIRECCION_REQUERIDA": "The delivery address is missing.",
         "ERROR": "Couldn't complete. Try again.",
         "DOMICILIARIO_NO_COBRA": "That courier doesn't collect cash on delivery and this shipment has a payment to collect.",
-        "ENVIO_AJENO": "That shipment belongs to another courier."
+        "ENVIO_AJENO": "That shipment belongs to another courier.",
+        "SIN_PERMISO_ENTREGA": "Only the assigned courier or someone with the \"Record deliveries at the office\" permission can deliver.",
+        "ENTREGA_SOLO_POR_REGISTRO": "Deliveries are recorded with \"Mark delivered\" (proof, code and payment).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "The order has an active shipment: deliver it with the Logistics delivery record.",
+        "NO_OPEN_CASH_SESSION": "There is no open cash register at this branch. Open it to charge and deliver.",
+        "ORIGEN_NO_SOPORTADO": "This shipment doesn't come from an online order: deliver it from Logistics.",
+        "METODO_INVALIDO": "Choose the payment method.",
+        "PEDIDO_DE_PASARELA": "The order was paid online: it isn't charged at the register.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirm the order before charging it.",
+        "FACTURA_REQUERIDA": "The order's invoice couldn't be prepared. Try again.",
+        "SESION_REQUERIDA": "Your session expired. Sign in again."
       },
       "chips": {
         "intento": "Attempt {n}",
@@ -69461,7 +69479,11 @@
           "titular": "Account holder",
           "familiar": "Family member",
           "porteria": "Front desk",
-          "otro": "Someone else"
+          "otro": "Someone else",
+          "customer": "Account holder",
+          "family": "Family member",
+          "doorman": "Front desk",
+          "other": "Someone else"
         },
         "cobroTitulo": "Cash on delivery: collect {monto}",
         "codigo": "Delivery code",
@@ -69487,6 +69509,18 @@
           "codigo": "The code has 4 digits.",
           "metodo": "Choose the payment method.",
           "monto": "Enter the amount collected."
+        },
+        "caja": {
+          "titulo": "Charge and deliver",
+          "descripcion": "The proof of delivery, the payment into the register and the invoice are recorded together.",
+          "confirmar": "Charge and deliver",
+          "cobroTitulo": "Charge {monto} at the register",
+          "cobroNota": "It goes into the branch's open register. It doesn't go to the courier's settlement.",
+          "referencia": "Reference",
+          "referenciaAyuda": "Optional: card terminal or transfer number.",
+          "ok": "Order charged and delivered",
+          "factura": "Invoice {numero}",
+          "error": "Couldn't charge and deliver"
         }
       },
       "novedad": {

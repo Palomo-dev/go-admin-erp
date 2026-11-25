@@ -27,7 +27,7 @@ export interface CompararRolesProps {
 export function CompararRoles({ datos, elegidos, onElegidosChange }: CompararRolesProps) {
   const t = useTranslations('roles.comparar');
   const tr = useTranslations('roles');
-  const { etiquetaModulo } = useEtiquetasRoles();
+  const { etiquetaModulo, etiquetaPermiso } = useEtiquetasRoles();
   const [soloDiferencias, setSoloDiferencias] = useState(false);
 
   const roles = useMemo(
@@ -130,7 +130,7 @@ export function CompararRoles({ datos, elegidos, onElegidosChange }: CompararRol
                   <tr key={f.permiso.id} className={cn('border-t border-line', f.diferente && 'bg-brand-tint')}>
                     <th scope="row" className="px-3 py-2 text-left font-normal text-fg">
                       <span className="flex flex-wrap items-center gap-2">
-                        {f.permiso.nombre}
+                        {etiquetaPermiso(f.permiso).nombre}
                         <code className="hidden font-mono text-xs text-fg-muted sm:inline">{f.permiso.codigo}</code>
                         {f.permiso.sensible && (
                           <Badge tono="advertencia" apariencia="suave" tamano="sm">

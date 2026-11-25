@@ -41867,6 +41867,12 @@
       "migracion_pendiente": "Esta acción estará disponible cuando se activen los roles propios en la organización.",
       "error_red": "No hay conexión con el servidor. Inténtalo de nuevo.",
       "error_interno": "Algo falló al guardar. Inténtalo de nuevo."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Registrar entregas en oficina",
+        "descripcion": "Registrar la entrega de un envío sin ser el domiciliario asignado: recogida en mostrador, taquilla o «Cobrar y entregar» en la caja."
+      }
     }
   },
   "pedidoWeb": {
@@ -67585,7 +67591,9 @@
         "COBRO_REQUERIDO": "Registra el cobro de la contraentrega.",
         "MOTIVO_INVALIDO": "Elige qué pasó.",
         "ESTADO_SIN_NOVEDAD": "Este envío no admite novedad en su estado actual.",
-        "ENVIO_AJENO": "Este envío ya no está asignado a ti."
+        "ENVIO_AJENO": "Este envío ya no está asignado a ti.",
+        "SIN_PERMISO_ENTREGA": "Este envío no está asignado a ti y no tienes permiso para entregarlo.",
+        "ENTREGA_SOLO_POR_REGISTRO": "La entrega se registra desde «Entregar»."
       },
       "entregar": {
         "titulo": "Entregar {numero}",
@@ -69284,7 +69292,17 @@
         "DIRECCION_REQUERIDA": "Falta la dirección de entrega.",
         "ERROR": "No se pudo completar. Intenta de nuevo.",
         "DOMICILIARIO_NO_COBRA": "Ese domiciliario no cobra contraentrega y el envío tiene cobro.",
-        "ENVIO_AJENO": "Ese envío es de otro domiciliario."
+        "ENVIO_AJENO": "Ese envío es de otro domiciliario.",
+        "SIN_PERMISO_ENTREGA": "Solo entrega el domiciliario asignado o quien tenga el permiso «Registrar entregas en oficina».",
+        "ENTREGA_SOLO_POR_REGISTRO": "La entrega se registra con «Marcar entregado» (prueba, código y cobro).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "El pedido tiene un envío activo: entrégalo con el registro de entrega de Logística.",
+        "NO_OPEN_CASH_SESSION": "No hay caja abierta en la sede. Abre la caja para cobrar y entregar.",
+        "ORIGEN_NO_SOPORTADO": "Este envío no viene de un pedido online: entrégalo desde Logística.",
+        "METODO_INVALIDO": "Elige el medio de cobro.",
+        "PEDIDO_DE_PASARELA": "El pedido se pagó en línea: no se cobra en la caja.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirma el pedido antes de cobrarlo.",
+        "FACTURA_REQUERIDA": "No se pudo armar la factura del pedido. Intenta de nuevo.",
+        "SESION_REQUERIDA": "Tu sesión venció. Vuelve a entrar."
       },
       "chips": {
         "intento": "{n}.º intento",
@@ -69459,7 +69477,11 @@
           "titular": "Titular",
           "familiar": "Familiar",
           "porteria": "Portería",
-          "otro": "Otra persona"
+          "otro": "Otra persona",
+          "customer": "Titular",
+          "family": "Familiar",
+          "doorman": "Portería",
+          "other": "Otra persona"
         },
         "cobroTitulo": "Contraentrega: cobrar {monto}",
         "codigo": "Código de entrega",
@@ -69485,6 +69507,18 @@
           "codigo": "El código tiene 4 dígitos.",
           "metodo": "Elige el medio de cobro.",
           "monto": "Escribe el monto cobrado."
+        },
+        "caja": {
+          "titulo": "Cobrar y entregar",
+          "descripcion": "Queda la prueba de entrega del envío, el cobro entra a la caja y se emite la factura, todo junto.",
+          "confirmar": "Cobrar y entregar",
+          "cobroTitulo": "Cobrar {monto} en la caja",
+          "cobroNota": "Entra a la caja abierta de la sede. No pasa al cuadre del domiciliario.",
+          "referencia": "Referencia",
+          "referenciaAyuda": "Opcional: número del datáfono o de la transferencia.",
+          "ok": "Pedido cobrado y entregado",
+          "factura": "Factura {numero}",
+          "error": "No se pudo cobrar y entregar"
         }
       },
       "novedad": {

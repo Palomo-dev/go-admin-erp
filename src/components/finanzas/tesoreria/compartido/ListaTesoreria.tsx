@@ -170,8 +170,6 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
     void cargar();
   }, [cargar]);
 
-  useEffect(() => setPagina(1), [filtro, termino, branchFilter, claveRango, medios]);
-
   const hoy = getToday();
   const diaDe = useCallback((iso: string) => toDate(new Date(iso)), [toDate]);
 
@@ -184,6 +182,9 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
     return presetsRango(hoy).find((p) => p.id === periodoFecha)?.rango ?? { desde: hoy, hasta: hoy };
   }, [periodoFecha, recordado.valor.desde, recordado.valor.hasta, hoy]);
   const claveRango = rango ? `${rango.desde}|${rango.hasta}` : 'todo';
+
+  // Después de declarar `claveRango` y `medios` (antes iba arriba: TS2448 en el CI).
+  useEffect(() => setPagina(1), [filtro, termino, branchFilter, claveRango, medios]);
 
   const cargarRecaudo = useCallback(async () => {
     if (!recordado.listo) return;

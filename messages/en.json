@@ -38966,7 +38966,7 @@
             "dialogo": "Dialog"
           },
           "ayudaPagina": "As today: the icon goes to /auth (and to /mi-cuenta when signed in). Every store starts here.",
-          "ayudaOtros": "On mobile, panel, window and dialog show as a bottom sheet. When signed in, the same format shows the account menu.",
+          "ayudaOtros": "On mobile the mode is kept: the panel is a side drawer and the dialog a centered dialog. Only the window shows as a bottom sheet. When signed in, the same format shows the account menu.",
           "notaPagina": "With «Page» the texts are edited on the /auth page. Choose another mode to see title, button, benefits and «After signing in».",
           "titulo": "Title",
           "boton": "Button text",

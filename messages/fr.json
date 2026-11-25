@@ -38966,7 +38966,7 @@
             "dialogo": "Dialogue"
           },
           "ayudaPagina": "Comme aujourd’hui : l’icône mène à /auth (et à /mi-cuenta une fois connecté). Toute boutique commence ici.",
-          "ayudaOtros": "Sur mobile, panneau, fenêtre et dialogue s’affichent en feuille du bas. Une fois connecté, le même format affiche le menu du compte.",
+          "ayudaOtros": "Sur mobile, le mode est conservé : le panneau est un tiroir latéral et le dialogue, un dialogue centré. Seule la fenêtre s’affiche en feuille du bas. Une fois connecté, le même format affiche le menu du compte.",
           "notaPagina": "Avec «Page», les textes se modifient sur la page /auth. Choisissez un autre mode pour voir titre, bouton, avantages et «Après la connexion».",
           "titulo": "Titre",
           "boton": "Texte du bouton",

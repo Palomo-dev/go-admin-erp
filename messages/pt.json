@@ -38976,7 +38976,7 @@
             "dialogo": "Diálogo"
           },
           "ayudaPagina": "Como hoje: o ícone leva a /auth (e a /mi-cuenta com sessão). Toda loja começa aqui.",
-          "ayudaOtros": "No celular, painel, janela e diálogo aparecem como folha inferior. Com sessão, o mesmo formato mostra o menu da conta.",
+          "ayudaOtros": "No celular o modo é mantido: o painel é uma gaveta lateral e o diálogo, um diálogo centralizado. Só a janela aparece como folha inferior. Com sessão, o mesmo formato mostra o menu da conta.",
           "notaPagina": "Com «Página» os textos são editados na página /auth. Escolha outro modo para ver título, botão, benefícios e «Depois de entrar».",
           "titulo": "Título",
           "boton": "Texto do botão",

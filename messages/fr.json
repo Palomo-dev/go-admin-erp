@@ -72557,5 +72557,98 @@
         "asignarPin": "Attribuer un PIN dans Ressources humaines"
       }
     }
+  },
+  "anticipoVencido": {
+    "lista": {
+      "insignia": "Payé · expiré",
+      "detalle": "Rembourser ou réactiver",
+      "cliente": "Le client",
+      "aviso": "{numero} : {cliente} a payé l'acompte de {monto} après l'expiration de la commande. Réactivez-la ou remboursez l'acompte.",
+      "avisoVarios": "{n} commandes avec l'acompte payé après expiration : réactivez-les ou remboursez l'acompte.",
+      "verPedido": "Voir la commande",
+      "kpi": "Payé · expiré",
+      "kpiDetalle": "Réactiver ou rembourser",
+      "filtroChip": "Paiement : payé · expiré",
+      "filtroEtiqueta": "Acompte payé sur une commande expirée",
+      "filtroSolo": "Payé · expiré uniquement"
+    },
+    "detalle": {
+      "titulo": "Le client a payé l'acompte après l'expiration de la commande",
+      "tituloSinStock": "Le client a payé l'acompte après l'expiration de la commande, et le stock est épuisé",
+      "texto": "{cliente} a payé {monto} {tarde}. La réservation a été libérée à l'expiration. L'argent est arrivé : réactivez la commande ou remboursez l'acompte.",
+      "minTarde": "{min} min après l'expiration",
+      "tarde": "après l'expiration",
+      "reactivar": "Réactiver la commande…",
+      "devolver": "Rembourser l'acompte…",
+      "cargandoStock": "Vérification du stock de la succursale…",
+      "linea": {
+        "disponible": "Disponible",
+        "parcial": "{hay} sur {pide} disponibles",
+        "sin_stock": "Rupture · {hay} sur {pide}"
+      }
+    },
+    "tarjeta": {
+      "titulo": "Paiement à la livraison",
+      "estado": "Statut",
+      "estadoValor": "Acompte payé · commande expirée",
+      "anticipo": "Acompte",
+      "referencia": "Référence",
+      "fecha": "Date",
+      "porDevolver": "À rembourser ou appliquer",
+      "contabilidad": "Comptabilité",
+      "cuenta": "2805 Avances des clients",
+      "nota": "L'argent est chez la passerelle de paiement et l'acompte en 2805. Si vous réactivez, il reste en 2805 et s'applique à la facture à la livraison. Si vous remboursez, il sort de 2805 ; la commission de la passerelle n'est pas rendue et reste une charge."
+    },
+    "reactivar": {
+      "titulo": "Réactiver la commande {numero}",
+      "descripcion": "Le stock de toutes les lignes est réservé et la commande est confirmée, avec l'acompte appliqué.",
+      "continuar": "Continuer vers la confirmation",
+      "motivoDeshabilitado": "Un produit est en rupture",
+      "listo": "Tout est en stock : en continuant, la commande est confirmée comme d'habitude (vente, stock réservé et livraison pour le solde).",
+      "faltan": "{n, plural, one {# produit manque} other {# produits manquent}}. Ajustez l'inventaire ou attendez le réapprovisionnement et réessayez ; le remplacement de produits arrive dans la prochaine phase."
+    },
+    "devolver": {
+      "titulo": "Rembourser l'acompte de {numero}",
+      "descripcion": "{cliente} a payé {monto} avec {medio} le {fecha}.",
+      "monto": "Montant à rembourser",
+      "montoAyuda": "Remboursé en totalité : la commande n'a pas pu être honorée.",
+      "medio": "Moyen de remboursement",
+      "pasarela": "Annulation dans {pasarela}, même moyen",
+      "laPasarela": "la passerelle de paiement",
+      "pasarelaAyuda": "Faites l'annulation dans le tableau de bord de la passerelle et saisissez ici son numéro. Il faut quelques jours ouvrés pour que le client le reçoive.",
+      "transferencia": "Virement",
+      "transferenciaAyuda": "Demandez le compte au client, faites le virement et saisissez ici le numéro du justificatif.",
+      "referencia": "Numéro d'annulation ou du justificatif",
+      "devuelves": "Vous remboursez {cliente}",
+      "comision": "La commission de la passerelle est-elle rendue ?",
+      "comisionNo": "Non : elle reste une charge de la boutique",
+      "asiento": "Écriture enregistrée",
+      "cuenta": "Compte",
+      "debito": "Débit",
+      "credito": "Crédit",
+      "cuenta2805": "2805 Avances des clients · {cliente}",
+      "cuentaPasarela": "138020xx {pasarela} à recevoir",
+      "cuentaBanco": "1110 Banques",
+      "notaAsiento": "La commission a déjà été passée en charge (53051501) lors du règlement de la passerelle : elle n'est pas annulée.",
+      "motivo": "Motif",
+      "motivoPorDefecto": "Rupture : acompte payé après expiration",
+      "avisar": "Prévenir {cliente} par e-mail et WhatsApp",
+      "confirmar": "Rembourser {monto}",
+      "hecho": "Acompte remboursé : {monto}",
+      "yaRegistrado": "Ce remboursement était déjà enregistré.",
+      "errores": {
+        "SIN_PERMISO": "Vous n'avez pas l'autorisation de rembourser.",
+        "NO_ES_ANTICIPO_VENCIDO": "Cette commande n'est plus expirée avec l'acompte payé.",
+        "YA_DEVUELTO": "L'acompte a déjà été remboursé.",
+        "MEDIO_INVALIDO": "Choisissez le moyen de remboursement.",
+        "COMPROBANTE_REQUERIDO": "Saisissez le numéro d'annulation ou du justificatif.",
+        "ANTICIPO_SIN_PAGO": "Le paiement de l'acompte est introuvable.",
+        "ANTICIPO_SIN_2805": "L'acompte n'est pas en compte 2805 : vérifiez l'écriture avec le comptable avant de rembourser.",
+        "DEVOLUCION_COMPLETA": "L'acompte est remboursé en totalité.",
+        "CUENTA_NO_RESUELTA": "Le compte de trésorerie (passerelle ou banque) est introuvable.",
+        "ASIENTO_NO_REGISTRADO": "L'écriture n'a pas pu être enregistrée (période clôturée ?). Rien n'a été enregistré.",
+        "desconocido": "Le remboursement n'a pas pu être enregistré. Réessayez."
+      }
+    }
   }
 }

@@ -72557,5 +72557,98 @@
         "asignarPin": "Assign PIN in Human resources"
       }
     }
+  },
+  "anticipoVencido": {
+    "lista": {
+      "insignia": "Paid · expired",
+      "detalle": "Refund or reactivate",
+      "cliente": "The customer",
+      "aviso": "{numero}: {cliente} paid the {monto} deposit after the order expired. Reactivate it or refund the deposit.",
+      "avisoVarios": "{n} orders with the deposit paid after expiring: reactivate them or refund the deposit.",
+      "verPedido": "View order",
+      "kpi": "Paid · expired",
+      "kpiDetalle": "Reactivate or refund",
+      "filtroChip": "Payment: paid · expired",
+      "filtroEtiqueta": "Deposit paid on an expired order",
+      "filtroSolo": "Paid · expired only"
+    },
+    "detalle": {
+      "titulo": "The customer paid the deposit after the order expired",
+      "tituloSinStock": "The customer paid the deposit after the order expired, and stock ran out",
+      "texto": "{cliente} paid {monto} {tarde}. The reservation was released when it expired. The money is in: reactivate the order or refund the deposit.",
+      "minTarde": "{min} min after it expired",
+      "tarde": "after it expired",
+      "reactivar": "Reactivate order…",
+      "devolver": "Refund deposit…",
+      "cargandoStock": "Checking branch stock…",
+      "linea": {
+        "disponible": "Available",
+        "parcial": "{hay} of {pide} available",
+        "sin_stock": "Out of stock · {hay} of {pide}"
+      }
+    },
+    "tarjeta": {
+      "titulo": "Cash on delivery",
+      "estado": "Status",
+      "estadoValor": "Deposit paid · order expired",
+      "anticipo": "Deposit",
+      "referencia": "Reference",
+      "fecha": "Date",
+      "porDevolver": "To refund or apply",
+      "contabilidad": "Accounting",
+      "cuenta": "2805 Customer advances",
+      "nota": "The money is with the payment gateway and the deposit in 2805. If you reactivate, it stays in 2805 and is applied to the invoice on delivery. If you refund, it leaves 2805; the gateway fee is not returned and is booked as an expense."
+    },
+    "reactivar": {
+      "titulo": "Reactivate order {numero}",
+      "descripcion": "Stock is reserved for every line and the order is confirmed, with the deposit applied.",
+      "continuar": "Continue to confirm",
+      "motivoDeshabilitado": "A product is out of stock",
+      "listo": "Everything is in stock: continuing confirms it as usual (sale, reserved stock and delivery for the balance).",
+      "faltan": "{n, plural, one {# product is missing} other {# products are missing}}. Adjust inventory or wait for restock and try again; replacing products comes in the next phase."
+    },
+    "devolver": {
+      "titulo": "Refund deposit for {numero}",
+      "descripcion": "{cliente} paid {monto} with {medio} on {fecha}.",
+      "monto": "Amount to refund",
+      "montoAyuda": "Refunded in full: the order could not be fulfilled.",
+      "medio": "Refund method",
+      "pasarela": "Reversal in {pasarela}, same method",
+      "laPasarela": "the payment gateway",
+      "pasarelaAyuda": "Make the reversal in the gateway's dashboard and enter its number here. It takes a few business days to reach the customer.",
+      "transferencia": "Bank transfer",
+      "transferenciaAyuda": "Ask the customer for their account, transfer and enter the receipt number here.",
+      "referencia": "Reversal or receipt number",
+      "devuelves": "You refund {cliente}",
+      "comision": "Is the gateway fee returned?",
+      "comisionNo": "No: it is the store's expense",
+      "asiento": "Journal entry recorded",
+      "cuenta": "Account",
+      "debito": "Debit",
+      "credito": "Credit",
+      "cuenta2805": "2805 Customer advances · {cliente}",
+      "cuentaPasarela": "138020xx {pasarela} receivable",
+      "cuentaBanco": "1110 Banks",
+      "notaAsiento": "The fee was already booked as an expense (53051501) when the gateway settled the payment: it is not reversed.",
+      "motivo": "Reason",
+      "motivoPorDefecto": "Out of stock: deposit paid after expiring",
+      "avisar": "Notify {cliente} by email and WhatsApp",
+      "confirmar": "Refund {monto}",
+      "hecho": "Deposit refunded: {monto}",
+      "yaRegistrado": "That refund was already recorded.",
+      "errores": {
+        "SIN_PERMISO": "You don't have permission to make refunds.",
+        "NO_ES_ANTICIPO_VENCIDO": "This order is no longer expired with the deposit paid.",
+        "YA_DEVUELTO": "The deposit was already refunded.",
+        "MEDIO_INVALIDO": "Choose the refund method.",
+        "COMPROBANTE_REQUERIDO": "Enter the reversal or receipt number.",
+        "ANTICIPO_SIN_PAGO": "The deposit payment was not found.",
+        "ANTICIPO_SIN_2805": "The deposit is not in account 2805: review the entry with your accountant before refunding.",
+        "DEVOLUCION_COMPLETA": "The deposit is refunded in full.",
+        "CUENTA_NO_RESUELTA": "The money account (gateway or bank) was not found.",
+        "ASIENTO_NO_REGISTRADO": "The journal entry could not be recorded (closed period?). Nothing was saved.",
+        "desconocido": "The refund could not be recorded. Try again."
+      }
+    }
   }
 }

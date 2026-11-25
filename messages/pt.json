@@ -72567,5 +72567,98 @@
         "asignarPin": "Atribuir PIN em Recursos humanos"
       }
     }
+  },
+  "anticipoVencido": {
+    "lista": {
+      "insignia": "Pago · vencido",
+      "detalle": "Devolver ou reativar",
+      "cliente": "O cliente",
+      "aviso": "{numero}: {cliente} pagou o adiantamento de {monto} depois que o pedido venceu. Reative-o ou devolva o adiantamento.",
+      "avisoVarios": "{n} pedidos com o adiantamento pago depois de vencer: reative-os ou devolva o adiantamento.",
+      "verPedido": "Ver pedido",
+      "kpi": "Pago · vencido",
+      "kpiDetalle": "Reativar ou devolver",
+      "filtroChip": "Pagamento: pago · vencido",
+      "filtroEtiqueta": "Adiantamento pago com o pedido vencido",
+      "filtroSolo": "Somente pago · vencido"
+    },
+    "detalle": {
+      "titulo": "O cliente pagou o adiantamento depois que o pedido venceu",
+      "tituloSinStock": "O cliente pagou o adiantamento depois que o pedido venceu, e o estoque acabou",
+      "texto": "{cliente} pagou {monto} {tarde}. Ao vencer, a reserva foi liberada. O dinheiro já entrou: reative o pedido ou devolva o adiantamento.",
+      "minTarde": "{min} min depois de vencer",
+      "tarde": "depois de vencer",
+      "reactivar": "Reativar pedido…",
+      "devolver": "Devolver adiantamento…",
+      "cargandoStock": "Verificando o estoque da filial…",
+      "linea": {
+        "disponible": "Disponível",
+        "parcial": "Há {hay} de {pide}",
+        "sin_stock": "Sem estoque · {hay} de {pide}"
+      }
+    },
+    "tarjeta": {
+      "titulo": "Pagamento na entrega",
+      "estado": "Status",
+      "estadoValor": "Adiantamento pago · pedido vencido",
+      "anticipo": "Adiantamento",
+      "referencia": "Referência",
+      "fecha": "Data",
+      "porDevolver": "A devolver ou aplicar",
+      "contabilidad": "Contabilidade",
+      "cuenta": "2805 Adiantamentos de clientes",
+      "nota": "O dinheiro está no gateway de pagamento e o adiantamento em 2805. Se reativar, continua em 2805 e é aplicado na fatura na entrega. Se devolver, sai de 2805; a taxa do gateway não volta e fica como despesa."
+    },
+    "reactivar": {
+      "titulo": "Reativar pedido {numero}",
+      "descripcion": "O estoque de todas as linhas é reservado e o pedido fica confirmado, com o adiantamento aplicado.",
+      "continuar": "Continuar para confirmar",
+      "motivoDeshabilitado": "Falta estoque de algum produto",
+      "listo": "Há estoque de tudo: ao continuar, confirma-se como sempre (venda, estoque reservado e envio pelo restante).",
+      "faltan": "{n, plural, one {Falta # produto} other {Faltam # produtos}}. Ajuste o inventário ou aguarde a reposição e tente de novo; a troca por outro produto chega na próxima fase."
+    },
+    "devolver": {
+      "titulo": "Devolver adiantamento de {numero}",
+      "descripcion": "{cliente} pagou {monto} com {medio} em {fecha}.",
+      "monto": "Valor a devolver",
+      "montoAyuda": "Devolvido integralmente: o pedido não pôde ser atendido.",
+      "medio": "Meio de devolução",
+      "pasarela": "Estorno no {pasarela}, pelo mesmo meio",
+      "laPasarela": "gateway de pagamento",
+      "pasarelaAyuda": "Faça o estorno no painel do gateway e informe aqui o número. Leva alguns dias úteis para chegar ao cliente.",
+      "transferencia": "Transferência",
+      "transferenciaAyuda": "Peça a conta ao cliente, transfira e informe aqui o número do comprovante.",
+      "referencia": "Número do estorno ou do comprovante",
+      "devuelves": "Você devolve a {cliente}",
+      "comision": "A taxa do gateway volta?",
+      "comisionNo": "Não: fica como despesa da loja",
+      "asiento": "Lançamento registrado",
+      "cuenta": "Conta",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "cuenta2805": "2805 Adiantamentos de clientes · {cliente}",
+      "cuentaPasarela": "138020xx {pasarela} a receber",
+      "cuentaBanco": "1110 Bancos",
+      "notaAsiento": "A taxa já ficou como despesa (53051501) quando o gateway liquidou o pagamento: não é estornada.",
+      "motivo": "Motivo",
+      "motivoPorDefecto": "Sem estoque: pagou o adiantamento depois de vencer",
+      "avisar": "Avisar {cliente} por e-mail e WhatsApp",
+      "confirmar": "Devolver {monto}",
+      "hecho": "Adiantamento devolvido: {monto}",
+      "yaRegistrado": "Essa devolução já estava registrada.",
+      "errores": {
+        "SIN_PERMISO": "Você não tem permissão de devoluções.",
+        "NO_ES_ANTICIPO_VENCIDO": "Este pedido já não está vencido com o adiantamento pago.",
+        "YA_DEVUELTO": "O adiantamento já foi devolvido.",
+        "MEDIO_INVALIDO": "Escolha o meio de devolução.",
+        "COMPROBANTE_REQUERIDO": "Informe o número do estorno ou do comprovante.",
+        "ANTICIPO_SIN_PAGO": "Não foi encontrado o pagamento do adiantamento.",
+        "ANTICIPO_SIN_2805": "O adiantamento não ficou na conta 2805: revise o lançamento com o contador antes de devolver.",
+        "DEVOLUCION_COMPLETA": "O adiantamento é devolvido integralmente.",
+        "CUENTA_NO_RESUELTA": "Não foi encontrada a conta do dinheiro (gateway ou banco).",
+        "ASIENTO_NO_REGISTRADO": "Não foi possível registrar o lançamento (período fechado?). Nada foi salvo.",
+        "desconocido": "Não foi possível registrar a devolução. Tente de novo."
+      }
+    }
   }
 }

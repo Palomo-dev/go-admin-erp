@@ -80,9 +80,12 @@ describe('confirmacionPorAnticipo (regla pura)', () => {
     expect(confirmacionPorAnticipo({ ...base, advance_amount: 0 })).toBe('no_aplica');
   });
   it('pedido cerrado con el anticipo pagado → no_aplica (se reactiva o se devuelve a mano)', () => {
-    for (const status of ['cancelled', 'rejected', 'refunded', 'expired']) {
+    for (const status of ['cancelled', 'rejected', 'refunded']) {
       expect(confirmacionPorAnticipo({ ...base, status })).toBe('no_aplica');
     }
+  });
+  it('vencido con el anticipo pagado y sin reactivar → anticipo_vencido (2026-11-25: no confirma, avisa «revisando»)', () => {
+    expect(confirmacionPorAnticipo({ ...base, status: 'expired' })).toBe('anticipo_vencido');
   });
   it('pagado completo, de pasarela o para recoger → no_aplica', () => {
     expect(confirmacionPorAnticipo({ ...base, payment_status: 'paid' })).toBe('no_aplica');

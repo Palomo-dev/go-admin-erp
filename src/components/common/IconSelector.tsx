@@ -7,13 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Search } from 'lucide-react'
 import * as LucideIcons from 'lucide-react'
-import * as GiIcons from 'react-icons/gi'
 import { useKitT } from '@/components/kit/useIdiomaKit'
-import type { ComponentType, CSSProperties } from 'react'
+import { ICONOS_GI_DEL_SELECTOR, type ComponenteIcono } from './iconosGiDelSelector'
 
-type ComponenteIcono = ComponentType<{ size?: number; style?: CSSProperties }>
 const ICONOS_LUCIDE = LucideIcons as unknown as Record<string, ComponenteIcono | undefined>
-const ICONOS_GI = GiIcons as unknown as Record<string, ComponenteIcono | undefined>
+// Solo los iconos `Gi…` que el selector ofrece (ver `iconosGiDelSelector.ts`).
+const ICONOS_GI = ICONOS_GI_DEL_SELECTOR
 
 interface IconSelectorProps {
   value?: string
@@ -23,7 +22,7 @@ interface IconSelectorProps {
   color?: string
 }
 
-const COMMON_ICONS = [
+export const COMMON_ICONS = [
   // Productos y comercio
   'Package', 'ShoppingCart', 'ShoppingBag', 'ShoppingBasket', 'Gift', 'PackageOpen', 'PackageCheck',
   'Boxes', 'Box', 'Archive', 'Warehouse', 'Store',

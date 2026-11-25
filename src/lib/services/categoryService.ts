@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
-import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
+// `xlsx`, `jspdf` y `jspdf-autotable` se cargan solo al exportar (`import()` dentro
+// de cada función). Importados arriba viajaban en el arranque de toda pantalla
+// que use este servicio —el catálogo de productos, el formulario de producto—
+// aunque nadie exportara nada.
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -707,6 +709,7 @@ const categoryService = {
       'Meta Descripción': c.meta_description || '',
     }));
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Categorías');
@@ -752,6 +755,7 @@ const categoryService = {
       c.meta_description || '',
     ]);
 
+    const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.text('Listado de Categorías', 14, 15);
     autoTable(doc, {

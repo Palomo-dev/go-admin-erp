@@ -136,3 +136,81 @@ export async function veredictoCorreoOperativo(
   }, ahora);
   return motivo ? { enviar: false, motivo } : { enviar: true };
 }
+
+/** Organizaciones por consulta: holgado bajo el tope de filas y de largo de URL de PostgREST. */
+const LOTE_ORGANIZACIONES = 100;
+/** Tope de filas por respuesta de PostgREST; un lote que lo alcanza puede venir recortado. */
+const TOPE_FILAS = 1000;
+
+/**
+ * Veredicto de VARIAS organizaciones con dos consultas por lote (organizaciones y
+ * suscripciones), en vez de dos por organización. La regla es la misma de
+ * `veredictoCorreoOperativo`, organización por organización: cuenta la suscripción
+ * más reciente.
+ *
+ * Para qué: el cron de avisos (cada 5 minutos) preguntaba una por una, dos veces
+ * por corrida: ~24.000 consultas al día (medido el 2026-11-24) por un dato que
+ * casi nunca cambia.
+ *
+ * Si una consulta del lote falla, o las suscripciones llegan recortadas por el
+ * tope de filas, ese lote se resuelve una por una con `veredictoCorreoOperativo`:
+ * nunca se decide con datos a medias.
+ */
+export async function veredictosCorreoOperativo(
+  db: SupabaseClient,
+  organizationIds: readonly number[],
+  ahora: Date = new Date(),
+): Promise<Map<number, VeredictoCorreoOperativo>> {
+  const ids = Array.from(new Set(organizationIds.filter((id) => Number.isInteger(id) && id > 0)));
+  const veredictos = new Map<number, VeredictoCorreoOperativo>();
+
+  for (let i = 0; i < ids.length; i += LOTE_ORGANIZACIONES) {
+    const lote = ids.slice(i, i + LOTE_ORGANIZACIONES);
+    const unaPorUna = async () => {
+      for (const id of lote) veredictos.set(id, await veredictoCorreoOperativo(db, id, ahora));
+    };
+
+    const [rOrgs, rSubs] = await Promise.all([
+      db.from('organizations').select('id, status').in('id', lote),
+      db
+        .from('subscriptions')
+        .select('organization_id, status, trial_end, current_period_end, created_at')
+        .in('organization_id', lote)
+        .order('created_at', { ascending: false })
+        .limit(TOPE_FILAS),
+    ]);
+    const subs = (rSubs.data ?? []) as (FilaSuscripcion & { organization_id: number })[];
+    if (rOrgs.error || rSubs.error || subs.length >= TOPE_FILAS) {
+      if (rOrgs.error) console.error('[cuenta-correo] organizaciones', { message: rOrgs.error.message });
+      if (rSubs.error) console.error('[cuenta-correo] suscripciones', { message: rSubs.error.message });
+      await unaPorUna();
+      continue;
+    }
+
+    const estados = new Map<number, string | null | undefined>();
+    for (const org of (rOrgs.data ?? []) as (FilaOrganizacion & { id: number })[]) estados.set(Number(org.id), org.status);
+    // Vienen de la más reciente a la más vieja: la primera de cada organización es la que cuenta.
+    const reciente = new Map<number, FilaSuscripcion>();
+    for (const sub of subs) {
+      const org = Number(sub.organization_id);
+      if (!reciente.has(org)) reciente.set(org, sub);
+    }
+
+    for (const id of lote) {
+      if (!estados.has(id)) {
+        veredictos.set(id, { enviar: false, motivo: 'organizacion_inexistente' });
+        continue;
+      }
+      const estadoOrganizacion = estados.get(id);
+      const sub = reciente.get(id);
+      const motivo = motivoSinCorreoOperativo({
+        estadoOrganizacion,
+        estadoSuscripcion: sub?.status,
+        finPrueba: sub?.trial_end,
+        finPeriodo: sub?.current_period_end,
+      }, ahora);
+      veredictos.set(id, motivo ? { enviar: false, motivo } : { enviar: true });
+    }
+  }
+  return veredictos;
+}

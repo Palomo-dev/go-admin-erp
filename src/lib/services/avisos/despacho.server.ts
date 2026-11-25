@@ -9,7 +9,7 @@ import { createHash } from 'crypto';
 import { after } from 'next/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getServiceClient } from '@/lib/supabase/server-service';
-import { decisionCorreoOperativo, veredictoCorreoOperativo, type DecisionCorreoOperativo } from '@/lib/services/cuentaCorreo';
+import { decisionCorreoOperativo, veredictoCorreoOperativo, veredictosCorreoOperativo, type DecisionCorreoOperativo } from '@/lib/services/cuentaCorreo';
 import { resolveOrgCurrency } from '@/lib/services/monedaOrganizacion';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 import { contextoMoneda, formatMoneda, localeDeOrganizacion } from '@/lib/utils/moneda';
@@ -341,13 +341,15 @@ async function crearVencimientos(db: SupabaseClient, organizationId?: number): P
 
 /** No arma el aviso diario de una cuenta que ya no puede usar el sistema. */
 async function sinCuentasCerradas(db: SupabaseClient, filas: FilaAviso[]): Promise<FilaAviso[]> {
+  // Todas las organizaciones de la corrida de una vez (dos consultas), no una por una.
+  const veredictos = await veredictosCorreoOperativo(db, filas.map((fila) => Number(fila.organization_id)));
   const decisiones = new Map<number, DecisionCorreoOperativo>();
   const vigentes: FilaAviso[] = [];
   for (const fila of filas) {
     const org = Number(fila.organization_id);
     let decision = decisiones.get(org);
     if (!decision) {
-      decision = decisionCorreoOperativo(await veredictoCorreoOperativo(db, org));
+      decision = decisionCorreoOperativo(veredictos.get(org) ?? (await veredictoCorreoOperativo(db, org)));
       decisiones.set(org, decision);
     }
     if (decision !== 'omitir') vigentes.push(fila);

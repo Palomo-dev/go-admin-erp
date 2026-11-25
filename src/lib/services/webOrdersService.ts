@@ -156,6 +156,109 @@ function ordenPedidosRecientes(a: WebOrder, b: WebOrder): number {
   return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
 }
 
+/** Las columnas de `web_orders` de las que salen las tarjetas del listado. */
+export type PedidoParaEstadisticas = Pick<
+  WebOrder,
+  'status' | 'total' | 'delivery_type' | 'source' | 'payment_status'
+> & Parameters<typeof porcentajeATiempo>[0][number];
+
+export interface EstadisticasPedidos {
+  total_orders: number;
+  pending_orders: number;
+  completed_orders: number;
+  cancelled_orders: number;
+  total_revenue: number;
+  avg_order_value: number;
+  by_delivery_type: { type: string; count: number; revenue: number }[];
+  by_source: { source: string; count: number }[];
+  /** Sin confirmar (status `pending`): el «Pendientes» del Figma 447:195914. */
+  unconfirmed_orders: number;
+  /** % de pedidos que cumplieron la hora prometida, sobre los medidos (null sin medidos). */
+  on_time_pct: number | null;
+}
+
+/**
+ * Tarjetas del listado a partir de los pedidos del periodo. Es el cálculo de `getOrderStats`,
+ * sin consulta: la pantalla lo usa con los pedidos que ya trajo cuando no hay filtros (son las
+ * mismas filas), y se ahorra pedirlos otra vez cada 30 s.
+ */
+export function estadisticasDePedidos(orders: readonly PedidoParaEstadisticas[]): EstadisticasPedidos {
+  const stats = {
+    total_orders: orders.length,
+    pending_orders: 0,
+    completed_orders: 0,
+    cancelled_orders: 0,
+    total_revenue: 0,
+    avg_order_value: 0,
+    by_delivery_type: [] as { type: string; count: number; revenue: number }[],
+    by_source: [] as { source: string; count: number }[],
+    unconfirmed_orders: orders.filter((o) => o.status === 'pending').length,
+    on_time_pct: porcentajeATiempo(orders).pct,
+  };
+
+  const deliveryTypeMap = new Map<string, { count: number; revenue: number }>();
+  const sourceMap = new Map<string, number>();
+  let paidOrderCount = 0;
+
+  orders.forEach(order => {
+    // Conteo por estado
+    if (['pending', 'confirmed', 'preparing', 'ready', 'in_delivery'].includes(order.status)) {
+      stats.pending_orders++;
+    } else if (order.status === 'delivered') {
+      stats.completed_orders++;
+    } else if (['cancelled', 'rejected', 'expired'].includes(order.status)) {
+      stats.cancelled_orders++;
+    }
+
+    // Ingresos: sumar pedidos pagados o entregados (no cancelados)
+    if (order.payment_status === 'paid' || order.status === 'delivered') {
+      stats.total_revenue += Number(order.total) || 0;
+      paidOrderCount++;
+    }
+
+    // Por tipo de entrega
+    const dt = deliveryTypeMap.get(order.delivery_type) || { count: 0, revenue: 0 };
+    dt.count++;
+    if (order.payment_status === 'paid' || order.status === 'delivered') {
+      dt.revenue += Number(order.total) || 0;
+    }
+    deliveryTypeMap.set(order.delivery_type, dt);
+
+    // Por origen
+    sourceMap.set(order.source, (sourceMap.get(order.source) || 0) + 1);
+  });
+
+  stats.avg_order_value = paidOrderCount > 0 
+    ? stats.total_revenue / paidOrderCount 
+    : 0;
+
+  stats.by_delivery_type = Array.from(deliveryTypeMap.entries()).map(([type, data]) => ({
+    type,
+    ...data,
+  }));
+
+  stats.by_source = Array.from(sourceMap.entries()).map(([source, count]) => ({
+    source,
+    count,
+  }));
+
+  return stats;
+}
+
+/** ¿El evento de `web_orders` es de esa sede? Sin `branch_id` en la fila, se deja pasar. */
+export function eventoDeLaSede(
+  payload: { new?: unknown; old?: unknown },
+  sede: number,
+): boolean {
+  const de = (fila: unknown): number | null | undefined =>
+    fila && typeof fila === 'object' && 'branch_id' in fila ? (fila as { branch_id: number | null }).branch_id : undefined;
+  const actual = de(payload.new);
+  const anterior = de(payload.old);
+  if (actual === undefined && anterior === undefined) return true;
+  // Un pedido que se MUEVE de sede interesa a las dos: la que lo pierde y la que lo recibe.
+  return actual === sede || anterior === sede;
+}
+
 class WebOrdersService {
   private ordersChannel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -620,20 +723,7 @@ class WebOrdersService {
   /**
    * Obtener estadísticas de pedidos
    */
-  async getOrderStats(dateFrom?: string, dateTo?: string, branchId?: number): Promise<{
-    total_orders: number;
-    pending_orders: number;
-    completed_orders: number;
-    cancelled_orders: number;
-    total_revenue: number;
-    avg_order_value: number;
-    by_delivery_type: { type: string; count: number; revenue: number }[];
-    by_source: { source: string; count: number }[];
-    /** Sin confirmar (status `pending`): el «Pendientes» del Figma 447:195914. */
-    unconfirmed_orders: number;
-    /** % de pedidos que cumplieron la hora prometida, sobre los medidos (null sin medidos). */
-    on_time_pct: number | null;
-  }> {
+  async getOrderStats(dateFrom?: string, dateTo?: string, branchId?: number): Promise<EstadisticasPedidos> {
     try {
       // En lotes: con más de 1.000 pedidos en el periodo, PostgREST cortaba y la tarjeta
       // «Pedidos» se quedaba en 1.000 (org 333, 2026-11-11).
@@ -652,66 +742,7 @@ class WebOrdersService {
         return query.range(desde, hasta);
       });
 
-      const stats = {
-        total_orders: orders?.length || 0,
-        pending_orders: 0,
-        completed_orders: 0,
-        cancelled_orders: 0,
-        total_revenue: 0,
-        avg_order_value: 0,
-        by_delivery_type: [] as { type: string; count: number; revenue: number }[],
-        by_source: [] as { source: string; count: number }[],
-        unconfirmed_orders: (orders ?? []).filter((o) => o.status === 'pending').length,
-        on_time_pct: porcentajeATiempo(orders ?? []).pct,
-      };
-
-      const deliveryTypeMap = new Map<string, { count: number; revenue: number }>();
-      const sourceMap = new Map<string, number>();
-      let paidOrderCount = 0;
-
-      orders?.forEach(order => {
-        // Conteo por estado
-        if (['pending', 'confirmed', 'preparing', 'ready', 'in_delivery'].includes(order.status)) {
-          stats.pending_orders++;
-        } else if (order.status === 'delivered') {
-          stats.completed_orders++;
-        } else if (['cancelled', 'rejected', 'expired'].includes(order.status)) {
-          stats.cancelled_orders++;
-        }
-
-        // Ingresos: sumar pedidos pagados o entregados (no cancelados)
-        if (order.payment_status === 'paid' || order.status === 'delivered') {
-          stats.total_revenue += Number(order.total) || 0;
-          paidOrderCount++;
-        }
-
-        // Por tipo de entrega
-        const dt = deliveryTypeMap.get(order.delivery_type) || { count: 0, revenue: 0 };
-        dt.count++;
-        if (order.payment_status === 'paid' || order.status === 'delivered') {
-          dt.revenue += Number(order.total) || 0;
-        }
-        deliveryTypeMap.set(order.delivery_type, dt);
-
-        // Por origen
-        sourceMap.set(order.source, (sourceMap.get(order.source) || 0) + 1);
-      });
-
-      stats.avg_order_value = paidOrderCount > 0 
-        ? stats.total_revenue / paidOrderCount 
-        : 0;
-
-      stats.by_delivery_type = Array.from(deliveryTypeMap.entries()).map(([type, data]) => ({
-        type,
-        ...data,
-      }));
-
-      stats.by_source = Array.from(sourceMap.entries()).map(([source, count]) => ({
-        source,
-        count,
-      }));
-
-      return stats;
+      return estadisticasDePedidos(orders ?? []);
     } catch (error) {
       console.error('Error fetching order stats:', error);
       throw error;
@@ -724,12 +755,11 @@ class WebOrdersService {
   subscribeToOrders(callback: (payload: RealtimePostgresChangesPayload<WebOrder>) => void, branchId?: number | null) {
     // Cancelar suscripción previa si existe para evitar fugas de canal
     this.unsubscribeFromOrders();
-    // Filtro base por organización. Cuando branchId es un número concreto,
-    // se agrega el filtro branch_id para aislar los eventos por sucursal.
-    const filterParts = [`organization_id=eq.${this.organizationId}`];
-    if (branchId != null && typeof branchId === 'number') {
-      filterParts.push(`branch_id=eq.${branchId}`);
-    }
+    // Realtime admite UN solo filtro por suscripción: va el de la organización. Antes, con una
+    // sede elegida, se mandaban dos unidos por coma y el canal no recibía nada (el pedido nuevo
+    // solo aparecía con el sondeo de 30 s). La sede se filtra aquí, con la fila del evento; un
+    // evento sin `branch_id` legible (un borrado) pasa: como mucho provoca una recarga de más.
+    const sede = typeof branchId === 'number' ? branchId : null;
     this.ordersChannel = supabase
       .channel('web_orders_changes')
       .on(
@@ -738,9 +768,12 @@ class WebOrdersService {
           event: '*',
           schema: 'public',
           table: 'web_orders',
-          filter: filterParts.join(','),
+          filter: `organization_id=eq.${this.organizationId}`,
         },
-        callback
+        (payload: RealtimePostgresChangesPayload<WebOrder>) => {
+          if (sede !== null && !eventoDeLaSede(payload, sede)) return;
+          callback(payload);
+        }
       )
       .subscribe();
     return this.ordersChannel;

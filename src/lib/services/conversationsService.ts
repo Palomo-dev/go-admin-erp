@@ -1,5 +1,121 @@
 import { supabase } from '@/lib/supabase/config';
 
+// ─── Lista de conversaciones: último mensaje y etiquetas en la misma consulta ───────────────
+//
+// Antes, por CADA conversación de la lista se pedían aparte su último mensaje y sus etiquetas
+// (1 + 2 por conversación), y la bandeja recarga la lista con cada mensaje que entra: ~10.000
+// consultas al día desde 3 navegadores (medido el 2026-11-24). Las dos relaciones tienen una
+// sola llave foránea hacia `conversations` (verificado por MCP), así que PostgREST las embebe.
+
+const SELECT_LISTA = `
+  *,
+  customer:customers (
+    id,
+    full_name,
+    first_name,
+    last_name,
+    email,
+    phone,
+    doc_number,
+    is_online,
+    last_seen_at
+  ),
+  channel:channels (
+    id,
+    type,
+    name,
+    status,
+    ai_mode
+  ),
+  assigned_member:organization_members (
+    id,
+    user_id
+  )
+`;
+
+/** Alias de los embebidos; se quitan de la fila al armar `last_message` y `tags`. */
+const ALIAS_ULTIMO_MENSAJE = 'ultimo_mensaje';
+const ALIAS_ETIQUETAS = 'relaciones_etiqueta';
+
+const SELECT_LISTA_CON_DETALLES = `${SELECT_LISTA},
+  ${ALIAS_ULTIMO_MENSAJE}:messages ( id, content, created_at, direction, role, is_read ),
+  ${ALIAS_ETIQUETAS}:conversation_tag_relations ( tag:conversation_tags ( id, name, color ) )
+`;
+
+interface ConsultaConEmbebidos<Q> {
+  order(columna: string, opciones: { ascending: boolean; referencedTable: string }): Q;
+  limit(cantidad: number, opciones: { referencedTable: string }): Q;
+}
+
+/** Solo el mensaje más reciente de cada conversación (límite por fila padre, no global). */
+function ultimoMensajePorConversacion<Q extends ConsultaConEmbebidos<Q>>(query: Q): Q {
+  return query
+    .order('created_at', { ascending: false, referencedTable: ALIAS_ULTIMO_MENSAJE })
+    .limit(1, { referencedTable: ALIAS_ULTIMO_MENSAJE });
+}
+
+type FilaLista = Record<string, unknown> & { id: string };
+type RespuestaLista = { data: unknown; error: { message: string; details?: string; hint?: string; code?: string } | null };
+
+/** Fila con embebidos → la forma de siempre: `last_message` (o null) y `tags`. */
+export function filaConDetalles(fila: FilaLista): Conversation {
+  const { [ALIAS_ULTIMO_MENSAJE]: mensajes, [ALIAS_ETIQUETAS]: relaciones, ...resto } = fila;
+  const ultimo = Array.isArray(mensajes) ? mensajes[0] ?? null : mensajes ?? null;
+  const tags = (Array.isArray(relaciones) ? relaciones : [])
+    .map((r) => (r as { tag?: unknown }).tag)
+    .filter(Boolean);
+  return { ...resto, last_message: ultimo, tags } as unknown as Conversation;
+}
+
+/** La forma anterior: último mensaje y etiquetas, dos consultas por conversación. */
+async function detallesUnaPorUna(filas: FilaLista[]): Promise<Conversation[]> {
+  return Promise.all(
+    filas.map(async (conv) => {
+      const [messagesResult, tagsResult] = await Promise.all([
+        supabase
+          .from('messages')
+          .select('id, content, created_at, direction, role, is_read')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        supabase
+          .from('conversation_tag_relations')
+          .select(`tag:conversation_tags (id, name, color)`)
+          .eq('conversation_id', conv.id),
+      ]);
+      const lastMessage = messagesResult.data?.[0] || null;
+      const tags = (tagsResult.data as { tag: unknown }[] | null)?.map((tr) => tr.tag).filter(Boolean) || [];
+      return { ...conv, last_message: lastMessage, tags } as unknown as Conversation;
+    }),
+  );
+}
+
+/**
+ * Corre la lista con los detalles embebidos; si esa consulta falla (p. ej. PostgREST rechaza el
+ * embebido), cae a la forma anterior para que la bandeja nunca se quede sin lista.
+ */
+async function conDetallesDeLista(
+  conDetalles: () => PromiseLike<RespuestaLista>,
+  sinDetalles: () => PromiseLike<RespuestaLista>,
+  nombre: string,
+): Promise<Conversation[]> {
+  const embebida = await conDetalles();
+  if (!embebida.error) return ((embebida.data as FilaLista[] | null) ?? []).map(filaConDetalles);
+  console.warn(`[conversaciones] ${nombre}: la consulta con detalles falló; se usa la forma anterior`, embebida.error.message);
+
+  const { data, error } = await sinDetalles();
+  if (error) {
+    console.error(`Error en query de ${nombre}:`, {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+    throw error;
+  }
+  return detallesUnaPorUna((data as FilaLista[] | null) ?? []);
+}
+
 export interface Conversation {
   id: string;
   organization_id: number;
@@ -152,92 +268,45 @@ class ConversationsService {
 
       const { count: total } = await countQuery;
 
-      // Luego obtener los datos paginados
-      let query = supabase
-        .from('conversations')
-        .select(`
-          *,
-          customer:customers (
-            id,
-            full_name,
-            first_name,
-            last_name,
-            email,
-            phone,
-            doc_number,
-            is_online,
-            last_seen_at
-          ),
-          channel:channels (
-            id,
-            type,
-            name,
-            status,
-            ai_mode
-          ),
-          assigned_member:organization_members (
-            id,
-            user_id
-          )
-        `)
-        .eq('organization_id', this.organizationId)
-        .order('last_message_at', { ascending: false, nullsFirst: false })
-        .range(offset, offset + limit - 1);
+      // Luego obtener los datos paginados. Con el último mensaje y las etiquetas en la MISMA
+      // consulta; si esa forma falla, se cae a la de antes (lista y luego detalle una por una).
+      const armar = (campos: string, conDetalles: boolean) => {
+        let query = supabase
+          .from('conversations')
+          .select(campos)
+          .eq('organization_id', this.organizationId)
+          .order('last_message_at', { ascending: false, nullsFirst: false })
+          .range(offset, offset + limit - 1);
+        if (conDetalles) query = ultimoMensajePorConversacion(query);
 
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.priority) {
-        query = query.eq('priority', filters.priority);
-      }
-      if (filters?.channel) {
-        query = query.eq('channel_id', filters.channel);
-      }
-      if (filters?.assigned_member_id) {
-        query = query.eq('assigned_member_id', filters.assigned_member_id);
-      }
-      if (filters?.unresponded) {
-        query = query.is('last_agent_message_at', null);
-      }
-      if (filters?.unassigned) {
-        query = query.is('assigned_member_id', null);
-      }
-      if (filters?.tag_id && tagConversationIds) {
-        query = query.in('id', tagConversationIds);
-      }
+        if (filters?.status) {
+          query = query.eq('status', filters.status);
+        }
+        if (filters?.priority) {
+          query = query.eq('priority', filters.priority);
+        }
+        if (filters?.channel) {
+          query = query.eq('channel_id', filters.channel);
+        }
+        if (filters?.assigned_member_id) {
+          query = query.eq('assigned_member_id', filters.assigned_member_id);
+        }
+        if (filters?.unresponded) {
+          query = query.is('last_agent_message_at', null);
+        }
+        if (filters?.unassigned) {
+          query = query.is('assigned_member_id', null);
+        }
+        if (filters?.tag_id && tagConversationIds) {
+          query = query.in('id', tagConversationIds);
+        }
+        return query;
+      };
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error en query de conversaciones paginadas:', error);
-        throw error;
-      }
-
-      // Obtener último mensaje y tags para cada conversación
-      const conversationsWithDetails = await Promise.all(
-        (data || []).map(async (conv) => {
-          const [messagesResult, tagsResult] = await Promise.all([
-            supabase
-              .from('messages')
-              .select('id, content, created_at, direction, role, is_read')
-              .eq('conversation_id', conv.id)
-              .order('created_at', { ascending: false })
-              .limit(1),
-            supabase
-              .from('conversation_tag_relations')
-              .select(`tag:conversation_tags (id, name, color)`)
-              .eq('conversation_id', conv.id)
-          ]);
-          
-          const lastMessage = messagesResult.data?.[0] || null;
-          const tags = tagsResult.data?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
-
-          return {
-            ...conv,
-            last_message: lastMessage,
-            tags
-          };
-        })
+      const conversationsWithDetails = await conDetallesDeLista(
+        () => armar(SELECT_LISTA_CON_DETALLES, true),
+        () => armar(SELECT_LISTA, false),
+        'conversaciones paginadas',
       );
 
       return {
@@ -253,94 +322,36 @@ class ConversationsService {
 
   async getConversations(filters?: ConversationFilters): Promise<Conversation[]> {
     try {
-      let query = supabase
-        .from('conversations')
-        .select(`
-          *,
-          customer:customers (
-            id,
-            full_name,
-            first_name,
-            last_name,
-            email,
-            phone,
-            doc_number,
-            is_online,
-            last_seen_at
-          ),
-          channel:channels (
-            id,
-            type,
-            name,
-            status,
-            ai_mode
-          ),
-          assigned_member:organization_members (
-            id,
-            user_id
-          )
-        `)
-        .eq('organization_id', this.organizationId)
-        .order('last_message_at', { ascending: false, nullsFirst: false });
+      const armar = (campos: string, conDetalles: boolean) => {
+        let query = supabase
+          .from('conversations')
+          .select(campos)
+          .eq('organization_id', this.organizationId)
+          .order('last_message_at', { ascending: false, nullsFirst: false });
+        if (conDetalles) query = ultimoMensajePorConversacion(query);
 
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.priority) {
-        query = query.eq('priority', filters.priority);
-      }
-      if (filters?.channel) {
-        query = query.eq('channel_id', filters.channel);
-      }
-      if (filters?.assigned_member_id) {
-        query = query.eq('assigned_member_id', filters.assigned_member_id);
-      }
-      if (filters?.unresponded) {
-        query = query.is('last_agent_message_at', null);
-      }
+        if (filters?.status) {
+          query = query.eq('status', filters.status);
+        }
+        if (filters?.priority) {
+          query = query.eq('priority', filters.priority);
+        }
+        if (filters?.channel) {
+          query = query.eq('channel_id', filters.channel);
+        }
+        if (filters?.assigned_member_id) {
+          query = query.eq('assigned_member_id', filters.assigned_member_id);
+        }
+        if (filters?.unresponded) {
+          query = query.is('last_agent_message_at', null);
+        }
+        return query;
+      };
 
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error en query de conversaciones:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
-      }
-
-      const conversationsWithDetails = await Promise.all(
-        (data || []).map(async (conv) => {
-          const { data: messagesData } = await supabase
-            .from('messages')
-            .select('id, content, created_at, direction, role, is_read')
-            .eq('conversation_id', conv.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          
-          const lastMessage = messagesData?.[0] || null;
-
-          const { data: tagRelations } = await supabase
-            .from('conversation_tag_relations')
-            .select(`
-              tag:conversation_tags (
-                id,
-                name,
-                color
-              )
-            `)
-            .eq('conversation_id', conv.id);
-
-          const tags = tagRelations?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
-
-          return {
-            ...conv,
-            last_message: lastMessage,
-            tags
-          };
-        })
+      const conversationsWithDetails = await conDetallesDeLista(
+        () => armar(SELECT_LISTA_CON_DETALLES, true),
+        () => armar(SELECT_LISTA, false),
+        'conversaciones',
       );
 
       if (filters?.search) {

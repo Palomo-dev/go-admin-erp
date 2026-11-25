@@ -22,6 +22,7 @@ import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoV
 import { idsSerialesLinea, serialesVisiblesDeLinea } from '@/lib/pos/devoluciones/serialesLinea';
 import { numeroDevolucion } from '@/lib/pos/devoluciones/presentacionDevoluciones';
 import { productoLineaEliminado } from '@/lib/inventario/enlaceProducto';
+import { valorAplicadoPago, vueltasPago } from '@/lib/finanzas/pagos/vueltas';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId' | 'roleId' | 'isSuperAdmin'>;
 
@@ -288,7 +289,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const [pagosRes, asientosRes, auditRes] = await Promise.all([
     ctx.supabase
       .from('payments')
-      .select('id, source, source_id, method, amount, change_amount, status, payment_date, created_at, reference, currency')
+      .select('id, source, source_id, method, amount, change_amount, cash_received, change_given, status, payment_date, created_at, reference, currency')
       .eq('organization_id', ctx.organizationId)
       .in('source', ['sale', 'invoice_sales', 'account_receivable'])
       .in('source_id', fuentes),
@@ -313,7 +314,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
           .join(','),
       ),
   ]);
-  type Pago = { id: string; source: string; source_id: string; method: string | null; amount: number | string; change_amount: number | string | null; status: string | null; payment_date: string | null; created_at: string | null; reference: string | null; currency: string | null };
+  type Pago = { id: string; source: string; source_id: string; method: string | null; amount: number | string; change_amount: number | string | null; cash_received?: number | string | null; change_given?: number | string | null; status: string | null; payment_date: string | null; created_at: string | null; reference: string | null; currency: string | null };
   const pagos = pagosDeVenta((pagosRes.data ?? []) as Pago[], { venta: id, facturas: idsFacturas, cuentasPorCobrar: cxcFilas.map((c) => c.id) });
 
   const mesa = mesaRes.data as { server_id: string | null; customers: number | null; opened_at: string | null; closed_at: string | null; restaurant_tables: { name?: string } | { name?: string }[] | null } | null;
@@ -428,8 +429,9 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
     pagos: pagos.map((p) => ({
       id: String(p.id),
       metodo: p.method ?? null,
-      monto: n(p.amount),
-      vuelto: n(p.change_amount),
+      // Lo cobrado; las vueltas aparte e informativas (20261126010000).
+      monto: valorAplicadoPago(p),
+      vuelto: vueltasPago(p),
       fecha: p.payment_date ?? p.created_at ?? null,
       estado: p.status ?? null,
       origen: p.source,

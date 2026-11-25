@@ -11,6 +11,8 @@
  * una factura de las que se crearon antes de la columna).
  */
 
+import { valorAplicadoPago } from '@/lib/finanzas/pagos/vueltas';
+
 export interface DocumentoVenta {
   id: string;
   number: string | null;
@@ -74,6 +76,8 @@ export interface PagoVenta {
   source: string | null;
   source_id: string | null;
   amount: number | string;
+  /** Vueltas incluidas en `amount` (solo pagos del POS anteriores a 2026-11-26). */
+  change_amount?: number | string | null;
   status?: string | null;
   method?: string | null;
   created_at?: string | null;
@@ -112,8 +116,8 @@ export function pagosDeVenta<T extends PagoVenta>(
     .sort((a, b) => String(a.payment_date ?? a.created_at ?? '').localeCompare(String(b.payment_date ?? b.created_at ?? '')));
 }
 
-/** Σ de los pagos completados (los cancelados o fallidos no cuentan). */
+/** Σ de lo cobrado en los pagos completados (los cancelados o fallidos no cuentan; sin vueltas). */
 export function totalPagado(pagos: readonly PagoVenta[]): number {
-  const t = pagos.filter((p) => !p.status || p.status === 'completed').reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const t = pagos.filter((p) => !p.status || p.status === 'completed').reduce((s, p) => s + valorAplicadoPago(p), 0);
   return Math.round(t * 100) / 100;
 }

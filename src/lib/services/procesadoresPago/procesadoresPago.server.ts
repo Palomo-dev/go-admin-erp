@@ -30,6 +30,7 @@ import {
   type TratamientoIva,
   TIPOS_DOCUMENTO_PROCESADOR,
 } from '@/lib/finanzas/procesadoresPago/procesadoresLogica';
+import { leerTarifa, type TarifaProcesador } from '@/lib/finanzas/procesadoresPago/tarifaProcesador';
 
 const esTipoDocumento = (v: unknown): v is TipoDocumentoProcesador =>
   typeof v === 'string' && (TIPOS_DOCUMENTO_PROCESADOR as readonly string[]).includes(v);
@@ -89,13 +90,13 @@ async function leerDatosProcesadores(ctx: Ctx, servicio: SupabaseClient): Promis
     servicio.rpc('fn_procesadores_pago_catalogo'),
     ctx.supabase
       .from('payment_processor_settings')
-      .select('processor, tercero_nit, tercero_nombre, tercero_doc_type')
+      .select('processor, tercero_nit, tercero_nombre, tercero_doc_type, fee_schedule')
       .eq('organization_id', ctx.organizationId),
   ]);
   if (catalogo.error) lanzar(catalogo.error);
   if (propios.error) lanzar(propios.error);
   const porCodigo = new Map(
-    ((propios.data ?? []) as { processor: string; tercero_nit: string | null; tercero_nombre: string | null; tercero_doc_type: string | null }[]).map((p) => [p.processor, p]),
+    ((propios.data ?? []) as { processor: string; tercero_nit: string | null; tercero_nombre: string | null; tercero_doc_type: string | null; fee_schedule: unknown }[]).map((p) => [p.processor, p]),
   );
   const filas = ((catalogo.data ?? []) as { codigo: string; nombre: string; cuenta: string }[]).filter((k) => esCodigoProcesador(k.codigo));
   return Promise.all(
@@ -123,6 +124,7 @@ async function leerDatosProcesadores(ctx: Ctx, servicio: SupabaseClient): Promis
         tipoDocumento: esTipoDocumento(propio?.tercero_doc_type) ? propio!.tercero_doc_type : !nitPropio && t?.nit ? '31' : null,
         origen: p?.origen ?? 'nacional',
         retieneSaldo: !!p?.retiene_saldo,
+        tarifa: leerTarifa(propio?.fee_schedule),
       };
     }),
   );
@@ -212,6 +214,20 @@ export async function configurarProcesador(ctx: Ctx, entrada: EntradaConfigurar)
   const { data, error } = await ctx.supabase.rpc('fn_procesador_pago_configurar', {
     p_organization_id: ctx.organizationId,
     p_datos: entrada,
+  });
+  if (error) lanzar(error);
+  return data as Record<string, unknown>;
+}
+
+/**
+ * Guarda (o borra con `null`) la tarifa de un procesador (`fn_procesador_pago_tarifa_guardar`, que
+ * exige acceso a la organización y finance.create). Solo sirve para ESTIMAR en «Cobros».
+ */
+export async function guardarTarifaProcesador(ctx: Ctx, procesador: CodigoProcesador, tarifa: TarifaProcesador | null) {
+  const { data, error } = await ctx.supabase.rpc('fn_procesador_pago_tarifa_guardar', {
+    p_organization_id: ctx.organizationId,
+    p_procesador: procesador,
+    p_tarifa: tarifa,
   });
   if (error) lanzar(error);
   return data as Record<string, unknown>;

@@ -9,6 +9,10 @@
  * si el procesador retiene saldo a propósito, muestra «Saldo retenido en el
  * procesador» y alerta a los 30 días sin ningún retiro al banco. Todo lo calcula
  * `fn_procesadores_pago_saldos`; esta pantalla solo lo muestra.
+ *
+ * Pestaña «Cobros» (Figma «05 POS y ventas» 3300-421113, 2026-11-25): lo cobrado por día y
+ * procesador con comisión + IVA, retenciones y neto ESTIMADOS con la tarifa configurable de la
+ * organización, y lo que falta por liquidar. Se abre con `?pestana=cobros`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -44,10 +48,12 @@ import {
 } from '@/lib/finanzas/procesadoresPago/procesadoresLogica';
 import { AbonoProcesadorDialog } from './AbonoProcesadorDialog';
 import { DatosProcesadoresDialog } from './DatosProcesadoresDialog';
+import { CobrosProcesadores } from './CobrosProcesadores';
 
 const NS = 'finanzasProcesadores';
 export const RUTA_API_PROCESADORES = '/api/finanzas/procesadores-pago';
-type Pestana = 'saldos' | 'abonos' | 'alertas';
+type Pestana = 'saldos' | 'cobros' | 'abonos' | 'alertas';
+const PESTANAS: readonly Pestana[] = ['saldos', 'cobros', 'abonos', 'alertas'];
 type Estado = 'cargando' | 'listo' | 'error' | 'sinPermiso';
 
 function cabeceras(json = false): HeadersInit {
@@ -73,6 +79,17 @@ export function ProcesadoresPagoPage() {
   const [anulando, setAnulando] = useState(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+  const tRec = useTranslations('recaudoMedio.cobros');
+
+  // `?pestana=cobros|abonos` (enlaces de Movimientos): se lee una vez al entrar.
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search).get('pestana');
+      if (p && (PESTANAS as readonly string[]).includes(p)) setPestana(p as Pestana);
+    } catch {
+      // Sin URL legible: la pestaña de siempre.
+    }
+  }, []);
 
   useEffect(() => {
     let vigente = true;
@@ -357,11 +374,12 @@ export function ProcesadoresPagoPage() {
           onValorChange={setPestana}
           pestanas={[
             { valor: 'saldos', etiqueta: t('pestanas.saldos'), contador: saldos.length },
+            { valor: 'cobros', etiqueta: tRec('pestana') },
             { valor: 'abonos', etiqueta: t('pestanas.abonos') },
             { valor: 'alertas', etiqueta: t('pestanas.alertas'), contador: alertas.length },
           ]}
         />
-        <div className="flex items-center gap-1" role="group" aria-label={t('mes.etiqueta')}>
+        <div className={`flex items-center gap-1 ${pestana === 'cobros' ? 'hidden' : ''}`} role="group" aria-label={t('mes.etiqueta')}>
           <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'w-8 px-0' })} onClick={() => setMes(moverMes(mesActual, -1))} aria-label={t('mes.anterior')}>
             <ChevronLeft aria-hidden="true" className="size-4" />
           </button>
@@ -378,7 +396,7 @@ export function ProcesadoresPagoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+      <div className={`grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4 ${pestana === 'cobros' ? 'hidden' : ''}`}>
         <StatCard etiqueta={t('kpi.porCobrar')} valor={fmt(tot.saldo)} detalle={t('kpi.porCobrarDetalle')} cargando={!datos && estado === 'cargando'} />
         <StatCard etiqueta={t('kpi.cobrado', { mes: nombreMes })} valor={fmt(tot.cobrado)} detalle={t('kpi.cobradoDetalle')} cargando={!datos && estado === 'cargando'} />
         <StatCard etiqueta={t('kpi.abonado', { mes: nombreMes })} valor={fmt(tot.abonado)} detalle={t('kpi.abonadoDetalle')} cargando={!datos && estado === 'cargando'} />
@@ -410,6 +428,7 @@ export function ProcesadoresPagoPage() {
       )}
 
       {pestana === 'saldos' && tablaSaldos(saldos, { titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion') })}
+      {pestana === 'cobros' && <CobrosProcesadores datos={datos} puedeEditar={permisos.crear} onTarifaGuardada={recargar} />}
       {pestana === 'alertas' && tablaSaldos(alertas, { titulo: t('vacio.sinAlertasTitulo'), descripcion: t('vacio.sinAlertasDescripcion') })}
       {pestana === 'abonos' && (
         <DataTable

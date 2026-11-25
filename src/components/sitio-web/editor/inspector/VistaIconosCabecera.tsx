@@ -60,6 +60,7 @@ import {
 import type { AccionEncabezado } from '@/lib/website/v2/iconosEncabezado';
 import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
 import { useTextosEditor } from '../textos';
+import { OrdenIconosCabecera } from './OrdenIconosCabecera';
 import { ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion } from './PartesZonaGlobal';
 import { ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, iconoAccionEncabezado } from './iconosAccionesLogica';
 import { FORMAS_CAJA, SOMBRAS_CAJA, TAMANOS_ICONO, cajaIconos, cambioCaja, cambioForma, cambioTamano, formaCaja, tamanoIcono } from './encabezadoCapacidades';
@@ -96,6 +97,8 @@ export interface VistaIconosProps {
   onIrBuscador?: () => void;
   /** Colores del tema para «Fondo de los íconos». Sin ellos, la marca por defecto del editor. */
   coloresTema?: { fondo: string; texto: string; acento: string };
+  /** Cambia cuando el lienzo pide el orden (clic en la fila de íconos): se resalta «Orden en la cabecera». */
+  resaltarOrden?: number;
 }
 
 const COLORES_RESPALDO = { fondo: '#FFFFFF', texto: '#111827', acento: '#3B4BDB' };
@@ -218,13 +221,14 @@ function MiniaturaIcono({
     cuerpo = (
       <span
         className={cn(
-          'relative flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-white',
+          // A 10 px y sin salirse de la miniatura (Figma D3): si el texto propio no cabe, se recorta él.
+          'relative flex max-w-[calc(100%-12px)] items-center gap-1 whitespace-nowrap px-2 py-1 text-[10px] font-medium text-white',
           estilo === 'pildora' && 'rounded-full border border-white/60',
           estilo === 'relleno' && 'rounded-md bg-brand-action',
         )}
       >
-        {icono}
-        {texto}
+        <span className="shrink-0">{icono}</span>
+        <span className="min-w-0 truncate">{texto}</span>
         {insignia}
       </span>
     );
@@ -430,6 +434,12 @@ function DibujoConSelector({
   );
 }
 
+/**
+ * Rejilla de «Forma» y «Estilo general» (Figma D2 3270:100017): tarjetas de al menos 104 px; en
+ * el panel de 300 px caben 2 columnas (3 si el panel crece). Todas las de una fila, del mismo alto.
+ */
+const REJILLA_OPCIONES = 'grid grid-cols-[repeat(auto-fill,minmax(104px,1fr))] gap-2';
+
 /** Lo que muestra la miniatura de la «Forma» de una tarjeta: su dibujo, su texto y su insignia. */
 interface MuestraIcono {
   Icono: LucideIcon;
@@ -465,17 +475,21 @@ function FormaIconoCampo({
   return (
     <div className="flex flex-col gap-1.5" data-forma-icono={icono}>
       <EtiquetaGrupo id={id}>{t('iconos.forma')}</EtiquetaGrupo>
-      <div role="radiogroup" aria-labelledby={id} className="grid grid-cols-3 gap-1.5">
+      <div role="radiogroup" aria-labelledby={id} className={REJILLA_OPCIONES}>
         <TarjetaComposicion compacta etiqueta={t('iconos.formaOpcion.demas')} seleccionada={!propia} onElegir={() => propia && cambiar(cambioFormaIcono(a, icono, null))}>
           {miniatura(op.estilo)}
         </TarjetaComposicion>
         {formas.map((f) => (
-          <div key={f} className="flex flex-col items-center gap-1">
-            <TarjetaComposicion compacta etiqueta={t(`iconos.formaOpcion.${f}`)} seleccionada={propia === f} onElegir={() => cambiar(cambioFormaIcono(a, icono, f))}>
-              {miniatura(f)}
-            </TarjetaComposicion>
-            {estiloSoloComputador(f) && <InsigniaSoloComputador />}
-          </div>
+          <TarjetaComposicion
+            key={f}
+            compacta
+            etiqueta={t(`iconos.formaOpcion.${f}`)}
+            seleccionada={propia === f}
+            onElegir={() => cambiar(cambioFormaIcono(a, icono, f))}
+            insignia={estiloSoloComputador(f) ? <InsigniaSoloComputador /> : undefined}
+          >
+            {miniatura(f)}
+          </TarjetaComposicion>
         ))}
       </div>
       {propia ? (
@@ -802,7 +816,7 @@ const ESTILOS_EDITOR: readonly EstiloIconos[] = ['icono', 'texto', 'pildora', 'r
 /** Buscar no lleva texto: su forma propia es solo ícono o círculo. */
 const FORMAS_BUSCAR: readonly FormaIcono[] = ['icono', 'circulo'];
 
-export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, coloresTema }: VistaIconosProps) {
+export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, coloresTema, resaltarOrden }: VistaIconosProps) {
   const t = useT();
   const op = opcionesIconos(a);
   const estiloVista: EstiloIconos = op.estilo === 'texto_lado' ? 'texto' : op.estilo;
@@ -849,7 +863,10 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
 
   return (
     <>
-      <section className="flex flex-col gap-3">
+      {/* «Orden en la cabecera» (Figma 3263:99475): arriba, antes de «Estilo general». */}
+      <OrdenIconosCabecera ajustes={a} cambiar={cambiar} onIrBuscador={onIrBuscador} onAbrirMoneda={() => onAbrir('moneda')} resaltar={resaltarOrden} />
+
+      <section className="flex flex-col gap-3 border-t border-line pt-3">
         <div className="flex flex-col gap-1">
           <h3 className="flex items-center gap-1.5 text-[13px] font-semibold leading-[18px] text-fg">
             {t('iconos.estiloGeneral')}
@@ -857,14 +874,18 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
           </h3>
           <Ayuda>{t('iconos.estiloGeneralAyuda')}</Ayuda>
         </div>
-        <div role="radiogroup" aria-label={t('iconos.estiloGeneral')} className="grid grid-cols-3 gap-2">
+        <div role="radiogroup" aria-label={t('iconos.estiloGeneral')} className={REJILLA_OPCIONES}>
           {ESTILOS_EDITOR.map((e) => (
-            <div key={e} className="flex flex-col items-center gap-1">
-              <TarjetaComposicion etiqueta={t(`iconos.estiloOpcion.${e}`)} seleccionada={estiloVista === e} onElegir={() => cambiar(cambioEstiloIconos(a, e))}>
-                <MiniaturaIcono estilo={e} />
-              </TarjetaComposicion>
-              {estiloSoloComputador(e) && <InsigniaSoloComputador />}
-            </div>
+            <TarjetaComposicion
+              key={e}
+              compacta
+              etiqueta={t(`iconos.estiloOpcion.${e}`)}
+              seleccionada={estiloVista === e}
+              onElegir={() => cambiar(cambioEstiloIconos(a, e))}
+              insignia={estiloSoloComputador(e) ? <InsigniaSoloComputador /> : undefined}
+            >
+              <MiniaturaIcono estilo={e} />
+            </TarjetaComposicion>
           ))}
         </div>
         {estiloVista === 'texto' && (

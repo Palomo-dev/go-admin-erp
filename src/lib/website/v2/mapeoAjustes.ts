@@ -396,6 +396,7 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    * que no cumple). `null` = la tienda de hoy.
    * - `header_iconos`: estilo (con texto, píldora, relleno), tamaño S/M/L, trazo, textos propios,
    *   contador del carrito y favoritos. «Solo ícono» y «Círculo» siguen en header_icons_circle/_box.
+   *   `ordenCelular`: orden propio de los íconos en el celular (sin él, el de `actions_order`).
    * - `header_moneda`: estilo del selector, flecha, monedas visibles, moneda al entrar y celular.
    * - `header_carrito`: botón principal (modo y textos; sin él, `cart_button_mode`/`_texts` de la
    *   fila legacy; modos fijo, al abrir, mientras está abierto y según el carrito), botón «Comprar»

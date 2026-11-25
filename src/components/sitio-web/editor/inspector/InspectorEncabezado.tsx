@@ -95,6 +95,11 @@ export interface InspectorEncabezadoProps {
   giro?: string | null;
   /** Organización del sitio: la vista «Selector de moneda» marca su moneda base. */
   organizationId?: number | null;
+  /**
+   * Cambia cada vez que el lienzo pide el orden de los íconos (clic en la fila de íconos de la
+   * cabecera, Figma B1 3265:99803): abre Íconos y resalta «Orden en la cabecera».
+   */
+  abrirOrdenIconos?: number;
 }
 
 const COMPOSICIONES = ['default', 'centered', 'split', 'minimal', 'mega', 'pill'] as const;
@@ -119,6 +124,19 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   const [vistaTienda, setVistaTienda] = useState<VistaCabeceraTienda | null>(null);
   // «Buscador › Apariencia» (Figma 3242:99098): vista propia con «volver», abierta desde Diseño › Buscador.
   const [vistaApariencia, setVistaApariencia] = useState(false);
+  // Clic en la fila de íconos del lienzo: Íconos, con el bloque del orden a la vista y resaltado.
+  // Arranca en 0: si el inspector se monta por ese mismo clic, también abre el orden.
+  const [vistoOrden, setVistoOrden] = useState(0);
+  const [resaltarOrden, setResaltarOrden] = useState<number | undefined>(undefined);
+  if ((p.abrirOrdenIconos ?? 0) !== vistoOrden) {
+    setVistoOrden(p.abrirOrdenIconos ?? 0);
+    if (p.abrirOrdenIconos) {
+      setVistaApariencia(false);
+      setVistaBoton(null);
+      setVistaTienda('iconos');
+      setResaltarOrden((n) => (n ?? 0) + 1);
+    }
+  }
 
   if (vistaApariencia) {
     return (
@@ -142,7 +160,13 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   if (vistaTienda) {
     return (
       <aside aria-label={t('inspector.etiqueta', { nombre: titulo })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
-        <CabeceraVistaTienda vista={vistaTienda} onVolver={() => setVistaTienda(null)} />
+        <CabeceraVistaTienda
+          vista={vistaTienda}
+          onVolver={() => {
+            setVistaTienda(null);
+            setResaltarOrden(undefined);
+          }}
+        />
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista={`tienda-${vistaTienda}`}>
           {vistaTienda === 'iconos' && (
             <VistaIconos
@@ -150,6 +174,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
               cambiar={cambiar}
               onAbrir={setVistaTienda}
               coloresTema={p.coloresTema}
+              resaltarOrden={resaltarOrden}
               onIrBuscador={() => {
                 setVistaTienda(null);
                 setPestana('diseno');

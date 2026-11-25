@@ -16,6 +16,9 @@
  * `header_iconos.por_icono` (forma propia de cada ícono), y el trazo unificado con
  * `header_icons_weight` ({@link trazoUnificado}).
  *
+ * Orden de los íconos (Figma 3261:99475): el computador reutiliza `actions_order` (la columna de
+ * siempre); el celular puede tener el suyo en `header_iconos.ordenCelular` ({@link ordenAccionesPantalla}).
+ *
  * La regla de siempre: sin la clave (o con un valor que no cumple), la tienda se ve como hoy.
  * Por eso cada lector devuelve el default de hoy y `configurado` dice si hay algo nuevo; quien
  * pinta sigue el camino viejo cuando no lo hay.
@@ -260,6 +263,77 @@ export function contadorCarrito(cantidad: number, contador: ContadorCarrito): { 
   if (!(cantidad > 0) || contador === 'oculto') return null;
   if (contador === 'punto') return { tipo: 'punto' };
   return { tipo: 'numero', texto: cantidad > 99 ? '99+' : String(Math.floor(cantidad)) };
+}
+
+// ─── Orden de los íconos (Figma «16 Sitio web» 3261:99475, aprobado 2026-11-25) ──────────────
+
+/**
+ * Íconos que se ordenan en la fila de acciones, en su lugar de siempre. La barra del buscador,
+ * los botones del encabezado y el selector de sede NO entran: los pone la composición.
+ */
+export const ACCIONES_ORDEN = ['search', 'currency', 'favorites', 'cart', 'auth'] as const;
+export type AccionOrden = (typeof ACCIONES_ORDEN)[number];
+/** El orden de hoy (`actions_order` sin valor). Favoritos, si se prende, va antes del carrito. */
+export const ORDEN_ACCIONES_HOY: readonly AccionOrden[] = ['search', 'currency', 'cart', 'auth'];
+
+/** Lista guardada: un arreglo o el texto JSON de uno (filas viejas). Cualquier otra cosa, `null`. */
+function listaGuardada(v: unknown): unknown[] | null {
+  if (Array.isArray(v)) return v;
+  if (typeof v !== 'string') return null;
+  try {
+    const leido: unknown = JSON.parse(v);
+    return Array.isArray(leido) ? leido : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lo válido de una lista guardada, en su orden y sin repetidos. `null` si no queda nada. */
+export function ordenGuardado(valor: unknown): AccionOrden[] | null {
+  const lista = listaGuardada(valor);
+  if (!lista) return null;
+  const salida: AccionOrden[] = [];
+  for (const v of lista) {
+    const accion = unoDe(ACCIONES_ORDEN, v);
+    if (accion && !salida.includes(accion)) salida.push(accion);
+  }
+  return salida.length > 0 ? salida : null;
+}
+
+/**
+ * Orden completo de los íconos: el guardado (sin repetidos ni valores desconocidos) y los que
+ * falten en su lugar de siempre: justo antes del siguiente de ACCIONES_ORDEN que esté en la
+ * lista (favoritos, antes del carrito), o al final. Sin nada guardado, el orden de hoy.
+ */
+export function ordenAcciones(valor: unknown): AccionOrden[] {
+  const salida = ordenGuardado(valor) ?? [...ORDEN_ACCIONES_HOY];
+  // De atrás hacia adelante: el «siguiente» de cada faltante ya está puesto.
+  for (let i = ACCIONES_ORDEN.length - 1; i >= 0; i--) {
+    const accion = ACCIONES_ORDEN[i];
+    if (salida.includes(accion)) continue;
+    const siguiente = ACCIONES_ORDEN.slice(i + 1).find((a) => salida.includes(a));
+    if (siguiente) salida.splice(salida.indexOf(siguiente), 0, accion);
+    else salida.push(accion);
+  }
+  return salida;
+}
+
+/**
+ * Orden propio del celular (`header_iconos.ordenCelular`, en el documento V2). `null` = «Igual
+ * que en el computador» (sin la clave o sin nada válido).
+ */
+export function ordenCelularPropio(ajustes: Ajustes): AccionOrden[] | null {
+  const guardado = ordenGuardado(objeto((ajustes ?? {}).header_iconos)?.ordenCelular);
+  return guardado ? ordenAcciones(guardado) : null;
+}
+
+/**
+ * Orden con el que se pintan los íconos. Computador: `actions_order`. Celular: su orden propio
+ * o, sin él, el del computador. Qué se ve lo deciden los interruptores de siempre.
+ */
+export function ordenAccionesPantalla(ajustes: Ajustes, movil: boolean): AccionOrden[] {
+  const computador = ordenAcciones((ajustes ?? {}).actions_order);
+  return movil ? ordenCelularPropio(ajustes) ?? computador : computador;
 }
 
 // ─── Selector de moneda ───────────────────────────────────────────────────────────────────

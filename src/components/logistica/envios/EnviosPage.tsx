@@ -810,9 +810,9 @@ export function EnviosPage() {
         onAbiertoChange={(v) => !v && setDialogo(null)}
         envios={dialogo?.tipo === 'guias' ? dialogo.envios : []}
         organizacion={organization?.name ?? null}
-        onImprimir={async (copias) => {
+        onImprimir={async (opciones) => {
           if (dialogo?.tipo !== 'guias') return;
-          await imprimirGuias(dialogo.envios, null, { copias });
+          await imprimirGuias(dialogo.envios, null, opciones);
           setSeleccion(new Set());
         }}
       />

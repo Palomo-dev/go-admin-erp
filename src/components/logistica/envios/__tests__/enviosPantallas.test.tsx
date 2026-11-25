@@ -51,7 +51,31 @@ jest.mock('@/lib/context/BranchContext', () => ({
 }));
 const toastError = jest.fn();
 jest.mock('@/components/ui/use-toast', () => ({ toastSuccess: jest.fn(), toastError: (...a: unknown[]) => toastError(...a) }));
-jest.mock('../../useImpresionLogistica', () => ({ useImpresionLogistica: () => ({ imprimirGuias: jest.fn(), imprimirHojaRuta: jest.fn() }) }));
+// La vista previa del diálogo pinta el rótulo real (los datos los arma el hook; los textos, las
+// funciones reales de rotuloEnvio.ts con los mensajes en español).
+const ROTULO_PRUEBA = {
+  id: 'e1', numero: 'DEL-WO-412-0031', qr: 'DEL-WO-412-0031', qrEsSeguimiento: false,
+  remitente: { tienda: 'Tienda de prueba', iniciales: 'TP', logo: null, sede: 'Sede Centro', ciudad: 'Bogotá', telefono: '601 555 00 00' },
+  destinatario: { nombre: 'Ana Gómez', direccion: 'Cra 45 #12-30', barrio: 'Chapinero', ciudad: 'Bogotá D.C.', departamento: 'Cundinamarca', telefono: '300 555 12 34', indicaciones: null },
+  paquete: { numero: 1, total: 1 }, pesoKg: 1.2, entrega: { tipo: 'propio', transportadora: null }, guiaExterna: null,
+  cobro: { monto: '$ 128.900', anticipoPagado: false, pedirCodigo: true },
+  pie: { momento: 'despachado', fecha: '24 nov 2026, 11:52', pedido: 'WO-412', vehiculo: null },
+};
+const prepararRotulos = jest.fn(async (ids: string[]) => ids.map((id, i) => ({ ...ROTULO_PRUEBA, id, numero: i === 0 ? ROTULO_PRUEBA.numero : `DEL-WO-412-00${40 + i}` })));
+jest.mock('../../useImpresionLogistica', () => {
+  const { rotulosParaImprimir, textosRotulo } = jest.requireActual('@/lib/logistica/rotuloEnvio');
+  const mensajes = jest.requireActual('../../../../../messages/es.json').logistica.rotulo as Record<string, string>;
+  const t = (clave: string, v: Record<string, string | number> = {}) => mensajes[clave].replace(/\{(\w+)\}/g, (_: string, k: string) => String(v[k]));
+  const api = {
+    imprimirGuias: jest.fn(),
+    imprimirHojaRuta: jest.fn(),
+    prepararRotulos: (ids: string[]) => prepararRotulos(ids),
+    resolverRotulos: (d: unknown[], c: number) =>
+      rotulosParaImprimir(d, c).map((x: { id: string }) => ({ id: x.id, textos: textosRotulo(x, t, (kg: number) => String(kg).replace('.', ',')) })),
+    estacionRotulos: async () => ({ enLinea: false, impresoras: [] }),
+  };
+  return { useImpresionLogistica: () => api };
+});
 jest.mock('../../asignar/HojaAsignarDomiciliario', () => ({ HojaAsignarDomiciliario: () => null }));
 jest.mock('../../logisticaApi', () => ({ avisarCliente: jest.fn(async () => true) }));
 jest.mock('../../cotizar/useCotizacionDomicilio', () => ({
@@ -271,11 +295,30 @@ describe('Diálogos (2965:9890, 9958, 10022, 10078)', () => {
     expect(screen.getByText('Reingresar al inventario de Sede Centro')).toBeTruthy();
   });
 
-  test('imprimir guías: vista previa y copias por envío', async () => {
+  test('imprimir guías: la vista previa es el rótulo, se pasa de una guía a otra y salen esos mismos rótulos', async () => {
     const onImprimir = jest.fn();
     pintar(<DialogoImprimirGuias abierto onAbiertoChange={() => undefined} envios={[enDialogo({}), enDialogo({ id: 'b', numero: 'ENV-0711' })]} organizacion="Org 1" onImprimir={onImprimir} />);
-    expect(screen.getByText('CONTRAENTREGA $ 128.900')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Imprimir 2 guías' }));
-    await waitFor(() => expect(onImprimir).toHaveBeenCalledWith(1));
+    const vista = await screen.findByTestId('vista-previa-guia');
+    // El rótulo estándar: cobro con el saldo, código de entrega, un solo número y sin productos ni precios de la venta.
+    expect(await screen.findByText('COBRAR AL ENTREGAR')).toBeTruthy();
+    expect(screen.getByText('$ 128.900')).toBeTruthy();
+    expect(screen.getByText('No entregue sin cobrar. Pida el código de entrega.')).toBeTruthy();
+    expect(vista.textContent).not.toMatch(/SKU|Valor Items|TOTAL|TRK/);
+    expect(prepararRotulos).toHaveBeenCalledWith(['e1', 'b']);
+    // Sin impresora de rótulos en línea: 10 × 15 y se abre el PDF.
+    expect(screen.getByText('Esta sede no tiene impresora de rótulos en línea')).toBeTruthy();
+    expect(screen.getByText('Guía 1 de 2 · DEL-WO-412-0031')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Guía siguiente' }));
+    expect(screen.getByText('Guía 2 de 2 · DEL-WO-412-0041')).toBeTruthy();
+    expect(screen.getByText('2 envíos × 1 copia = 2 rótulos, uno por página de 10 × 15 cm.')).toBeTruthy();
+    // A4: cuatro por hoja y avisa del cuarto libre.
+    fireEvent.click(screen.getByRole('radio', { name: 'A4 · 4 por hoja' }));
+    expect(screen.getByText('2 envíos × 1 copia = 2 rótulos en 1 hoja A4. Quedan 2 cuartos libres.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: 'Rótulo 10 × 15 cm' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir PDF de 2 guías' }));
+    await waitFor(() => expect(onImprimir).toHaveBeenCalledTimes(1));
+    const opciones = onImprimir.mock.calls[0][0];
+    expect(opciones).toMatchObject({ copias: 1, formato: '10x15' });
+    expect(opciones.rotulos.map((r: { textos: { guideNumber: string } }) => r.textos.guideNumber)).toEqual(['DEL-WO-412-0031', 'DEL-WO-412-0041']);
   });
 });

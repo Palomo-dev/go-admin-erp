@@ -6,6 +6,7 @@
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { estadoPedidoDelAviso, type EnvioDomiciliario } from '@/lib/logistica/misEnvios';
 import type { AltaDomiciliario } from '@/lib/logistica/domiciliarios';
+import type { DatosServidorRotulo } from '@/lib/logistica/rotuloEnvio';
 import type { CandidatosAlta, DomiciliarioFila } from '@/lib/services/logistica/domiciliariosService';
 
 function cabeceras(json: boolean): Record<string, string> {
@@ -68,3 +69,21 @@ export const leerCandidatos = () => pedir<CandidatosAlta>('/api/logistica/domici
 
 export const cambiarActivoDomiciliario = (id: string, activo: boolean) =>
   pedir<{ ok: true }>(`/api/logistica/domiciliarios/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ activo }) });
+
+/**
+ * Lo que el rótulo de envío solo sabe en el servidor (`POST /api/logistica/envios/rotulos`): el
+ * enlace firmado de seguimiento de la tienda para el QR y si el anticipo está pagado. Nunca lanza:
+ * sin respuesta, el QR lleva la guía y la nota de cobro es la general.
+ */
+export async function datosServidorRotulos(ids: readonly string[]): Promise<Record<string, DatosServidorRotulo>> {
+  if (ids.length === 0) return {};
+  try {
+    const r = await pedir<{ rotulos?: Record<string, DatosServidorRotulo> }>('/api/logistica/envios/rotulos', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    });
+    return r.rotulos ?? {};
+  } catch {
+    return {};
+  }
+}

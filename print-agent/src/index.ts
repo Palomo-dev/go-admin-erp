@@ -95,7 +95,9 @@ async function processJob(job: PrintJobRow): Promise<void> {
     .update({ status: 'sent' })
     .eq('id', job.id)
     .eq('status', 'pending')
-    .select('id');
+    // El payload se relee de la fila reclamada: Realtime puede recortar valores grandes (la
+    // imagen del rótulo de envío pesa ~100 KB) y lo que se imprime debe ser lo guardado.
+    .select('id, payload');
 
   if (claimError) {
     console.error(`[print_jobs] error reclamando job ${job.id}:`, claimError.message);
@@ -118,7 +120,7 @@ async function processJob(job: PrintJobRow): Promise<void> {
   }
 
   try {
-    await printToDevice(printer, job.job_type, job.payload);
+    await printToDevice(printer, job.job_type, (claimed[0] as { payload?: PrintJobRow['payload'] }).payload ?? job.payload);
     await supabase
       .from('print_jobs')
       .update({ status: 'printed', printed_at: new Date().toISOString() })

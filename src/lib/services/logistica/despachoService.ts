@@ -19,6 +19,7 @@ import {
   type FilaSeguimiento,
 } from '@/lib/logistica/seguimiento';
 import { ESTADOS_EN_RUTA } from '@/lib/logistica/misEnvios';
+import type { EnvioParaRotulo } from '@/lib/logistica/rotuloEnvio';
 
 /** Tope de envíos que se traen a la bandeja (la bandeja trabaja en memoria: KPI, filtros y orden). */
 export const MAX_FILAS_BANDEJA = 2000;
@@ -538,35 +539,27 @@ export async function reiniciarCodigoEntrega(db: SupabaseClient, shipmentId: str
 }
 
 /**
- * Envíos completos con sus ítems para imprimir guías con `shipmentLabelPrinter` (el mismo
- * generador de Envíos): una consulta por lote, no una por envío.
+ * Envíos para imprimir sus rótulos (`src/lib/logistica/rotuloEnvio.ts`): una consulta por lote,
+ * no una por envío, en el orden pedido. Sin ítems: el rótulo no lleva productos ni precios.
+ * Columnas y embeds verificados por MCP el 2026-11-25 (proyecto taqjemqjtumhwptchcxk).
  */
-export async function enviosParaGuias(
-  db: SupabaseClient,
-  organizationId: number,
-  ids: readonly string[],
-): Promise<{ envio: Record<string, unknown>; items: ItemEnvio[] }[]> {
+export async function enviosParaGuias(db: SupabaseClient, organizationId: number, ids: readonly string[]): Promise<EnvioParaRotulo[]> {
   const envios = await enLotes(ids, async (lote) => {
     const { data, error } = await db
       .from('shipments')
-      .select('*, customer:customers(id, full_name, phone, email)')
+      .select(
+        'id, shipment_number, tracking_number, external_tracking_url, source_type, source_id, created_at, dispatched_at, fulfillment_mode, ' +
+          'delivery_address, delivery_city, delivery_department, delivery_contact_name, delivery_contact_phone, delivery_instructions, ' +
+          'package_count, weight_kg, cod_amount, cod_status, currency, delivery_code_required, metadata, customer:customers(full_name, phone), ' +
+          'branch:branches(name, city, phone, website_logo_url), organization:organizations(name, logo_url, phone), carrier:transport_carriers(name)',
+      )
       .eq('organization_id', organizationId)
       .in('id', lote);
     if (error) throw error;
-    return (data ?? []) as Record<string, unknown>[];
-  });
-  const items = await enLotes(ids, async (lote) => {
-    const { data, error } = await db
-      .from('shipment_items')
-      .select('id, shipment_id, description, sku, qty, unit_value, total_value')
-      .in('shipment_id', lote);
-    if (error) throw error;
-    return (data ?? []) as (ItemEnvio & { shipment_id: string })[];
+    return (data ?? []) as unknown as EnvioParaRotulo[];
   });
   const orden = new Map(ids.map((id, i) => [id, i]));
-  return envios
-    .sort((a, b) => (orden.get(String(a.id)) ?? 0) - (orden.get(String(b.id)) ?? 0))
-    .map((envio) => ({ envio, items: items.filter((i) => i.shipment_id === envio.id).map((i) => ({ ...i, qty: num(i.qty) })) }));
+  return envios.sort((a, b) => (orden.get(a.id) ?? 0) - (orden.get(b.id) ?? 0));
 }
 
 /** La fila de bandeja del envío de un pedido web (para asignar desde Pedidos online). */

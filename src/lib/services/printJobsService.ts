@@ -3,6 +3,8 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { PrintersService, type Printer, type PrinterStation } from '@/components/pos/configuracion/printersService';
 import {
   getPaperSpec,
+  normalizePaperWidth,
+  type PaperWidth,
   type LocalPrintRequest,
   type MonochromeRaster,
   type PrintJobType,
@@ -859,16 +861,30 @@ export class PrintJobsService {
   }
 
   /**
+   * Impresoras que reciben las guías de envío (estación de caja o «todas»), con su ancho de
+   * papel normalizado. Vacío = la sede no tiene dónde imprimir rótulos y se abre el PDF.
+   */
+  static async getShipmentLabelPrinters(branchId: number): Promise<Printer[]> {
+    return PrintersService.getPrintersByStation(branchId, 'cashier');
+  }
+
+  /**
    * Encola la impresion fisica de una guia de envio.
    * Usa la estacion 'cashier' (o 'all') para resolver las impresoras.
    * El print-agent enviara el comando ESC/POS cut() para corte automatico.
+   *
+   * `opciones.rasterPorAncho`: la imagen del rótulo (Logística, `rasterRotulo.ts`) ya generada
+   * para cada ancho de papel; cada fila lleva la de SU impresora en `label.raster`, así la
+   * térmica imprime exactamente la vista previa. Sin imagen para un ancho, esa impresora usa la
+   * versión en texto del mismo rótulo.
    */
   static async enqueueShipmentGuide(
     branchId: number,
     guide: ShipmentGuidePrintPayload,
+    opciones?: { rasterPorAncho?: Partial<Record<PaperWidth, MonochromeRaster | null>>; impresoras?: Printer[] },
   ): Promise<EnqueueResult> {
     const orgId = getOrganizationId();
-    const printers = await PrintersService.getPrintersByStation(branchId, 'cashier');
+    const printers = opciones?.impresoras ?? (await PrintersService.getPrintersByStation(branchId, 'cashier'));
 
     if (printers.length === 0) return { enqueued: 0, printedLocally: 0 };
 
@@ -891,16 +907,20 @@ export class PrintJobsService {
       businessAddress: header.businessAddress,
     };
 
-    const rows: PrintJobInsert[] = printers.map((printer) => ({
-      organization_id: orgId,
-      branch_id: printer.branch_id || branchId,
-      printer_id: printer.id,
-      station: 'cashier',
-      job_type: 'shipment_guide',
-      reference_id: guide.shipmentId,
-      payload: payload as any,
-      status: 'pending' as const,
-    }));
+    const rows: PrintJobInsert[] = printers.map((printer) => {
+      const raster = opciones?.rasterPorAncho?.[normalizePaperWidth(printer.paper_width)];
+      const propio: ShipmentGuidePrintPayload = payload.label && raster !== undefined ? { ...payload, label: { ...payload.label, raster } } : payload;
+      return {
+        organization_id: orgId,
+        branch_id: printer.branch_id || branchId,
+        printer_id: printer.id,
+        station: 'cashier',
+        job_type: 'shipment_guide',
+        reference_id: guide.shipmentId,
+        payload: propio,
+        status: 'pending' as const,
+      };
+    });
 
     return dispatchPrintJobs(rows, printers);
   }
@@ -913,11 +933,13 @@ export class PrintJobsService {
   static async enqueueShipmentGuides(
     branchId: number,
     guides: ShipmentGuidePrintPayload[],
+    opciones?: { rasterPorAncho?: (indice: number) => Partial<Record<PaperWidth, MonochromeRaster | null>>; impresoras?: Printer[] },
   ): Promise<EnqueueResult> {
     let enqueued = 0;
     let printedLocally = 0;
-    for (const guide of guides) {
-      const result = await this.enqueueShipmentGuide(branchId, guide);
+    const impresoras = opciones?.impresoras ?? (await PrintersService.getPrintersByStation(branchId, 'cashier'));
+    for (const [i, guide] of guides.entries()) {
+      const result = await this.enqueueShipmentGuide(branchId, guide, { impresoras, rasterPorAncho: opciones?.rasterPorAncho?.(i) });
       enqueued += result.enqueued;
       printedLocally += result.printedLocally;
     }

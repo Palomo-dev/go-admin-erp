@@ -33,7 +33,7 @@ jest.mock('@/lib/services/deliveryIntegrationService', () => ({
     registerFailedAttempt: (...a: unknown[]) => registerFailedAttempt(...a),
   },
 }));
-jest.mock('@/lib/services/logistica/misEnviosService', () => ({ subirImagenEnvio: jest.fn() }));
+jest.mock('@/lib/services/logistica/misEnviosService', () => ({ subirImagenEnvio: jest.fn(), cuadresDesde: jest.fn(async () => []) }));
 const avisarCliente = jest.fn();
 const cerrarJornada = jest.fn();
 jest.mock('../../logisticaApi', () => ({
@@ -83,6 +83,15 @@ import { NovedadPantalla } from '../NovedadPantalla';
 import { FinJornadaPantalla } from '../FinJornadaPantalla';
 
 const IDIOMAS = { es, en, fr, pt } as const;
+
+// Las hojas del kit (`HojaDetalle`) eligen inferior o lateral con matchMedia (jsdom no lo trae): celular.
+beforeAll(() => {
+  window.matchMedia = ((query: string) => ({
+    matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined,
+    addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+});
+
 function pintar(ui: ReactElement, locale: keyof typeof IDIOMAS = 'es') {
   const errores: string[] = [];
   render(
@@ -122,19 +131,21 @@ describe('Parada', () => {
     expect(screen.getByText(/código de entrega de 4 dígitos/)).toBeTruthy();
   });
 
-  test('«Voy en camino» llama la RPC y avisa al cliente con el aviso que devuelve la base', async () => {
+  test('«Iniciar ruta» llama la RPC y avisa al cliente con el aviso que devuelve la base', async () => {
     changeStatus.mockResolvedValue({ status: 'out_for_delivery', aviso: 'en_camino' });
     pintar(<ParadaPantalla shipmentId="env-1" />);
-    fireEvent.click(screen.getByRole('button', { name: /Voy en camino/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Iniciar ruta$/ }));
     await waitFor(() => expect(changeStatus).toHaveBeenCalledWith('env-1', 'out_for_delivery', {}));
     expect(avisarCliente).toHaveBeenCalledWith(expect.objectContaining({ source_id: 'wo-9' }), 'en_camino');
   });
 
-  test('en camino: «Entregado» lleva a Entregar y «No se pudo entregar» a la novedad', () => {
+  test('en camino: «Entregar» lleva a Entregar y «No se pudo entregar» abre la hoja de novedad sobre la parada', async () => {
     parada.envio = { ...base, status: 'out_for_delivery' };
     pintar(<ParadaPantalla shipmentId="env-1" />);
-    expect(screen.getByRole('link', { name: /^Entregado$/ }).getAttribute('href')).toBe('/app/logistica/mis-envios/env-1/entregar');
-    expect(screen.getByRole('link', { name: /No se pudo entregar/ }).getAttribute('href')).toBe('/app/logistica/mis-envios/env-1/no-entregado');
+    expect(screen.getByRole('link', { name: /^Entregar$/ }).getAttribute('href')).toBe('/app/logistica/mis-envios/env-1/entregar');
+    fireEvent.click(screen.getByRole('button', { name: /No se pudo entregar/ }));
+    expect(await screen.findByRole('button', { name: 'Guardar y seguir con la ruta' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Cliente ausente/ })).toBeTruthy();
   });
 });
 
@@ -179,7 +190,10 @@ describe('Fin de jornada', () => {
     expect(screen.getByText('Efectivo · 1 envío')).toBeTruthy();
     expect(screen.getAllByText('$ 45.900').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: /Enviar resumen para el cuadre/ }));
-    expect(await screen.findByText('Resumen enviado')).toBeTruthy();
+    expect(await screen.findByText(/^Resumen enviado · /)).toBeTruthy();
     expect(cerrarJornada).toHaveBeenCalledTimes(1);
+    // Estado del cuadre: aún sin recibir en la sede.
+    expect(await screen.findByText('Por recibir')).toBeTruthy();
+    expect(screen.getByText('Dinero recibido en la sede')).toBeTruthy();
   });
 });

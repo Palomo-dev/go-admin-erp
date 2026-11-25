@@ -78,6 +78,14 @@ import { MisEnviosPantalla } from '../MisEnviosPantalla';
 
 const IDIOMAS = { es, en, fr, pt } as const;
 
+// Las hojas del kit (`HojaDetalle`) eligen inferior o lateral con matchMedia (jsdom no lo trae): celular.
+beforeAll(() => {
+  window.matchMedia = ((query: string) => ({
+    matches: false, media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined,
+    addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+});
+
 function pintar(ui: ReactElement, locale: keyof typeof IDIOMAS = 'es') {
   const errores: string[] = [];
   render(
@@ -132,7 +140,13 @@ describe('Entregar', () => {
     expect(prueba).toMatchObject({ recipientName: 'Ana Gómez', recipientRelationship: 'customer', locationType: 'door' });
     expect(opts).toEqual({ codigo: '4821', cobro: { metodo: 'cash', monto: 128900 } });
     await waitFor(() => expect(avisarCliente).toHaveBeenCalledWith(expect.objectContaining({ source_id: 'wo-1' }), 'entregado'));
-    expect(push).toHaveBeenCalledWith('/app/logistica/mis-envios');
+    // «Entrega confirmada»: a quién, el dinero de esta entrega y la siguiente parada (sin salir de la pantalla).
+    expect(await screen.findByText('Entregado a Ana Gómez')).toBeTruthy();
+    expect(screen.getByText('Cobrado en efectivo')).toBeTruthy();
+    expect(screen.getByText('$ 150.000')).toBeTruthy();
+    expect(screen.getByText('Siguiente parada')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Iniciar ruta a la parada/ })).toBeTruthy();
+    expect(push).not.toHaveBeenCalled();
     // Nunca se consulta la tabla de códigos (solo administradores).
     expect(desdeSupabase).not.toHaveBeenCalledWith('shipment_delivery_codes');
   });

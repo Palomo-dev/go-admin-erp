@@ -67336,7 +67336,18 @@
         "pideCodigo": "Demande au client le code de livraison à 4 chiffres.",
         "llevas": "Ce que tu transportes ({n})",
         "envio": "Livraison",
-        "pasos": "Étapes"
+        "pasos": "Étapes",
+        "avisoIniciar": "Quand tu pars vers cette adresse, touche « Démarrer la tournée » : on prévient le client par WhatsApp et e-mail et on lui envoie son code de livraison.",
+        "avisoIniciarSinCodigo": "Quand tu pars vers cette adresse, touche « Démarrer la tournée » : on prévient le client que tu es en route.",
+        "avisoEnCamino": "On a prévenu le client que tu es en route et on lui a envoyé son code de livraison.",
+        "avisoEnCaminoSinCodigo": "On a prévenu le client que tu es en route.",
+        "despuesDeIniciar": "Après « Démarrer la tournée », l’arrêt passe « En route » et « Livrer » et « Livraison impossible » apparaissent.",
+        "totalPedido": "Total de la commande",
+        "prueba": {
+          "titulo": "Preuve de livraison",
+          "conCodigo": "À la livraison, on te demande le code du client (obligatoire en paiement à la livraison), qui a reçu et, si tu veux, une photo du colis livré.",
+          "sinCodigo": "À la livraison, on te demande une photo ou la signature de la personne qui reçoit, et qui a reçu."
+        }
       },
       "origen": {
         "tienda": "Boutique en ligne",
@@ -67344,21 +67355,21 @@
         "otro": "Livraison"
       },
       "pasos": {
-        "recogido": "J'ai récupéré la commande",
-        "en_camino": "Je suis en route",
+        "recogido": "J’ai récupéré le colis",
+        "en_camino": "Démarrer la tournée · en route",
         "entregado": "Livré",
         "hechoSr": "fait",
         "actualSr": "étape en cours",
         "pendienteSr": "à faire",
         "hecho": {
-          "picked": "Commande récupérée",
+          "picked": "Colis récupéré",
           "out_for_delivery": "Tu es en route : le client a été prévenu"
         },
         "boton": {
-          "recoger": "J'ai récupéré la commande",
-          "en_camino": "Je suis en route",
-          "reintentar": "Réessayer : je suis en route",
-          "entregar": "Livré",
+          "recoger": "J’ai récupéré le colis",
+          "en_camino": "Démarrer la tournée",
+          "reintentar": "Réessayer : démarrer la tournée",
+          "entregar": "Livrer",
           "noEntregado": "Livraison impossible"
         }
       },
@@ -67516,7 +67527,7 @@
         "faltaNota": "Écris ce qui s'est passé.",
         "foto": {
           "titulo": "Photo de preuve",
-          "ayuda": "La position est enregistrée automatiquement"
+          "ayuda": "Jusqu’à 3 photos · la position est enregistrée"
         },
         "yAhora": "Et maintenant ?",
         "plan": {
@@ -67530,7 +67541,8 @@
           "devolver": "Le colis retourne à l'agence : remets-le en fin de journée."
         },
         "guardar": "Enregistrer et continuer la tournée",
-        "hecho": "Incident enregistré"
+        "hecho": "Incident enregistré",
+        "notaAyuda": "Jusqu’à 300 caractères. Obligatoire si tu choisis « Autre »."
       },
       "finJornada": {
         "titulo": "Fin de journée",
@@ -67556,11 +67568,150 @@
         "paqueteDevolver": "Colis à retourner",
         "enviado": {
           "titulo": "Résumé envoyé",
-          "descripcion": "Ta journée est clôturée. Remets les espèces à la caisse de l'agence : elles sont reçues dans Logistique › Rapprochements."
+          "descripcion": "Le bureau reçoit ligne par ligne et clôture le rapprochement. Ce qui n’a pas été encaissé aujourd’hui reste dans ta tournée de demain.",
+          "cabecera": "Journée terminée",
+          "tituloHora": "Résumé envoyé · {hora}",
+          "fueraDeTurno": "Tu es hors service. Merci pour la tournée d’aujourd’hui.",
+          "entregaloEn": "Remets-le à la personne qui reçoit l’argent à {sede}.",
+          "entregalo": "Remets-le à la personne qui reçoit l’argent à l’agence.",
+          "tuCuadre": "Ton rapprochement du jour",
+          "estadosCuadre": {
+            "por_recibir": "À recevoir",
+            "recibiendo": "En réception",
+            "cuadrado": "Rapproché",
+            "con_diferencia": "Avec écart"
+          },
+          "pasos": {
+            "enviado": "Résumé envoyé",
+            "recibido": "Argent reçu à l’agence",
+            "cerrado": "Rapprochement clôturé"
+          },
+          "volver": "Revenir à Mes livraisons"
         },
         "notaCuadre": "La personne qui reçoit l'argent le voit dans Logistique › Rapprochements et le met dans la caisse ouverte de l'agence.",
         "enviar": "Envoyer le résumé pour le rapprochement",
         "errorEnviar": "Impossible de clôturer la journée. Réessaie."
+      },
+      "actualizado": "mis à jour {hora}",
+      "sinConexion": {
+        "franja": "Hors ligne · tu vois la tournée de {hora}. Pour livrer, il te faut du réseau.",
+        "franjaSinHora": "Hors ligne. Pour livrer, il te faut du réseau.",
+        "pausa": "Sans réseau, impossible d’enregistrer livraisons, encaissements ou incidents : l’app ne les garde pas encore pour les envoyer plus tard. Appeler et Itinéraire fonctionnent. Si le client attend, cherche du réseau ou appelle la boutique.",
+        "insignia": "Sans réseau"
+      },
+      "sinCodigo": {
+        "titulo": "Le client n’a pas le code ?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Qu’il le cherche dans WhatsApp ou ses e-mails",
+            "descripcion": "Il est arrivé avec l’avis « Ta commande est en route ». Il est aussi dans son lien de suivi."
+          },
+          "tienda": {
+            "titulo": "Appelle la boutique",
+            "descripcion": "Un administrateur peut réinitialiser le code depuis le détail de l’envoi."
+          },
+          "novedad": {
+            "titulo": "Livraison impossible",
+            "descripcion": "S’il ne le trouve pas, enregistre l’incident et continue ta tournée. Le colis revient avec toi."
+          }
+        },
+        "candado": "Après {max} erreurs, le code est bloqué et seul un administrateur peut le réinitialiser. Impossible de passer outre le code en paiement à la livraison.",
+        "llamarTienda": "Appeler la boutique",
+        "seguir": "Continuer d’essayer"
+      },
+      "confirmada": {
+        "titulo": "Livré",
+        "subtitulo": "{numero} · arrêt {n} sur {total}",
+        "entregadoA": "Livré à {nombre}",
+        "codigoVerificado": "code vérifié",
+        "dinero": {
+          "titulo": "Argent de cette livraison",
+          "cobrado": {
+            "cash": "Encaissé en espèces",
+            "card": "Encaissé par TPE",
+            "transfer": "Encaissé par virement"
+          },
+          "recibido": "Reçu",
+          "cambio": "Monnaie rendue",
+          "enMano": "En poche maintenant"
+        },
+        "siguiente": "Arrêt suivant",
+        "sinMas": "Il ne te reste aucun arrêt. Quand tu as fini, clôture ta journée.",
+        "iniciarRuta": "Démarrer la tournée vers l’arrêt {n}",
+        "irAParada": "Aller à l’arrêt {n}",
+        "volverRuta": "Revenir à ma tournée"
+      },
+      "sinPerfil": {
+        "subtitulo": "La tournée du jour de celui qui livre",
+        "cifras": "Chiffres d’expédition du jour",
+        "kpis": {
+          "porDespachar": "À expédier",
+          "sinDomiciliario": "{n} sans livreur assigné",
+          "todosAsignados": "Tous ont un livreur",
+          "enRuta": "En tournée",
+          "enCalle": "{n, plural, =0 {Aucun livreur dehors} one {# livreur dehors} other {# livreurs dehors}}",
+          "novedades": "Incidents",
+          "porReprogramar": "{n} à reprogrammer aujourd’hui",
+          "sinNovedades": "Rien à reprogrammer aujourd’hui",
+          "porCuadrar": "À rapprocher",
+          "domiciliariosConEfectivo": "{n, plural, =0 {Aucune espèce à recevoir} one {# livreur avec des espèces} other {# livreurs avec des espèces}}"
+        },
+        "registrarme": "M’inscrire comme livreur",
+        "irADomiciliarios": "Aller aux Livreurs",
+        "irAlInicio": "Aller à l’accueil",
+        "copiarCorreo": "Copier mon e-mail",
+        "correoCopiado": "E-mail copié",
+        "noSeCopio": "Impossible de copier l’e-mail",
+        "b1": {
+          "titulo": "Ton compte n’a pas de profil de livreur",
+          "tituloSede": "Ton compte n’a pas de profil de livreur à {sede}",
+          "descripcion": "Mes livraisons, c’est la tournée du jour de celui qui livre : ses arrêts dans l’ordre, livrer avec le code du client, encaisser le paiement à la livraison et faire le rapprochement à la fin. Chaque livreur la voit avec son propre compte, sur le téléphone ou l’ordinateur.",
+          "comoLlega": "Comment quelqu’un arrive ici ?",
+          "pasos": {
+            "1": "Celui qui expédie l’inscrit dans Logistique › Livreurs et lie son compte GO Admin (son e-mail).",
+            "2": "Depuis À expédier, il lui assigne des envois ; la plaque de son véhicule est enregistrée sur chaque envoi.",
+            "3": "Le livreur se connecte avec son compte et voit ici sa tournée du jour, dans l’ordre."
+          },
+          "notaRegistrar": "« M’inscrire » ouvre la même fenêtre que Livreurs avec ton compte déjà lié : pièce d’identité, téléphone et véhicule (SOAT, contrôle technique et permis pour une moto ou une voiture).",
+          "loQueHace": "Ce que fait un livreur sur cette page"
+        },
+        "b2": {
+          "titulo": "Cette page est pour les livreurs",
+          "descripcion": "Ici, chaque livreur voit ses envois du jour dans l’ordre de la tournée, livre avec le code du client, encaisse le paiement à la livraison et fait le rapprochement à la fin. Ton compte n’est pas encore inscrit comme livreur.",
+          "cuandoTeRegistren": "Une fois inscrit, ici tu pourras",
+          "quienRegistra": "Qui t’inscrit ?",
+          "quienRegistraTexto": "La personne qui expédie dans ton agence ou un administrateur, depuis Logistique › Livreurs. Demande-lui d’utiliser ton e-mail GO Admin pour lier ton compte :",
+          "yaRegistrado": "Déjà inscrit et tu vois encore ceci ? Tu as peut-être été inscrit dans une autre agence ou sans lier ton compte : demande à celui qui expédie de vérifier ta fiche."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "Voir la tournée du jour",
+            "descripcion": "Envois dans l’ordre des arrêts, avec adresse, heure promise et ce qu’il faut encaisser."
+          },
+          "codigo": {
+            "titulo": "Livrer avec le code du client",
+            "descripcion": "Le client le reçoit par WhatsApp et e-mail quand la commande part."
+          },
+          "cobrar": {
+            "titulo": "Encaisser le paiement à la livraison",
+            "descripcion": "Espèces avec monnaie, TPE ou virement ; toujours le total."
+          },
+          "cuadrar": {
+            "titulo": "Rapprocher à la fin",
+            "descripcion": "Envoie le résumé et remets les espèces à la caisse de l’agence."
+          }
+        },
+        "atajos": {
+          "titulo": "Raccourcis de ton poste",
+          "ayuda": "Ce que ton menu te montre, en un geste."
+        },
+        "ejemplo": {
+          "titulo": "À quoi ressemble la tournée d’un livreur",
+          "etiqueta": "Exemple",
+          "descripcion": "Chaque livreur ne voit que ses envois du jour, sur le téléphone ou l’ordinateur.",
+          "guia": "ENV-000{n}",
+          "direccion": "Adresse · quartier"
+        }
       }
     },
     "domiciliario": {

@@ -462,3 +462,200 @@ export function rutaFotoEnvio(organizationId: number, shipmentId: string, uuid: 
   const ext = extension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
   return `${organizationId}/${shipmentId}/${tipo}-${uuid}.${ext}`;
 }
+
+// ── Numeración y siguiente parada ───────────────────────────────────────────
+
+/**
+ * Número de parada de una pendiente en la ruta del día: las entregadas van primero, así la que
+ * está en camino es «parada 3 de 8» tanto en la tarjeta como en el resumen y en el mapa.
+ */
+export function numeroParada(indicePendiente: number, entregados: number): number {
+  return entregados + indicePendiente + 1;
+}
+
+/** La siguiente parada después de entregar `entregadoId` (la primera pendiente que no es esa). */
+export function siguienteParada<T extends EnvioDomiciliario>(pendientes: readonly T[], entregadoId: string): T | null {
+  return pendientes.find((e) => e.id !== entregadoId) ?? null;
+}
+
+/**
+ * Qué ofrece «Entrega confirmada» para la siguiente parada: si el paquete ya va encima (recogido o
+ * reintento), «Iniciar ruta a la parada N» (avisa al cliente); si no, abrir la parada para recogerlo.
+ */
+export function accionSiguienteParada(e: Pick<EnvioDomiciliario, 'status'> | null): 'iniciar_ruta' | 'abrir' | 'ver_ruta' {
+  if (!e) return 'ver_ruta';
+  const paso = siguientePaso(String(e.status));
+  return paso === 'en_camino' || paso === 'reintentar' ? 'iniciar_ruta' : 'abrir';
+}
+
+// ── Cuadre del día (lo que ve el domiciliario tras enviar el resumen) ───────
+
+export type PasoCuadre = 'por_recibir' | 'recibiendo' | 'cuadrado' | 'con_diferencia';
+
+/**
+ * Estado del cuadre de la jornada según `courier_settlements` (la oficina lo abre al recibir y lo
+ * cierra al cuadrar): sin cuadre aún → por recibir; abierto → recibiendo; cerrado → cuadrado o con
+ * diferencia. Un cuadre anulado no cuenta (vuelve a «por recibir»).
+ */
+export function estadoCuadreJornada(c: { status: string; difference?: number | string | null } | null | undefined): PasoCuadre {
+  if (!c || c.status === 'cancelled') return 'por_recibir';
+  if (c.status === 'open') return 'recibiendo';
+  return centavos(c.difference) === 0 ? 'cuadrado' : 'con_diferencia';
+}
+
+// ── Documentos del vehículo y del domiciliario ──────────────────────────────
+
+/**
+ * Días de aviso antes del vencimiento: el mismo plazo que usa la base al asignar
+ * (`fn_flota_revisar_documentos(…, 30)` desde `fn_logistica_cumplimiento_asignacion`). Aquí solo
+ * se muestra; quien bloquea o deja pasar una asignación es la base.
+ */
+export const DIAS_AVISO_DOCUMENTO = 30;
+
+export type EstadoDocumento = 'vencido' | 'por_vencer' | 'vigente' | 'sin_dato';
+
+export interface VigenciaDocumento {
+  estado: EstadoDocumento;
+  /** Días que faltan (negativo si ya venció); null sin fecha. */
+  dias: number | null;
+}
+
+function diasEntre(desde: string, hasta: string): number | null {
+  const a = Date.parse(`${desde}T00:00:00Z`);
+  const b = Date.parse(`${hasta}T00:00:00Z`);
+  if (isNaN(a) || isNaN(b)) return null;
+  return Math.round((b - a) / 86_400_000);
+}
+
+/** Vigencia de un documento (`date`) frente al día de la organización. */
+export function vigenciaDocumento(vence: string | null | undefined, hoy: string): VigenciaDocumento {
+  if (!vence) return { estado: 'sin_dato', dias: null };
+  const dias = diasEntre(hoy, vence.slice(0, 10));
+  if (dias === null) return { estado: 'sin_dato', dias: null };
+  if (dias < 0) return { estado: 'vencido', dias };
+  return { estado: dias <= DIAS_AVISO_DOCUMENTO ? 'por_vencer' : 'vigente', dias };
+}
+
+/** El peor estado de una lista de documentos (para la insignia de «Mi vehículo hoy»). */
+export function peorVigencia(lista: readonly VigenciaDocumento[]): VigenciaDocumento | null {
+  const orden: EstadoDocumento[] = ['vencido', 'por_vencer', 'vigente'];
+  for (const estado of orden) {
+    const de = lista.filter((d) => d.estado === estado);
+    if (de.length > 0) return de.reduce((m, d) => ((d.dias ?? 0) < (m.dias ?? 0) ? d : m));
+  }
+  return null;
+}
+
+// ── Mapa de la ruta ─────────────────────────────────────────────────────────
+
+export type EstadoPin = 'entregado' | 'actual' | 'pendiente' | 'novedad';
+
+export interface PinRuta {
+  id: string;
+  numero: number;
+  estado: EstadoPin;
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Pines del mapa en el orden de la ruta: entregados (por hora de entrega), pendientes (la primera
+ * es la actual) y novedades al final. Las paradas sin coordenadas no se dibujan (se ubican por la
+ * dirección escrita en Google Maps).
+ */
+export function pinesRuta<T extends EnvioDomiciliario>(g: GruposMisEnvios<T>): PinRuta[] {
+  const entregados = [...g.entregados].sort((a, b) => (a.delivered_at ?? '').localeCompare(b.delivered_at ?? ''));
+  const filas: Array<{ e: T; estado: EstadoPin }> = [
+    ...entregados.map((e) => ({ e, estado: 'entregado' as const })),
+    ...g.pendientes.map((e, i) => ({ e, estado: (i === 0 ? 'actual' : 'pendiente') as EstadoPin })),
+    ...g.novedades.map((e) => ({ e, estado: 'novedad' as const })),
+  ];
+  const pines: PinRuta[] = [];
+  filas.forEach(({ e, estado }, i) => {
+    const c = coordenadas(e);
+    if (c) pines.push({ id: e.id, numero: i + 1, estado, lat: c.lat, lng: c.lng });
+  });
+  return pines;
+}
+
+/** Máximo de paradas intermedias que acepta el enlace de direcciones de Google Maps. */
+export const MAX_PARADAS_GOOGLE = 9;
+
+/**
+ * «Abrir la ruta en Google Maps» con las paradas pendientes en orden: la última es el destino y
+ * las demás, paradas intermedias (hasta 9). Por coordenadas o, si no hay, por la dirección escrita.
+ */
+export function enlaceRutaGoogleMaps(
+  paradas: readonly Pick<EnvioDomiciliario, 'delivery_latitude' | 'delivery_longitude' | 'delivery_address' | 'delivery_city'>[],
+): string | null {
+  const puntos = paradas
+    .map((e) => {
+      const c = coordenadas(e);
+      if (c) return `${c.lat},${c.lng}`;
+      return [e.delivery_address, e.delivery_city].map((s) => (s ?? '').trim()).filter(Boolean).join(', ');
+    })
+    .filter(Boolean)
+    .slice(0, MAX_PARADAS_GOOGLE + 1);
+  if (puntos.length === 0) return null;
+  const destino = puntos[puntos.length - 1];
+  const intermedias = puntos.slice(0, -1);
+  const paradasIntermedias = intermedias.length ? `&waypoints=${encodeURIComponent(intermedias.join('|'))}` : '';
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}${paradasIntermedias}&travelmode=driving`;
+}
+
+// ── Computador: cifras del día, filtro y búsqueda ───────────────────────────
+
+export interface KpisMisEnvios {
+  asignados: number;
+  parada: number;
+  enCamino: EnvioDomiciliario | null;
+  enCaminoTotal: number;
+  entregados: number;
+  /** Entregados antes de la hora prometida (null si ninguno tenía promesa). */
+  aTiempo: number | null;
+  porCobrar: number;
+  porCobrarEnvios: number;
+  enMano: number;
+}
+
+export function kpisMisEnvios(g: GruposMisEnvios<EnvioDomiciliario>, todos: readonly EnvioDomiciliario[]): KpisMisEnvios {
+  const r = resumenRuta(g, todos);
+  const enCamino = g.pendientes.filter((e) => e.status === 'out_for_delivery');
+  const conPromesa = g.entregados.filter((e) => e.promesa && e.delivered_at);
+  const aTiempo =
+    conPromesa.length === 0 ? null : conPromesa.filter((e) => new Date(e.delivered_at as string).getTime() <= new Date(e.promesa as string).getTime()).length;
+  return {
+    asignados: r.totalParadas,
+    parada: r.parada,
+    enCamino: enCamino[0] ?? null,
+    enCaminoTotal: enCamino.length,
+    entregados: r.entregados,
+    aTiempo,
+    porCobrar: r.aCobrar,
+    porCobrarEnvios: g.pendientes.filter((e) => porCobrar(e) > 0).length,
+    enMano: r.enMano,
+  };
+}
+
+export type FiltroParadas = 'todos' | PestanaMisEnvios;
+
+/** «Todos» en el orden del día: entregados (por hora), luego pendientes y al final las novedades. */
+export function paradasDelFiltro<T extends EnvioDomiciliario>(g: GruposMisEnvios<T>, filtro: FiltroParadas): T[] {
+  if (filtro !== 'todos') return g[filtro];
+  const entregados = [...g.entregados].sort((a, b) => (a.delivered_at ?? '').localeCompare(b.delivered_at ?? ''));
+  return [...entregados, ...g.pendientes, ...g.novedades];
+}
+
+const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** Busca por guía, dirección, municipio, barrio y nombre del cliente (sin tildes ni mayúsculas). */
+export function coincideParada(
+  e: EnvioDomiciliario & { barrio?: string | null; customer?: { full_name?: string | null } | null },
+  termino: string,
+): boolean {
+  const q = sinTildes(termino.trim());
+  if (!q) return true;
+  return [e.shipment_number, e.delivery_address, e.delivery_city, e.barrio, e.delivery_contact_name, e.customer?.full_name].some((t) =>
+    sinTildes(t ?? '').includes(q),
+  );
+}

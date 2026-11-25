@@ -69,6 +69,8 @@ export function useMiRuta() {
   const [envios, setEnvios] = useState<EnvioApp[]>([]);
   const [estado, setEstado] = useState<EstadoCarga>('cargando');
   const [version, setVersion] = useState(0);
+  /** Hora de la última carga buena («Sin conexión · ves la ruta de las 10:58»). */
+  const [actualizadoEn, setActualizadoEn] = useState<Date | null>(null);
 
   // Desde el inicio de AYER en la zona de la organización: cubre «hoy» en cualquier sede.
   const desde = useMemo(() => new Date(plainDateToInstant(addPlainDays(hoy, -1), timezone)).toISOString(), [hoy, timezone]);
@@ -86,6 +88,7 @@ export function useMiRuta() {
         if (cancelado) return;
         setEnvios(r);
         setEstado('listo');
+        setActualizadoEn(new Date());
       })
       .catch(() => !cancelado && setEstado('error'));
     return () => {
@@ -94,7 +97,7 @@ export function useMiRuta() {
   }, [estadoDriver, orgId, driver, desde, version]);
 
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
-  return { orgId, driver, envios, estado, recargar, hoy, timezone, zonaDe };
+  return { orgId, driver, envios, estado, recargar, hoy, timezone, zonaDe, desde, actualizadoEn };
 }
 
 /** Una parada del domiciliario de la sesión (null si no es suya). */

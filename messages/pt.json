@@ -67346,7 +67346,18 @@
         "pideCodigo": "Peça ao cliente o código de entrega de 4 dígitos.",
         "llevas": "O que você leva ({n})",
         "envio": "Frete",
-        "pasos": "Passos"
+        "pasos": "Passos",
+        "avisoIniciar": "Quando sair para este endereço, toque em «Iniciar rota»: avisamos o cliente por WhatsApp e e-mail e enviamos o código de entrega.",
+        "avisoIniciarSinCodigo": "Quando sair para este endereço, toque em «Iniciar rota»: avisamos o cliente que você está a caminho.",
+        "avisoEnCamino": "Avisamos o cliente que você está a caminho e enviamos o código de entrega.",
+        "avisoEnCaminoSinCodigo": "Avisamos o cliente que você está a caminho.",
+        "despuesDeIniciar": "Depois de «Iniciar rota» a parada fica «A caminho» e aparecem «Entregar» e «Não foi possível entregar».",
+        "totalPedido": "Total do pedido",
+        "prueba": {
+          "titulo": "Comprovante de entrega",
+          "conCodigo": "Na entrega pedimos o código do cliente (obrigatório no pagamento na entrega), quem recebeu e, se quiser, uma foto do pacote entregue.",
+          "sinCodigo": "Na entrega pedimos uma foto ou a assinatura de quem recebe e quem recebeu."
+        }
       },
       "origen": {
         "tienda": "Loja online",
@@ -67354,21 +67365,21 @@
         "otro": "Entrega"
       },
       "pasos": {
-        "recogido": "Retirei o pedido",
-        "en_camino": "Estou a caminho",
+        "recogido": "Retirei o pacote",
+        "en_camino": "Iniciar rota · a caminho",
         "entregado": "Entregue",
         "hechoSr": "feito",
         "actualSr": "passo atual",
         "pendienteSr": "pendente",
         "hecho": {
-          "picked": "Pedido retirado",
+          "picked": "Pacote retirado",
           "out_for_delivery": "Você está a caminho: avisamos o cliente"
         },
         "boton": {
-          "recoger": "Retirei o pedido",
-          "en_camino": "Estou a caminho",
-          "reintentar": "Tentar de novo: estou a caminho",
-          "entregar": "Entregue",
+          "recoger": "Retirei o pacote",
+          "en_camino": "Iniciar rota",
+          "reintentar": "Tentar de novo: iniciar rota",
+          "entregar": "Entregar",
           "noEntregado": "Não foi possível entregar"
         }
       },
@@ -67526,7 +67537,7 @@
         "faltaNota": "Escreva o que aconteceu.",
         "foto": {
           "titulo": "Foto de evidência",
-          "ayuda": "A localização é salva automaticamente"
+          "ayuda": "Até 3 fotos · a localização é salva"
         },
         "yAhora": "E agora?",
         "plan": {
@@ -67540,7 +67551,8 @@
           "devolver": "O pacote volta à filial: entregue-o ao encerrar o dia."
         },
         "guardar": "Salvar e seguir a rota",
-        "hecho": "Ocorrência registrada"
+        "hecho": "Ocorrência registrada",
+        "notaAyuda": "Até 300 caracteres. Obrigatória se escolher «Outro»."
       },
       "finJornada": {
         "titulo": "Fim do dia",
@@ -67566,11 +67578,150 @@
         "paqueteDevolver": "Pacote a devolver",
         "enviado": {
           "titulo": "Resumo enviado",
-          "descripcion": "Seu dia foi encerrado. Entregue o dinheiro no caixa da filial: ele é recebido em Logística › Acertos."
+          "descripcion": "O escritório recebe linha por linha e fecha o acerto. O que não foi cobrado hoje continua na sua rota de amanhã.",
+          "cabecera": "Dia encerrado",
+          "tituloHora": "Resumo enviado · {hora}",
+          "fueraDeTurno": "Você ficou fora de turno. Obrigado pela rota de hoje.",
+          "entregaloEn": "Entregue a quem recebe o dinheiro em {sede}.",
+          "entregalo": "Entregue a quem recebe o dinheiro na filial.",
+          "tuCuadre": "Seu acerto de hoje",
+          "estadosCuadre": {
+            "por_recibir": "A receber",
+            "recibiendo": "Recebendo",
+            "cuadrado": "Acertado",
+            "con_diferencia": "Com diferença"
+          },
+          "pasos": {
+            "enviado": "Resumo enviado",
+            "recibido": "Dinheiro recebido na filial",
+            "cerrado": "Acerto fechado"
+          },
+          "volver": "Voltar a Minhas entregas"
         },
         "notaCuadre": "Quem recebe o dinheiro o vê em Logística › Acertos e o coloca no caixa aberto da filial.",
         "enviar": "Enviar resumo para o acerto",
         "errorEnviar": "Não foi possível encerrar o dia. Tente de novo."
+      },
+      "actualizado": "atualizado {hora}",
+      "sinConexion": {
+        "franja": "Sem conexão · você vê a rota das {hora}. Para entregar você precisa de sinal.",
+        "franjaSinHora": "Sem conexão. Para entregar você precisa de sinal.",
+        "pausa": "Sem sinal não é possível registrar entregas, cobranças nem ocorrências: o app ainda não as guarda para enviar depois. Ligar e Como chegar funcionam. Se o cliente estiver esperando, procure sinal ou ligue para a loja.",
+        "insignia": "Sem sinal"
+      },
+      "sinCodigo": {
+        "titulo": "O cliente não tem o código?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Peça que procure no WhatsApp ou e-mail",
+            "descripcion": "Chegou com o aviso «Seu pedido está a caminho». Também está no link de rastreio."
+          },
+          "tienda": {
+            "titulo": "Ligue para a loja",
+            "descripcion": "Um administrador pode reiniciar o código no detalhe do envio."
+          },
+          "novedad": {
+            "titulo": "Não foi possível entregar",
+            "descripcion": "Se não aparecer, registre a ocorrência e siga a rota. O pacote volta com você."
+          }
+        },
+        "candado": "Com {max} erros o código é bloqueado e só um administrador pode reiniciá-lo. Não há como pular o código no pagamento na entrega.",
+        "llamarTienda": "Ligar para a loja",
+        "seguir": "Continuar tentando"
+      },
+      "confirmada": {
+        "titulo": "Entregue",
+        "subtitulo": "{numero} · parada {n} de {total}",
+        "entregadoA": "Entregue a {nombre}",
+        "codigoVerificado": "código verificado",
+        "dinero": {
+          "titulo": "Dinheiro desta entrega",
+          "cobrado": {
+            "cash": "Cobrado em dinheiro",
+            "card": "Cobrado na maquininha",
+            "transfer": "Cobrado por transferência"
+          },
+          "recibido": "Recebido",
+          "cambio": "Troco entregue",
+          "enMano": "Em mãos agora"
+        },
+        "siguiente": "Próxima parada",
+        "sinMas": "Você não tem mais paradas pendentes. Ao terminar, feche o acerto do dia.",
+        "iniciarRuta": "Iniciar rota para a parada {n}",
+        "irAParada": "Ir para a parada {n}",
+        "volverRuta": "Voltar à minha rota"
+      },
+      "sinPerfil": {
+        "subtitulo": "A rota do dia de quem entrega",
+        "cifras": "Números de expedição de hoje",
+        "kpis": {
+          "porDespachar": "A despachar",
+          "sinDomiciliario": "{n} sem entregador atribuído",
+          "todosAsignados": "Todos têm entregador",
+          "enRuta": "Em rota",
+          "enCalle": "{n, plural, =0 {Nenhum entregador na rua} one {# entregador na rua} other {# entregadores na rua}}",
+          "novedades": "Ocorrências",
+          "porReprogramar": "{n} para reprogramar hoje",
+          "sinNovedades": "Nada para reprogramar hoje",
+          "porCuadrar": "A acertar",
+          "domiciliariosConEfectivo": "{n, plural, =0 {Sem dinheiro a receber} one {# entregador com dinheiro} other {# entregadores com dinheiro}}"
+        },
+        "registrarme": "Registrar-me como entregador",
+        "irADomiciliarios": "Ir para Entregadores",
+        "irAlInicio": "Ir para o início",
+        "copiarCorreo": "Copiar meu e-mail",
+        "correoCopiado": "E-mail copiado",
+        "noSeCopio": "Não foi possível copiar o e-mail",
+        "b1": {
+          "titulo": "Sua conta não tem perfil de entregador",
+          "tituloSede": "Sua conta não tem perfil de entregador em {sede}",
+          "descripcion": "Minhas entregas é a rota do dia de quem entrega: as paradas em ordem, entregar com o código do cliente, cobrar o pagamento na entrega e fazer o acerto no fim. Cada entregador a vê com a própria conta, no celular ou no computador.",
+          "comoLlega": "Como alguém chega aqui?",
+          "pasos": {
+            "1": "Quem despacha o registra em Logística › Entregadores e vincula a conta GO Admin dele (o e-mail).",
+            "2": "Em A despachar atribui envios; a placa do veículo fica salva em cada envio.",
+            "3": "O entregador entra com a conta e vê aqui a rota de hoje, em ordem."
+          },
+          "notaRegistrar": "«Registrar-me» abre o mesmo diálogo de Entregadores com sua conta já vinculada: documento, telefone e veículo (SOAT, inspeção técnica e habilitação se for moto ou carro).",
+          "loQueHace": "O que um entregador faz nesta página"
+        },
+        "b2": {
+          "titulo": "Esta página é para entregadores",
+          "descripcion": "Aqui cada entregador vê os envios do dia em ordem de rota, entrega com o código do cliente, cobra o pagamento na entrega e faz o acerto no fim. Sua conta ainda não está registrada como entregador.",
+          "cuandoTeRegistren": "Quando registrarem você, aqui poderá",
+          "quienRegistra": "Quem registra você?",
+          "quienRegistraTexto": "Quem despacha na sua filial ou um administrador, em Logística › Entregadores. Peça que use seu e-mail do GO Admin para vincular sua conta:",
+          "yaRegistrado": "Já registraram você e continua vendo isto? Talvez tenham registrado em outra filial ou sem vincular sua conta: peça a quem despacha que confira sua ficha."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "Ver a rota do dia",
+            "descripcion": "Envios em ordem de parada, com endereço, horário prometido e o que cobrar."
+          },
+          "codigo": {
+            "titulo": "Entregar com o código do cliente",
+            "descripcion": "O cliente recebe por WhatsApp e e-mail quando o pedido sai a caminho."
+          },
+          "cobrar": {
+            "titulo": "Cobrar o pagamento na entrega",
+            "descripcion": "Dinheiro com troco, maquininha ou transferência; sempre o total."
+          },
+          "cuadrar": {
+            "titulo": "Fazer o acerto no fim",
+            "descripcion": "Envie o resumo e entregue o dinheiro no caixa da filial."
+          }
+        },
+        "atajos": {
+          "titulo": "Atalhos do seu cargo",
+          "ayuda": "O que seu menu mostra, a um toque."
+        },
+        "ejemplo": {
+          "titulo": "Assim é a rota de um entregador",
+          "etiqueta": "Exemplo",
+          "descripcion": "Cada entregador vê só os próprios envios do dia, no celular ou no computador.",
+          "guia": "ENV-000{n}",
+          "direccion": "Endereço · bairro"
+        }
       }
     },
     "domiciliario": {

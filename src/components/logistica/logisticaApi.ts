@@ -7,6 +7,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { estadoPedidoDelAviso, type EnvioDomiciliario } from '@/lib/logistica/misEnvios';
 import type { AltaDomiciliario } from '@/lib/logistica/domiciliarios';
 import type { DatosServidorRotulo } from '@/lib/logistica/rotuloEnvio';
+import type { PerfilMisEnvios } from '@/lib/logistica/sinPerfil';
 import type { CandidatosAlta, DomiciliarioFila } from '@/lib/services/logistica/domiciliariosService';
 
 function cabeceras(json: boolean): Record<string, string> {
@@ -87,3 +88,6 @@ export async function datosServidorRotulos(ids: readonly string[]): Promise<Reco
     return {};
   }
 }
+
+/** Qué ve en «Mis envíos» quien no es domiciliario (permiso, correo, atajos y cifras de despacho). */
+export const leerPerfilMisEnvios = () => pedir<PerfilMisEnvios>('/api/logistica/mis-envios/perfil');

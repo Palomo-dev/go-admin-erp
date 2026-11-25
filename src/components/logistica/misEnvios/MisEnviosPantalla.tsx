@@ -1,26 +1,32 @@
 'use client';
 
 /**
- * «Mis envíos» — la ruta del domiciliario en el celular (Figma 2801:3939, 390 px).
+ * «Mis envíos» — la ruta del domiciliario (Figma 2801:3939 y «01 Mi ruta del día», 3231-16576).
  *
  * Resumen de la ruta, pestañas Pendientes / Entregados / Novedades y una tarjeta por parada con
- * llamar y cómo llegar. Tocar la tarjeta abre la parada; «Terminar jornada y cuadrar» lleva al
- * fin de jornada. Solo lee: lo que cambia estado o dinero se hace en la parada, con las RPC.
+ * llamar y cómo llegar (`TarjetaParada`, la misma pieza del mapa y de «Entrega confirmada").
+ * Tocar la tarjeta abre la parada; «Terminar jornada y cuadrar» lleva al fin de jornada. Solo lee:
+ * lo que cambia estado o dinero se hace en la parada, con las RPC.
+ *
+ * Sin señal: franja con la hora de la última carga y aviso de que entregar, cobrar y registrar
+ * novedades queda en pausa (decisión 2026-11-25). Sin perfil de domiciliario: `SinPerfil` (b1/b2).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Bike, PackageCheck, RefreshCw, Route } from 'lucide-react';
+import { PackageCheck, RefreshCw, Route } from 'lucide-react';
 import { ChipsOpcion, EmptyState, PageHeader, Skeleton, StatusBadge, clasesBoton } from '@/components/kit';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useBranch } from '@/lib/context/BranchContext';
-import { agruparMisEnvios, resumenRuta, type PestanaMisEnvios } from '@/lib/logistica/misEnvios';
+import { agruparMisEnvios, numeroParada, resumenRuta, type PestanaMisEnvios } from '@/lib/logistica/misEnvios';
 import { nombreDomiciliario } from '@/lib/logistica/domiciliarios';
-import type { EnvioApp } from '@/lib/services/logistica/misEnviosService';
 import { useMiRuta } from './useMiRuta';
-import { BarraInferior, BotonesRapidos, ChipCobro, ChipPromesa, InsigniaEstadoApp, enlacesDe } from './piezas';
+import { useEnLinea } from './useEnLinea';
+import { TarjetaParada } from './TarjetaParada';
+import { SinPerfil } from './SinPerfil';
+import { AvisoPausaSinConexion, BarraInferior, FranjaSinConexion } from './piezas';
 import { RUTA_FIN_JORNADA, rutaParada } from './rutas';
 
 export function MisEnviosPantalla() {
@@ -28,8 +34,9 @@ export function MisEnviosPantalla() {
   const router = useRouter();
   const locale = useLocaleIntl();
   const moneda = useMonedaOrganizacion();
-  const { branches } = useBranch();
-  const { driver, envios, estado, recargar, hoy, zonaDe } = useMiRuta();
+  const { branches, branchFilter } = useBranch();
+  const { driver, envios, estado, recargar, hoy, timezone, zonaDe, actualizadoEn } = useMiRuta();
+  const enLinea = useEnLinea();
   const [pestana, setPestana] = useState<PestanaMisEnvios>('pendientes');
   const [ahora, setAhora] = useState(() => new Date());
 
@@ -38,6 +45,13 @@ export function MisEnviosPantalla() {
     const id = window.setInterval(() => setAhora(new Date()), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Al volver la señal (de sin conexión a con conexión), la ruta se vuelve a leer.
+  const conexionAnterior = useRef(enLinea);
+  useEffect(() => {
+    if (enLinea && !conexionAnterior.current) recargar();
+    conexionAnterior.current = enLinea;
+  }, [enLinea, recargar]);
 
   const grupos = useMemo(() => agruparMisEnvios(envios, hoy, zonaDe), [envios, hoy, zonaDe]);
   const resumen = useMemo(() => resumenRuta(grupos, envios), [grupos, envios]);
@@ -48,20 +62,20 @@ export function MisEnviosPantalla() {
   const fecha = new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
     new Date(`${hoy}T12:00:00Z`),
   );
-  const subtitulo = [t('hoy', { fecha }), sede, nombre].filter(Boolean).join(' · ');
+  const horaCarga = actualizadoEn ? new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: timezone }).format(actualizadoEn) : null;
+  const subtitulo = [t('hoy', { fecha }), !enLinea && horaCarga ? t('actualizado', { hora: horaCarga }) : sede, enLinea ? nombre : null]
+    .filter(Boolean)
+    .join(' · ');
 
   if (estado === 'sin_domiciliario') {
-    return (
-      <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
-        <PageHeader titulo={t('titulo')} icono={Route} />
-        <EmptyState variante="forbidden" compacto icono={Bike} titulo={t('sinDomiciliario.titulo')} descripcion={t('sinDomiciliario.descripcion')} />
-      </div>
-    );
+    const sedeCabecera = branchFilter != null ? branches.find((b) => b.id === branchFilter)?.name ?? null : null;
+    return <SinPerfil sede={sedeCabecera} onRegistrado={() => window.location.reload()} />;
   }
   if (estado === 'error') {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
         <PageHeader titulo={t('titulo')} icono={Route} />
+        {!enLinea && <FranjaSinConexion actualizadoEn={actualizadoEn} zona={timezone} />}
         <EmptyState variante="error" compacto titulo={t('error.titulo')} descripcion={t('error.descripcion')} onReintentar={recargar} />
       </div>
     );
@@ -94,6 +108,8 @@ export function MisEnviosPantalla() {
         }}
       />
 
+      {!enLinea && <FranjaSinConexion actualizadoEn={actualizadoEn} zona={timezone} />}
+
       {estado === 'cargando' ? (
         <div className="flex flex-col gap-3" aria-busy="true">
           <Skeleton className="h-24 w-full rounded-xl" />
@@ -107,13 +123,17 @@ export function MisEnviosPantalla() {
               <h2 className="text-[15px] font-medium text-fg">
                 {resumen.estado === 'vacia' ? t('ruta.vacia') : resumen.estado === 'terminada' ? t('ruta.terminada') : t('ruta.parada', { n: resumen.parada, total: resumen.totalParadas })}
               </h2>
-              {resumen.estado !== 'vacia' && (
-                <StatusBadge
-                  estado={resumen.estado}
-                  etiqueta={t(`ruta.estados.${resumen.estado}`)}
-                  tono={resumen.estado === 'en_ruta' ? 'informacion' : resumen.estado === 'terminada' ? 'exito' : 'neutro'}
-                  apariencia="contorno"
-                />
+              {!enLinea ? (
+                <StatusBadge estado="sin_senal" etiqueta={t('sinConexion.insignia')} tono="neutro" />
+              ) : (
+                resumen.estado !== 'vacia' && (
+                  <StatusBadge
+                    estado={resumen.estado}
+                    etiqueta={t(`ruta.estados.${resumen.estado}`)}
+                    tono={resumen.estado === 'en_ruta' ? 'informacion' : resumen.estado === 'terminada' ? 'exito' : 'neutro'}
+                    apariencia="contorno"
+                  />
+                )
               )}
             </div>
             <dl className="grid grid-cols-4 gap-2">
@@ -139,7 +159,7 @@ export function MisEnviosPantalla() {
                 <TarjetaParada
                   key={e.id}
                   envio={e}
-                  numero={pestana === 'pendientes' ? i + 1 : null}
+                  numero={pestana === 'pendientes' ? numeroParada(i, resumen.entregados) : null}
                   zona={zonaDe(e)}
                   ahora={ahora}
                   onAbrir={() => router.push(rutaParada(e.id))}
@@ -148,10 +168,18 @@ export function MisEnviosPantalla() {
             </ol>
           )}
 
+          {!enLinea && <AvisoPausaSinConexion />}
+
           <BarraInferior>
-            <Link href={RUTA_FIN_JORNADA} className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true })}>
-              {t('terminarJornada')}
-            </Link>
+            {enLinea ? (
+              <Link href={RUTA_FIN_JORNADA} className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true })}>
+                {t('terminarJornada')}
+              </Link>
+            ) : (
+              <button type="button" disabled className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true })}>
+                {t('terminarJornada')}
+              </button>
+            )}
           </BarraInferior>
         </>
       )}
@@ -168,60 +196,5 @@ function Cifra({ etiqueta, valor, clase }: { etiqueta: string; valor: string; cl
       <dt className="truncate text-xs text-fg-secondary">{etiqueta}</dt>
       <dd className={`truncate text-[15px] font-semibold text-fg ${clase ?? ''}`}>{valor}</dd>
     </div>
-  );
-}
-
-function TarjetaParada({ envio, numero, zona, ahora, onAbrir }: { envio: EnvioApp; numero: number | null; zona: string; ahora: Date; onAbrir: () => void }) {
-  const t = useTranslations('logistica.misEnvios');
-  const nombre = envio.delivery_contact_name || envio.customer?.full_name || t('cliente');
-  const enlaces = enlacesDe(envio);
-  const destacada = envio.status === 'out_for_delivery';
-  const intento = (envio.failed_attempts ?? 0) > 0 && envio.status !== 'delivered' ? (envio.failed_attempts ?? 0) + 1 : null;
-
-  return (
-    <li>
-      <div
-        role="link"
-        tabIndex={0}
-        onClick={onAbrir}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onAbrir();
-          }
-        }}
-        aria-label={t('tarjeta.abrir', { numero: envio.shipment_number, nombre })}
-        className={`flex cursor-pointer flex-col gap-2 rounded-xl border bg-surface p-4 hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-          destacada ? 'border-line-brand shadow-sm' : 'border-line'
-        }`}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-2">
-            {numero != null && (
-              <span
-                aria-hidden="true"
-                className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold ${destacada ? 'bg-brand-action text-fg-on-brand' : 'bg-subtle text-fg-secondary'}`}
-              >
-                {numero}
-              </span>
-            )}
-            <span className="truncate text-[15px] font-medium text-fg">{envio.shipment_number}</span>
-          </span>
-          <InsigniaEstadoApp estado={String(envio.status)} />
-        </div>
-        <p className="text-lg font-semibold leading-snug text-fg">{envio.delivery_address || t('sinDireccion')}</p>
-        <p className="text-sm text-fg-secondary">{[envio.delivery_city, nombre].filter(Boolean).join(' · ')}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <ChipPromesa envio={envio} zona={zona} ahora={ahora} />
-          {intento && (
-            <span className="inline-flex items-center rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-medium text-warning-text">{t('tarjeta.intento', { n: intento })}</span>
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <ChipCobro envio={envio} />
-          <BotonesRapidos enlaces={enlaces} nombre={nombre} />
-        </div>
-      </div>
-    </li>
   );
 }

@@ -67334,7 +67334,18 @@
         "pideCodigo": "Pídele al cliente el código de entrega de 4 dígitos.",
         "llevas": "Qué llevas ({n})",
         "envio": "Envío",
-        "pasos": "Pasos"
+        "pasos": "Pasos",
+        "avisoIniciar": "Cuando salgas hacia esta dirección toca «Iniciar ruta»: le avisamos al cliente por WhatsApp y correo y le enviamos su código de entrega.",
+        "avisoIniciarSinCodigo": "Cuando salgas hacia esta dirección toca «Iniciar ruta»: le avisamos al cliente que vas en camino.",
+        "avisoEnCamino": "Le avisamos al cliente que vas en camino y le enviamos su código de entrega.",
+        "avisoEnCaminoSinCodigo": "Le avisamos al cliente que vas en camino.",
+        "despuesDeIniciar": "Después de «Iniciar ruta» la parada queda «En camino» y aparecen «Entregar» y «No se pudo entregar».",
+        "totalPedido": "Total del pedido",
+        "prueba": {
+          "titulo": "Prueba de entrega",
+          "conCodigo": "Al entregar te pedimos el código del cliente (obligatorio en contraentrega), quién recibió y, si quieres, una foto del paquete entregado.",
+          "sinCodigo": "Al entregar te pedimos una foto o la firma de quien recibe y quién recibió."
+        }
       },
       "origen": {
         "tienda": "Tienda web",
@@ -67342,21 +67353,21 @@
         "otro": "Envío"
       },
       "pasos": {
-        "recogido": "Recogí el pedido",
-        "en_camino": "Voy en camino",
+        "recogido": "Recogí el paquete",
+        "en_camino": "Iniciar ruta · en camino",
         "entregado": "Entregado",
         "hechoSr": "hecho",
         "actualSr": "paso actual",
         "pendienteSr": "pendiente",
         "hecho": {
-          "picked": "Pedido recogido",
+          "picked": "Paquete recogido",
           "out_for_delivery": "Vas en camino: le avisamos al cliente"
         },
         "boton": {
-          "recoger": "Recogí el pedido",
-          "en_camino": "Voy en camino",
-          "reintentar": "Reintentar: voy en camino",
-          "entregar": "Entregado",
+          "recoger": "Recogí el paquete",
+          "en_camino": "Iniciar ruta",
+          "reintentar": "Reintentar: iniciar ruta",
+          "entregar": "Entregar",
           "noEntregado": "No se pudo entregar"
         }
       },
@@ -67514,7 +67525,7 @@
         "faltaNota": "Escribe qué pasó.",
         "foto": {
           "titulo": "Foto de evidencia",
-          "ayuda": "Se guarda la ubicación automáticamente"
+          "ayuda": "Hasta 3 fotos · se guarda la ubicación"
         },
         "yAhora": "¿Y ahora?",
         "plan": {
@@ -67528,7 +67539,8 @@
           "devolver": "El paquete vuelve a la sede: entrégalo al terminar la jornada."
         },
         "guardar": "Guardar y seguir con la ruta",
-        "hecho": "Novedad registrada"
+        "hecho": "Novedad registrada",
+        "notaAyuda": "Hasta 300 caracteres. Obligatoria si eliges «Otro»."
       },
       "finJornada": {
         "titulo": "Fin de jornada",
@@ -67554,11 +67566,150 @@
         "paqueteDevolver": "Paquete por devolver",
         "enviado": {
           "titulo": "Resumen enviado",
-          "descripcion": "Tu jornada quedó cerrada. Entrega el efectivo en la caja de la sede: allí lo reciben en Logística › Cuadres."
+          "descripcion": "La oficina recibe línea por línea y cierra el cuadre. Lo que no se cobró hoy sigue en tu ruta de mañana.",
+          "cabecera": "Jornada terminada",
+          "tituloHora": "Resumen enviado · {hora}",
+          "fueraDeTurno": "Quedaste fuera de turno. Gracias por la ruta de hoy.",
+          "entregaloEn": "Entrégalo a quien recibe el dinero en {sede}.",
+          "entregalo": "Entrégalo a quien recibe el dinero en la sede.",
+          "tuCuadre": "Tu cuadre de hoy",
+          "estadosCuadre": {
+            "por_recibir": "Por recibir",
+            "recibiendo": "Recibiendo",
+            "cuadrado": "Cuadrado",
+            "con_diferencia": "Con diferencia"
+          },
+          "pasos": {
+            "enviado": "Resumen enviado",
+            "recibido": "Dinero recibido en la sede",
+            "cerrado": "Cuadre cerrado"
+          },
+          "volver": "Volver a Mis envíos"
         },
         "notaCuadre": "Quien recibe el dinero lo ve en Logística › Cuadres y lo pasa a la caja abierta de la sede.",
         "enviar": "Enviar resumen para el cuadre",
         "errorEnviar": "No se pudo cerrar la jornada. Vuelve a intentar."
+      },
+      "actualizado": "actualizado {hora}",
+      "sinConexion": {
+        "franja": "Sin conexión · ves la ruta de las {hora}. Para entregar necesitas señal.",
+        "franjaSinHora": "Sin conexión. Para entregar necesitas señal.",
+        "pausa": "Sin señal no se pueden registrar entregas, cobros ni novedades: hoy la app no los guarda para enviarlos después. Llamar y Cómo llegar sí funcionan. Si el cliente está esperando, busca señal o llama a la tienda.",
+        "insignia": "Sin señal"
+      },
+      "sinCodigo": {
+        "titulo": "¿El cliente no tiene el código?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Que lo busque en su WhatsApp o correo",
+            "descripcion": "Llegó con el aviso «Tu pedido va en camino». También está en su enlace de rastreo."
+          },
+          "tienda": {
+            "titulo": "Llama a la tienda",
+            "descripcion": "Un administrador puede reiniciar el código desde el detalle del envío."
+          },
+          "novedad": {
+            "titulo": "No se pudo entregar",
+            "descripcion": "Si no aparece, registra la novedad y sigue con la ruta. El paquete vuelve contigo."
+          }
+        },
+        "candado": "Con {max} errores el código se bloquea y solo un administrador lo puede reiniciar. No hay forma de saltarse el código en contraentrega.",
+        "llamarTienda": "Llamar a la tienda",
+        "seguir": "Seguir intentando"
+      },
+      "confirmada": {
+        "titulo": "Entregado",
+        "subtitulo": "{numero} · parada {n} de {total}",
+        "entregadoA": "Entregado a {nombre}",
+        "codigoVerificado": "código verificado",
+        "dinero": {
+          "titulo": "Dinero de esta entrega",
+          "cobrado": {
+            "cash": "Cobrado en efectivo",
+            "card": "Cobrado con datáfono",
+            "transfer": "Cobrado por transferencia"
+          },
+          "recibido": "Recibido",
+          "cambio": "Cambio entregado",
+          "enMano": "En mano ahora"
+        },
+        "siguiente": "Siguiente parada",
+        "sinMas": "No te quedan paradas pendientes. Cuando termines, cuadra tu jornada.",
+        "iniciarRuta": "Iniciar ruta a la parada {n}",
+        "irAParada": "Ir a la parada {n}",
+        "volverRuta": "Volver a mi ruta"
+      },
+      "sinPerfil": {
+        "subtitulo": "La ruta del día de quien reparte",
+        "cifras": "Cifras de despacho de hoy",
+        "kpis": {
+          "porDespachar": "Por despachar",
+          "sinDomiciliario": "{n} sin domiciliario asignado",
+          "todosAsignados": "Todos tienen domiciliario",
+          "enRuta": "En ruta",
+          "enCalle": "{n, plural, =0 {Ningún domiciliario en la calle} one {# domiciliario en la calle} other {# domiciliarios en la calle}}",
+          "novedades": "Novedades",
+          "porReprogramar": "{n} por reprogramar hoy",
+          "sinNovedades": "Nada por reprogramar hoy",
+          "porCuadrar": "Por cuadrar",
+          "domiciliariosConEfectivo": "{n, plural, =0 {Sin efectivo por recibir} one {# domiciliario con efectivo} other {# domiciliarios con efectivo}}"
+        },
+        "registrarme": "Registrarme como domiciliario",
+        "irADomiciliarios": "Ir a Domiciliarios",
+        "irAlInicio": "Ir al inicio",
+        "copiarCorreo": "Copiar mi correo",
+        "correoCopiado": "Correo copiado",
+        "noSeCopio": "No se pudo copiar el correo",
+        "b1": {
+          "titulo": "Tu cuenta no tiene perfil de domiciliario",
+          "tituloSede": "Tu cuenta no tiene perfil de domiciliario en {sede}",
+          "descripcion": "Mis envíos es la ruta del día de quien reparte: sus paradas en orden, entregar con el código del cliente, cobrar la contraentrega y cuadrar al terminar. Cada domiciliario la ve con su propia cuenta, en el celular o en el computador.",
+          "comoLlega": "¿Cómo llega alguien aquí?",
+          "pasos": {
+            "1": "Quien despacha lo registra en Logística › Domiciliarios y le vincula su cuenta de GO Admin (su correo).",
+            "2": "Desde Por despachar le asigna envíos; la placa de su vehículo queda guardada en cada envío.",
+            "3": "El domiciliario entra con su cuenta y ve aquí su ruta de hoy, en orden."
+          },
+          "notaRegistrar": "«Registrarme» abre el mismo diálogo de Domiciliarios con tu cuenta ya vinculada: documento, teléfono y vehículo (SOAT, tecnomecánica y licencia si es moto o carro).",
+          "loQueHace": "Lo que hace un domiciliario en esta página"
+        },
+        "b2": {
+          "titulo": "Esta página es para domiciliarios",
+          "descripcion": "Aquí cada domiciliario ve sus envíos del día en orden de ruta, entrega con el código del cliente, cobra la contraentrega y cuadra al terminar. Tu cuenta todavía no está registrada como domiciliario.",
+          "cuandoTeRegistren": "Cuando te registren, aquí podrás",
+          "quienRegistra": "¿Quién te registra?",
+          "quienRegistraTexto": "La persona que despacha en tu sede o un administrador, desde Logística › Domiciliarios. Pídele que use tu correo de GO Admin para vincular tu cuenta:",
+          "yaRegistrado": "¿Ya te registraron y sigues viendo esto? Puede que te registraran en otra sede o sin vincular tu cuenta: pídele a quien despacha que lo revise en tu ficha."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "Ver la ruta del día",
+            "descripcion": "Envíos en orden de parada, con dirección, hora prometida y lo que hay que cobrar."
+          },
+          "codigo": {
+            "titulo": "Entregar con el código del cliente",
+            "descripcion": "El cliente lo recibe por WhatsApp y correo cuando el pedido sale en camino."
+          },
+          "cobrar": {
+            "titulo": "Cobrar la contraentrega",
+            "descripcion": "Efectivo con cambio, datáfono o transferencia; siempre el total."
+          },
+          "cuadrar": {
+            "titulo": "Cuadrar al terminar",
+            "descripcion": "Envía el resumen y entrega el efectivo en la caja de la sede."
+          }
+        },
+        "atajos": {
+          "titulo": "Atajos de tu cargo",
+          "ayuda": "Lo que tu menú te muestra, a un toque."
+        },
+        "ejemplo": {
+          "titulo": "Así se ve la ruta de un domiciliario",
+          "etiqueta": "Ejemplo",
+          "descripcion": "Cada domiciliario ve solo sus envíos del día, en el celular o en el computador.",
+          "guia": "ENV-000{n}",
+          "direccion": "Dirección · barrio"
+        }
       }
     },
     "domiciliario": {

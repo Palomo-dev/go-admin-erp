@@ -1,9 +1,9 @@
 /**
  * @jest-environment jsdom
  *
- * El interruptor «Aviso de contraentrega» en el inspector de «Acciones de producto» (Figma
- * 3073:83567), con los textos reales de messages/*.json en los 4 idiomas, y el grupo de
- * Encabezado › Carrito debajo de «Envío gratis» (Figma 3071:82659).
+ * El interruptor «Mostrar aviso de contraentrega» en Ficha › Información del producto › Diseño,
+ * junto a «Mostrar countdown» (Figma 3099:83909), con los textos reales de messages/*.json en los
+ * 4 idiomas, y el interruptor de Encabezado › Carrito debajo de «Envío gratis» (Figma 3098:83737).
  */
 import { fireEvent, screen } from '@testing-library/react';
 import { renderConIdioma as render, type IdiomaPrueba } from '@/test-utils/renderConIdioma';
@@ -22,9 +22,9 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 }));
 
 const seccion = {
-  id: 'acciones-1',
+  id: 'info-1',
   page_id: 'p',
-  section_type: 'product_actions',
+  section_type: 'product_info',
   section_variant: 'default',
   content: {},
   settings: {},
@@ -47,13 +47,13 @@ const props = {
   categorias: { lista: [], cargando: false },
 };
 
-describe('Acciones de producto › Aviso de contraentrega', () => {
+describe('Información del producto › Aviso de contraentrega', () => {
   test('apagado por defecto; encenderlo escribe header_carrito.avisoContraentrega.ficha', () => {
     const onCambiarAjustes = jest.fn();
     render(
       <InspectorSeccion {...props} entornoEspacio={{ primera: false, ajustesSitio: {} }} onCambiarAjustes={onCambiarAjustes} />,
     );
-    const interruptor = screen.getByRole('switch', { name: /Aviso de contraentrega/ });
+    const interruptor = screen.getByRole('switch', { name: /Mostrar aviso de contraentrega/ });
     expect(interruptor.getAttribute('aria-checked')).toBe('false');
     expect(onCambiarAjustes).not.toHaveBeenCalled();
     fireEvent.click(interruptor);
@@ -68,19 +68,19 @@ describe('Acciones de producto › Aviso de contraentrega', () => {
         onCambiarAjustes={jest.fn()}
       />,
     );
-    expect(screen.getByRole('switch', { name: /Aviso de contraentrega/ }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('switch', { name: /Mostrar aviso de contraentrega/ }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByText('Contraentrega disponible · pagas al recibir')).toBeTruthy();
   });
 
   test('sin onCambiarAjustes no sale', () => {
     render(<InspectorSeccion {...props} entornoEspacio={{ primera: false, ajustesSitio: {} }} />);
-    expect(screen.queryByRole('switch', { name: /Aviso de contraentrega/ })).toBeNull();
+    expect(screen.queryByRole('switch', { name: /Mostrar aviso de contraentrega/ })).toBeNull();
   });
 
   test.each<[IdiomaPrueba, RegExp]>([
-    ['en', /Cash on delivery notice/],
-    ['fr', /Avis de paiement à la livraison/],
-    ['pt', /Aviso de pagamento na entrega/],
+    ['en', /Show cash on delivery notice/],
+    ['fr', /Afficher l’avis de paiement à la livraison/],
+    ['pt', /Mostrar aviso de pagamento na entrega/],
   ])('en %s el interruptor sale traducido', (idioma, nombre) => {
     render(<InspectorSeccion {...props} entornoEspacio={{ primera: false, ajustesSitio: {} }} onCambiarAjustes={jest.fn()} />, { idioma });
     expect(screen.getByRole('switch', { name: nombre })).toBeTruthy();
@@ -88,14 +88,14 @@ describe('Acciones de producto › Aviso de contraentrega', () => {
 });
 
 describe('Encabezado › Carrito › Aviso de contraentrega', () => {
-  test('el grupo va debajo de «Envío gratis», con las dos casillas apagadas', () => {
+  test('va debajo de «Envío gratis», con un solo interruptor apagado y sin casillas', () => {
     render(<VistaCarrito ajustes={{}} cambiar={jest.fn()} enBorrador />);
     const envio = screen.getByText('Envío gratis');
     const grupo = document.querySelector('[data-grupo-aviso-contraentrega]');
     expect(grupo).toBeTruthy();
     expect(envio.compareDocumentPosition(grupo as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'En el carrito' }).getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByRole('checkbox', { name: 'En la ficha del producto' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('switch', { name: /Aviso de contraentrega en el carrito/ }).getAttribute('aria-checked')).toBe('false');
+    expect((grupo as HTMLElement).querySelector('[role="checkbox"]')).toBeNull();
     expect(screen.getByRole('link', { name: /Condiciones en Ventas en línea/ })).toBeTruthy();
   });
 });

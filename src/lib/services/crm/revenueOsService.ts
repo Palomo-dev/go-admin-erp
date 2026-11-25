@@ -169,6 +169,26 @@ export async function getCohortRetention(orgId: number, start: string, end: stri
 }
 
 /**
+ * Matemática comercial a partir de las filas ya leídas (`fn_revenue_metrics`
+ * del rango, `fn_cohort_retention` de los 24 meses anteriores al fin e
+ * insumos manuales). Pura. La usan `getRevenueDashboard` y el reporte
+ * «Matemática comercial» de /app/reportes (`reportes/modulos/crmIngresosReports.ts`).
+ */
+export function buildRevenueMath(
+  revenueMetrics: RevenueMetricRow[],
+  cohorts: CohortRetentionRow[],
+  inputs: Pick<RevenueInputs, 'acquisition_spend' | 'gross_margin_pct'>,
+  today: string,
+): RevenueMathResult {
+  return computeRevenueMath({
+    months: revenueMetrics.map((m) => ({ arpa: m.arpa, invoices_paid: m.invoices_paid, deals_won: m.deals_won, revenue_collected: m.revenue_collected })),
+    cohorts: cohorts.map((c) => ({ cohort_month: c.cohort_month, cohort_size: c.cohort_size, retained_m1: c.retained_m1 })),
+    today,
+    inputs: { acquisitionSpend: inputs.acquisition_spend, grossMarginPct: inputs.gross_margin_pct },
+  });
+}
+
+/**
  * Panel completo para `[range.start, range.end)` (fin exclusivo, como las RPC).
  * Las cohortes se piden desde 24 meses antes del fin para que M6/M12 tengan
  * historia; `today` (YYYY-MM-DD en la zona de la org) decide qué celdas son
@@ -188,12 +208,7 @@ export async function getRevenueDashboard(orgId: number, range: DateRange, timez
   const pipelineNames: Record<string, string> = {};
   for (const p of pipelines) if (p.name) pipelineNames[p.id] = p.name;
 
-  const math = computeRevenueMath({
-    months: revenueMetrics.map((m) => ({ arpa: m.arpa, invoices_paid: m.invoices_paid, deals_won: m.deals_won, revenue_collected: m.revenue_collected })),
-    cohorts: cohorts.map((c) => ({ cohort_month: c.cohort_month, cohort_size: c.cohort_size, retained_m1: c.retained_m1 })),
-    today,
-    inputs: { acquisitionSpend: inputs.acquisition_spend, grossMarginPct: inputs.gross_margin_pct },
-  });
+  const math = buildRevenueMath(revenueMetrics, cohorts, inputs, today);
 
   return {
     period: { start: range.start, end: range.end, today, timezone },
@@ -217,6 +232,7 @@ export const revenueOsService = {
   getOrgTimezoneServer,
   getRevenueCurrency,
   summarizeRevenueMetrics,
+  buildRevenueMath,
 };
 
 export default revenueOsService;

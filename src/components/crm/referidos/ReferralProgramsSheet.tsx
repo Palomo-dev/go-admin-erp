@@ -1,137 +1,151 @@
 'use client';
 
 /**
- * Programas de referidos en hoja lateral: lista (activo/inactivo con icono +
- * texto), editar en su sitio, crear uno nuevo y borrar con confirmación que
- * nombra el programa. Reutiliza `ReferralProgramForm` (el mismo de la
- * tarjeta de configuración).
+ * «Programas de referidos» (Figma 1301:85046): hoja lateral con la lista de
+ * programas (recompensa, referidos que tiene, Activo/Inactivo), el elegido
+ * resaltado y su formulario debajo («Editar «…»»). «Crear programa» y la
+ * edición solo si el servidor dice `can_manage` (F12-misc); un Empleado solo
+ * lee. Eliminar queda como acción secundaria del formulario, con confirmación.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, CircleOff, Plus, Trash2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useEffect, useState } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { HojaDetalle } from '@/components/kit/HojaDetalle';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
+import { clasesBoton } from '@/components/kit/botonClases';
 import type { ReferralProgram } from '@/lib/services/crm/referralsService';
-import { describeReward } from '@/lib/services/crm/referralReward';
 import { cn } from '@/utils/Utils';
 import { ReferralProgramForm, type ProgramFormPayload } from './ReferralProgramForm';
+import { useReferidosFormato } from './useReferidosFormato';
 
 interface Props {
   open: boolean;
   programs: ReferralProgram[];
-  currency: string | null;
+  /** Referidos por programa (para «14 referidos»). */
+  conteos: Record<string, number>;
   /** F12-misc: `can_manage` del GET de programas (misma función que partners); un Empleado solo lee. */
   canManage: boolean;
+  /** Abrir directamente en «Crear programa» (desde el estado vacío). */
+  crearAlAbrir?: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (payload: ProgramFormPayload, id?: string) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
-  returnFocusFallback: () => HTMLElement | null;
 }
 
-export function ReferralProgramsSheet({ open, programs, currency, canManage, onOpenChange, onSave, onDelete, returnFocusFallback }: Props) {
-  const [editing, setEditing] = useState<ReferralProgram | null>(null);
+export function ReferralProgramsSheet({ open, programs, conteos, canManage, crearAlAbrir, onOpenChange, onSave, onDelete }: Props) {
+  const { t, recompensa } = useReferidosFormato();
+  const h = (k: string, v?: Record<string, string | number>) => t(`programasHoja.${k}`, v);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ReferralProgram | null>(null);
-  const newButtonRef = useRef<HTMLButtonElement>(null);
-  const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
-  const onDeleteClose = useReturnFocus(deleteTarget !== null, () => newButtonRef.current);
+  const [borrando, setBorrando] = useState(false);
+  const editing = programs.find((p) => p.id === editingId) ?? null;
 
   useEffect(() => {
     if (!open) return;
-    setEditing(null);
-    setCreating(canManage && programs.length === 0);
-  }, [open, canManage, programs.length]);
+    const crear = canManage && (crearAlAbrir || programs.length === 0);
+    setCreating(crear);
+    setEditingId(!crear && canManage ? programs[0]?.id ?? null : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, canManage, crearAlAbrir]);
 
   const save = async (payload: ProgramFormPayload, id?: string) => {
     await onSave(payload, id);
-    toast({ title: id ? 'Programa actualizado' : 'Programa creado', description: `«${payload.name}»${payload.is_active ? '' : ' (inactivo)'}` });
-    setEditing(null);
+    toast({ title: id ? t('toast.programaActualizado') : t('toast.programaCreado'), description: `«${payload.name}»` });
     setCreating(false);
   };
 
   const remove = async () => {
     if (!deleteTarget) return;
+    setBorrando(true);
     try {
       await onDelete(deleteTarget.id);
-      toast({ title: `«${deleteTarget.name}» eliminado` });
-      if (editing?.id === deleteTarget.id) setEditing(null);
+      toast({ title: t('toast.programaEliminado', { nombre: deleteTarget.name }) });
+      if (editingId === deleteTarget.id) setEditingId(null);
+      setDeleteTarget(null);
     } catch (err) {
-      toast({ title: 'No se pudo eliminar', description: err instanceof Error ? err.message : 'Error desconocido', variant: 'destructive' });
+      toast({ title: t('toast.errorEliminar'), description: err instanceof Error ? err.message : t('errorDesconocido'), variant: 'destructive' });
+    } finally {
+      setBorrando(false);
     }
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" onCloseAutoFocus={onCloseAutoFocus} className="flex w-full flex-col gap-0 overflow-y-auto bg-gray-50 p-0 dark:bg-gray-950 sm:max-w-xl">
-        <SheetHeader className="text-left border-b border-gray-200 bg-white px-6 pr-8 py-4 dark:border-gray-800 dark:bg-gray-900">
-          <SheetTitle className="text-gray-900 dark:text-gray-100">Programas de referidos</SheetTitle>
-          <SheetDescription className="text-gray-600 dark:text-gray-400">Qué recompensa se da, a quién, y si el programa está activo.</SheetDescription>
-        </SheetHeader>
-        <div className="space-y-4 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{programs.length} programa{programs.length === 1 ? '' : 's'}</h3>
-            {canManage && (
-              <Button ref={newButtonRef} type="button" size="sm" variant={creating ? 'secondary' : 'outline'} onClick={() => { setEditing(null); setCreating(true); }}>
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Nuevo programa
-              </Button>
-            )}
-          </div>
-          {canManage && creating && (
-            <section aria-label="Nuevo programa" className="rounded-xl border border-blue-200 bg-white p-4 dark:border-blue-900 dark:bg-gray-900">
-              <ReferralProgramForm program={null} currency={currency} idPrefix="program-new" onSave={save} onCancel={() => setCreating(false)} />
-            </section>
+    <HojaDetalle abierto={open} onAbiertoChange={onOpenChange} titulo={h('titulo')} subtitulo={h('descripcion')} ancho={560}>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-fg-secondary">{h('conteo', { n: programs.length })}</p>
+          {canManage && (
+            <button type="button" onClick={() => { setEditingId(null); setCreating(true); }} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-fg' })}>
+              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {h('crear')}
+            </button>
           )}
-          <ul className="space-y-2" aria-label="Programas">
-            {programs.map((p) => {
-              const reward = describeReward(p, currency);
-              const isEditing = editing?.id === p.id;
-              return (
-                <li key={p.id} className={cn('rounded-xl border bg-white p-4 dark:bg-gray-900', isEditing ? 'border-blue-300 dark:border-blue-800' : 'border-gray-200 dark:border-gray-800')}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-900 dark:text-gray-100">{p.name}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{reward?.summary}</p>
-                      <p className={cn('mt-1 inline-flex items-center gap-1 text-xs font-medium', p.is_active ? 'text-emerald-800 dark:text-emerald-200' : 'text-gray-600 dark:text-gray-400')}>
-                        {p.is_active ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> : <CircleOff className="h-3.5 w-3.5" aria-hidden="true" />}
-                        {p.is_active ? 'Activo' : 'Inactivo'}
-                      </p>
-                    </div>
-                    {/* F12-misc: PATCH/DELETE de programa exige admin/manager; a un Empleado los botones solo le darían un 403. */}
-                    {canManage && (
-                      <div className="flex shrink-0 gap-1">
-                        <Button type="button" size="sm" variant={isEditing ? 'secondary' : 'outline'} aria-expanded={isEditing} onClick={() => { setCreating(false); setEditing(isEditing ? null : p); }}>
-                          {isEditing ? 'Cerrar' : 'Editar'}
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" aria-label={`Eliminar programa ${p.name}`} className="text-red-700 hover:text-red-800 dark:text-red-300" onClick={() => setDeleteTarget(p)}>
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {canManage && isEditing && (
-                    <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-                      <ReferralProgramForm program={p} currency={currency} idPrefix={`program-${p.id}`} onSave={save} onCancel={() => setEditing(null)} />
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
         </div>
-        <ConfirmDialog
-          open={deleteTarget !== null}
-          onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
-          title="Eliminar programa"
-          description={`Se eliminará «${deleteTarget?.name ?? ''}». Los referidos que ya lo tenían quedan sin programa (y sin recompensa que registrar). Esta acción no se puede deshacer.`}
-          confirmLabel="Eliminar"
-          variant="destructive"
-          onConfirm={remove}
-          onCloseAutoFocus={onDeleteClose}
-        />
-      </SheetContent>
-    </Sheet>
+
+        {programs.length === 0 && !creating && <p className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-sm text-fg-secondary">{h('vacio')}</p>}
+
+        <ul className="flex flex-col gap-2" aria-label={h('titulo')}>
+          {programs.map((p) => {
+            const elegido = editingId === p.id;
+            const contenido = (
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-medium text-fg">{p.name}</p>
+                  <p className="truncate text-[13px] text-fg-secondary">{recompensa(p, true)}</p>
+                </div>
+                <span className="shrink-0 text-[13px] text-fg-secondary">{h('referidos', { n: conteos[p.id] ?? 0 })}</span>
+                <StatusBadge estado={p.is_active ? 'active' : 'inactive'} etiqueta={p.is_active ? h('activo') : h('inactivo')} tono={p.is_active ? 'exito' : 'neutro'} apariencia="suave" className="shrink-0" />
+              </>
+            );
+            const clases = cn('flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left', elegido ? 'border-line-brand bg-brand-tint' : 'border-line bg-surface');
+            return (
+              <li key={p.id}>
+                {canManage ? (
+                  <button type="button" aria-pressed={elegido} onClick={() => { setCreating(false); setEditingId(p.id); }} className={cn(clases, 'hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand', elegido && 'hover:bg-brand-tint')}>
+                    {contenido}
+                  </button>
+                ) : (
+                  <div className={clases}>{contenido}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        {canManage && (creating || editing) && (
+          <section aria-labelledby="programa-form-titulo" className="flex flex-col gap-4 border-t border-line pt-4">
+            <h3 id="programa-form-titulo" className="text-base font-semibold text-fg">{creating ? h('nuevo') : h('editar', { nombre: editing!.name })}</h3>
+            <ReferralProgramForm
+              key={creating ? 'nuevo' : editing!.id}
+              program={creating ? null : editing}
+              idPrefix={creating ? 'programa-nuevo' : `programa-${editing!.id}`}
+              onSave={save}
+              onCancel={() => (creating ? setCreating(false) : onOpenChange(false))}
+              extraPie={
+                !creating && editing ? (
+                  <button type="button" onClick={() => setDeleteTarget(editing)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-danger-text hover:text-danger-text' })}>
+                    <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                    {h('eliminar')}
+                  </button>
+                ) : undefined
+              }
+            />
+          </section>
+        )}
+      </div>
+      <ConfirmDialog
+        abierto={deleteTarget !== null}
+        onAbiertoChange={(o) => { if (!o) setDeleteTarget(null); }}
+        titulo={h('eliminarTitulo')}
+        descripcion={h('eliminarDescripcion', { nombre: deleteTarget?.name ?? '' })}
+        textoConfirmar={h('eliminar')}
+        tono="peligro"
+        cargando={borrando}
+        onConfirmar={remove}
+      />
+    </HojaDetalle>
   );
 }

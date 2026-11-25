@@ -26,12 +26,27 @@ const uuid = z.string().uuid();
 const uuidONull = uuid.nullable();
 const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha YYYY-MM-DD');
 
+const modificadorLinea = z
+  .object({
+    modifier_id: z.number().int().positive(),
+    group_id: z.number().int().positive().optional(),
+    name: z.string().max(200).optional(),
+    group_name: z.string().max(200).optional(),
+    extra_price: z.number().min(0).optional(),
+  })
+  .strict();
+
 const lineaProducto = z
   .object({
     id: uuid.optional(),
     product_id: z.number().int().positive(),
     quantity: z.number().positive().max(1_000_000).optional(),
     unit_price: z.number().min(0).optional(),
+    /** Modificadores elegidos (no mueven stock; la RPC valida que sean del producto con `fn_pos_extra_modificadores`). */
+    modifiers: z.array(modificadorLinea).max(50).optional(),
+    /** Configuración por tipo de servicio (`products.service_type`): membresía, paquete, clase, curso o cita. */
+    service_config: z.record(z.unknown()).optional(),
+    notes: z.string().trim().max(1000).nullable().optional(),
   })
   .strict();
 
@@ -48,11 +63,22 @@ const lineaLibre = z
 const lineaEspacio = z
   .object({
     id: uuid.optional(),
-    space_id: uuid,
+    /** Habitación concreta (opcional: se asigna al ganar). Hace falta ella o el tipo. */
+    space_id: uuid.nullable().optional(),
+    space_type_id: uuid.nullable().optional(),
     nights: z.number().int().positive().max(3650).optional(),
     unit_price: z.number().min(0).optional(),
+    checkin_date: fecha.nullable().optional(),
+    checkout_date: fecha.nullable().optional(),
+    adults: z.number().int().min(0).max(99).nullable().optional(),
+    children: z.number().int().min(0).max(99).nullable().optional(),
+    rate_plan: z.string().trim().max(120).nullable().optional(),
+    /** Sucursal del hospedaje (con habitación elegida, la RPC la toma de ella). */
+    branch_id: z.number().int().positive().nullable().optional(),
   })
-  .strict();
+  .strict()
+  .refine((x) => !!x.space_id || !!x.space_type_id, { message: 'Habitación o tipo de habitación', path: ['space_type_id'] })
+  .refine((x) => !x.checkin_date === !x.checkout_date && (!x.checkin_date || (x.checkout_date as string) > x.checkin_date), { message: 'Fechas de hospedaje', path: ['checkout_date'] });
 
 /** Campos editables de una oportunidad (alta y edición). */
 const camposEditables = {

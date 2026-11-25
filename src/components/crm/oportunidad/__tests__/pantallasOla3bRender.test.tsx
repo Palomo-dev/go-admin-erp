@@ -311,12 +311,15 @@ describe('flujo: crear → mover → ganar / perder', () => {
     renderConIdioma(<FormularioOportunidadPagina modo="create" inicial={{ clienteId: U(10), clienteNombre: 'Cliente Ejemplo S.A.S.', pipelineId: 'p1' }} />);
     const nombre = await screen.findByPlaceholderText('Ej.: Renovación de licencias 2027');
     fireEvent.change(nombre, { target: { value: 'Uniformes 2027' } });
-    fireEvent.click(screen.getByRole('radio', { name: /Otros conceptos/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Agregar concepto' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Concepto' }), { target: { value: 'Implementación' } });
-    const precio = screen.getByRole('textbox', { name: 'Precio unit.' });
-    fireEvent.change(precio, { target: { value: '1.800.000' } });
+    // «Concepto libre» abre «Editar línea» (Figma 1787:141119) y la línea entra a la lista única.
+    fireEvent.click(screen.getByRole('button', { name: 'Concepto libre' }));
+    const editar = await screen.findByRole('dialog');
+    fireEvent.change(within(editar).getByRole('textbox', { name: 'Concepto' }), { target: { value: 'Implementación' } });
+    const precio = within(editar).getByRole('textbox', { name: 'Precio unitario' });
+    fireEvent.change(precio, { target: { value: '1800000' } });
     fireEvent.blur(precio);
+    fireEvent.click(within(editar).getByRole('button', { name: 'Guardar línea' }));
+    await screen.findByText('Implementación');
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Crear oportunidad' }));
     });

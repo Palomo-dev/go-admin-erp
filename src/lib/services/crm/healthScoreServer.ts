@@ -38,6 +38,20 @@ export interface HealthScoreResult {
   /** Fila real de `fn_customer_health` (para alertas y detalle). */
   raw?: HealthRpcRow;
   alerts?: HealthAlert[];
+  /** Datos de `customers` para la lista priorizada y las acciones rápidas (Salud, Figma 1415:19). */
+  cliente?: HealthCustomerInfo;
+}
+
+export interface HealthCustomerInfo {
+  full_name: string | null;
+  company_name: string | null;
+  trade_name: string | null;
+  owner_id: string | null;
+  email: string | null;
+  phone: string | null;
+  do_not_call: boolean | null;
+  /** Último recálculo de `customers.health_score` (subtítulo «recalculado …»). */
+  health_score_updated_at?: string | null;
 }
 
 export interface HealthSnapshot {

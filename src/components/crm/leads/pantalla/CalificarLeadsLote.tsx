@@ -10,8 +10,10 @@ import type { ValoresOportunidad } from '@/components/crm/kit/opportunityFormLog
 import type { CatalogosCrm } from '@/components/crm/acciones/catalogosCrmLogica';
 import { claveError, emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { MARCADOR_CLIENTE } from '@/lib/services/crm/calificarLoteLogica';
-import type { ContextoMoneda } from '@/lib/utils/moneda';
-import { AvataresLote, CalificarLoteResultado } from './CalificarLoteResultado';
+import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
+import { LineasOportunidad } from '@/components/crm/oportunidad/LineasOportunidad';
+import { cantidadLineas, cuerpoLineas, LINEAS_VACIAS, lineasParaLote, lineasValidas, totalesLineas, type Lineas } from '@/components/crm/oportunidad/lineasLogica';
+import { AvataresLote, CalificarLoteResultado, VistaPreviaNombres } from './CalificarLoteResultado';
 import { cuerpoLote, leadPlantillaLote, RESPONSABLE_DE_CADA_LEAD, type FaseLote, type ResultadoLote } from './calificarLotePantallaLogica';
 
 /**
@@ -21,6 +23,11 @@ import { cuerpoLote, leadPlantillaLote, RESPONSABLE_DE_CADA_LEAD, type FaseLote,
  * lleva `{cliente}`, que el servidor reemplaza por el nombre de cada lead.
  * Un solo `POST /api/crm/leads/qualify-bulk`; el resultado (creadas y
  * fallidas con motivo) se muestra en el mismo diálogo.
+ *
+ * «Qué le vas a vender (a cada uno)» (Figma 1768:890017): las mismas líneas
+ * para todos, sin hospedaje; el primario dice cuántas y el valor total
+ * («Crear 24 oportunidades · $ 60.690.000») y el resultado, cuántas se
+ * crearon con líneas y el valor que entró al pipeline.
  */
 export interface CalificarLeadsLoteProps {
   /** Ids seleccionados (null = cerrado). */
@@ -42,6 +49,11 @@ export function CalificarLeadsLote({ ids, leads, onCerrar, catalogos, moneda, on
   const [prefill, setPrefill] = useState<Partial<ValoresOportunidad>>({});
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<ResultadoLote | null>(null);
+  const [lineas, setLineas] = useState<Lineas>(LINEAS_VACIAS);
+  const [patron, setPatron] = useState('');
+  const plantilla = lineasParaLote(lineas);
+  const hayLineas = cantidadLineas(plantilla) > 0;
+  const totalUno = totalesLineas(plantilla).total;
 
   if (!ids || ids.length === 0) return null;
   const n = ids.length;
@@ -52,15 +64,21 @@ export function CalificarLeadsLote({ ids, leads, onCerrar, catalogos, moneda, on
     setFase('datos');
     setError(null);
     setResultado(null);
+    setLineas(LINEAS_VACIAS);
     onCerrar();
   };
 
   const enviar = async (cuerpo: Record<string, unknown>) => {
+    if (!lineasValidas(plantilla)) {
+      setError(t('lineasInvalidas'));
+      return;
+    }
     setFase('enviando');
+    setPatron(typeof cuerpo.name === 'string' ? cuerpo.name : '');
     setError(null);
     setResultado(null);
     try {
-      const { data } = await pedirCrm<ResultadoLote>('/api/crm/leads/qualify-bulk', { method: 'POST', cuerpo: cuerpoLote(cuerpo, ids) });
+      const { data } = await pedirCrm<ResultadoLote>('/api/crm/leads/qualify-bulk', { method: 'POST', cuerpo: cuerpoLote(hayLineas ? { ...cuerpo, ...cuerpoLineas(plantilla, { sinIds: true }), spaces: undefined } : cuerpo, ids) });
       const r: ResultadoLote = { creadas: data?.creadas ?? [], fallidas: data?.fallidas ?? [] };
       setResultado(r);
       setFase('resultado');
@@ -107,7 +125,16 @@ export function CalificarLeadsLote({ ids, leads, onCerrar, catalogos, moneda, on
         usuarioActualId={catalogos.usuarioId}
         monedaBase={moneda}
         clienteNombre={t('clientes', { n })}
+        titulo={t('tituloPaso2', { n })}
+        descripcion={t('descripcionPaso2')}
+        clienteFijoTexto={t('clientesDistintos', { n })}
+        debajoNombre={(patron) => <VistaPreviaNombres patron={patron} leads={leads} total={n} />}
+        montoPlaceholder={t('montoPlaceholder')}
+        montoAyuda={t('montoAyuda')}
         opcionResponsable={cadaLead}
+        montoCalculado={hayLineas ? totalUno : null}
+        textoCrear={hayLineas ? t('crearConTotal', { n, total: formatMoneda(totalUno * n, moneda) }) : t('crearN', { n })}
+        seccionLineas={<LineasOportunidad variante="dialogo" lote lineas={plantilla} onCambiar={setLineas} moneda={moneda} usuarios={catalogos.usuarios} />}
         onEnviar={(c) => void enviar(c as Record<string, unknown>)}
         onCancelar={cerrar}
         error={error}
@@ -115,7 +142,10 @@ export function CalificarLeadsLote({ ids, leads, onCerrar, catalogos, moneda, on
       <CalificarLoteResultado
         abierto={fase === 'enviando' || fase === 'resultado'}
         total={n}
+        leads={leads}
+        patron={patron}
         resultado={fase === 'resultado' ? resultado : null}
+        conLineas={hayLineas ? { lineas: cantidadLineas(plantilla), valorPorOportunidad: totalUno, moneda } : null}
         onCerrar={cerrar}
         onVerPipeline={() => {
           cerrar();

@@ -12,10 +12,12 @@ interface DeleteConfirmDialogProps {
   title: string;
   description: string;
   onConfirm: () => void;
+  /** Texto del botón de confirmar; por defecto «Eliminar». */
+  confirmLabel?: string;
 }
 
 export function DeleteConfirmDialog({
-  open, onOpenChange, title, description, onConfirm,
+  open, onOpenChange, title, description, onConfirm, confirmLabel,
 }: DeleteConfirmDialogProps) {
   const t = useTranslations('crm.equipo');
   return (
@@ -29,9 +31,9 @@ export function DeleteConfirmDialog({
           <AlertDialogCancel>{t('memberDialog.cancelar')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-red-600 hover:bg-red-700 text-white"
+            className="bg-danger text-fg-on-brand hover:bg-danger/90"
           >
-            {t('deleteConfirmDialog.eliminar')}
+            {confirmLabel ?? t('deleteConfirmDialog.eliminar')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

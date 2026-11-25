@@ -75,7 +75,8 @@ function useMediosAlRecibir(organizationId: number, branchId: number): MedioAlRe
   return medios;
 }
 
-function useAhora(cadaMs = 30_000): Date {
+/** Hora actual que se renueva cada `cadaMs` (el «faltan N min» se actualiza solo). */
+export function useAhora(cadaMs = 30_000): Date {
   const [ahora, setAhora] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setAhora(new Date()), cadaMs);

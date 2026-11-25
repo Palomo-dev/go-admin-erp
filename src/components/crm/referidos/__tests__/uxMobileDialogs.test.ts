@@ -54,29 +54,11 @@ describe('EntitySearchList: lista de resultados con altura acotada y scroll prop
   });
 });
 
-describe.each([
-  ['src/components/crm/referidos/RegisterReferralDialog.tsx'],
-  ['src/components/crm/referidos/ConvertReferralDialog.tsx'],
-  ['src/components/crm/partners/RegisterDealDialog.tsx'],
-])('%s: cabecera a la izquierda y pie apilado en móvil', (rel) => {
-  const src = read(rel);
-
-  it('`DialogHeader` va a la izquierda con hueco para el botón de cerrar (`pr-6 text-left`)', () => {
-    expect(src).toMatch(/<DialogHeader className="pr-6 text-left">/);
-  });
-
-  it('pie `DialogFooter` (columna en móvil, fila desde `sm`) con botones de 44 px para el pulgar', () => {
-    expect(src).toMatch(/<DialogFooter className="gap-2 \[&>button\]:h-11 sm:\[&>button\]:h-9">/);
-    expect(src).not.toMatch(/DialogFooter className="[^"]*flex-row/);
-  });
-
-  it('no fija anchos mínimos ni `whitespace-nowrap` que reabran el desborde', () => {
-    expect(src).not.toMatch(/min-w-\[|whitespace-nowrap/);
-  });
-});
+// El contrato «`DialogHeader pr-6 text-left` + `DialogFooter` de 44 px» ya no vigila a
+// nadie: `partners/RegisterDealDialog.tsx` pasó al `Dialogo` del kit (Figma 1318:91569)
+// y los diálogos de referidos a `PanelAdaptable` (contrato al final de este archivo).
 
 describe.each([
-  ['src/components/crm/referidos/ReferralProgramsSheet.tsx'],
   ['src/components/crm/partners/PartnerEditor.tsx'],
   ['src/components/crm/partners/TierEditor.tsx'],
 ])('%s: cabecera de la hoja a la izquierda, sin pisar el botón de cerrar', (rel) => {
@@ -87,10 +69,8 @@ describe.each([
 });
 
 describe.each([
-  ['src/components/crm/referidos/ReferredPersonFields.tsx', 1],
-  ['src/components/crm/referidos/ReferralProgramForm.tsx', 2],
   ['src/components/crm/partners/PartnerEditor.tsx', 1],
-  ['src/components/crm/partners/RegisterDealDialog.tsx', 1],
+  // RegisterDealDialog: el tipo de deal pasó a chips (`ChipsOpcion`, Figma 1318:91569); ya no tiene `SelectTrigger`.
 ])('%s: los `SelectTrigger` no centran ni parten en dos líneas el valor largo', (rel, count) => {
   it('cada disparador lleva `text-left [&>span]:line-clamp-1`', () => {
     const src = read(rel);
@@ -101,9 +81,48 @@ describe.each([
   });
 });
 
-describe('ReferralProgramForm: el pie del formulario de programa también tiene botones de 44 px en móvil', () => {
-  // Tester UXM-A: el pie de la hoja «Programas» (crear/editar) se había quedado en h-9 (36 px).
-  it('pie con `[&>button]:h-11 sm:[&>button]:h-9`', () => {
-    expect(read('src/components/crm/referidos/ReferralProgramForm.tsx')).toMatch(/<div className="flex flex-wrap justify-end gap-2 \[&>button\]:h-11 sm:\[&>button\]:h-9">/);
+/*
+ * Referidos al Figma (zona F, 2026-11-15): «Registrar referido» y «Convertir en
+ * lead» pasaron a `PanelAdaptable` del kit (diálogo en escritorio, hoja inferior
+ * con asa en móvil, pie con botones a lo ancho), la hoja «Programas» a
+ * `HojaDetalle` y el formulario de programa usa chips (`ChipsOpcion`) en vez de
+ * `Select`. Los contratos de arriba siguen vigilando a partners; estos, a referidos.
+ */
+describe.each([
+  ['src/components/crm/referidos/RegisterReferralDialog.tsx'],
+  ['src/components/crm/referidos/ConvertReferralDialog.tsx'],
+])('%s: diálogo adaptable del kit (hoja inferior en móvil)', (rel) => {
+  const src = read(rel);
+  it('usa `PanelAdaptable` y no el `Dialog` suelto de ui', () => {
+    expect(src).toMatch(/<PanelAdaptable\b/);
+    expect(src).not.toMatch(/from '@\/components\/ui\/dialog'/);
+  });
+  it('el pie ocupa el ancho en móvil (`anchoCompleto: !escritorio`)', () => {
+    expect(src).toMatch(/anchoCompleto: !escritorio/);
+  });
+  it('no fija anchos mínimos ni `whitespace-nowrap` que reabran el desborde', () => {
+    expect(src).not.toMatch(/min-w-\[|whitespace-nowrap/);
+  });
+});
+
+describe('RegisterReferralDialog: en móvil el correo se oculta tras «Añadir correo» (Figma 1313:89380)', () => {
+  const src = read('src/components/crm/referidos/RegisterReferralDialog.tsx');
+  it('muestra el correo en escritorio, si ya tiene valor o tras pulsar «Añadir correo»', () => {
+    expect(src).toMatch(/const mostrarCorreo = escritorio \|\| conCorreo \|\| !!form\.referred_email;/);
+    expect(src).toMatch(/registrarDialogo\.anadirCorreo/);
+  });
+});
+
+describe('ReferralProgramForm: chips del kit para tipo y destinatario, sin `Select`', () => {
+  const src = read('src/components/crm/referidos/ReferralProgramForm.tsx');
+  it('tipo y «Recompensa para» con `ChipsOpcion` sobre los valores del CHECK', () => {
+    expect(src.match(/<ChipsOpcion</g) ?? []).toHaveLength(2);
+    expect(src).toMatch(/REWARD_TYPES\.map/);
+    expect(src).toMatch(/REWARD_TO\.map/);
+    expect(src).not.toMatch(/<SelectTrigger /);
+  });
+  it('el valor lleva el símbolo de la moneda base (nunca «COP» cableado) o % si es descuento', () => {
+    expect(src).toMatch(/prefijo=\{esDescuento \? undefined : simbolo\}/);
+    expect(src).not.toMatch(/'COP'/);
   });
 });

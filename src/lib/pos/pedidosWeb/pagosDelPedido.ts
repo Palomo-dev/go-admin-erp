@@ -162,6 +162,18 @@ const MARCAS: Record<string, string> = {
   codensa: 'Codensa',
 };
 
+/** Submétodo de un código de medio (`nequi`, `pse`, `card`, `bancolombia_transfer`…); null si no se conoce. */
+export function submetodoDeCodigo(codigo: string | null | undefined): Submetodo | null {
+  const c = (codigo ?? '').trim().toLowerCase();
+  return c ? SUBMETODO_POR_CODIGO[c] ?? null : null;
+}
+
+/** Nombre propio de la marca de una tarjeta (`visa` → «Visa», `master` → «Mastercard»); null si no se conoce. */
+export function marcaDeTarjeta(codigo: string | null | undefined): string | null {
+  const c = (codigo ?? '').trim().toLowerCase();
+  return c ? MARCAS[c] ?? null : null;
+}
+
 function texto(v: unknown): string | null {
   return typeof v === 'string' && v.trim() ? v.trim() : null;
 }
@@ -267,11 +279,19 @@ export function textoMetodoPago(
 ): string {
   if (!p.pasarela) return etiquetaMetodo(p.metodo);
   const partes: string[] = [NOMBRE_PASARELA[p.pasarela]];
-  if (p.submetodo) {
-    const nombre = p.submetodo === 'card' && p.marcaTarjeta ? p.marcaTarjeta : SUBMETODO_PROPIO[p.submetodo] ?? traducir(p.submetodo);
-    partes.push(p.ultimos4 ? `${nombre} ••${p.ultimos4}` : nombre);
-  }
+  const medio = textoSubmetodo(p, traducir);
+  if (medio) partes.push(medio);
   return partes.join(' · ');
+}
+
+/** Solo el medio, sin la pasarela: «Visa ••4417», «Nequi», «Tarjeta ••0012»; null sin submétodo. */
+export function textoSubmetodo(
+  p: Pick<PagoPresentable, 'submetodo' | 'marcaTarjeta' | 'ultimos4'>,
+  traducir: (s: Submetodo) => string,
+): string | null {
+  if (!p.submetodo) return null;
+  const nombre = p.submetodo === 'card' && p.marcaTarjeta ? p.marcaTarjeta : SUBMETODO_PROPIO[p.submetodo] ?? traducir(p.submetodo);
+  return p.ultimos4 ? `${nombre} ••${p.ultimos4}` : nombre;
 }
 
 /** Tono del estado de un pago para el sello de la tarjeta. */

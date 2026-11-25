@@ -1,337 +1,428 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Users, RefreshCw, Plus, Pencil, Trash2, ChevronDown, ChevronRight, MapPin, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
+/**
+ * Equipos y miembros (Figma CRM 1411:837770): lista de equipos activos a la
+ * izquierda y, del elegido, la tabla Miembro · Rol · Territorio · Cuota del
+ * mes · Estado · ⋯. Avance = oportunidades ganadas del mes
+ * (`/api/crm/teams/overview`). «Editar cuota» abre MemberDialog; un miembro
+ * inactivo deja de recibir leads automáticos. Escrituras por `/api/crm/teams/**`.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { BarChart3, ChevronRight, MapPin, Pencil, Plus, PowerOff, Power, RefreshCw, Trash2, UserMinus, UserRound, Users } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { AvatarIniciales } from '@/components/kit/AvatarIniciales';
+import { Skeleton } from '@/components/ui/skeleton';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { claveError, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
-import { loadTeamsWithMembers, requireOrgId } from '../useEquipoData';
-import { memberName, memberInitials } from '../types';
-import type { SalesTeam, SalesRole, Territory, OrgMember } from '../types';
-import { TeamDialog, MemberDialog, DeleteConfirmDialog } from '../dialogs';
-import { useTranslations } from 'next-intl';
+import { cn } from '@/utils/Utils';
+import { CabeceraEquipo } from '../CabeceraEquipo';
+import { ProgresoCuota } from '../ProgresoCuota';
+import { useRecursoCrm } from '../useRecursoCrm';
+import { montoCompacto, type PestanaEquipo } from '../equipoPantallaLogica';
+import { DeleteConfirmDialog, MemberDialog, TeamDialog } from '../dialogs';
+import type { EquipoVista, MiembroVista, OrgMember, VistaEquipos } from '../types';
 
-export function EquiposTab() {
-  const t = useTranslations('crm.equipo');
-  const { toast } = useToast();
-  const [teams, setTeams] = useState<SalesTeam[]>([]);
-  const [roles, setRoles] = useState<SalesRole[]>([]);
-  const [territories, setTerritories] = useState<Territory[]>([]);
+const FORM_EQUIPO = { name: '', description: '', is_active: true, territory_id: '' };
+const FORM_MIEMBRO = { user_id: '', sales_role_id: '', quota_amount: '', quota_currency: '', territory_id: '' };
+
+/** «septiembre» del mes `YYYY-MM` (día calendario: sin zona horaria). */
+export function nombreMes(mes: string, locale: string): string {
+  const [y, m] = mes.split('-').map(Number);
+  return new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' }).format(Date.UTC(y, m - 1, 1));
+}
+
+export function EquiposTab({ onPestana }: { onPestana: (p: PestanaEquipo) => void }) {
+  const t = useTranslations('crm.equipo.pantalla');
+  const te = useTranslations('crm.accionesRapidas.errores');
+  const locale = useLocaleIntl();
+  const moneda = useMonedaOrganizacion();
+  const { estado, datos, recargar } = useRecursoCrm<VistaEquipos>('/api/crm/teams/overview');
+  const [elegidoId, setElegidoId] = useState<string | null>(null);
   const [orgMembers, setOrgMembers] = useState<OrgMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
-  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
-  const [memberDialogOpen, setMemberDialogOpen] = useState(false);
-  const [deleteTeamOpen, setDeleteTeamOpen] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<SalesTeam | null>(null);
-  const [teamToDelete, setTeamToDelete] = useState<SalesTeam | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [teamForm, setTeamForm] = useState({ name: '', description: '', is_active: true, territory_id: '' });
-  // La moneda de la cuota queda vacía hasta que se resuelve la base de la organización.
-  const [memberForm, setMemberForm] = useState({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: '', territory_id: '' });
-  const { code: monedaBase, resuelta: monedaResuelta, paraDocumento } = useMonedaOrganizacion();
+  const [dialogoEquipo, setDialogoEquipo] = useState<{ editando: EquipoVista | null } | null>(null);
+  const [formEquipo, setFormEquipo] = useState(FORM_EQUIPO);
+  const [dialogoMiembro, setDialogoMiembro] = useState<{ editando: MiembroVista | null } | null>(null);
+  const [formMiembro, setFormMiembro] = useState(FORM_MIEMBRO);
+  const [aQuitar, setAQuitar] = useState<MiembroVista | null>(null);
+  const [aDesactivar, setADesactivar] = useState<EquipoVista | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  const equipos = useMemo(() => datos?.equipos ?? [], [datos]);
+  const elegido = equipos.find((e) => e.id === elegidoId) ?? equipos[0] ?? null;
+  const gestionar = datos?.puedeGestionar ?? false;
+  const mes = datos ? nombreMes(datos.mes, locale) : '';
 
   useEffect(() => {
-    if (monedaResuelta && !memberForm.quota_currency) {
-      setMemberForm((p) => ({ ...p, quota_currency: monedaBase }));
-    }
-  }, [monedaResuelta, monedaBase, memberForm.quota_currency]);
+    if (!dialogoMiembro || dialogoMiembro.editando || orgMembers.length > 0) return;
+    pedirCrm<OrgMember[]>('/api/crm/teams/org-members')
+      .then(({ data }) => setOrgMembers(data ?? []))
+      .catch(() => setOrgMembers([]));
+  }, [dialogoMiembro, orgMembers.length]);
 
-  const load = useCallback(async () => {
-    setIsRefreshing(true);
-    if (loading) setIsRefreshing(false);
+  const conError = async (fn: () => Promise<void>) => {
+    setGuardando(true);
     try {
-      const orgId = requireOrgId();
-      const data = await loadTeamsWithMembers(orgId);
-      setTeams(data.teams);
-      setRoles(data.roles);
-      setTerritories(data.territories);
-      setOrgMembers(data.orgMembers);
-    } catch (err) {
-      console.error('Error cargando equipos:', err);
-      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudieronCargarEquipos'), variant: 'destructive' });
+      await fn();
+      recargar();
+    } catch (e) {
+      toast({ title: te(claveError(e)), variant: 'destructive' });
     } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [toast, loading]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const handleSaveTeam = async () => {
-    if (!teamForm.name.trim()) {
-      toast({ title: t('equiposTab.validacion'), description: t('equiposTab.nombreObligatorio'), variant: 'destructive' });
-      return;
-    }
-    setSaving(true);
-    try {
-      const orgId = requireOrgId();
-      const payload = {
-        name: teamForm.name.trim(),
-        description: teamForm.description || null,
-        is_active: teamForm.is_active,
-        territory_id: teamForm.territory_id || null,
-      };
-      if (editingTeam) {
-        const { error } = await supabase.from('sales_teams').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingTeam.id);
-        if (error) throw error;
-        toast({ title: t('equiposTab.equipoActualizado') });
-      } else {
-        const { error } = await supabase.from('sales_teams').insert({ ...payload, organization_id: orgId });
-        if (error) throw error;
-        toast({ title: t('equiposTab.equipoCreado') });
-      }
-      setTeamDialogOpen(false);
-      load();
-    } catch {
-      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoGuardar'), variant: 'destructive' });
-    } finally {
-      setSaving(false);
+      setGuardando(false);
     }
   };
 
-  const handleAddMember = async () => {
-    if (!memberForm.user_id) {
-      toast({ title: t('equiposTab.validacion'), description: t('equiposTab.seleccionaMiembro'), variant: 'destructive' });
-      return;
-    }
-    setSaving(true);
-    try {
-      const orgId = requireOrgId();
-      const { error } = await supabase.from('sales_team_members').insert({
-        sales_team_id: expandedTeam,
-        user_id: memberForm.user_id,
-        sales_role_id: memberForm.sales_role_id || null,
-        territory_id: memberForm.territory_id || null,
-        quota_amount: memberForm.quota_amount ? Number(memberForm.quota_amount) : null,
-        // Sin moneda elegida, NULL: el trigger pone la moneda base.
-        quota_currency: memberForm.quota_currency || null,
-        is_active: true,
-        organization_id: orgId,
-      });
-      if (error) throw error;
-      toast({ title: t('equiposTab.miembroAnadido') });
-      setMemberDialogOpen(false);
-      load();
-    } catch {
-      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoAnadir'), variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRemoveMember = async (teamId: string, memberId: string) => {
-    try {
-      const { error } = await supabase.from('sales_team_members').update({ is_active: false }).eq('id', memberId);
-      if (error) throw error;
-      toast({ title: t('equiposTab.miembroRemovido') });
-      load();
-    } catch {
-      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoRemover'), variant: 'destructive' });
-    }
-  };
-
-  const handleDeleteTeam = async () => {
-    if (!teamToDelete) return;
-    try {
-      const { error } = await supabase.from('sales_teams').update({ is_active: false }).eq('id', teamToDelete.id);
-      if (error) throw error;
-      toast({ title: t('equiposTab.equipoEliminado') });
-      setDeleteTeamOpen(false);
-      setTeamToDelete(null);
-      load();
-    } catch {
-      toast({ title: t('equiposTab.error'), description: t('equiposTab.noPudoEliminar'), variant: 'destructive' });
-    }
-  };
-
-  // Stats
-  const totalMembers = teams.reduce((s, t) => s + (t.members?.length || 0), 0);
-
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-24 rounded-xl border border-gray-200 dark:border-gray-700 animate-pulse bg-gray-100 dark:bg-gray-800" />
-        ))}
-      </div>
+  const abrirEquipo = (editando: EquipoVista | null) => {
+    setFormEquipo(
+      editando ? { name: editando.nombre, description: editando.descripcion ?? '', is_active: true, territory_id: editando.territorio_id ?? '' } : FORM_EQUIPO,
     );
-  }
+    setDialogoEquipo({ editando });
+  };
+  const guardarEquipo = () => {
+    if (!formEquipo.name.trim()) {
+      toast({ title: t('equipo.nombreObligatorio'), variant: 'destructive' });
+      return;
+    }
+    const editando = dialogoEquipo?.editando ?? null;
+    const cuerpo = { name: formEquipo.name.trim(), description: formEquipo.description.trim() || null, is_active: formEquipo.is_active, territory_id: formEquipo.territory_id || null };
+    void conError(async () => {
+      if (editando) await pedirCrm(`/api/crm/teams/${editando.id}`, { method: 'PATCH', cuerpo });
+      else {
+        const { data } = await pedirCrm<{ id: string }>('/api/crm/teams', { method: 'POST', cuerpo });
+        if (data?.id) setElegidoId(data.id);
+      }
+      toast({ title: editando ? t('equipo.actualizado') : t('equipo.creado') });
+      setDialogoEquipo(null);
+    });
+  };
+
+  const abrirMiembro = (editando: MiembroVista | null) => {
+    setFormMiembro(
+      editando
+        ? {
+            user_id: editando.user_id,
+            sales_role_id: editando.rol_id ?? '',
+            quota_amount: editando.cuota === null ? '' : String(editando.cuota),
+            quota_currency: editando.moneda ?? (moneda.resuelta ? moneda.code : ''),
+            territory_id: editando.territorio_id ?? '',
+          }
+        : { ...FORM_MIEMBRO, quota_currency: moneda.resuelta ? moneda.code : '' },
+    );
+    setDialogoMiembro({ editando });
+  };
+  const guardarMiembro = () => {
+    if (!elegido) return;
+    const editando = dialogoMiembro?.editando ?? null;
+    if (!editando && !formMiembro.user_id) {
+      toast({ title: t('miembro.eligeMiembro'), variant: 'destructive' });
+      return;
+    }
+    const cuota = formMiembro.quota_amount.trim() === '' ? null : Number(formMiembro.quota_amount);
+    if (cuota !== null && (!Number.isFinite(cuota) || cuota < 0)) {
+      toast({ title: t('miembro.cuotaInvalida'), variant: 'destructive' });
+      return;
+    }
+    const cuerpo = {
+      sales_role_id: formMiembro.sales_role_id || null,
+      territory_id: formMiembro.territory_id || null,
+      quota_amount: cuota,
+      // Sin moneda elegida, el trigger pone la moneda base.
+      ...(formMiembro.quota_currency ? { quota_currency: formMiembro.quota_currency } : {}),
+    };
+    void conError(async () => {
+      if (editando) await pedirCrm(`/api/crm/teams/${elegido.id}/members/${editando.id}`, { method: 'PATCH', cuerpo });
+      else await pedirCrm(`/api/crm/teams/${elegido.id}/members`, { method: 'POST', cuerpo: { ...cuerpo, user_id: formMiembro.user_id, is_active: true } });
+      toast({ title: editando ? t('miembro.actualizado') : t('miembro.agregado') });
+      setDialogoMiembro(null);
+    });
+  };
+  const cambiarActivo = (m: MiembroVista) =>
+    elegido &&
+    void conError(async () => {
+      await pedirCrm(`/api/crm/teams/${elegido.id}/members/${m.id}`, { method: 'PATCH', cuerpo: { is_active: !m.activo } });
+      toast({ title: m.activo ? t('miembro.desactivado') : t('miembro.activado') });
+    });
+  const quitar = () =>
+    elegido &&
+    aQuitar &&
+    void conError(async () => {
+      await pedirCrm(`/api/crm/teams/${elegido.id}/members/${aQuitar.id}`, { method: 'DELETE', cuerpo: {} });
+      toast({ title: t('miembro.quitado') });
+      setAQuitar(null);
+    });
+  const desactivarEquipo = () =>
+    aDesactivar &&
+    void conError(async () => {
+      await pedirCrm(`/api/crm/teams/${aDesactivar.id}`, { method: 'PATCH', cuerpo: { is_active: false } });
+      toast({ title: t('equipo.desactivado') });
+      setADesactivar(null);
+      setElegidoId(null);
+    });
+
+  const fmt = (valor: number, codigo: string | null) => montoCompacto(valor, moneda.paraDocumento(codigo));
+  const subtituloEquipo = (e: EquipoVista) =>
+    t('equipo.resumen', { n: e.miembros.filter((m) => m.activo).length, territorio: e.territorio ?? t('equipo.sinTerritorio') });
+
+  const acciones = estado !== 'sinPermiso' && (
+    <>
+      {gestionar && (
+        <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => abrirEquipo(null)}>
+          <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {t('acciones.nuevoEquipo')}
+        </button>
+      )}
+      {gestionar && (
+        <button type="button" className={clasesBoton()} onClick={() => abrirMiembro(null)} disabled={!elegido}>
+          <UserRound aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {t('acciones.agregarMiembro')}
+        </button>
+      )}
+      <RowActionsMenu
+        orientacion="horizontal"
+        tamano="md"
+        titulo={t('titulo')}
+        acciones={[
+          { id: 'desempeno', etiqueta: t('acciones.desempeno'), icono: BarChart3, onSelect: () => onPestana('desempeno') },
+          { id: 'recargar', etiqueta: t('acciones.recargar'), icono: RefreshCw, onSelect: recargar },
+          ...(gestionar && elegido
+            ? [
+                { id: 'editar', etiqueta: t('acciones.editarEquipo'), icono: Pencil, onSelect: () => abrirEquipo(elegido), separadorAntes: true },
+                { id: 'desactivar', etiqueta: t('acciones.desactivarEquipo'), icono: PowerOff, onSelect: () => setADesactivar(elegido), destructiva: true },
+              ]
+            : []),
+        ]}
+      />
+    </>
+  );
 
   return (
-    <div className="space-y-4">
-      {/* Header con acciones */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {teams.length} equipo{teams.length !== 1 ? 's' : ''} · {totalMembers} miembros
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={load} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button size="sm" onClick={() => {
-            setEditingTeam(null);
-            setTeamForm({ name: '', description: '', is_active: true, territory_id: '' });
-            setTeamDialogOpen(true);
-          }}>
-            <Plus className="h-4 w-4 mr-1" /> {t('equiposTab.nuevoEquipo')}
-          </Button>
+    <>
+      <CabeceraEquipo
+        pestana="equipos"
+        onPestana={onPestana}
+        icono={Users}
+        subtitulo={t('subtitulos.equipos')}
+        cargando={estado === 'cargando' && !!datos}
+        acciones={acciones}
+        movil={{
+          menu: [
+            ...(gestionar ? [{ id: 'nuevo', etiqueta: t('acciones.nuevoEquipo'), icono: Plus, onSelect: () => abrirEquipo(null) }] : []),
+            ...(gestionar && elegido ? [{ id: 'miembro', etiqueta: t('acciones.agregarMiembro'), icono: UserRound, onSelect: () => abrirMiembro(null) }] : []),
+            { id: 'desempeno', etiqueta: t('acciones.desempeno'), icono: BarChart3, onSelect: () => onPestana('desempeno') },
+          ],
+        }}
+      />
+
+      {estado === 'sinPermiso' ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="forbidden" titulo={t('sinPermiso.titulo')} descripcion={t('sinPermiso.descripcion')} accion={{ etiqueta: t('sinPermiso.volver'), href: '/app/crm' }} />
         </div>
-      </div>
-
-      {/* Lista de equipos */}
-      {teams.length === 0 ? (
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-12 pb-12 text-center">
-            <Users className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('equiposTab.noHayEquipos')}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('equiposTab.creaPrimerEquipoComercial')}</p>
-          </CardContent>
-        </Card>
+      ) : estado === 'error' && !datos ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="error" titulo={t('error.titulo')} descripcion={t('error.descripcion')} onReintentar={recargar} />
+        </div>
+      ) : !datos ? (
+        <CargandoEquipos />
+      ) : equipos.length === 0 ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            icono={Users}
+            titulo={t('equipo.vacioTitulo')}
+            descripcion={t('equipo.vacioDescripcion')}
+            accion={gestionar ? { etiqueta: t('acciones.nuevoEquipo'), icono: Plus, onClick: () => abrirEquipo(null) } : undefined}
+          />
+        </div>
       ) : (
-        <div className="space-y-3">
-          {teams.map((team) => {
-            const isExpanded = expandedTeam === team.id;
-            const members = team.members || [];
-            const teamQuota = members.reduce((sum, m) => sum + (Number(m.quota_amount) || 0), 0);
-            return (
-              <Card key={team.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedTeam(isExpanded ? null : team.id)}
-                      className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
-                        <Users className="h-5 w-5 text-rose-600 dark:text-rose-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{team.name}</p>
-                          <Badge variant="secondary" className="text-xs">{members.length} miembro{members.length !== 1 ? 's' : ''}</Badge>
-                          {team.territories?.name && (
-                            <Badge variant="outline" className="text-xs text-rose-600 dark:text-rose-400">
-                              <MapPin className="h-3 w-3 mr-1" />{team.territories.name}
-                            </Badge>
-                          )}
-                        </div>
-                        {team.description && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">{team.description}</p>}
-                        {teamQuota > 0 && (
-                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            {t('equiposTab.cuotaTotal', { moneda: formatMoneda(teamQuota, paraDocumento(members[0]?.quota_currency)) })}
-                          </p>
-                        )}
-                      </div>
-                      {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" /> : <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />}
-                    </button>
-                    <div className="flex items-center gap-1 ml-4">
-                      <Button variant="ghost" size="icon" onClick={() => {
-                        setEditingTeam(team);
-                        setTeamForm({ name: team.name, description: team.description || '', is_active: team.is_active, territory_id: team.territory_id || '' });
-                        setTeamDialogOpen(true);
-                      }}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setTeamToDelete(team); setDeleteTeamOpen(true); }}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
-                      {members.length === 0 ? (
-                        <p className="text-xs text-gray-500 py-2">{t('equiposTab.sinMiembrosAnadePrimero')}</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {members.map((m) => (
-                            <div key={m.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-100 dark:border-gray-800">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                                  {memberInitials(m)}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-sm text-gray-900 dark:text-white truncate">{memberName(m)}</p>
-                                  {m.profiles?.email && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                      <Mail className="h-3 w-3" />{m.profiles.email}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    {m.sales_roles?.name && (
-                                      <Badge variant="outline" className="text-[10px]">{m.sales_roles.name}</Badge>
-                                    )}
-                                    {(m.territories?.name || team.territories?.name) && (
-                                      <Badge variant="outline" className="text-[10px] text-rose-600 dark:text-rose-400">
-                                        <MapPin className="h-2.5 w-2.5 mr-0.5" />{m.territories?.name || team.territories?.name}
-                                      </Badge>
-                                    )}
-                                    {m.quota_amount != null && (
-                                      <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                                        {t('equiposTab.cuota', { moneda: formatMoneda(Number(m.quota_amount), paraDocumento(m.quota_currency)) })}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <Button variant="ghost" size="icon" onClick={() => handleRemoveMember(team.id, m.id)}>
-                                <Trash2 className="h-3 w-3 text-red-400" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setMemberForm({ user_id: '', sales_role_id: '', quota_amount: '', quota_currency: monedaResuelta ? monedaBase : '', territory_id: '' });
-                        setMemberDialogOpen(true);
-                      }}>
-                        <Plus className="h-3 w-3 mr-1" /> {t('equiposTab.anadirMiembro')}
-                      </Button>
-                    </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <nav aria-label={t('equipo.lista')} className="flex w-full shrink-0 flex-col gap-2 lg:w-[300px]">
+            {equipos.map((e) => {
+              const activo = e.id === elegido?.id;
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  aria-current={activo || undefined}
+                  onClick={() => setElegidoId(e.id)}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-[10px] border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                    activo ? 'border-line-brand bg-brand-tint' : 'border-line bg-surface hover:bg-hover',
                   )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                >
+                  <Users aria-hidden="true" className={cn('size-4 shrink-0', activo ? 'text-brand' : 'text-fg-secondary')} strokeWidth={1.5} />
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5 font-medium">
+                    <span className="truncate text-sm leading-5 text-fg">{e.nombre}</span>
+                    <span className="truncate text-xs leading-4 text-fg-secondary">{subtituloEquipo(e)}</span>
+                  </span>
+                  <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+                </button>
+              );
+            })}
+          </nav>
+
+          {elegido && (
+            <section aria-labelledby="equipo-miembros-titulo" className="min-w-0 flex-1 overflow-hidden rounded-xl border border-line bg-surface">
+              <header className="flex flex-col gap-1 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:gap-2">
+                <h2 id="equipo-miembros-titulo" className="min-w-0 flex-1 truncate text-base font-semibold leading-[22px] text-fg">
+                  {elegido.nombre}
+                </h2>
+                <p className="text-[13px] leading-[18px] text-fg-secondary">
+                  {t('equipo.cuotaEquipo', { monto: formatMoneda(elegido.cuota, moneda.paraDocumento(elegido.moneda)), mes })}
+                </p>
+              </header>
+              {elegido.miembros.length === 0 ? (
+                <EmptyState
+                  compacto
+                  icono={UserRound}
+                  titulo={t('miembro.vacioTitulo')}
+                  descripcion={t('miembro.vacioDescripcion')}
+                  accion={gestionar ? { etiqueta: t('acciones.agregarMiembro'), icono: UserRound, onClick: () => abrirMiembro(null) } : undefined}
+                />
+              ) : (
+                <>
+                  {/* Escritorio: tabla de Figma. */}
+                  <div className="hidden md:block">
+                    <div role="row" className="flex items-start gap-3 border-b border-line bg-subtle px-4 py-2.5 text-xs font-semibold leading-4 text-fg-secondary">
+                      <span role="columnheader" className="min-w-0 flex-1">{t('columnas.miembro')}</span>
+                      <span role="columnheader" className="w-[130px] shrink-0">{t('columnas.rol')}</span>
+                      <span role="columnheader" className="w-[120px] shrink-0">{t('columnas.territorio')}</span>
+                      <span role="columnheader" className="w-[220px] shrink-0">{t('columnas.cuotaMes', { mes })}</span>
+                      <span role="columnheader" className="w-20 shrink-0">{t('columnas.estado')}</span>
+                      <span role="columnheader" className="w-8 shrink-0"><span className="sr-only">{t('columnas.acciones')}</span></span>
+                    </div>
+                    <ul>
+                      {elegido.miembros.map((m) => (
+                        <li key={m.id} className={cn('flex items-center gap-3 border-b border-line px-4 py-2.5 last:border-b-0', !m.activo && 'opacity-60')}>
+                          <span className="flex min-w-0 flex-1 items-center gap-2">
+                            <AvatarIniciales nombre={m.nombre} />
+                            <span className="truncate text-sm font-medium leading-5 text-fg">{m.nombre}</span>
+                          </span>
+                          <span className="w-[130px] shrink-0 truncate text-[13px] leading-[18px] text-fg-secondary">{m.rol ?? '—'}</span>
+                          <span className="w-[120px] shrink-0 truncate text-[13px] leading-[18px] text-fg-secondary">{m.territorio ?? '—'}</span>
+                          <ProgresoCuota
+                            className="w-[220px] shrink-0"
+                            etiqueta={m.cuota === null ? t('miembro.sinCuota') : t('miembro.avance', { ganado: fmt(m.ganado, m.moneda), cuota: fmt(m.cuota, m.moneda) })}
+                            pct={m.pct}
+                            aria={t('miembro.avanceAria', { nombre: m.nombre })}
+                          />
+                          <span className="w-20 shrink-0">
+                            <StatusBadge estado={m.activo ? 'active' : 'inactive'} etiqueta={m.activo ? t('estado.activo') : t('estado.inactivo')} tono={m.activo ? 'exito' : 'neutro'} />
+                          </span>
+                          <span className="w-8 shrink-0">
+                            {gestionar && <MenuMiembro m={m} onEditar={() => abrirMiembro(m)} onActivo={() => cambiarActivo(m)} onQuitar={() => setAQuitar(m)} />}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* Móvil: una tarjeta por miembro. */}
+                  <ul className="divide-y divide-line md:hidden">
+                    {elegido.miembros.map((m) => (
+                      <li key={m.id} className={cn('flex flex-col gap-3 px-4 py-3', !m.activo && 'opacity-60')}>
+                        <div className="flex items-center gap-2">
+                          <AvatarIniciales nombre={m.nombre} />
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="truncate text-sm font-medium leading-5 text-fg">{m.nombre}</span>
+                            <span className="flex items-center gap-1 truncate text-xs leading-4 text-fg-secondary">
+                              {m.rol ?? '—'}
+                              {m.territorio && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <MapPin aria-hidden="true" className="size-3" strokeWidth={1.5} />
+                                  {m.territorio}
+                                </>
+                              )}
+                            </span>
+                          </span>
+                          <StatusBadge estado={m.activo ? 'active' : 'inactive'} etiqueta={m.activo ? t('estado.activo') : t('estado.inactivo')} tono={m.activo ? 'exito' : 'neutro'} />
+                          {gestionar && <MenuMiembro m={m} onEditar={() => abrirMiembro(m)} onActivo={() => cambiarActivo(m)} onQuitar={() => setAQuitar(m)} />}
+                        </div>
+                        <ProgresoCuota
+                          etiqueta={m.cuota === null ? t('miembro.sinCuota') : t('miembro.avance', { ganado: fmt(m.ganado, m.moneda), cuota: fmt(m.cuota, m.moneda) })}
+                          pct={m.pct}
+                          aria={t('miembro.avanceAria', { nombre: m.nombre })}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+          )}
         </div>
       )}
 
-      {/* Dialogs */}
       <TeamDialog
-        open={teamDialogOpen}
-        onOpenChange={setTeamDialogOpen}
-        editing={editingTeam}
-        territories={territories}
-        form={teamForm}
-        onFormChange={setTeamForm}
-        onSave={handleSaveTeam}
-        saving={saving}
+        open={!!dialogoEquipo}
+        onOpenChange={(v) => !v && setDialogoEquipo(null)}
+        editing={dialogoEquipo?.editando ?? null}
+        territories={datos?.territorios ?? []}
+        form={formEquipo}
+        onFormChange={setFormEquipo}
+        onSave={guardarEquipo}
+        saving={guardando}
       />
       <MemberDialog
-        open={memberDialogOpen}
-        onOpenChange={setMemberDialogOpen}
-        roles={roles}
-        territories={territories}
-        orgMembers={orgMembers}
-        form={memberForm}
-        onFormChange={setMemberForm}
-        onAdd={handleAddMember}
-        saving={saving}
+        open={!!dialogoMiembro}
+        onOpenChange={(v) => !v && setDialogoMiembro(null)}
+        roles={datos?.roles ?? []}
+        territories={datos?.territorios ?? []}
+        orgMembers={orgMembers.filter((o) => !elegido?.miembros.some((m) => m.user_id === o.id))}
+        form={formMiembro}
+        onFormChange={setFormMiembro}
+        onAdd={guardarMiembro}
+        saving={guardando}
+        editando={dialogoMiembro?.editando ? { nombre: dialogoMiembro.editando.nombre } : null}
       />
       <DeleteConfirmDialog
-        open={deleteTeamOpen}
-        onOpenChange={setDeleteTeamOpen}
-        title={t('equiposTab.eliminarEquipo')}
-        description={t('equiposTab.eliminaraTodosSusMiembros', { name: teamToDelete?.name ?? '' })}
-        onConfirm={handleDeleteTeam}
+        open={!!aQuitar}
+        onOpenChange={(v) => !v && setAQuitar(null)}
+        title={t('miembro.quitarTitulo')}
+        description={t('miembro.quitarDescripcion', { nombre: aQuitar?.nombre ?? '', equipo: elegido?.nombre ?? '' })}
+        onConfirm={quitar}
+        confirmLabel={t('miembro.quitar')}
       />
+      <DeleteConfirmDialog
+        open={!!aDesactivar}
+        onOpenChange={(v) => !v && setADesactivar(null)}
+        title={t('equipo.desactivarTitulo')}
+        description={t('equipo.desactivarDescripcion', { nombre: aDesactivar?.nombre ?? '' })}
+        onConfirm={desactivarEquipo}
+        confirmLabel={t('acciones.desactivarEquipo')}
+      />
+    </>
+  );
+}
+
+function MenuMiembro({ m, onEditar, onActivo, onQuitar }: { m: MiembroVista; onEditar: () => void; onActivo: () => void; onQuitar: () => void }) {
+  const t = useTranslations('crm.equipo.pantalla');
+  return (
+    <RowActionsMenu
+      orientacion="horizontal"
+      titulo={m.nombre}
+      acciones={[
+        { id: 'editar', etiqueta: t('miembro.editarCuota'), icono: Pencil, onSelect: onEditar },
+        { id: 'activo', etiqueta: m.activo ? t('miembro.desactivar') : t('miembro.activar'), icono: m.activo ? UserMinus : Power, onSelect: onActivo },
+        { id: 'quitar', etiqueta: t('miembro.quitar'), icono: Trash2, onSelect: onQuitar, destructiva: true },
+      ]}
+    />
+  );
+}
+
+function CargandoEquipos() {
+  return (
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start" aria-busy="true">
+      <div className="flex w-full flex-col gap-2 lg:w-[300px]">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-[10px]" />
+        ))}
+      </div>
+      <Skeleton className="h-[361px] min-w-0 flex-1 rounded-xl" />
     </div>
   );
 }

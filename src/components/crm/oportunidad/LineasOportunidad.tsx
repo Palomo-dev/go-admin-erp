@@ -1,159 +1,172 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Package, Plus, Trash2 } from 'lucide-react';
-import { SegmentedControl } from '@/components/kit/SegmentedControl';
+import { BedDouble, Check, Package, Plus, ShoppingBag } from 'lucide-react';
+import { cn } from '@/utils/Utils';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { StatusBadge } from '@/components/kit/StatusBadge';
 import { clasesBoton } from '@/components/kit/botonClases';
-import { CLASE_CAMPO } from '@/components/crm/kit/camposCrm';
-import { AgregarProductosDocumento } from '@/components/finanzas/documento/productos';
-import { useBranchOpcional } from '@/lib/context/BranchContext';
-import { SpaceSearchSelect } from '@/components/crm/oportunidades/SpaceSearchSelect';
-import { opportunitiesService } from '@/components/crm/oportunidades/opportunitiesService';
-import { formatMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
-import { numeroDeCampo, subtotal, totalLineas, type Lineas } from './lineasLogica';
+import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
+import type { ContextoMoneda } from '@/lib/utils/moneda';
+import { agregarProducto, conteoFiltros, FILTROS_LINEAS, totalesLineas, type FiltroLineas, type Lineas } from './lineasLogica';
+import { AgregarALaOportunidad, type PestanaAgregar } from './lineas/AgregarALaOportunidad';
+import { EditarLineaDialog, type LineaEnEdicion } from './lineas/EditarLineaDialog';
+import { LineaOportunidad } from './lineas/LineaOportunidad';
+import { TotalesLineas } from './lineas/TotalesLineas';
+import { useFilasLineas } from './lineas/useFilasLineas';
 
 /**
- * «Líneas» del formulario en página (Figma 778:32176 / 778:33132): productos,
- * espacios del PMS y otros conceptos, con el total calculado por
- * `lineasLogica.totalLineas` (único). Reutiliza los buscadores de producto y
- * de espacio del formulario anterior. Se guardan con la oportunidad, en la
- * misma transacción (`crm_create/update_opportunity`).
+ * Líneas de la oportunidad (Figma 1764:134618 «Oportunidad con productos y
+ * servicios»): UNA lista ordenada como se agregó, con filtro por tipo, cada
+ * fila es `LineaOportunidad` (variante, modificadores, servicio u hospedaje),
+ * aviso de stock solo en productos que controlan stock, «Agregar a la
+ * oportunidad» (productos y servicios · hospedaje · concepto libre), edición
+ * en diálogo y totales con impuestos (`TotalesLineas`).
  *
- * Productos: «+ Agregar producto» abre el diálogo «Agregar productos» del kit
- * (Figma 1042:34652, el mismo de la factura y la orden de compra: buscador,
- * escáner, precio de la lista y stock de la sucursal) y la fila muestra el
- * nombre, como el Figma 778:32176. Antes cada fila traía el buscador viejo
- * `ProductSearchSelect`, cuyo panel desbordaba con nombres largos.
+ * - `variante="pagina"`: sección «Líneas» del formulario en página (16/17).
+ * - `variante="dialogo"`: «Qué le vas a vender» dentro del paso 2 de
+ *   «Calificar → crear oportunidad» (01/02) y del lote (05), sin filtro.
+ *
+ * El total es el cálculo único de `lineasLogica`; las líneas se guardan con
+ * la oportunidad en la misma transacción (`crm_create/update_opportunity`).
  */
-type Clase = 'products' | 'spaces' | 'custom';
-
 export interface LineasOportunidadProps {
   lineas: Lineas;
   onCambiar: (l: Lineas) => void;
   moneda: ContextoMoneda;
   deshabilitado?: boolean;
+  variante?: 'pagina' | 'dialogo';
+  /** Nombre de la oportunidad (subtítulo del selector). */
+  contexto?: string | null;
+  /** Lote: sin hospedaje y con el título «(a cada uno)». */
+  lote?: boolean;
+  /** Profesionales para las citas. */
+  usuarios?: readonly OpcionUsuario[];
 }
 
-type Espacio = { id: string; label: string; floor_zone?: string; status: string; type_name?: string; base_rate: number };
-
-export function LineasOportunidad({ lineas, onCambiar, moneda, deshabilitado }: LineasOportunidadProps) {
+export function LineasOportunidad({ lineas, onCambiar, moneda, deshabilitado, variante = 'pagina', contexto, lote, usuarios = [] }: LineasOportunidadProps) {
   const t = useTranslations('crm.oportunidad.lineas');
-  const [clase, setClase] = useState<Clase>('products');
-  const [agregandoProductos, setAgregandoProductos] = useState(false);
-  const sucursales = useBranchOpcional();
-  const selectedBranchId = sucursales?.selectedBranchId ?? null;
-  const nombreSucursal = sucursales?.branches.find((b) => b.id === selectedBranchId)?.name ?? null;
-  const [espacios, setEspacios] = useState<Espacio[]>([]);
-  useEffect(() => {
-    if (clase === 'spaces' && espacios.length === 0) void opportunitiesService.getSpaces().then(setEspacios, () => setEspacios([]));
-  }, [clase, espacios.length]);
+  const [filtro, setFiltro] = useState<FiltroLineas>('todas');
+  const [agregar, setAgregar] = useState<PestanaAgregar | null>(null);
+  const [edicion, setEdicion] = useState<LineaEnEdicion>(null);
+  const filas = useFilasLineas(lineas, moneda);
+  const conteo = conteoFiltros(lineas);
+  const totales = totalesLineas(lineas);
+  const pagina = variante === 'pagina';
 
-  const num = (valor: number, cambiar: (n: number) => void, etiqueta: string) => (
-    <input key={String(valor)} aria-label={etiqueta} inputMode="decimal" defaultValue={String(valor)} onBlur={(e) => cambiar(numeroDeCampo(e.target.value))} disabled={deshabilitado} className={`${CLASE_CAMPO} w-24 text-right`} />
+  const visibles = useMemo(
+    () =>
+      filas.filter(({ fila }) =>
+        filtro === 'todas' ? true : filtro === 'productos' ? fila.clase === 'producto' : filtro === 'servicios' ? fila.clase === 'servicio' : filtro === 'hospedaje' ? fila.clase === 'hospedaje' : fila.clase === 'concepto',
+      ),
+    [filas, filtro],
   );
-  const quitar = (k: Clase, i: number) => onCambiar({ ...lineas, [k]: lineas[k].filter((_, j) => j !== i) });
-  const agregar = () => {
-    if (clase === 'products') setAgregandoProductos(true);
-    else if (clase === 'spaces') onCambiar({ ...lineas, spaces: [...lineas.spaces, { space_id: '', nights: 1, unit_price: 0 }] });
-    else onCambiar({ ...lineas, custom: [...lineas.custom, { concept: '', quantity: 1, unit_price: 0 }] });
+  const conAviso = filas.filter((f) => f.fila.aviso);
+
+  const quitar = (clase: 'products' | 'spaces' | 'custom', i: number) => onCambiar({ ...lineas, [clase]: (lineas[clase] as unknown[]).filter((_, j) => j !== i) } as Lineas);
+  const editar = (clase: 'products' | 'spaces' | 'custom', i: number) => {
+    if (clase === 'products') setEdicion({ clase, i, linea: lineas.products[i] });
+    else if (clase === 'spaces') setEdicion({ clase, i, linea: lineas.spaces[i] });
+    else setEdicion({ clase, i, linea: lineas.custom[i] });
   };
 
-  const filas =
-    clase === 'products'
-      ? lineas.products.map((l, i) => ({
-          clave: l.id ?? `p${i}`,
-          elegir: <span className="block min-w-0 truncate text-fg" title={l.nombre ?? undefined}>{l.nombre ?? t('elegirProducto')}</span>,
-          cantidad: num(l.quantity, (n) => onCambiar({ ...lineas, products: lineas.products.map((x, j) => (j === i ? { ...x, quantity: n } : x)) }), t('cantidad')),
-          precio: num(l.unit_price, (n) => onCambiar({ ...lineas, products: lineas.products.map((x, j) => (j === i ? { ...x, unit_price: n } : x)) }), t('precio')),
-          total: subtotal(l.quantity, l.unit_price),
-          i,
-        }))
-      : clase === 'spaces'
-        ? lineas.spaces.map((l, i) => ({
-            clave: l.id ?? `s${i}`,
-            elegir: <SpaceSearchSelect spaces={espacios} selectedSpaceId={l.space_id} onSelect={(id, s) => onCambiar({ ...lineas, spaces: lineas.spaces.map((x, j) => (j === i ? { ...x, space_id: id, nombre: s?.label ?? null, unit_price: x.unit_price || s?.base_rate || 0 } : x)) })} placeholder={l.nombre ?? t('elegirEspacio')} />,
-            cantidad: num(l.nights, (n) => onCambiar({ ...lineas, spaces: lineas.spaces.map((x, j) => (j === i ? { ...x, nights: Math.max(1, Math.round(n)) } : x)) }), t('noches')),
-            precio: num(l.unit_price, (n) => onCambiar({ ...lineas, spaces: lineas.spaces.map((x, j) => (j === i ? { ...x, unit_price: n } : x)) }), t('precio')),
-            total: subtotal(l.nights, l.unit_price),
-            i,
-          }))
-        : lineas.custom.map((l, i) => ({
-            clave: l.id ?? `c${i}`,
-            elegir: <input aria-label={t('concepto')} value={l.concept} onChange={(e) => onCambiar({ ...lineas, custom: lineas.custom.map((x, j) => (j === i ? { ...x, concept: e.target.value } : x)) })} maxLength={500} disabled={deshabilitado} className={CLASE_CAMPO} />,
-            cantidad: num(l.quantity, (n) => onCambiar({ ...lineas, custom: lineas.custom.map((x, j) => (j === i ? { ...x, quantity: n } : x)) }), t('cantidad')),
-            precio: num(l.unit_price, (n) => onCambiar({ ...lineas, custom: lineas.custom.map((x, j) => (j === i ? { ...x, unit_price: n } : x)) }), t('precio')),
-            total: subtotal(l.quantity, l.unit_price),
-            i,
-          }));
-
-  // Un producto que ya está en las líneas suma una unidad en vez de duplicar la fila.
-  const agregarProducto = (p: { id: number; nombre: string; precio: number }) => {
-    const ya = lineas.products.findIndex((x) => x.product_id === p.id);
-    onCambiar({
-      ...lineas,
-      products:
-        ya >= 0
-          ? lineas.products.map((x, j) => (j === ya ? { ...x, quantity: x.quantity + 1 } : x))
-          : [...lineas.products, { product_id: p.id, nombre: p.nombre, quantity: 1, unit_price: p.precio || 0 }],
-    });
-  };
+  const titulo = pagina ? t('titulo') : lote ? t('tituloLote') : t('tituloDialogo');
+  const IconoTitulo = pagina ? Package : ShoppingBag;
 
   return (
-    <section aria-labelledby="lineas-oportunidad" className="flex flex-col gap-3 border-t border-line pt-4">
+    <section aria-labelledby="lineas-oportunidad" className={cn('flex flex-col gap-3', pagina && 'border-t border-line pt-4')}>
       <header className="flex items-start gap-2">
-        <Package aria-hidden="true" className="mt-0.5 size-4 text-fg-secondary" strokeWidth={1.5} />
-        <div className="flex flex-col">
-          <h3 id="lineas-oportunidad" className="text-sm font-semibold text-fg">{t('titulo')}</h3>
-          <p className="text-xs text-fg-secondary">{t('descripcion')}</p>
+        <IconoTitulo aria-hidden="true" className={cn('mt-0.5 size-4', pagina ? 'text-fg-secondary' : 'text-brand')} strokeWidth={1.5} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h3 id="lineas-oportunidad" className="text-sm font-semibold text-fg">{titulo}</h3>
+          {pagina && <p className="text-xs text-fg-secondary">{t('descripcionPagina')}</p>}
         </div>
+        {!pagina && <StatusBadge estado="opcional" etiqueta={t('opcional')} tono="neutro" tamano="sm" />}
       </header>
-      <SegmentedControl etiqueta={t('titulo')} valor={clase} onValorChange={setClase} tamano="sm" opciones={(['products', 'spaces', 'custom'] as const).map((k) => ({ valor: k, etiqueta: t(`clases.${k}`, { n: lineas[k].length }) }))} />
-      {filas.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead className="bg-subtle text-xs text-fg-secondary">
-              <tr>
-                <th scope="col" className="px-3 py-2 text-left font-medium">{t(`columna.${clase}`)}</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">{clase === 'spaces' ? t('noches') : t('cantidad')}</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">{t('precio')}</th>
-                <th scope="col" className="px-3 py-2 text-right font-medium">{t('total')}</th>
-                <th scope="col" className="w-10"><span className="sr-only">{t('quitar')}</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filas.map((f) => (
-                <tr key={f.clave} className="border-t border-line">
-                  <td className="px-3 py-2">{f.elegir}</td>
-                  <td className="px-3 py-2 text-right">{f.cantidad}</td>
-                  <td className="px-3 py-2 text-right">{f.precio}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-fg">{formatMoneda(f.total, moneda)}</td>
-                  <td className="px-1 text-right">
-                    <button type="button" aria-label={t('quitar')} onClick={() => quitar(clase, f.i)} disabled={deshabilitado} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"><Trash2 aria-hidden="true" className="size-4" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+      {lote && <AvisoTonal tono="informacion" titulo={t('loteAviso')} compacto />}
+
+      {pagina && conteo.todas > 0 && (
+        <div role="group" aria-label={t('filtrar')} className="flex flex-wrap gap-2">
+          {FILTROS_LINEAS.filter((f) => f === 'todas' || conteo[f] > 0).map((f) => (
+            <button
+              key={f}
+              type="button"
+              aria-pressed={filtro === f}
+              onClick={() => setFiltro(f)}
+              className={cn('flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium', filtro === f ? 'border-brand bg-brand-tint text-brand-deep' : 'border-line text-fg-secondary hover:bg-hover')}
+            >
+              {filtro === f && <Check aria-hidden="true" className="size-3.5" />}
+              {t(`filtros.${f}`, { n: conteo[f] })}
+            </button>
+          ))}
         </div>
       )}
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={agregar} disabled={deshabilitado} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
-          <Plus aria-hidden="true" className="size-4" />
-          {t(`agregar.${clase}`)}
-        </button>
-        <span className="text-sm font-semibold text-fg">{t('totalGeneral', { total: formatMoneda(totalLineas(lineas), moneda) })}</span>
+
+      {pagina && conAviso.length > 0 && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('avisoStock.titulo', { n: conAviso.length })}
+          descripcion={t('avisoStock.detalle')}
+          accion={{ etiqueta: t('avisoStock.verStock'), onClick: () => editar(conAviso[0].clase, conAviso[0].i) }}
+        />
+      )}
+
+      {conteo.todas === 0 ? (
+        <p className="rounded-lg border border-dashed border-line-strong px-4 py-5 text-center text-[13px] text-fg-secondary">{lote ? t('vacioLote') : t('vacio')}</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {visibles.map(({ clase, i, fila }) => (
+            <LineaOportunidad key={fila.clave} fila={fila} moneda={moneda} compacta={!pagina} deshabilitado={deshabilitado} onEditar={() => editar(clase, i)} onQuitar={() => quitar(clase, i)} />
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col items-start gap-1">
+          <button type="button" onClick={() => setAgregar('productos')} disabled={deshabilitado} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+            <Plus aria-hidden="true" className="size-4" />
+            {t('agregarProductos')}
+          </button>
+          {!lote && (
+            <button type="button" onClick={() => setAgregar('hospedaje')} disabled={deshabilitado} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+              <BedDouble aria-hidden="true" className="size-4" />
+              {t('agregarHospedaje')}
+            </button>
+          )}
+          <button type="button" onClick={() => setEdicion({ clase: 'custom', i: lineas.custom.length, linea: { concept: '', quantity: 1, unit_price: 0 } })} disabled={deshabilitado} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+            <Plus aria-hidden="true" className="size-4" />
+            {t('agregarConcepto')}
+          </button>
+        </div>
+        {conteo.todas > 0 && <TotalesLineas totales={totales} moneda={moneda} />}
       </div>
-      <AgregarProductosDocumento
-        abierto={agregandoProductos}
-        onAbiertoChange={setAgregandoProductos}
-        variante="venta"
-        sucursal={selectedBranchId}
-        nombreSucursal={nombreSucursal}
+
+      <AgregarALaOportunidad
+        abierto={agregar !== null}
+        onAbiertoChange={(x) => !x && setAgregar(null)}
+        pestanaInicial={agregar ?? 'productos'}
+        contexto={contexto}
         moneda={moneda}
-        impuestos={[]}
-        sinCrear
-        onAgregar={agregarProducto}
+        usuarios={usuarios}
+        totalLineas={conteo.todas}
+        sinHospedaje={lote}
+        onAgregarProducto={(l) => onCambiar(agregarProducto(lineas, l))}
+        onAgregarEspacios={(nuevas) => onCambiar({ ...lineas, spaces: [...lineas.spaces, ...nuevas] })}
+      />
+      <EditarLineaDialog
+        edicion={edicion}
+        onCerrar={() => setEdicion(null)}
+        moneda={moneda}
+        usuarios={usuarios}
+        onGuardarProducto={(i, l) => onCambiar({ ...lineas, products: lineas.products.map((x, j) => (j === i ? l : x)) })}
+        onGuardarEspacio={(i, l) => onCambiar({ ...lineas, spaces: lineas.spaces.map((x, j) => (j === i ? l : x)) })}
+        onGuardarConcepto={(i, l) => onCambiar({ ...lineas, custom: i >= lineas.custom.length ? [...lineas.custom, l] : lineas.custom.map((x, j) => (j === i ? l : x)) })}
+        onEliminar={(clase, i) => {
+          if (clase === 'custom' && i >= lineas.custom.length) return;
+          quitar(clase, i);
+        }}
       />
     </section>
   );

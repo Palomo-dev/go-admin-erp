@@ -1,176 +1,223 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { CircleCheck, Download, RefreshCw, Settings } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { ChipsOpcion } from '@/components/kit/ChipsOpcion';
+import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
+import { claveError } from '@/components/crm/acciones/apiCrm';
+import { nombreUsuario, puede } from '@/components/crm/acciones/catalogosCrmLogica';
+import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz, toPlainDate } from '@/lib/utils/dateDisplay';
 import { healthScoreService } from '@/lib/services/crm/healthScoreService';
-import type { HealthScoreResult, HealthBand } from '@/lib/services/crm/healthScoreService';
-import { RefreshCw, HeartPulse, AlertTriangle, CheckCircle2, CircleDot, Users, type LucideIcon } from 'lucide-react';
-import { SegmentedControl } from '@/components/kit/SegmentedControl';
-import { LoadErrorState } from '@/components/common/LoadErrorState';
-import { describeError, logError } from '@/lib/utils/errorMessage';
-import { HealthCustomerGrid } from './HealthCustomerGrid';
-import { HealthDetailDrawer } from './HealthDetailDrawer';
-import { BAND_STYLES } from './healthBandStyles';
+import { logError } from '@/lib/utils/errorMessage';
+import { AtajoConfigurar } from '@/components/configuracion/AtajoConfigurar';
+import { abrirConfiguracion } from '@/components/configuracion/dialogo/abrirConfiguracion';
+import { csvSalud, FILTROS_INICIALES, filtrarPanel, ordenarPanel, type AccionSalud, type ChipSalud, type FilaSalud, type FiltrosSalud, type OrdenSalud } from './saludLogica';
+import { useSaludPanel } from './useSaludPanel';
+import { useTextosSalud } from './useTextosSalud';
+import { SaludResumen } from './SaludResumen';
+import { SaludTabla, SaludTablaCargando } from './SaludTabla';
+import { SaludListaMovil } from './SaludListaMovil';
+import { AccionSaludAbierta, type AccionSaludPendiente } from './AccionSaludAbierta';
 
 /**
- * /app/crm/salud (F11): salud de clientes. Score y banda salen de
- * `fn_customer_health` + `health_score_configs.config` (dimensiones
- * configurables); alertas y tendencia en el detalle (`HealthDetailDrawer`).
- * «Recalcular» (r2) va por `POST /api/crm/health/refresh` con sesión: misma
- * pasada que el cron (snapshot solo si cambió o venció el intervalo).
+ * /app/crm/salud — «Salud/Panel — lista priorizada» (Figma 1415:19) con sus
+ * estados: sin datos suficientes (1424:840685), cargando (1424:841103), error,
+ * sin permiso y móvil (1424:841631).
+ *
+ * Puntaje y banda: `fn_customer_health` + `health_score_configs.config`
+ * (`composeHealthResult`, el mismo cálculo del cron y de la ficha). Orden por
+ * defecto: banda roja primero y, dentro, ingresos 12 m × caída. «Recalcular»
+ * (menú «⋯») va por `POST /api/crm/health/refresh` (sesión; misma pasada que
+ * el cron). «Exportar» descarga las filas visibles en CSV.
  */
 interface SaludViewProps {
   organizationId: number;
 }
 
-type FilterType = 'all' | HealthBand;
+const ORDENES: OrdenSalud[] = ['ingresos', 'puntaje', 'caida'];
 
-const STAT_CARDS: Array<{ key: FilterType; label: string; icon: LucideIcon; iconBox: string; text: string }> = [
-  { key: 'all', label: 'Total monitoreados', icon: Users, iconBox: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400', text: 'text-gray-900 dark:text-white' },
-  { key: 'green', label: BAND_STYLES.green.label, icon: CheckCircle2, iconBox: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400', text: BAND_STYLES.green.text },
-  { key: 'yellow', label: BAND_STYLES.yellow.label, icon: CircleDot, iconBox: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400', text: BAND_STYLES.yellow.text },
-  { key: 'red', label: BAND_STYLES.red.label, icon: AlertTriangle, iconBox: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400', text: BAND_STYLES.red.text },
-];
+/** «Configurar factores»: los factores viven en Configuración › CRM › Salud de clientes (Figma pág. 10, S1). */
+const SECCION_CONFIG = 'crm.salud';
 
 export function SaludView({ organizationId }: SaludViewProps) {
-  const [scores, setScores] = useState<HealthScoreResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  // El toast desaparece; sin esto la pantalla quedaba en «0 clientes» como si
-  // no hubiera datos cuando en realidad la carga había fallado.
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filter, setFilter] = useState<FilterType>('all');
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const isFirstLoadRef = useRef(true);
+  const t = useTranslations('crm.redSalud');
+  const tc = useTranslations('crmSalud');
+  const te = useTranslations('crm.accionesRapidas.errores');
+  const idioma = useLocale();
+  const { formatear, textoMotivos } = useTextosSalud();
+  const { timezone } = useOrgTimezone();
+  const escritorio = useEsEscritorio();
+  const cat = useCatalogosCrm();
+  const d = useSaludPanel(organizationId, timezone);
+  const [filtros, setFiltros] = useState<FiltrosSalud>(FILTROS_INICIALES);
+  const [recalculando, setRecalculando] = useState(false);
+  const [pendiente, setPendiente] = useState<AccionSaludPendiente | null>(null);
 
-  const loadScores = useCallback(async () => {
-    if (isFirstLoadRef.current) setLoading(true);
-    setIsRefreshing(true);
-    setLoadError(null);
-    try {
-      const data = await healthScoreService.getAllHealthScores(organizationId);
-      setScores(data);
-    } catch (err) {
-      logError('[SaludView] cargar scores de salud', err);
-      setLoadError(describeError(err));
-    } finally {
-      isFirstLoadRef.current = false;
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [organizationId]);
+  const sinPermiso = !cat.cargando && !cat.error && !puede(cat.permisos, 'crm.customers.view');
+  const visibles = useMemo(() => ordenarPanel(filtrarPanel(d.filas, filtros, cat.usuarioId), filtros.orden), [d.filas, filtros, cat.usuarioId]);
+  const n = (x: number) => new Intl.NumberFormat(idioma).format(x);
+  const sinDatos = !d.cargando && !d.error && d.filas.length === 0;
 
-  useEffect(() => { void loadScores(); }, [loadScores]);
+  const recalculado = (() => {
+    if (!d.ultimoCalculo) return null;
+    const fecha = new Date(d.ultimoCalculo);
+    const hora = formatDateInTz(fecha, timezone, { locale: idioma, hour: 'numeric', minute: '2-digit' });
+    return toPlainDate(fecha, timezone) === toPlainDate(new Date(), timezone)
+      ? t('recalculadoHoy', { hora })
+      : t('recalculadoEl', { fecha: formatDateInTz(fecha, timezone, { locale: idioma, day: '2-digit', month: '2-digit' }), hora });
+  })();
 
-  const handleRecalculate = async () => {
-    setIsRefreshing(true);
+  const recalcular = async () => {
+    setRecalculando(true);
     try {
       const r = await healthScoreService.refreshAllHealthScores();
-      const description = r.reason === 'config_inactive'
-        ? 'La medición de salud está desactivada en la configuración de tu organización.'
-        : `${r.customers} clientes medidos · ${r.customers_updated} cambiaron de score · ${r.snapshots_written} puntos nuevos en la tendencia`;
-      toast({ title: 'Recálculo completado', description });
-      await loadScores();
+      toast({
+        title: t('recalculo.hecho'),
+        description: r.reason === 'config_inactive' ? t('recalculo.inactiva') : t('recalculo.detalle', { clientes: n(r.customers), cambiaron: n(r.customers_updated) }),
+      });
+      await d.recargar();
     } catch (err) {
-      logError('[SaludView] recalcular', err);
-      toast({ title: 'No se pudo recalcular', description: describeError(err), variant: 'destructive' });
+      logError('[Salud] recalcular', err);
+      toast({ title: t('recalculo.error'), variant: 'destructive' });
     } finally {
-      setIsRefreshing(false);
+      setRecalculando(false);
     }
   };
 
-  const counts: Record<FilterType, number> = {
-    all: scores.length,
-    red: scores.filter((s) => s.band === 'red').length,
-    yellow: scores.filter((s) => s.band === 'yellow').length,
-    green: scores.filter((s) => s.band === 'green').length,
+  const exportar = () => {
+    const csv = csvSalud(
+      visibles.map((f) => ({
+        celdas: [f.nombre, f.contacto ?? '', nombreUsuario(cat.usuarios, f.responsableId) ?? '', f.score, t(`banda.${f.band}`), f.cambio ?? '', textoMotivos(f.motivos, f.resultado), Math.round(f.ingresos), f.accion ? t(`accion.${f.accion}`) : ''],
+      })),
+      [t('csv.cliente'), t('csv.contacto'), t('csv.responsable'), t('csv.puntaje'), t('csv.banda'), t('csv.cambio'), t('csv.porque'), t('csv.ingresos'), t('csv.accion')],
+    );
+    const url = URL.createObjectURL(new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'salud-clientes.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
-  const filteredScores = filter === 'all' ? scores : scores.filter((s) => s.band === filter);
-  const filters: Array<{ key: FilterType; label: string; icon: LucideIcon; color: string }> = [
-    { key: 'all', label: 'Todos', icon: HeartPulse, color: 'text-blue-700 dark:text-blue-400' },
-    { key: 'red', label: 'Críticos', icon: AlertTriangle, color: BAND_STYLES.red.text },
-    { key: 'yellow', label: 'Atención', icon: CircleDot, color: BAND_STYLES.yellow.text },
-    { key: 'green', label: 'Saludables', icon: CheckCircle2, color: BAND_STYLES.green.text },
-  ];
-  const emptyText = filter === 'all'
-    ? 'Todavía no hay clientes con datos de salud. Pulsa «Recalcular» para medir a todos los clientes activos.'
-    : `No hay clientes en estado ${filters.find((f) => f.key === filter)?.label.toLowerCase()}.`;
+
+  const alAccion = (accion: AccionSalud, fila: FilaSalud) =>
+    setPendiente({ accion, clienteId: fila.id, nombre: fila.nombre, cliente: fila.resultado.cliente, clave: Date.now() });
+
+  const chips: { valor: ChipSalud; etiqueta: string }[] = escritorio
+    ? [
+        { valor: 'red', etiqueta: t('filtros.red') },
+        { valor: 'yellow', etiqueta: t('filtros.yellow') },
+        { valor: 'bajaron', etiqueta: t('filtros.bajaron') },
+        { valor: 'mios', etiqueta: t('filtros.mios') },
+      ]
+    : [
+        { valor: 'red', etiqueta: t('filtros.redN', { n: n(d.resumen.conteo.red) }) },
+        { valor: 'yellow', etiqueta: t('filtros.yellowN', { n: n(d.resumen.conteo.yellow) }) },
+      ];
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-rose-100 dark:bg-rose-900/30 rounded-lg shrink-0">
-            <HeartPulse className="h-6 w-6 text-rose-600 dark:text-rose-400" aria-hidden="true" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">Salud de clientes</h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
-              Detecta a tiempo a quién debes llamar antes de que se pierda.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void loadScores()} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            Actualizar
-          </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRecalculate} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            Recalcular
-          </Button>
-        </div>
-      </div>
-
-      {loadError && (
-        <LoadErrorState title="No se pudo cargar la salud de clientes" message={loadError} onRetry={() => void loadScores()} isRetrying={isRefreshing} />
-      )}
-
-      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-        {STAT_CARDS.map((c) => {
-          const Icon = c.icon;
-          return (
-            <Card key={c.key} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-              <CardContent className="p-3 sm:pt-4 sm:px-4">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0 ${c.iconBox}`}>
-                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0">
-                    <dd className={`text-lg sm:text-2xl font-bold tabular-nums ${c.text}`}>{counts[c.key]}</dd>
-                    <dt className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400">{c.label}</dt>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </dl>
-
-      {/* Filtro por banda: no es otra sección → control segmentado del kit (regla de pestañas 2026-10-06). */}
-      <SegmentedControl
-        etiqueta="Filtrar por banda de salud"
-        valor={filter}
-        onValorChange={setFilter}
-        className="max-w-full overflow-x-auto"
-        opciones={filters.map((f) => ({ valor: f.key, etiqueta: f.label, icono: f.icon, contador: counts[f.key] > 0 ? counts[f.key] : undefined }))}
+    <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={sinPermiso ? t('sinPermiso.subtitulo') : recalculado ? `${t('subtitulo')} · ${recalculado}` : t('subtitulo')}
+        icono={CircleCheck}
+        migas={[{ etiqueta: t('migas.crm'), href: '/app/crm' }, { etiqueta: t('migas.salud') }]}
+        cargando={d.cargando}
+        acciones={
+          !sinPermiso && (
+            <>
+              <AtajoConfigurar seccion={SECCION_CONFIG} etiqueta={tc('configurarFactores')} />
+              <button type="button" onClick={exportar} disabled={visibles.length === 0} className={clasesBoton({ variante: 'secundario' })}>
+                <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('exportar')}
+              </button>
+              <RowActionsMenu
+                orientacion="horizontal"
+                tamano="md"
+                titulo={t('titulo')}
+                acciones={[
+                  { id: 'recalcular', etiqueta: recalculando ? t('recalculando') : t('recalcular'), icono: RefreshCw, onSelect: () => void recalcular() },
+                  { id: 'recargar', etiqueta: t('recargar'), icono: RefreshCw, onSelect: () => void d.recargar() },
+                ]}
+              />
+            </>
+          )
+        }
+        movil={{
+          menu: sinPermiso
+            ? undefined
+            : [
+                { id: 'factores', etiqueta: tc('configurarFactores'), icono: Settings, onSelect: () => abrirConfiguracion({ seccionId: SECCION_CONFIG }) },
+                { id: 'recalcular', etiqueta: t('recalcular'), icono: RefreshCw, onSelect: () => void recalcular() },
+                { id: 'exportar', etiqueta: t('exportar'), icono: Download, onSelect: exportar },
+              ],
+        }}
       />
 
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
-          <CardTitle className="text-sm sm:text-lg text-gray-900 dark:text-white">
-            Clientes monitoreados
-            <span className="text-xs sm:text-sm font-normal text-gray-600 dark:text-gray-400 ml-2">({filteredScores.length} resultados)</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-2 sm:px-6">
-          <HealthCustomerGrid scores={filteredScores} loading={loading} dimmed={isRefreshing} emptyText={emptyText} onSelect={setSelectedCustomerId} />
-        </CardContent>
-      </Card>
+      {sinPermiso ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="forbidden" titulo={t('sinPermiso.titulo')} descripcion={t('sinPermiso.descripcion')} accion={{ etiqueta: t('sinPermiso.volver'), href: '/app/crm' }} />
+        </div>
+      ) : d.error ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="error" titulo={t('error.titulo')} descripcion={te(claveError(d.error))} onReintentar={() => void d.recargar()} />
+        </div>
+      ) : sinDatos ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState
+            variante="empty"
+            icono={CircleCheck}
+            titulo={t('vacio.titulo')}
+            descripcion={t('vacio.descripcion')}
+            accionSecundaria={{ etiqueta: t('vacio.comoSeCalcula'), onClick: () => abrirConfiguracion({ seccionId: SECCION_CONFIG }) }}
+          />
+        </div>
+      ) : (
+        <>
+          <SaludResumen resumen={d.resumen} tendencia={d.tendencia} errorTendencia={d.errorTendencia} cargando={d.cargando} formatear={formatear} />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <ChipsOpcion
+              multiple
+              etiqueta={t('filtros.grupo')}
+              opciones={chips}
+              valor={filtros.chips}
+              onValorChange={(v) => setFiltros((f) => ({ ...f, chips: v }))}
+            />
+            {escritorio && (
+              <div className="lg:ml-auto lg:w-80">
+                <SelectCrm
+                  aria-label={t('orden.etiqueta')}
+                  valor={filtros.orden}
+                  onValorChange={(orden) => setFiltros((f) => ({ ...f, orden: (orden || 'ingresos') as OrdenSalud }))}
+                  opciones={ORDENES.map((o) => ({ valor: o, etiqueta: t(`orden.${o}`) }))}
+                />
+              </div>
+            )}
+          </div>
 
-      <HealthDetailDrawer customerId={selectedCustomerId} open={!!selectedCustomerId} onOpenChange={(open) => !open && setSelectedCustomerId(null)} />
+          {d.cargando ? (
+            <SaludTablaCargando />
+          ) : visibles.length === 0 ? (
+            <div className="rounded-xl border border-line bg-surface">
+              <EmptyState variante="search" onLimpiarFiltros={() => setFiltros({ ...FILTROS_INICIALES, chips: [] })} />
+            </div>
+          ) : escritorio ? (
+            <SaludTabla filas={visibles} usuarios={cat.usuarios} atenuada={d.recargando || recalculando} onAccion={alAccion} />
+          ) : (
+            <SaludListaMovil filas={visibles} atenuada={d.recargando || recalculando} onAccion={alAccion} />
+          )}
+        </>
+      )}
+
+      <AccionSaludAbierta pendiente={pendiente} onCerrado={() => setPendiente(null)} />
     </div>
   );
 }

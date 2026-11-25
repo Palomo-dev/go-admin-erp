@@ -34,7 +34,9 @@ type Idioma = (typeof IDIOMAS)[number];
 /**
  * Chat, Configuración y lo que el Chat monta de otros módulos: el kit
  * compartido sin sus subcarpetas de inventario y recetas (`useKitT()` =
- * namespace `kit`) y el redactor de WhatsApp del CRM.
+ * namespace `kit`) y el redactor de WhatsApp del CRM. RR. HH. › Ausencias
+ * (fase 2) también: es la primera pantalla del módulo con claves por plantilla
+ * (`estados.${e}`, `errores.${codigo}`) y así cada prefijo queda verificado.
  */
 const CARPETAS = [
   'src/app/app/chat',
@@ -42,7 +44,6 @@ const CARPETAS = [
   'src/components/configuracion',
   'src/components/kit/*',
   'src/components/crm/whatsapp',
-  // RR. HH. › Ausencias (fase 2): claves por plantilla (`estados.${e}`, `errores.${codigo}`) verificadas.
   'src/app/app/hrm/ausencias',
   'src/components/hrm/ausencias',
   // Asistencia, Horas extra y recargos y Novedades (fase 2, Figma 20.10–20.12).

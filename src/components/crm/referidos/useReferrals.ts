@@ -32,6 +32,16 @@ function upsert(list: ReferralView[], row: ReferralView): ReferralView[] {
   return i === -1 ? [row, ...list] : list.map((r) => (r.id === row.id ? row : r));
 }
 
+/** Error de la conversión con la ficha que ya existe (409 del alta de leads, `existing_customer`). */
+export class ConvertReferralError extends Error {
+  existingCustomer: { id: string; full_name: string | null } | null;
+  constructor(message: string, existingCustomer: { id: string; full_name: string | null } | null) {
+    super(message);
+    this.name = 'ConvertReferralError';
+    this.existingCustomer = existingCustomer;
+  }
+}
+
 export interface ProgramPayload {
   name: string;
   description: string | null;
@@ -108,7 +118,13 @@ export function useReferrals() {
 
   const convert = useCallback(async (id: string, payload: Record<string, unknown>) => {
     const { ok, body } = await call(`/api/crm/referrals/${id}/convert`, { method: 'POST', body: JSON.stringify(payload) });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo convertir el referido'));
+    if (!ok) {
+      const ex = body.existing_customer as { id?: unknown; full_name?: unknown } | null | undefined;
+      throw new ConvertReferralError(
+        messageOf(body, 'No se pudo convertir el referido'),
+        ex && typeof ex.id === 'string' ? { id: ex.id, full_name: typeof ex.full_name === 'string' ? ex.full_name : null } : null,
+      );
+    }
     const data = body.data as { referral: ReferralView; lead: { id: string; name: string } };
     setReferrals((prev) => upsert(prev, data.referral));
     return data;

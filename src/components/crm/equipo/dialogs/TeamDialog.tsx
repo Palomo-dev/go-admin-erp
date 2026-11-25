@@ -11,14 +11,14 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import type { SalesTeam, Territory } from '../types';
+import type { OpcionCatalogo } from '../types';
 import { useTranslations } from 'next-intl';
 
 interface TeamDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editing: SalesTeam | null;
-  territories: Territory[];
+  editing: { id: string } | null;
+  territories: OpcionCatalogo[];
   form: { name: string; description: string; is_active: boolean; territory_id: string };
   onFormChange: (form: { name: string; description: string; is_active: boolean; territory_id: string }) => void;
   onSave: () => void;
@@ -65,7 +65,7 @@ export function TeamDialog({
                 <SelectTrigger><SelectValue placeholder={tx('teamDialog.sinTerritorio')} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{tx('teamDialog.sinTerritorio')}</SelectItem>
-                  {territories.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  {territories.map((t) => <SelectItem key={t.id} value={t.id}>{t.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

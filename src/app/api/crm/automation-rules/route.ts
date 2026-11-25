@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerOrgContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
+import { getServerOrgContext, isOrgAdminContext, OrgContextError, requireOrgAdmin } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import {
   getAutomationRules,
@@ -24,7 +24,9 @@ export async function GET() {
   try {
     const ctx = await getServerOrgContext();
     const rules = await getAutomationRules(ctx.organizationId, ctx.supabase);
-    return NextResponse.json({ success: true, data: rules }, { status: 200 });
+    // `canManage`: la pantalla muestra «Solo administradores y supervisores
+    // gestionan automatizaciones» (Figma 1379:2446) sin esperar al 403 del POST.
+    return NextResponse.json({ success: true, data: rules, canManage: isOrgAdminContext(ctx) }, { status: 200 });
   } catch (error: unknown) {
     return errorResponse(error, 'GET error');
   }
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
         stage_id: body.stage_id,
         run_once_per_opportunity: body.run_once_per_opportunity,
         cooldown_hours: body.cooldown_hours,
+        // Plantillas probadas (Figma 1379:1336): se guarda de cuál salió la regla.
+        template_key: typeof body.template_key === 'string' && /^[a-z_]{2,60}$/.test(body.template_key) ? body.template_key : null,
         created_by: ctx.userId,
       },
       ctx.supabase,

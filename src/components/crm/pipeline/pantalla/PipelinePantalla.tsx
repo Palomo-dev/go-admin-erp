@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Kanban, Plus, Settings } from 'lucide-react';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
 import { toast } from '@/components/ui/use-toast';
 import { PageHeader } from '@/components/kit/PageHeader';
 import { SearchInput } from '@/components/kit/SearchInput';
@@ -128,7 +130,9 @@ export function PipelinePantalla() {
 
   const resumen = tablero.cabecera?.resumen ?? null;
   const total = resumen ? resumen.conteos.total : null;
-  const estado = cat.cargando || pls.lista === null ? 'cargando' : !permisos.ver ? 'sinPermiso' : estadoPantalla({ cargando: tablero.cargando, error: tablero.error ?? pls.error, total, hayFiltros: hayFiltros(filtros) });
+  // Sin la lista de embudos (falló la primera carga) no se queda «cargando» para siempre (Figma 1821:910338).
+  const errorEmbudos = !!pls.error;
+  const estado = pls.lista === null && errorEmbudos ? 'error' : cat.cargando || pls.lista === null ? 'cargando' : !permisos.ver ? 'sinPermiso' : estadoPantalla({ cargando: tablero.cargando, error: tablero.error ?? pls.error, total, hayFiltros: hayFiltros(filtros) });
   const actual = pls.lista?.find((p) => p.id === pipelineId) ?? null;
   const mostrarSinEmbudo = estado !== 'sinPermiso' && estado !== 'cargando' && pls.sinVentas && !elegido;
 
@@ -203,12 +207,24 @@ export function PipelinePantalla() {
         movil={{
           titulo: actual && !mostrarSinEmbudo ? actual.name : t('titulo'),
           subtitulo: actual && !mostrarSinEmbudo ? t('subtitulo', { embudo: t('titulo'), n: resumen?.conteos.open ?? 0 }) : undefined,
-          // Antes el selector solo vivía en las acciones de escritorio: en móvil no se podía cambiar de embudo.
-          onTitulo: estado !== 'sinPermiso' && pls.lista && pls.lista.length > 0 ? () => setSelectorMovil(true) : undefined,
+          // Figma 1815:175513: el título abre la hoja de embudos solo cuando ya llegaron y hay más de uno;
+          // con uno solo no lleva ▾ y «Nuevo pipeline» queda en el menú ⋯ (1821:910320).
+          onTitulo: estado !== 'sinPermiso' && pls.lista && pls.lista.length > 1 ? () => setSelectorMovil(true) : undefined,
           tituloAria: tSelector('aria', { nombre: actual?.name ?? '' }),
-          accion: permisos.crear && !mostrarSinEmbudo ? <button type="button" aria-label={t('nueva')} onClick={() => setNueva({ etapaId: null })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover"><Plus aria-hidden="true" className="size-5" /></button> : undefined }}
+          accion:
+            (permisos.crear && !mostrarSinEmbudo) || (pls.lista?.length === 1 && permisos.gestionarPipelines) ? (
+              <span className="flex items-center">
+                {permisos.crear && !mostrarSinEmbudo && <button type="button" aria-label={t('nueva')} onClick={() => setNueva({ etapaId: null })} className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover"><Plus aria-hidden="true" className="size-5" /></button>}
+                {pls.lista?.length === 1 && permisos.gestionarPipelines && (
+                  <RowActionsMenu titulo={actual?.name ?? t('titulo')} orientacion="horizontal" tamano="md" acciones={[{ id: 'nuevo', etiqueta: tSelector('nuevo'), descripcion: tSelector('nuevoDetalle'), icono: Plus, onSelect: () => setAsistente(undefined) }]} />
+                )}
+              </span>
+            ) : undefined }}
       />
 
+      {errorEmbudos && pls.lista && (
+        <AvisoTonal tono="peligro" rol="alert" titulo={t('errorEmbudos')} descripcion={t('errorEmbudosDetalle')} accion={{ etiqueta: t('reintentar'), onClick: () => pls.recargar() }} />
+      )}
       {mostrarSinEmbudo ? (
         <SinEmbudoVentas sinColocar={sinColocar} puedeCrear={permisos.gestionarPipelines} onCrear={() => setAsistente('sales')} />
       ) : estado === 'sinPermiso' ? (

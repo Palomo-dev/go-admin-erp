@@ -109,7 +109,7 @@ describe('ruleToForm / formToPayload', () => {
 });
 
 describe('formToPayload — contrato exacto con el servidor (ronda 2: pruebas que muerden)', () => {
-  it('regla existente → payload con las 12 claves exactas, ni una más ni una menos', () => {
+  it('regla existente → payload con las 13 claves exactas, ni una más ni una menos', () => {
     expect(formToPayload(ruleToForm(baseRule))).toEqual({
       name: 'Seguimiento propuesta',
       description: null,
@@ -123,6 +123,8 @@ describe('formToPayload — contrato exacto con el servidor (ronda 2: pruebas qu
       is_active: true,
       actions: [{ type: 'send_email', subject: 'Hola' }],
       conditions: { op: 'or', rules: [{ field: 'opportunity.amount', operator: 'gte', value: 10 }] },
+      // Figma 1375:17 «Solo en horario Ley 2300»: viaja en trigger_config (13.ª clave).
+      trigger_config: { solo_horario_ley2300: false },
     });
   });
 

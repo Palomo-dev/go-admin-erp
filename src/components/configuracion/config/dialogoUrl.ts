@@ -10,7 +10,8 @@
  * Los deep links de siempre (`/app/configuracion?modulo=&seccion=#ancla`, las
  * redirecciones de `next.config.js`, `/app/configuracion/asistente` y
  * `/app/configuracion/pos/avisos-cliente`) siguen valiendo: `destinoDesdeRutaVieja`
- * los traduce a la sección del diálogo.
+ * los traduce a la sección del diálogo, igual que las páginas que se mudaron
+ * de su módulo (los factores de Salud de clientes del CRM).
  *
  * Puro (sin React ni `window`): lo usan el proveedor, la página de
  * redirección y las pruebas.
@@ -35,10 +36,16 @@ export interface DestinoDialogo {
   movido?: string;
 }
 
-/** Páginas viejas que hoy son una sección del diálogo. */
-const PAGINAS_VIEJAS: Readonly<Record<string, string>> = {
-  '/app/configuracion/asistente': 'general.asistente',
-  '/app/configuracion/pos/avisos-cliente': 'pos.avisos-cliente',
+/**
+ * Páginas viejas que hoy son una sección del diálogo. `movido`: origen del
+ * aviso «se movió aquí» (`configuracionUnificada.origenes`) cuando la página
+ * vivía fuera de Configuración; sin él, no hay aviso.
+ */
+const PAGINAS_VIEJAS: Readonly<Record<string, { seccionId: string; movido?: string }>> = {
+  '/app/configuracion/asistente': { seccionId: 'general.asistente' },
+  '/app/configuracion/pos/avisos-cliente': { seccionId: 'pos.avisos-cliente' },
+  // «Factores de salud» del CRM (Figma pág. 10, S10; 2026-11-24).
+  '/app/crm/salud/configuracion': { seccionId: 'crm.salud', movido: 'crmSaludConfiguracion' },
 };
 
 function sinBarraFinal(ruta: string): string {
@@ -77,7 +84,7 @@ export function destinoDesdeRutaVieja(pathname: string, search = '', hash = ''):
   const movido = q.get('movido') || undefined;
 
   const pagina = PAGINAS_VIEJAS[ruta];
-  if (pagina) return limpio({ seccionId: pagina, ancla, movido });
+  if (pagina) return limpio({ seccionId: pagina.seccionId, ancla, movido: movido ?? pagina.movido });
   if (ruta !== RUTA_CONFIGURACION) return null;
 
   // Alguien ya armó el enlace con el formato nuevo sobre la ruta vieja.

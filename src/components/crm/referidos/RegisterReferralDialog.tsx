@@ -1,138 +1,196 @@
 'use client';
 
 /**
- * Registrar un referido: quién lo recomienda (buscador de clientes de la
- * organización, RLS), a quién (nombre, correo, teléfono) y en qué programa
- * activo. Validación junto al campo con `aria-describedby`, foco al primer
- * error y retorno de foco al disparador (o al fallback) al cerrar.
+ * «Registrar referido» (Figma 1303:85692; en móvil hoja inferior 1313:89380):
+ * quién recomienda (clientes de la organización), a quién y en qué programa
+ * activo. Validación en vivo con `validateRegisterForm` (la misma del modelo,
+ * regla 7) y errores traducidos junto al campo. En móvil el correo se oculta
+ * tras «Añadir correo». Guarda por `POST /api/crm/referrals` (lo hace quien
+ * monta el diálogo); nace pendiente.
  */
 
-import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
+import { useEffect, useMemo, useState } from 'react';
+import { Info, Plus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
-import { useReturnFocus } from '@/lib/hooks/useReturnFocus';
+import { Input } from '@/components/ui/input';
+import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
+import { FormField } from '@/components/kit/FormField';
+import { CustomerPicker, type ClientePicker } from '@/components/kit/CustomerPicker';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
+import { PhoneInput } from '@/components/kit/PhoneInput';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
+import { SelectCrm } from '@/components/crm/kit/SelectCrm';
+import { supabase } from '@/lib/supabase/config';
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
 import type { ReferralProgram, ReferralView } from '@/lib/services/crm/referralsService';
-import { emptyRegisterForm, registerFormToPayload, validateRegisterForm, type FormError, type RegisterReferralForm } from '@/lib/services/crm/referralModel';
-import { EntitySearchList } from '@/components/crm/shared/EntitySearchList';
-import { useCustomerSearch } from '@/components/crm/shared/useCustomerSearch';
-import { ReferredPersonFields } from './ReferredPersonFields';
+import { emptyRegisterForm, registerFormToPayload, REFERRED_NAME_MAX, validateRegisterForm, type FormError, type RegisterReferralForm } from '@/lib/services/crm/referralModel';
+import { useReferidosFormato } from './useReferidosFormato';
 
 interface Props {
   open: boolean;
   /** Referidor prellenado (desde «pedir referido» de F10). */
   preset: { id: string; name: string } | null;
   programs: ReferralProgram[];
-  currency: string | null;
   onOpenChange: (open: boolean) => void;
   onRegister: (payload: Record<string, unknown>) => Promise<ReferralView>;
-  returnFocusFallback: () => HTMLElement | null;
 }
 
-export function RegisterReferralDialog({ open, preset, programs, currency, onOpenChange, onRegister, returnFocusFallback }: Props) {
+/** Búsqueda de clientes con el servicio único (RPC `fn_clientes_buscar`, RLS de la sesión). */
+async function buscarReferidor(texto: string): Promise<ClientePicker[]> {
+  const orgId = getOrganizationId();
+  if (!orgId || orgId <= 0) return [];
+  const { filas } = await buscarClientes(supabase, { organizationId: orgId, texto, limite: 20 });
+  return filas.map((c) => ({ id: c.id, nombre: c.full_name ?? '—', correo: c.email, telefono: c.phone }));
+}
+
+export function RegisterReferralDialog({ open, preset, programs, onOpenChange, onRegister }: Props) {
+  const { t, recompensa } = useReferidosFormato();
+  const escritorio = useEsEscritorio();
   const [form, setForm] = useState<RegisterReferralForm>(emptyRegisterForm);
-  const [query, setQuery] = useState('');
+  const [referidor, setReferidor] = useState<ClientePicker | null>(null);
   const [errors, setErrors] = useState<FormError[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [focusId, setFocusId] = useState<string | null>(null);
-  const onCloseAutoFocus = useReturnFocus(open, returnFocusFallback);
-  const { hits, loading, error: searchError } = useCustomerSearch(query, open && !preset);
-  const active = programs.filter((p) => p.is_active);
+  const [conCorreo, setConCorreo] = useState(false);
+  const activos = useMemo(() => programs.filter((p) => p.is_active), [programs]);
 
   useEffect(() => {
     if (!open) return;
-    const base = emptyRegisterForm();
-    const first = active.length === 1 ? active[0].id : '';
-    setForm({ ...base, referrer_customer_id: preset?.id ?? null, referrer_name: preset?.name ?? null, program_id: first });
-    setQuery('');
+    const first = activos.length === 1 ? activos[0].id : '';
+    setForm({ ...emptyRegisterForm(), referrer_customer_id: preset?.id ?? null, referrer_name: preset?.name ?? null, program_id: first });
+    setReferidor(preset ? { id: preset.id, nombre: preset.name } : null);
     setErrors([]);
     setServerError(null);
+    setConCorreo(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, preset?.id]);
-
-  useEffect(() => {
-    if (!focusId) return;
-    document.getElementById(focusId)?.focus();
-    setFocusId(null);
-  }, [focusId]);
 
   const update = (next: RegisterReferralForm) => {
     setForm(next);
     if (errors.length) setErrors(validateRegisterForm(next));
   };
-  const errorOf = (field: FormError['field']) => errors.find((e) => e.field === field)?.message;
+
+  /** Error traducido del campo (el modelo valida; aquí solo se nombra). */
+  const errorDe = (field: FormError['field']): string | undefined => {
+    if (!errors.some((e) => e.field === field)) return undefined;
+    if (field === 'referrer_customer_id') return t('registrarDialogo.errores.referidor');
+    if (field === 'referred_name') return form.referred_name.trim() ? t('registrarDialogo.errores.nombreLargo', { max: REFERRED_NAME_MAX }) : t('registrarDialogo.errores.nombre');
+    if (field === 'referred_email') return t('registrarDialogo.errores.correo');
+    if (field === 'referred_phone') return t('registrarDialogo.errores.telefono');
+    return undefined;
+  };
 
   const submit = async () => {
     const errs = validateRegisterForm(form);
     setErrors(errs);
     if (errs.length) {
-      setFocusId(errs[0].field === 'referrer_customer_id' ? 'referral-referrer' : `referral-${errs[0].field}`);
+      if (errs.some((e) => e.field === 'referred_email')) setConCorreo(true);
       return;
     }
     setSaving(true);
     setServerError(null);
     try {
       const row = await onRegister(registerFormToPayload(form));
-      toast({ title: 'Referido registrado', description: `«${row.referred_name}» recomendado por ${form.referrer_name ?? 'el cliente elegido'}.` });
+      toast({ title: t('toast.registrado'), description: t('toast.registradoDescripcion', { nombre: row.referred_name, referidor: form.referrer_name ?? '' }) });
       onOpenChange(false);
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Error desconocido');
-      setFocusId('referral-server-error');
+      setServerError(err instanceof Error ? err.message : t('errorDesconocido'));
     } finally {
       setSaving(false);
     }
   };
 
+  const mostrarCorreo = escritorio || conCorreo || !!form.referred_email;
+  const campoCorreo = (
+    <FormField etiqueta={t('registrarDialogo.correo')} error={errorDe('referred_email')}>
+      <Input type="email" value={form.referred_email} autoComplete="off" onChange={(e) => update({ ...form, referred_email: e.target.value })} />
+    </FormField>
+  );
+  const campoTelefono = (
+    <FormField etiqueta={t('registrarDialogo.telefono')} error={errorDe('referred_phone')}>
+      {(c) => <PhoneInput id={c.id} aria-describedby={c['aria-describedby']} value={form.referred_phone} autoComplete="off" onChange={(v) => update({ ...form, referred_phone: v })} />}
+    </FormField>
+  );
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!saving) onOpenChange(next); }}>
-      <DialogContent onCloseAutoFocus={onCloseAutoFocus} className="max-h-[90vh] max-w-lg overflow-y-auto bg-white dark:bg-gray-950">
-        <DialogHeader className="pr-6 text-left">
-          <DialogTitle className="text-gray-900 dark:text-gray-100">Registrar referido</DialogTitle>
-          <DialogDescription className="text-gray-600 dark:text-gray-400">Quién recomienda, a quién, y en qué programa. Nace pendiente de contacto.</DialogDescription>
-        </DialogHeader>
-        <form className="space-y-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
-          {preset ? (
-            <div>
-              <p className="text-xs text-gray-700 dark:text-gray-300">Cliente que recomienda</p>
-              <p className="mt-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-900 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-100">{preset.name}</p>
-            </div>
-          ) : (
-            <EntitySearchList
-              id="referral-referrer"
-              label="Cliente que recomienda"
-              placeholder="Buscar por nombre o correo…"
-              query={query}
-              onQueryChange={setQuery}
-              hits={hits.map((h) => ({ id: h.id, title: h.full_name ?? 'Cliente sin nombre', subtitle: h.email ?? h.phone ?? null }))}
-              loading={loading}
-              error={searchError}
-              selectedId={form.referrer_customer_id}
-              onSelect={(h) => update({ ...form, referrer_customer_id: h.id, referrer_name: h.title })}
-              hint={form.referrer_name ? `Elegido: ${form.referrer_name}` : 'Escribe para buscar entre los clientes de la organización.'}
-              fieldError={errorOf('referrer_customer_id')}
+    <PanelAdaptable
+      abierto={open}
+      onAbiertoChange={onOpenChange}
+      titulo={t('registrarDialogo.titulo')}
+      descripcion={escritorio ? t('registrarDialogo.descripcion') : undefined}
+      ancho={560}
+      ocupado={saving}
+      pie={
+        <>
+          <button type="button" disabled={saving} onClick={() => onOpenChange(false)} className={clasesBoton({ variante: escritorio ? 'secundario' : 'fantasma', anchoCompleto: !escritorio })}>
+            {t('registrarDialogo.cancelar')}
+          </button>
+          <button type="submit" form="registrar-referido" disabled={saving} aria-busy={saving || undefined} className={clasesBoton({ anchoCompleto: !escritorio, tamano: escritorio ? 'md' : 'lg' })}>
+            {saving ? t('registrarDialogo.guardando') : t('registrarDialogo.guardar')}
+          </button>
+        </>
+      }
+    >
+      <form id="registrar-referido" className="flex flex-col gap-4" noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+        <FormField etiqueta={t('registrarDialogo.referidor')} obligatorio error={errorDe('referrer_customer_id')}>
+          {(c) => (
+            <CustomerPicker
+              id={c.id}
+              aria-describedby={c['aria-describedby']}
+              aria-invalid={c['aria-invalid']}
+              layout="campo"
+              etiqueta={t('registrarDialogo.referidor')}
+              cliente={referidor}
+              buscar={(texto) => buscarReferidor(texto)}
+              onCambiar={(cl) => {
+                setReferidor(cl);
+                update({ ...form, referrer_customer_id: cl.id, referrer_name: cl.nombre });
+              }}
+              onQuitar={() => {
+                setReferidor(null);
+                update({ ...form, referrer_customer_id: null, referrer_name: null });
+              }}
             />
           )}
-
-          <ReferredPersonFields form={form} errors={errors} programs={active} currency={currency} onChange={update} />
-
-          {serverError && (
-            <Alert id="referral-server-error" variant="destructive" tabIndex={-1}>
-              <AlertTitle>No se pudo registrar</AlertTitle>
-              <AlertDescription>{serverError}. Revisa los datos y vuelve a intentarlo.</AlertDescription>
-            </Alert>
+        </FormField>
+        <FormField etiqueta={t('registrarDialogo.nombre')} obligatorio error={errorDe('referred_name')}>
+          <Input value={form.referred_name} maxLength={REFERRED_NAME_MAX + 20} autoComplete="off" onChange={(e) => update({ ...form, referred_name: e.target.value })} />
+        </FormField>
+        {escritorio ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {campoCorreo}
+            {campoTelefono}
+          </div>
+        ) : (
+          <>
+            {campoTelefono}
+            {mostrarCorreo ? (
+              campoCorreo
+            ) : (
+              <button type="button" onClick={() => setConCorreo(true)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'self-start text-brand-deep' })}>
+                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('registrarDialogo.anadirCorreo')}
+              </button>
+            )}
+          </>
+        )}
+        <FormField etiqueta={t('registrarDialogo.programa')} ayuda={activos.length === 0 ? t('registrarDialogo.sinProgramasActivos') : undefined}>
+          {(c) => (
+            <SelectCrm
+              id={c.id}
+              aria-describedby={c['aria-describedby']}
+              valor={form.program_id}
+              onValorChange={(v) => update({ ...form, program_id: v })}
+              opcionVacia={t('registrarDialogo.sinPrograma')}
+              opciones={activos.map((p) => ({ valor: p.id, etiqueta: escritorio ? `${p.name} · ${recompensa(p, true)}` : p.name }))}
+            />
           )}
-          <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Registrar</button>
-        </form>
-        <DialogFooter className="gap-2 [&>button]:h-11 sm:[&>button]:h-9">
-          <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={saving} onClick={() => void submit()}>
-            {saving ? 'Registrando…' : 'Registrar referido'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </FormField>
+        {escritorio && <AvisoTonal tono="informacion" icono={Info} compacto titulo={t('registrarDialogo.aviso')} />}
+        {serverError && <AvisoTonal tono="peligro" rol="alert" titulo={t('registrarDialogo.errorServidor')} descripcion={serverError} />}
+      </form>
+    </PanelAdaptable>
   );
 }

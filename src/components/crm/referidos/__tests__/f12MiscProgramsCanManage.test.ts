@@ -47,7 +47,7 @@ describe('useReferrals: propaga `can_manage` del GET, no lo inventa en el client
   });
 });
 
-describe('ReferralProgramsSheet: acciones de escritura condicionadas a `canManage`', () => {
+describe('ReferralProgramsSheet: acciones de escritura condicionadas a `canManage` (Figma 1301:85046)', () => {
   const src = read('src/components/crm/referidos/ReferralProgramsSheet.tsx');
 
   it('declara `canManage: boolean` en las props y lo recibe', () => {
@@ -55,19 +55,22 @@ describe('ReferralProgramsSheet: acciones de escritura condicionadas a `canManag
     expect(src).toMatch(/export function ReferralProgramsSheet\(\{[^}]*canManage[^}]*\}:\s*Props\)/);
   });
 
-  it('«Nuevo programa» y el formulario de alta están tras `canManage`', () => {
-    expect(src).toMatch(/\{canManage && \(\s*<Button ref=\{newButtonRef\}/);
-    expect(src).toMatch(/\{canManage && creating && \(/);
+  it('«Crear programa» está tras `canManage`', () => {
+    expect(src).toMatch(/\{canManage && \(\s*<button type="button" onClick=\{\(\) => \{ setEditingId\(null\); setCreating\(true\); \}\}/);
   });
 
   it('la creación no se fuerza a `true` para quien no puede gestionar (lista vacía)', () => {
-    expect(src).toMatch(/setCreating\(canManage && programs\.length === 0\)/);
+    expect(src).toMatch(/const crear = canManage && \(crearAlAbrir \|\| programs\.length === 0\);/);
   });
 
-  it('«Editar» y «Eliminar» de cada programa, y su formulario de edición, están tras `canManage`', () => {
-    expect(src).toMatch(/\{canManage && \(\s*<div className="flex shrink-0 gap-1">/);
-    expect(src).toMatch(/aria-label=\{`Eliminar programa \$\{p\.name\}`\}/);
-    expect(src).toMatch(/\{canManage && isEditing && \(/);
+  it('el formulario (editar, crear y «Eliminar programa») solo se monta con `canManage`', () => {
+    expect(src).toMatch(/\{canManage && \(creating \|\| editing\) && \(/);
+    expect(src).toMatch(/<ReferralProgramForm/);
+    expect(src.indexOf("h('eliminar')")).toBeGreaterThan(src.indexOf('{canManage && (creating || editing) && ('));
+  });
+
+  it('sin `canManage` la fila del programa no es un botón (solo lectura)', () => {
+    expect(src).toMatch(/\{canManage \? \(\s*<button type="button" aria-pressed=\{elegido\}/);
   });
 
   it('no queda texto de "no tienes permiso" añadido para el estado de solo lectura', () => {
@@ -76,9 +79,12 @@ describe('ReferralProgramsSheet: acciones de escritura condicionadas a `canManag
 });
 
 describe('ReferidosPage: propaga el mismo `canManage` de `useReferrals` a `ReferralProgramsSheet`', () => {
+  const src = read('src/components/crm/referidos/ReferidosPage.tsx');
   it('pasa `canManage={canManage}` (no un valor fijo ni otro booleano)', () => {
-    const src = read('src/components/crm/referidos/ReferidosPage.tsx');
-    expect(src).toMatch(/const \{ referrals, programs, requests, currency, canManage,/);
-    expect(src).toMatch(/<ReferralProgramsSheet open=\{programsOpen\} programs=\{programs\} currency=\{currency\} canManage=\{canManage\}/);
+    expect(src).toMatch(/const \{ referrals, programs, requests, canManage,/);
+    expect(src).toMatch(/<ReferralProgramsSheet open=\{programsOpen\} programs=\{programs\} conteos=\{porPrograma\} canManage=\{canManage\}/);
+  });
+  it('«Crear programa» del estado vacío también depende de `canManage`', () => {
+    expect(src).toMatch(/accionSecundaria=\{canManage && !hayProgramaActivo \?/);
   });
 });

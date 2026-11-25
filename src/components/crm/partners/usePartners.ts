@@ -1,108 +1,130 @@
 'use client';
 
 /**
- * Estado de la página de partners (F12). Todo pasa por `/api/crm/partners/**`:
- * el navegador nunca escribe `partners`, `partner_tiers` ni `partner_deals`;
- * la comisión la calcula el servidor y `can_manage` lo decide la sesión.
+ * Estado de Partners (directorio, pestañas y ficha). Todo pasa por
+ * `/api/crm/partners/**`: el navegador nunca escribe `partners`,
+ * `partner_tiers` ni `partner_deals`; la comisión la calcula el servidor y
+ * `can_manage` lo decide la sesión.
+ *
+ * `dealsDe`: en la ficha, solo los deals de ese partner
+ * (`/api/crm/partners/[id]/deals`); sin él, los de toda la organización
+ * (`/api/crm/partners/deals`).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PartnerDealView, PartnerTier, PartnerView, RegisterDealResult } from '@/lib/services/crm/partnerService';
+import type { OrgPartnerDealView, PartnerDealView, PartnerTier, PartnerView, RegisterDealResult } from '@/lib/services/crm/partnerService';
 import type { CommissionStatus } from '@/lib/services/crm/partnerCommission';
 
-async function call(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
-  const res = await fetch(url, { cache: 'no-store', ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+/** Error de la API con su estado HTTP (403 → «sin permiso»; el resto → «error»). */
+export class ErrorPartners extends Error {
+  status: number;
+  code: string | null;
+  constructor(status: number, message: string, code: string | null) {
+    super(message);
+    this.name = 'ErrorPartners';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function pedir<T>(url: string, init?: RequestInit): Promise<{ data: T; body: Record<string, unknown> }> {
+  let res: Response;
+  try {
+    res = await fetch(url, { cache: 'no-store', ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+  } catch {
+    throw new ErrorPartners(0, '', 'RED');
+  }
   let body: Record<string, unknown> = {};
   try {
     body = (await res.json()) as Record<string, unknown>;
   } catch {
     body = {};
   }
-  return { ok: res.ok, status: res.status, body };
+  if (!res.ok) throw new ErrorPartners(res.status, typeof body.error === 'string' ? body.error : '', typeof body.code === 'string' ? body.code : null);
+  return { data: body.data as T, body };
 }
 
-function messageOf(body: Record<string, unknown>, fallback: string): string {
-  return typeof body.error === 'string' && body.error ? body.error : fallback;
+export type DealParaPantalla = OrgPartnerDealView | PartnerDealView;
+
+export interface PayloadDeal {
+  opportunity_id: string;
+  deal_type: string;
+  commission_amount?: number;
 }
 
-export function usePartners() {
+export function usePartners({ dealsDe }: { dealsDe?: string } = {}) {
   const [partners, setPartners] = useState<PartnerView[]>([]);
   const [tiers, setTiers] = useState<PartnerTier[]>([]);
+  const [deals, setDeals] = useState<DealParaPantalla[]>([]);
   const [canManage, setCanManage] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const loadedOnce = useRef(false);
+  const [cargando, setCargando] = useState(true);
+  const [cargado, setCargado] = useState(false);
+  const [error, setError] = useState<ErrorPartners | null>(null);
+  const yaCargo = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!loadedOnce.current) setLoading(true);
+  const recargar = useCallback(async () => {
+    if (!yaCargo.current) setCargando(true);
     setError(null);
     try {
-      const [list, tierList] = await Promise.all([call('/api/crm/partners'), call('/api/crm/partners/tiers')]);
-      if (!list.ok) throw new Error(messageOf(list.body, 'No se pudieron cargar los partners'));
-      if (!tierList.ok) throw new Error(messageOf(tierList.body, 'No se pudieron cargar los tiers'));
-      setPartners((list.body.data as PartnerView[]) ?? []);
-      setCanManage(list.body.can_manage === true);
-      setTiers((tierList.body.data as PartnerTier[]) ?? []);
-      loadedOnce.current = true;
-      setLoaded(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      const urlDeals = dealsDe ? `/api/crm/partners/${dealsDe}/deals?limit=200` : '/api/crm/partners/deals';
+      const [lista, niveles, tratos] = await Promise.all([
+        pedir<PartnerView[]>('/api/crm/partners'),
+        pedir<PartnerTier[]>('/api/crm/partners/tiers'),
+        pedir<DealParaPantalla[]>(urlDeals),
+      ]);
+      setPartners(lista.data ?? []);
+      setCanManage(lista.body.can_manage === true);
+      setTiers(niveles.data ?? []);
+      setDeals(tratos.data ?? []);
+      yaCargo.current = true;
+      setCargado(true);
+    } catch (e) {
+      setError(e instanceof ErrorPartners ? e : new ErrorPartners(0, '', null));
     } finally {
-      setLoading(false);
+      setCargando(false);
     }
-  }, []);
+  }, [dealsDe]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void recargar();
+  }, [recargar]);
 
   const savePartner = useCallback(async (payload: Record<string, unknown>, id?: string) => {
-    const { ok, body } = await call(id ? `/api/crm/partners/${id}` : '/api/crm/partners', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo guardar el partner'));
-    await load();
-    return body.data as PartnerView;
-  }, [load]);
+    const { data } = await pedir<PartnerView>(id ? `/api/crm/partners/${id}` : '/api/crm/partners', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+    await recargar();
+    return data;
+  }, [recargar]);
 
   const deletePartner = useCallback(async (id: string) => {
-    const { ok, body } = await call(`/api/crm/partners/${id}`, { method: 'DELETE' });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo eliminar el partner'));
+    await pedir(`/api/crm/partners/${id}`, { method: 'DELETE' });
     setPartners((prev) => prev.filter((p) => p.id !== id));
-    await load();
-  }, [load]);
+    await recargar();
+  }, [recargar]);
 
   const saveTier = useCallback(async (payload: Record<string, unknown>, id?: string) => {
-    const { ok, body } = await call(id ? `/api/crm/partners/tiers/${id}` : '/api/crm/partners/tiers', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo guardar el tier'));
-    await load();
-    return body.data as PartnerTier;
-  }, [load]);
+    const { data } = await pedir<PartnerTier>(id ? `/api/crm/partners/tiers/${id}` : '/api/crm/partners/tiers', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+    await recargar();
+    return data;
+  }, [recargar]);
 
   const deleteTier = useCallback(async (id: string) => {
-    const { ok, body } = await call(`/api/crm/partners/tiers/${id}`, { method: 'DELETE' });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo eliminar el tier'));
-    await load();
-  }, [load]);
+    await pedir(`/api/crm/partners/tiers/${id}`, { method: 'DELETE' });
+    await recargar();
+  }, [recargar]);
 
-  const loadDeals = useCallback(async (partnerId: string) => {
-    const { ok, body } = await call(`/api/crm/partners/${partnerId}/deals?limit=200`);
-    if (!ok) throw new Error(messageOf(body, 'No se pudieron cargar los deals'));
-    return (body.data as PartnerDealView[]) ?? [];
-  }, []);
-
-  const registerDeal = useCallback(async (partnerId: string, payload: { opportunity_id: string; deal_type: string }) => {
-    const { ok, body } = await call(`/api/crm/partners/${partnerId}/deals`, { method: 'POST', body: JSON.stringify(payload) });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo registrar el deal'));
-    await load();
-    return body.data as RegisterDealResult;
-  }, [load]);
+  const registerDeal = useCallback(async (partnerId: string, payload: PayloadDeal) => {
+    const { data } = await pedir<RegisterDealResult>(`/api/crm/partners/${partnerId}/deals`, { method: 'POST', body: JSON.stringify(payload) });
+    await recargar();
+    return data;
+  }, [recargar]);
 
   const transitionDeal = useCallback(async (partnerId: string, dealId: string, status: CommissionStatus) => {
-    const { ok, body } = await call(`/api/crm/partners/${partnerId}/deals/${dealId}`, { method: 'PATCH', body: JSON.stringify({ commission_status: status }) });
-    if (!ok) throw new Error(messageOf(body, 'No se pudo cambiar la comisión'));
-    await load();
-    return body.data as PartnerDealView;
-  }, [load]);
+    const { data } = await pedir<PartnerDealView>(`/api/crm/partners/${partnerId}/deals/${dealId}`, { method: 'PATCH', body: JSON.stringify({ commission_status: status }) });
+    await recargar();
+    return data;
+  }, [recargar]);
 
-  return { partners, tiers, canManage, loading, loaded, error, reload: load, savePartner, deletePartner, saveTier, deleteTier, loadDeals, registerDeal, transitionDeal };
+  return { partners, tiers, deals, canManage, cargando, cargado, error, recargar, savePartner, deletePartner, saveTier, deleteTier, registerDeal, transitionDeal };
 }
+
+export type EstadoPartners = ReturnType<typeof usePartners>;

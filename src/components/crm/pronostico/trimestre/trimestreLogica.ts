@@ -23,7 +23,11 @@ export function nombreVendedor(u: { first_name: string | null; last_name: string
 
 /** Tono de la cobertura (compromiso ÷ cuota). */
 export function tonoCobertura(c: number | null): TonoBadge {
-  if (c === null) return 'neutro';
+  return c === null ? 'neutro' : tonoProgresoCobertura(c);
+}
+
+/** El mismo tono para la barra de progreso del móvil (siempre con cobertura). */
+export function tonoProgresoCobertura(c: number): 'exito' | 'advertencia' | 'peligro' {
   if (c >= 1) return 'exito';
   if (c >= 0.7) return 'advertencia';
   return 'peligro';
@@ -50,4 +54,57 @@ export function montoInicialAjuste(compromiso: number, decimales: number): numbe
 /** Diferencia del ajuste respecto al compromiso calculado («+$ 8.000.000»). */
 export function deltaAjuste(nuevo: number | null, actual: number): number | null {
   return nuevo === null || !Number.isFinite(nuevo) ? null : nuevo - actual;
+}
+
+/** Qué ocupa el cuerpo de la pantalla (Figma 1431:19, 1434:648, 1434:842149). */
+export type CuerpoPronostico = 'sinCuotas' | 'sinOportunidades' | 'vendedores' | 'meses' | 'oportunidades';
+
+export function cuerpoPronostico(p: { enDetalle: boolean; vista: 'vendedor' | 'mes'; cuota: number; abiertas: number; ganadas: number }): CuerpoPronostico {
+  if (!p.enDetalle && p.cuota <= 0) return 'sinCuotas';
+  if (!p.enDetalle && p.abiertas === 0 && p.ganadas === 0) return 'sinOportunidades';
+  if (p.vista === 'mes') return 'meses';
+  return p.enDetalle ? 'oportunidades' : 'vendedores';
+}
+
+/** Minutos enteros desde la última carga («actualizado hace 5 min»). */
+export function minutosDesde(desde: number, ahora: number): number {
+  return Math.max(0, Math.floor((ahora - desde) / 60_000));
+}
+
+/** «2026-10» → «octubre 2026» en el idioma de la interfaz (mediodía UTC: sin corrimiento de día). */
+export function etiquetaMes(mes: string, idioma: string): string {
+  const fecha = new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)) - 1, 1, 12));
+  return new Intl.DateTimeFormat(idioma, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(fecha);
+}
+
+type Celda = string | number | null;
+type ConTotal = { total: number };
+
+/** Filas del CSV «por vendedor»: montos sin formato (Excel suma). */
+export function filasCsvVendedores(
+  filas: readonly { userId: string | null; quota: ConTotal; won: ConTotal; commit: ConTotal; adjustment: ConTotal; bestCase: ConTotal; weighted: ConTotal; coverage: number | null }[],
+  nombre: (userId: string | null) => string,
+): Celda[][] {
+  return filas.map((f) => [nombre(f.userId), f.quota.total || null, f.won.total, f.commit.total, f.adjustment.total || null, f.bestCase.total, f.weighted.total, f.coverage === null ? null : Math.round(f.coverage * 100)]);
+}
+
+export function filasCsvOportunidades(
+  filas: readonly { name: string; stage_name: string; expected_close_date: string | null; amount: number | string | null; currency: string | null; probability: number | null; category: string }[],
+  categoria: (c: string) => string,
+  probabilidad: (p: number | null) => number,
+): Celda[][] {
+  return filas.map((o) => [o.name, o.stage_name, o.expected_close_date, Number(o.amount ?? 0), o.currency, probabilidad(o.probability), categoria(o.category)]);
+}
+
+export function filasCsvMeses(meses: readonly { mes: string; oportunidades: number; won: ConTotal; commit: ConTotal; bestCase: ConTotal; weighted: ConTotal }[]): Celda[][] {
+  return meses.map((m) => [m.mes, m.won.total, m.commit.total, m.bestCase.total, m.weighted.total, m.oportunidades]);
+}
+
+/** Símbolo corto de la moneda («$», «€»); sin soporte de Intl, el código. */
+export function simboloMoneda(code: string, locale: string): string {
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' }).formatToParts(0).find((p) => p.type === 'currency')?.value ?? code;
+  } catch {
+    return code;
+  }
 }

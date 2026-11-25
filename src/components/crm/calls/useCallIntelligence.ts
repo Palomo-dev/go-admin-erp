@@ -27,6 +27,8 @@ export interface TranscriptDto {
   language: string;
   full_text: string | null;
   speaker_count: number | null;
+  /** `call_transcripts.confidence` (0–1); cabecera «confianza 94 %» del detalle. */
+  confidence?: number | null;
   duration_seconds: number | null;
   cost_amount: number | null;
   error_code: string | null;

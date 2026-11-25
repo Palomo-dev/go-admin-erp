@@ -1,152 +1,70 @@
 /// <reference types="jest" />
 /**
- * UX móvil — ronda 1 (UXM-C): «Nueva regla» y la lista a 375 px.
+ * UX móvil de Automatizaciones tras el rediseño de Figma (CRM 1373:17 lista,
+ * 1375:17 constructor, 1373:1161 historial; 2026-11-15).
  *
- * Defecto reportado por el dueño (iPhone): las fichas de acción («enviar un
- * email con asunto…», «crear la tarea…») sobresalían por la derecha y el pie
- * quedaba con el interruptor descolgado. Causa raíz medida con el arnés:
- *  1. Cada ficha va en un `motion.div` (`Chip`, hoy en `shared/motion/chip.tsx`) dentro de `flex flex-wrap`;
- *     como elemento flex sin `min-w-0` su mínimo era el ancho del texto sin
- *     cortar (`truncate` = nowrap), así que `max-w-full` del botón no servía
- *     y el formulario medía 659 px de scroll en 374 de ancho.
- *  2. El `<form>` no tenía `min-h-0`: no encogía, la hoja entera (con
- *     `overflow-y-auto` del Sheet base) se desplazaba y el pie no quedaba fijo.
- *  3. `SheetFooter` apila en columna inversa bajo `sm`: el interruptor caía
- *     debajo de los botones. A 375 px no caben las cuatro piezas en una fila
- *     (395 px frente a 342), así que en móvil el interruptor va arriba
- *     alineado y los botones a mitades debajo.
- *  4. La tarjeta de la lista (`li` de una rejilla) sin `min-w-0` heredaba el
- *     ancho del nombre `truncate` y sobresalía (649 px medidos).
- *
- * `chipClass` se prueba EJECUTADA; el resto es cableado sobre el fuente con
- * lectores tolerantes a orden de clases y saltos de línea (en jsdom no hay
- * layout: el real se midió con clic real en el navegador integrado).
+ * Las fichas, la hoja lateral «Nueva regla», `DryRunDialog` y `RunsSheet` que
+ * fijaban las rondas UXM-C ya no existen: el editor es una página y la lista y
+ * el historial son `DataTable` del kit. Lo que se conserva de aquellas rondas:
+ *  - nada debe ensanchar la pantalla a 375 px: el constructor apila sus dos
+ *    columnas bajo `lg`, las filas de condición apilan sus tres campos bajo
+ *    `sm` y los textos largos (errores sin espacios) rompen en cualquier punto
+ *    (`overflow-wrap: anywhere`, no `break-words`, que no encoge una celda);
+ *  - la lista y el historial pintan una tarjeta por registro en móvil
+ *    (`tarjetaMovil`), sin scroll horizontal;
+ *  - el editor de una acción: selector de tipo a ancho completo en móvil.
  */
 import fs from 'fs';
 import path from 'path';
-import { CHIP_ICON_CLASS, CHIP_LIST_CLASS, CHIP_TEXT_CLASS, chipClass } from '../chipClasses';
 
-const ROOT = process.cwd();
-const DIR = 'src/components/crm/automatizaciones';
-const read = (rel: string) => fs.readFileSync(path.join(ROOT, DIR, rel), 'utf8');
-const classes = (s: string) => s.split(/\s+/).filter(Boolean);
-const hasAll = (list: string[], ...wanted: string[]) => wanted.every((w) => list.includes(w));
+const DIR = path.join(process.cwd(), 'src/components/crm/automatizaciones');
+const read = (rel: string) => fs.readFileSync(path.join(DIR, rel), 'utf8');
 
-/** Etiqueta JSX de apertura `<Name …>` completa (llaves balanceadas), la n-ésima. */
-function openingTag(src: string, name: string, nth = 0): string {
-  const re = new RegExp(`<${name}\\b`, 'g');
-  let m: RegExpExecArray | null;
-  let i = -1;
-  for (let k = 0; k <= nth; k += 1) { m = re.exec(src); if (!m) return ''; i = m.index; }
-  let depth = 0;
-  for (let j = i; j < src.length; j += 1) {
-    if (src[j] === '{') depth += 1;
-    else if (src[j] === '}') depth -= 1;
-    else if (src[j] === '>' && depth === 0) return src.slice(i, j + 1);
-  }
-  return '';
-}
+describe('constructor de reglas (página)', () => {
+  const builder = read('RuleBuilderPage.tsx');
+  const bloques = read('BloquesConstructor.tsx');
 
-describe('fichas apiladas en móvil (chipClass ejecutada)', () => {
-  it('stacked: tarjeta a ancho completo y texto arriba en móvil; píldora en línea desde sm', () => {
-    const cls = classes(chipClass(false, 'emerald', true));
-    expect(hasAll(cls, 'min-w-0', 'max-w-full', 'w-full', 'items-start', 'rounded-lg', 'sm:w-auto', 'sm:items-center', 'sm:rounded-full')).toBe(true);
-    expect(cls).not.toContain('rounded-full');
-    expect(cls).not.toContain('items-center');
+  it('las dos columnas (bloques y panel lateral) se apilan bajo lg', () => {
+    expect(builder).toMatch(/grid items-start gap-4 lg:grid-cols-\[minmax\(0,1fr\)_360px\]/);
+    expect(builder).toMatch(/<div className="min-w-0">/);
+    expect(builder).toMatch(/<aside className="min-w-0 space-y-4"/);
   });
 
-  it('inline (toolbar, prueba en seco, todas/alguna): la píldora de siempre, nunca w-full', () => {
-    const cls = classes(chipClass(true));
-    expect(hasAll(cls, 'min-w-0', 'max-w-full', 'items-center', 'rounded-full')).toBe(true);
-    expect(cls).not.toContain('w-full');
-    expect(cls).not.toContain('items-start');
+  it('cada fila de condición apila campo, operador y valor bajo sm', () => {
+    expect(bloques).toMatch(/grid min-w-0 gap-2 sm:grid-cols-3/);
+    expect(bloques).toMatch(/grid-cols-\[32px_minmax\(0,1fr\)_40px\]/);
   });
 
-  it('el texto de la ficha envuelve en móvil (min-w-0 break-words) y se trunca solo desde sm', () => {
-    const cls = classes(CHIP_TEXT_CLASS);
-    expect(hasAll(cls, 'min-w-0', 'flex-1', 'break-words', 'sm:truncate')).toBe(true);
-    expect(cls).not.toContain('truncate');
+  it('la frase de la acción y «En palabras» envuelven (marcadores {{…}} sin espacios)', () => {
+    expect(bloques).toMatch(/block break-words text-sm font-medium text-fg/);
+    expect(builder).toMatch(/aria-live="polite" className="[^"]*\bbreak-words\b[^"]*"/);
   });
 
-  it('la lista de fichas se apila en móvil y envuelve en línea desde sm', () => {
-    expect(hasAll(classes(CHIP_LIST_CLASS), 'flex', 'flex-col', 'sm:flex-row', 'sm:flex-wrap')).toBe(true);
-    expect(hasAll(classes(CHIP_ICON_CLASS), 'shrink-0', 'sm:mt-0')).toBe(true);
-  });
-});
-
-describe('cableado: acciones, condiciones y Chip', () => {
-  const actions = read('ActionsBlock.tsx');
-  const conditions = read('ConditionsBlock.tsx');
-  const motion = fs.readFileSync(path.join(ROOT, 'src/components/shared/motion/chip.tsx'), 'utf8');
-
-  it('ActionsBlock y ConditionsBlock usan la ficha apilada y el texto que envuelve', () => {
-    for (const [src, tone] of [[actions, 'emerald'], [conditions, 'amber']] as const) {
-      expect(src).toMatch(new RegExp(`chipClass\\(\\s*open\\s*,\\s*'${tone}'\\s*,\\s*true\\s*\\)`));
-      expect(src).toMatch(/className=\{CHIP_LIST_CLASS\}/);
-      expect(src).toMatch(/<span className=\{CHIP_TEXT_CLASS\}>/);
-      expect(src).not.toMatch(/<span className="truncate">/);
-    }
-  });
-
-  it('Chip (motion.div, elemento flex) nunca mide más que su contenedor', () => {
-    expect(motion).toMatch(/\['min-w-0 max-w-full', className\]/);
-  });
-});
-
-describe('hoja «Nueva regla»: h-dvh, cuerpo con scroll propio, pie alineado', () => {
-  const sheet = read('RuleEditorSheet.tsx');
-
-  it('la hoja mide h-dvh y no se desplaza como un todo; el formulario es el único con scroll', () => {
-    const content = classes((openingTag(sheet, 'SheetContent').match(/className="([^"]+)"/) ?? [])[1] ?? '');
-    expect(hasAll(content, 'flex', 'flex-col', 'h-dvh', 'overflow-hidden', 'w-full', 'p-0', 'gap-0')).toBe(true);
-    expect(content).not.toContain('overflow-y-auto');
-    const form = classes((openingTag(sheet, 'form').match(/className="([^"]+)"/) ?? [])[1] ?? '');
-    expect(hasAll(form, 'relative', 'min-h-0', 'flex-1', 'overflow-y-auto')).toBe(true);
-  });
-
-  it('el pie: interruptor arriba alineado y botones a mitades en móvil; una fila desde sm; safe-area', () => {
-    const tag = openingTag(sheet, 'SheetFooter');
-    const cls = classes([...tag.matchAll(/'([^']+)'/g)].map((m) => m[1]).join(' '));
-    expect(hasAll(cls, 'flex-col', 'sm:flex-row', 'sm:items-center', 'sm:justify-between')).toBe(true);
-    expect(cls).not.toContain('flex-col-reverse');
-    expect(cls.some((c) => c.startsWith('pb-[') && c.includes('env(safe-area-inset-bottom)'))).toBe(true);
-    expect(sheet).toMatch(/className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0"/);
-  });
-});
-
-describe('editor de una acción, vista previa, tarjeta, prueba en seco e historial', () => {
   it('ActionChipEditor: selector de tipo a ancho completo en móvil y campos con min-w-0', () => {
     const src = read('ActionChipEditor.tsx');
     expect(src).toMatch(/className="w-full min-w-0 sm:w-auto sm:min-w-\[200px\] sm:flex-1"/);
     expect(src).toMatch(/cn\('min-w-0', f\.kind === 'textarea' && 'sm:col-span-2'\)/);
-    // Todos los <select> del editor comparten SELECT_CLASS, que es w-full.
-    expect(classes((read('TriggerBlock.tsx').match(/SELECT_CLASS\s*=\s*'([^']+)'/) ?? [])[1] ?? '')).toContain('w-full');
-    expect(src.match(/className=\{SELECT_CLASS\}/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
+    expect(src).toMatch(/const SELECT_CLASS =\s*'h-10 w-full /);
+    expect(src).not.toMatch(/\bdark:/);
+  });
+});
+
+describe('lista e historial: tarjetas en móvil y textos que no ensanchan', () => {
+  it('la lista y el historial dan tarjetaMovil a la DataTable', () => {
+    expect(read('AutomatizacionesPage.tsx')).toMatch(/tarjetaMovil=\{/);
+    expect(read('HistorialEjecucionesPage.tsx')).toMatch(/tarjetaMovil=\{/);
   });
 
-  it('RulePreview («Así funcionará»): la frase envuelve, también los marcadores {{…}}', () => {
-    expect(read('RulePreview.tsx')).toMatch(/aria-live="polite" className="[^"]*\bbreak-words\b[^"]*"/);
+  it('el detalle del historial rompe en cualquier punto (overflow-wrap: anywhere)', () => {
+    const src = read('HistorialEjecucionesPage.tsx');
+    expect(src.match(/\[overflow-wrap:anywhere\]/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    expect(src).not.toMatch(/break-words/);
   });
 
-  it('RuleCard: la celda de la rejilla tiene min-w-0 y el nombre corta por palabra en dos líneas', () => {
-    const src = read('RuleCard.tsx');
-    expect(src).toMatch(/'flex min-w-0 flex-col gap-3 rounded-xl/);
-    expect(src).toMatch(/className="line-clamp-2 break-words font-semibold/);
-    expect(src).not.toMatch(/className="truncate font-semibold/);
-    expect(src.match(/line-clamp-2 min-w-0 break-words/g)?.length).toBe(2);
-  });
-
-  it('DryRunDialog: cada resultado (li) tiene min-w-0 max-w-full para que la píldora trunque', () => {
-    const src = read('DryRunDialog.tsx');
-    expect(src.match(/<li[^>]*className="min-w-0 max-w-full"/g)?.length).toBe(2);
-  });
-
-  it('RunsSheet: la columna Fecha se oculta bajo sm y la fecha va bajo el estado', () => {
-    const src = read('RunsSheet.tsx');
-    // El texto «Fecha» vive en messages (crm.automatizaciones.runsSheet.fecha).
-    expect(src).toMatch(/<TableHead scope="col" className="hidden sm:table-cell">\{tx\('runsSheet\.fecha'\)\}<\/TableHead>/);
-    expect(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'messages/es.json'), 'utf8')).crm.automatizaciones.runsSheet.fecha).toBe('Fecha');
-    expect(src).toMatch(/className="hidden whitespace-nowrap align-top [^"]*sm:table-cell"/);
-    expect(src).toMatch(/className="mt-0\.5 block text-xs font-normal [^"]*sm:hidden"/);
+  it('ninguna pantalla de automatizaciones usa dark: ni colores sueltos', () => {
+    for (const f of ['AutomatizacionesPage.tsx', 'RuleBuilderPage.tsx', 'BloquesConstructor.tsx', 'HistorialEjecucionesPage.tsx', 'PlantillasRegla.tsx', 'celdasRegla.tsx']) {
+      const src = read(f);
+      expect({ f, dark: /\bdark:/.test(src), gris: /\b(?:text|bg|border)-(?:gray|slate|blue|red|amber|emerald)-\d/.test(src) }).toEqual({ f, dark: false, gris: false });
+    }
   });
 });

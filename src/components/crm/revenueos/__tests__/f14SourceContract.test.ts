@@ -1,10 +1,13 @@
 /// <reference types="jest" />
 /**
- * F14 — contrato de fuente del panel Revenue OS (`/app/crm/pronostico`).
- * Sin jsdom: se leen los archivos y se fijan las reglas del brief y de
- * CLAUDE.md que un refactor rompería en silencio (límite de 300 líneas,
- * fechas por zona horaria, celdas de cohorte con número, organización nunca
- * de la query, `[]` silencioso, motion reducido, tablas accesibles).
+ * F14 — contrato de fuente de Revenue OS. El tablero de
+ * `/app/crm/pronostico/analisis` (antes `/app/crm/pronostico`) se retiró el
+ * 2026-11-24: sus secciones son reportes del módulo Reportes
+ * (`src/lib/services/reportes/modulos/crmIngresosReports.ts`, grupo «Clientes
+ * y CRM»). Sin jsdom: se leen los archivos y se fijan las reglas del brief y de
+ * CLAUDE.md que un refactor rompería en silencio (límite de 300 líneas en el
+ * servicio, fechas por zona horaria, organización nunca de la query, `[]`
+ * silencioso, cálculo en los módulos puros y no en la vista).
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,21 +18,27 @@ const read = (p: string) => fs.readFileSync(rel(p), 'utf8');
 const lines = (p: string) => read(p).split(/\r?\n/).length;
 
 const UI_DIR = 'src/components/crm/revenueos';
+/** Lo que queda en la carpeta de UI: formato y textos de apoyo (los usan los reportes y los tests). */
 const UI = {
-  page: `${UI_DIR}/RevenueOsPage.tsx`,
-  hook: `${UI_DIR}/useRevenueDashboard.ts`,
-  range: `${UI_DIR}/RevenueRangeControl.tsx`,
-  kpis: `${UI_DIR}/KpiTiles.tsx`,
-  trend: `${UI_DIR}/RevenueTrendChart.tsx`,
-  funnel: `${UI_DIR}/FunnelPanel.tsx`,
-  cohorts: `${UI_DIR}/CohortTable.tsx`,
-  math: `${UI_DIR}/RevenueMathPanel.tsx`,
   formatters: `${UI_DIR}/formatters.ts`,
   hints: `${UI_DIR}/kpiHints.ts`,
-  scenarios: 'src/components/crm/pronostico/ForecastScenarios.tsx',
-  forecastDashboard: 'src/components/crm/pronostico/ForecastDashboard.tsx',
-  route: 'src/app/app/crm/pronostico/page.tsx',
 };
+const REPORTES = 'src/lib/services/reportes/modulos/crmIngresosReports.ts';
+const CATALOGO = 'src/lib/services/reportes/reportesCatalogo.ts';
+/** Componentes del tablero retirado: no deben volver. */
+const RETIRADOS = [
+  'src/app/app/crm/pronostico/analisis',
+  `${UI_DIR}/RevenueOsPage.tsx`,
+  `${UI_DIR}/useRevenueDashboard.ts`,
+  `${UI_DIR}/RevenueRangeControl.tsx`,
+  `${UI_DIR}/KpiTiles.tsx`,
+  `${UI_DIR}/RevenueTrendChart.tsx`,
+  `${UI_DIR}/FunnelPanel.tsx`,
+  `${UI_DIR}/CohortTable.tsx`,
+  `${UI_DIR}/RevenueMathPanel.tsx`,
+  'src/components/crm/pronostico/ForecastDashboard.tsx',
+  'src/components/crm/pronostico/ForecastScenarios.tsx',
+];
 
 const SERVICE_FILES = [
   'src/lib/services/crm/revenueOsService.ts',
@@ -51,15 +60,23 @@ const routeFiles = () =>
     .filter((d) => d.isDirectory() && d.name !== '__tests__')
     .map((d) => `${ROUTE_DIR}/${d.name}/route.ts`);
 
-describe('Archivos del panel', () => {
-  it('existen todos los componentes y el hook', () => {
+describe('Archivos: el tablero pasó a Reportes', () => {
+  it('quedan los formatos y los textos de apoyo; los componentes del tablero no existen', () => {
     for (const p of Object.values(UI)) expect(fs.existsSync(rel(p))).toBe(true);
-  });
-  it('la página /app/crm/pronostico monta RevenueOsPage (sin página nueva)', () => {
-    expect(read(UI.route)).toMatch(/RevenueOsPage/);
+    expect(RETIRADOS.filter((p) => fs.existsSync(rel(p)))).toEqual([]);
     expect(fs.existsSync(rel('src/app/app/crm/revenue-os'))).toBe(false);
+    expect(read('src/app/app/crm/pronostico/page.tsx')).toMatch(/PronosticoPantalla/);
   });
-  it('ningún componente ni módulo supera 300 líneas', () => {
+  it('las cinco secciones son reportes del módulo CRM en el grupo «clientes»', () => {
+    const src = read(REPORTES);
+    const cat = read(CATALOGO);
+    for (const id of ['crm-ingresos-mensual', 'crm-conversion-embudo', 'crm-escenarios-forecast', 'crm-cohortes-retencion', 'crm-matematica-comercial']) {
+      expect(src).toMatch(new RegExp(`id: '${id}'`));
+      expect(cat).toMatch(new RegExp(`'${id}': \{ grupo: 'clientes'`));
+    }
+    expect(cat).toMatch(/crm: \[\.\.\.crmReports, \.\.\.crmIngresosReports\]/);
+  });
+  it('ningún módulo del servicio ni ruta supera 300 líneas', () => {
     const all = [...Object.values(UI), ...SERVICE_FILES, ...routeFiles()];
     const big = all.filter((p) => lines(p) > 300);
     expect(big).toEqual([]);
@@ -67,7 +84,7 @@ describe('Archivos del panel', () => {
 });
 
 describe('Fechas y zona horaria', () => {
-  const files = [...Object.values(UI), ...SERVICE_FILES, ...routeFiles()];
+  const files = [...Object.values(UI), REPORTES, ...SERVICE_FILES, ...routeFiles()];
   it("nadie usa toISOString().split/slice ni split('T')[0] para derivar un día", () => {
     const bad = files.filter((p) => /toISOString\(\)\s*\.\s*(split|slice)|\.split\(['"]T['"]\)\[0\]/.test(read(p)));
     expect(bad).toEqual([]);
@@ -107,55 +124,33 @@ describe('Organización y errores en las rutas', () => {
   });
 });
 
-describe('UI: brief y accesibilidad', () => {
-  it('la página respeta prefers-reduced-motion (un solo MotionConfig reducedMotion="user" en el provider compartido, F15)', () => {
-    // F15 (2026-09-21): el `MotionConfig` vive en src/components/shared/motion/MotionProvider.tsx,
-    // montado en src/app/app/layout.tsx; la página no lo anida.
-    expect(read('src/components/shared/motion/MotionProvider.tsx')).toMatch(/<MotionConfig reducedMotion="user"/);
-    expect(read(UI.page)).not.toMatch(/<MotionConfig/);
+describe('Reportes: el cálculo sigue en el servicio y en los módulos puros', () => {
+  const src = () => read(REPORTES);
+  it('resumen, embudo, cohortes, escenarios y matemática llaman a las funciones de Revenue OS', () => {
+    const r = src();
+    expect(r).toMatch(/summarizeRevenueMetrics\(/);
+    expect(r).toMatch(/computeFunnelConversion\(/);
+    expect(r).toMatch(/buildCohortTable\(/);
+    expect(r).toMatch(/computeForecastScenarios\(/);
+    expect(r).toMatch(/buildRevenueMath\(/);
+    expect(read('src/lib/services/crm/revenueOsService.ts')).toMatch(/const math = buildRevenueMath\(/);
+    // Nada de fórmulas reescritas en el reporte.
+    expect(r).not.toMatch(/computeLtv\(|computeCac\(|computeArpa\(|probability \/ 100/);
   });
-  it('las celdas de cohorte llevan el número en el texto, no solo color; tabla con caption y scope', () => {
-    const src = read(UI.cohorts);
-    expect(src).toMatch(/<caption/);
-    expect(src).toMatch(/scope="col"/);
-    expect(src).toMatch(/scope="row"/);
-    expect(src).toMatch(/\{cell\.label\}/);
+  it('sin cifras inventadas: un null se pinta «—» y lo que falta se explica con math.missing', () => {
+    const r = src();
+    expect(r).toMatch(/const SIN = '—'/);
+    expect(r).toMatch(/math\.missing\[f\.key\]/);
   });
-  it('el embudo muestra la conversión en una tabla accesible y usa el módulo puro', () => {
-    const src = read(UI.funnel);
-    expect(src).toMatch(/computeFunnelConversion/);
-    expect(src).toMatch(/<caption/);
-    expect(src).toMatch(/scope="col"/);
+  it('los insumos se siguen guardando por PUT /api/crm/revenue/inputs y el reporte solo los lee', () => {
+    expect(read(`${ROUTE_DIR}/inputs/route.ts`)).toMatch(/export async function PUT/);
+    expect(src()).toMatch(/getRevenueInputs\(orgId, db\)/);
+    expect(src()).not.toMatch(/saveRevenueInputs/);
   });
-  it('la tendencia usa Recharts con tooltip y ofrece vista de tabla', () => {
-    const src = read(UI.trend);
-    expect(src).toMatch(/from 'recharts'/);
-    expect(src).toMatch(/<Tooltip/);
-    expect(src).toMatch(/<table/);
-    expect(src).toMatch(/<caption/);
+  it('el periodo del visor pasa a las RPC con fin exclusivo y el tope de 36 meses', () => {
+    expect(src()).toMatch(/resolveDateRange\(fechaInicio, addDaysPlain\(fechaFin, 1\), fechaFin\)/);
   });
-  it('estados vacíos honestos: sin cifras inventadas', () => {
-    const all = Object.values(UI).map(read).join('\n');
-    expect(all).toMatch(/Sin oportunidades ganadas en el periodo/);
-    expect(read(UI.kpis)).toMatch(/Sin datos/);
-    expect(read(UI.math)).toMatch(/math\.missing\[/);
-  });
-  it('el forecast usa los escenarios puros y el ponderado corregido (probabilidad / 100)', () => {
-    expect(read(UI.scenarios)).toMatch(/computeForecastScenarios/);
-    const fd = read(UI.forecastDashboard);
-    expect(fd).toMatch(/weightedOpenAmount/);
-    expect(fd).not.toMatch(/\(o\.amount \|\| 0\) \* \(stage\?\.probability \|\| 0\)/);
-  });
-  it('la matemática comercial se lee del servidor (math) y los insumos se guardan por PUT /api/crm/revenue/inputs', () => {
-    const src = read(UI.math);
-    expect(src).toMatch(/\/api\/crm\/revenue\/inputs/);
-    expect(src).toMatch(/method: 'PUT'/);
-    expect(src).not.toMatch(/computeLtv\(|computeCac\(/);
-  });
-  it('color de marca blue-600 en la acción principal y sin dependencias nuevas', () => {
-    expect(read(UI.math)).toMatch(/bg-blue-600/);
-    const pkg = JSON.parse(read('package.json')) as { dependencies: Record<string, string> };
-    expect(pkg.dependencies.recharts).toBeDefined();
-    expect(pkg.dependencies['motion']).toBeDefined();
+  it('el forecast usa los escenarios puros (probabilidad / 100 dentro del módulo, no en el reporte)', () => {
+    expect(read('src/lib/services/crm/revenueOs/forecastScenarios.ts')).toMatch(/probabilityToFraction/);
   });
 });

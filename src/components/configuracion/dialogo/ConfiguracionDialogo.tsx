@@ -36,7 +36,7 @@ import { useSeccionesPermitidas } from '../hooks/useSeccionesPermitidas';
 import { useResaltarAncla } from '../hooks/useResaltarAncla';
 import { ConfiguracionPanelRenderer } from '../layout/ConfiguracionPanelRenderer';
 import { AvisoMovido } from '../layout/AvisoMovido';
-import type { CambiosPanel } from './cambiosSinGuardar';
+import type { CambiosPanel, TonoAvisoBarra } from './cambiosSinGuardar';
 import { MenuConfiguracion } from './MenuConfiguracion';
 import { ResultadosBusqueda, idOpcion } from './ResultadosBusqueda';
 
@@ -64,6 +64,13 @@ const PESTANAS_INTERNAS_DESPLAZABLES = [
   '[&_[role=tablist][data-orientation=horizontal]]:overflow-y-hidden',
   '[&_[role=tablist][data-orientation=horizontal]]:[scrollbar-width:thin]',
 ].join(' ');
+
+/** Insignia de la barra cuando el panel cuenta su propio estado (`CambiosPanel.aviso`). */
+const TONO_AVISO_BARRA: Record<TonoAvisoBarra, string> = {
+  advertencia: 'border-line-warning bg-warning-subtle text-warning-text',
+  peligro: 'border-line-danger bg-danger-subtle text-danger-text',
+  informacion: 'border-line-info bg-info-subtle text-info-text',
+};
 
 function esCampoEditable(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -148,7 +155,7 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
       e.nativeEvent.stopImmediatePropagation();
       buscadorRef.current?.focus();
       buscadorRef.current?.select();
-    } else if (mod && tecla === 's' && cambios && cambios.cambios > 0 && !cambios.guardando) {
+    } else if (mod && tecla === 's' && cambios && (cambios.cambios > 0 || cambios.pendiente) && !cambios.guardando && !cambios.bloqueado) {
       e.preventDefault();
       e.stopPropagation();
       void cambios.guardar();
@@ -157,6 +164,10 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
 
   const prefijoLista = esEscritorio ? 'config-res-escritorio' : 'config-res-movil';
   const nCambios = cambios?.cambios ?? 0;
+  const conBarra = nCambios > 0 || !!cambios?.pendiente;
+  const textoBarra = cambios?.aviso?.texto ?? t('cambios.contador', { n: nCambios });
+  const claseAvisoBarra = TONO_AVISO_BARRA[cambios?.aviso?.tono ?? 'advertencia'];
+  const etiquetaGuardar = cambios?.etiquetaGuardar;
 
   const buscador = (
     <div className="relative">
@@ -379,39 +390,41 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
             <div className="absolute right-4 top-4 z-20 hidden lg:block">{botonCerrar}</div>
             <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface px-4 py-4 lg:px-8 lg:pb-8 lg:pt-14', PESTANAS_INTERNAS_DESPLAZABLES)}>{cuerpo}</div>
 
-            {nCambios > 0 && (
+            {conBarra && (
               <div
                 role="region"
                 aria-label={t('cambios.region')}
                 className="flex items-center gap-3 border-t border-line bg-surface px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 lg:px-8 lg:py-3"
               >
-                <span aria-live="polite" className="hidden rounded-full border border-line-warning bg-warning-subtle px-2 py-0.5 text-[13px] font-medium text-warning-text lg:inline">
-                  {t('cambios.contador', { n: nCambios })}
+                <span aria-live="polite" className={cn('hidden rounded-full border px-2 py-0.5 text-[13px] font-medium lg:inline', claseAvisoBarra)}>
+                  {textoBarra}
                 </span>
                 <span className="sr-only lg:hidden" aria-live="polite">
-                  {t('cambios.contador', { n: nCambios })}
+                  {textoBarra}
                 </span>
                 <div className="flex flex-1 gap-3 lg:flex-none lg:justify-end lg:gap-2 lg:ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => cambios?.descartar()}
-                    disabled={cambios?.guardando}
-                    className={cn(clasesBoton({ variante: 'secundario', tamano: 'md' }), 'flex-1 lg:flex-none lg:border-transparent')}
-                  >
-                    {t('cambios.descartar')}
-                  </button>
+                  {nCambios > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => cambios?.descartar()}
+                      disabled={cambios?.guardando}
+                      className={cn(clasesBoton({ variante: 'secundario', tamano: 'md' }), 'flex-1 lg:flex-none lg:border-transparent')}
+                    >
+                      {t('cambios.descartar')}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => void cambios?.guardar()}
-                    disabled={cambios?.guardando}
+                    disabled={cambios?.guardando || cambios?.bloqueado}
                     aria-busy={cambios?.guardando || undefined}
                     aria-keyshortcuts="Control+S"
-                    aria-label={t('cambios.guardar')}
+                    aria-label={etiquetaGuardar ?? t('cambios.guardar')}
                     className={cn(clasesBoton({ variante: 'primario', tamano: 'md' }), 'flex-1 lg:flex-none')}
                   >
                     {cambios?.guardando && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
-                    <span className="lg:hidden">{t('cambios.guardarCorto')}</span>
-                    <span className="hidden lg:inline">{t('cambios.guardar')}</span>
+                    <span className="lg:hidden">{etiquetaGuardar ?? t('cambios.guardarCorto')}</span>
+                    <span className="hidden lg:inline">{etiquetaGuardar ?? t('cambios.guardar')}</span>
                   </button>
                 </div>
               </div>

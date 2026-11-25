@@ -1,63 +1,19 @@
 'use client';
 
 /**
- * Estados de referido para la interfaz: icono + texto + colores AA en claro y
- * oscuro (nunca solo color, brief §2). Las transiciones vienen de la máquina
- * pura; aquí solo se etiquetan.
+ * Badge de estado de un referido (Figma «Referidos/Listo»: Pendiente gris,
+ * Contactado azul, Calificado ámbar, Convertido verde, Rechazado rojo). Lo
+ * usan la pantalla y la tarjeta de configuración del CRM. Texto traducido
+ * (`crm.redReferidos.estado`), tono del kit; nunca solo color.
  */
 
-import { CheckCircle2, CircleDashed, PhoneCall, Star, XCircle, type LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { StatusBadge } from '@/components/kit/StatusBadge';
 import type { ReferralStatus } from '@/lib/services/crm/referralStateMachine';
+import { TONO_ESTADO } from './referidosLogica';
 
-export interface StatusMeta {
-  label: string;
-  icon: LucideIcon;
-  /** Clases del badge (fondo + texto), contraste AA medido en el arnés. */
-  badge: string;
-  /** Verbo del botón que lleva A este estado. */
-  action: string;
-}
-
-export const REFERRAL_STATUS_META: Record<ReferralStatus, StatusMeta> = {
-  pending: {
-    label: 'Pendiente',
-    icon: CircleDashed,
-    badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-    action: 'Volver a pendiente',
-  },
-  contacted: {
-    label: 'Contactado',
-    icon: PhoneCall,
-    badge: 'bg-blue-100 text-blue-900 dark:bg-blue-950/70 dark:text-blue-200',
-    action: 'Marcar contactado',
-  },
-  qualified: {
-    label: 'Calificado',
-    icon: Star,
-    badge: 'bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-200',
-    action: 'Marcar calificado',
-  },
-  converted: {
-    label: 'Convertido',
-    icon: CheckCircle2,
-    badge: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/70 dark:text-emerald-200',
-    action: 'Convertir en lead',
-  },
-  rejected: {
-    label: 'Rechazado',
-    icon: XCircle,
-    badge: 'bg-red-100 text-red-900 dark:bg-red-950/70 dark:text-red-200',
-    action: 'Rechazar',
-  },
-};
-
-export function ReferralStatusBadge({ status }: { status: ReferralStatus }) {
-  const meta = REFERRAL_STATUS_META[status] ?? REFERRAL_STATUS_META.pending;
-  const Icon = meta.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badge}`}>
-      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {meta.label}
-    </span>
-  );
+export function ReferralStatusBadge({ status, className }: { status: ReferralStatus; className?: string }) {
+  const t = useTranslations('crm.redReferidos.estado');
+  const tono = TONO_ESTADO[status] ?? 'neutro';
+  return <StatusBadge estado={status} etiqueta={t(status in TONO_ESTADO ? status : 'pending')} tono={tono} apariencia="suave" className={className} />;
 }

@@ -1,268 +1,244 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { MapPin, RefreshCw, Plus, Pencil, Trash2, Users, Target } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/supabase/config';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { requireOrgId } from '../useEquipoData';
-import type { Territory, SalesTeam } from '../types';
-import { TerritoryDialog, DeleteConfirmDialog } from '../dialogs';
-import { useConteosTerritorios } from '../useConteosTerritorios';
-import { ConteoTerritorio } from '../ConteoTerritorio';
-import { AvisoTonal } from '@/components/kit/AvisoTonal';
+/**
+ * Territorios (Figma CRM 1411:838455; vacío 1413:17; cargando 1413:726):
+ * tarjetas con reglas legibles, el equipo que lo atiende y «N clientes · N
+ * oportunidades» (`/api/crm/territories/counts`, el mismo motor que la
+ * asignación automática), y la nota de los clientes sin territorio. Un cliente
+ * que cae en dos territorios toma el primero: se avisa al guardar.
+ * Escrituras por `/api/crm/territories/**` (solo admin, en el servidor).
+ */
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { MapPin, Pencil, Plus } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmptyState } from '@/components/kit/EmptyState';
+import { StatusBadge } from '@/components/kit/StatusBadge';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { claveError, pedirCrm } from '@/components/crm/acciones/apiCrm';
+import { CabeceraEquipo } from '../CabeceraEquipo';
+import { useRecursoCrm } from '../useRecursoCrm';
+import { useConteosTerritorios } from '../useConteosTerritorios';
+import { resumenReglas, type PestanaEquipo } from '../equipoPantallaLogica';
+import { DeleteConfirmDialog, TerritoryDialog } from '../dialogs';
+import type { Territory, VistaEquipos } from '../types';
 
-type TerritoryWithStats = Territory & { _teamCount?: number; _oppCount?: number; _oppAmount?: number };
+const FORM_VACIO = { name: '', criteria: '{\n  "rules": []\n}', is_active: true };
 
-export function TerritoriosTab() {
-  const tx = useTranslations('crm.equipo');
-  const { toast } = useToast();
-  const { formatear } = useMonedaOrganizacion();
-  const [territories, setTerritories] = useState<TerritoryWithStats[]>([]);
-  const [teams, setTeams] = useState<SalesTeam[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [editing, setEditing] = useState<Territory | null>(null);
-  const [toDelete, setToDelete] = useState<Territory | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', criteria: '{}', is_active: true });
-  const [criteriaError, setCriteriaError] = useState<string | null>(null);
-  // Clientes por territorio: servidor, mismo motor que la asignación automática.
+export function TerritoriosTab({ onPestana }: { onPestana: (p: PestanaEquipo) => void }) {
+  const t = useTranslations('crm.equipo.pantalla');
+  const tp = useTranslations('crm.equipo.pantalla.territorio');
+  const te = useTranslations('crm.accionesRapidas.errores');
+  const entero = useFormatoEntero();
+  const territorios = useRecursoCrm<Territory[]>('/api/crm/territories');
+  const vista = useRecursoCrm<VistaEquipos>('/api/crm/teams/overview');
   const [revisionConteo, setRevisionConteo] = useState(0);
   const conteos = useConteosTerritorios(revisionConteo);
-  const tConteo = useTranslations('crm.equipoAsignacion.territorios');
+  const [dialogo, setDialogo] = useState<{ editando: Territory | null } | null>(null);
+  const [form, setForm] = useState(FORM_VACIO);
+  const [errorCriterios, setErrorCriterios] = useState<string | null>(null);
+  const [aEliminar, setAEliminar] = useState<Territory | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [avisarSolapes, setAvisarSolapes] = useState(false);
 
-  const load = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      const orgId = requireOrgId();
-      const [terrRes, teamsRes, oppRes] = await Promise.all([
-        supabase.from('territories').select('*').eq('organization_id', orgId).order('name'),
-        supabase.from('sales_teams').select('id, name, territory_id').eq('organization_id', orgId).eq('is_active', true),
-        supabase.from('opportunities').select('id, amount, currency, status, territory_id').eq('organization_id', orgId),
-      ]);
-      if (terrRes.error) throw terrRes.error;
-      if (teamsRes.error) throw teamsRes.error;
-      if (oppRes.error) throw oppRes.error;
+  const gestionar = vista.datos?.puedeGestionar ?? false;
+  const lista = useMemo(() => [...(territorios.datos ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, 'es')), [territorios.datos]);
 
-      const terrList = (terrRes.data || []) as Territory[];
-      const teamList = (teamsRes.data || []) as { id: string; name: string; territory_id: string | null }[];
-      const oppList = (oppRes.data || []) as { id: string; amount: number | null; currency: string | null; status: string | null; territory_id: string | null }[];
+  // «Se avisa al guardar»: cuando llegan los conteos nuevos, si hay clientes en dos territorios.
+  useEffect(() => {
+    if (!avisarSolapes || conteos.estado !== 'listo' || !conteos.datos) return;
+    setAvisarSolapes(false);
+    const solapados = Math.max(0, ...conteos.datos.territorios.map((c) => c.solapados));
+    if (solapados > 0) toast({ title: tp('solapesTitulo'), description: tp('solapesDescripcion', { n: entero(solapados) }) });
+  }, [avisarSolapes, conteos.estado, conteos.datos, tp, entero]);
 
-      const enriched = terrList.map((t) => ({
-        ...t,
-        _teamCount: teamList.filter((tm) => tm.territory_id === t.id).length,
-        _oppCount: oppList.filter((o) => o.territory_id === t.id).length,
-        _oppAmount: oppList.filter((o) => o.territory_id === t.id).reduce((s, o) => s + (Number(o.amount) || 0), 0),
-      }));
-      setTerritories(enriched);
-      setTeams(teamsRes.data as SalesTeam[]);
-    } catch (err) {
-      console.error('Error:', err);
-      toast({ title: tx('equiposTab.error'), description: tx('territoriosTab.noPudieronCargarTerritorios'), variant: 'destructive' });
-    } finally {
-      setLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [toast]);
+  const recargar = () => {
+    territorios.recargar();
+    setRevisionConteo((n) => n + 1);
+  };
 
-  useEffect(() => { load(); }, [load]);
-  const recargar = () => { void load(); setRevisionConteo((n) => n + 1); };
+  const abrir = (editando: Territory | null) => {
+    setForm(editando ? { name: editando.name, criteria: JSON.stringify(editando.criteria ?? {}, null, 2), is_active: editando.is_active } : FORM_VACIO);
+    setErrorCriterios(null);
+    setDialogo({ editando });
+  };
 
-  const handleSave = async () => {
+  const guardar = async () => {
     if (!form.name.trim()) {
-      toast({ title: tx('equiposTab.validacion'), description: tx('equiposTab.nombreObligatorio'), variant: 'destructive' });
+      toast({ title: t('equipo.nombreObligatorio'), variant: 'destructive' });
       return;
     }
-    let parsedCriteria: Record<string, unknown> = {};
+    let criteria: Record<string, unknown>;
     try {
-      parsedCriteria = JSON.parse(form.criteria || '{}');
-      setCriteriaError(null);
+      const v = JSON.parse(form.criteria || '{}') as unknown;
+      if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('no es objeto');
+      criteria = v as Record<string, unknown>;
     } catch {
-      setCriteriaError(tx('territoriosTab.jsonInvalido'));
+      setErrorCriterios(tp('jsonInvalido'));
       return;
     }
-    setSaving(true);
+    const editando = dialogo?.editando ?? null;
+    setGuardando(true);
     try {
-      const orgId = requireOrgId();
-      const payload = { name: form.name.trim(), criteria: parsedCriteria, is_active: form.is_active };
-      if (editing) {
-        const { error } = await supabase.from('territories').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id);
-        if (error) throw error;
-        toast({ title: tx('territoriosTab.territorioActualizado') });
-      } else {
-        const { error } = await supabase.from('territories').insert({ ...payload, organization_id: orgId });
-        if (error) throw error;
-        toast({ title: tx('territoriosTab.territorioCreado') });
-      }
-      setDialogOpen(false);
+      const cuerpo = { name: form.name.trim(), criteria, is_active: form.is_active };
+      if (editando) await pedirCrm(`/api/crm/territories/${editando.id}`, { method: 'PATCH', cuerpo });
+      else await pedirCrm('/api/crm/territories', { method: 'POST', cuerpo });
+      toast({ title: editando ? tp('actualizado') : tp('creado') });
+      setDialogo(null);
+      setAvisarSolapes(true);
       recargar();
-    } catch {
-      toast({ title: tx('equiposTab.error'), description: tx('equiposTab.noPudoGuardar'), variant: 'destructive' });
+    } catch (e) {
+      toast({ title: te(claveError(e)), variant: 'destructive' });
     } finally {
-      setSaving(false);
+      setGuardando(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!toDelete) return;
+  const eliminar = async () => {
+    if (!aEliminar) return;
     try {
-      const { error } = await supabase.from('territories').delete().eq('id', toDelete.id);
-      if (error) throw error;
-      toast({ title: tx('territoriosTab.territorioEliminado') });
+      await pedirCrm(`/api/crm/territories/${aEliminar.id}`, { method: 'DELETE', cuerpo: {} });
+      toast({ title: tp('eliminado') });
+      setDialogo(null);
       recargar();
-    } catch {
-      toast({ title: tx('equiposTab.error'), description: tx('equiposTab.noPudoEliminar'), variant: 'destructive' });
+    } catch (e) {
+      toast({ title: te(claveError(e)), variant: 'destructive' });
     } finally {
-      setDeleteOpen(false);
-      setToDelete(null);
+      setAEliminar(null);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        {[1, 2, 3].map((i) => <div key={i} className="h-20 rounded-lg border animate-pulse bg-gray-100 dark:bg-gray-800" />)}
-      </div>
+  const reglas = (criteria: Territory['criteria']) =>
+    resumenReglas(
+      criteria,
+      (k) => (tp.has(`campos.${k.replace('.', '_')}`) ? tp(`campos.${k.replace('.', '_')}`) : k),
+      (op) => (tp.has(`operadores.${op}`) ? tp(`operadores.${op}`) : op),
+      { y: tp('conjuncionY'), o: tp('conjuncionO') },
     );
-  }
+
+  const nuevo = gestionar && (
+    <button type="button" className={clasesBoton()} onClick={() => abrir(null)}>
+      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {tp('nuevo')}
+    </button>
+  );
+  const nota =
+    conteos.datos && lista.length > 0 ? (
+      <p className="px-3 py-3 text-[13px] leading-[18px] text-fg-secondary">
+        {tp('sinTerritorio', { n: entero(conteos.datos.sinTerritorio) })}
+        {conteos.datos.parcial && ` ${tp('parcial')}`}
+      </p>
+    ) : null;
 
   return (
-    <div className="space-y-4">
-      {/* Header con acciones */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          {territories.length} territorio{territories.length !== 1 ? 's' : ''}
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={recargar} disabled={isRefreshing}>
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button size="sm" onClick={() => {
-            setEditing(null);
-            setForm({ name: '', criteria: '{}', is_active: true });
-            setCriteriaError(null);
-            setDialogOpen(true);
-          }}>
-            <Plus className="h-4 w-4 mr-1" /> {tx('territoriosTab.nuevoTerritorio')}
-          </Button>
+    <>
+      <CabeceraEquipo
+        pestana="territorios"
+        onPestana={onPestana}
+        icono={MapPin}
+        subtitulo={t('subtitulos.territorios')}
+        acciones={territorios.estado !== 'sinPermiso' && nuevo}
+        movil={{ menu: gestionar ? [{ id: 'nuevo', etiqueta: tp('nuevo'), icono: Plus, onSelect: () => abrir(null) }] : [] }}
+      />
+
+      {territorios.estado === 'sinPermiso' ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="forbidden" titulo={t('sinPermiso.titulo')} descripcion={t('sinPermiso.descripcion')} accion={{ etiqueta: t('sinPermiso.volver'), href: '/app/crm' }} />
         </div>
-      </div>
-
-      {conteos.datos && territories.length > 0 && (
-        <AvisoTonal
-          tono={conteos.datos.parcial ? 'advertencia' : 'informacion'}
-          compacto
-          titulo={tConteo('resumen', { sin: conteos.datos.sinTerritorio, evaluados: conteos.datos.evaluados })}
-          descripcion={conteos.datos.parcial ? tConteo('parcial') : undefined}
-        />
-      )}
-      {conteos.estado === 'error' && <AvisoTonal tono="advertencia" compacto titulo={tConteo('error')} />}
-
-      {/* Grid de territorios */}
-      {territories.length === 0 ? (
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardContent className="pt-12 pb-12 text-center">
-            <MapPin className="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500">{tx('territoriosTab.noHayTerritoriosConfigurados')}</p>
-          </CardContent>
-        </Card>
+      ) : territorios.estado === 'error' && !territorios.datos ? (
+        <div className="rounded-xl border border-line bg-surface">
+          <EmptyState variante="error" titulo={t('error.titulo')} descripcion={t('error.descripcion')} onReintentar={recargar} />
+        </div>
+      ) : !territorios.datos ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3" aria-busy="true">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-[72px] w-full rounded-xl" />
+            ))}
+          </div>
+          {nota}
+        </>
+      ) : lista.length === 0 ? (
+        <div className="rounded-xl border border-line bg-surface py-12">
+          <EmptyState
+            icono={MapPin}
+            titulo={tp('vacioTitulo')}
+            descripcion={tp('vacioDescripcion')}
+            accion={gestionar ? { etiqueta: tp('crear'), icono: Plus, onClick: () => abrir(null) } : undefined}
+          />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {territories.map((t) => {
-            const teamsInTerr = teams.filter((tm) => tm.territory_id === t.id);
-            return (
-              <Card key={t.id} className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
-                        <MapPin className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{t.name}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => {
-                        setEditing(t);
-                        setForm({ name: t.name, criteria: JSON.stringify(t.criteria || {}, null, 2), is_active: t.is_active });
-                        setCriteriaError(null);
-                        setDialogOpen(true);
-                      }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setToDelete(t); setDeleteOpen(true); }}>
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </div>
+        <>
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {lista.map((terr) => {
+              const conteo = conteos.datos?.territorios.find((c) => c.id === terr.id);
+              const equipos = (vista.datos?.equipos ?? []).filter((e) => e.territorio_id === terr.id);
+              const texto = reglas(terr.criteria);
+              return (
+                <li key={terr.id} className="flex flex-col gap-2.5 rounded-xl border border-line bg-surface p-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin aria-hidden="true" className="size-4 shrink-0 text-brand" strokeWidth={1.5} />
+                    <h2 className="min-w-0 flex-1 truncate text-base font-semibold leading-[22px] text-fg">{terr.name}</h2>
+                    {!terr.is_active && <StatusBadge estado="inactive" etiqueta={t('estado.inactivo')} tono="neutro" />}
+                    {gestionar && (
+                      <button
+                        type="button"
+                        onClick={() => abrir(terr)}
+                        aria-label={tp('editar', { nombre: terr.name })}
+                        className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      >
+                        <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                      </button>
+                    )}
                   </div>
-
-                  <ConteoTerritorio conteo={conteos.datos?.territorios.find((c) => c.id === t.id)} cargando={conteos.estado === 'cargando'} />
-
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">
-                      <div className="flex items-center justify-center mb-1">
-                        <Users className="h-3 w-3 text-blue-500" />
-                      </div>
-                      <p className="text-lg font-bold text-gray-900 dark:text-white">{t._teamCount || 0}</p>
-                      <p className="text-[10px] text-gray-500">{tx('pestanas.equipos')}</p>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">
-                      <div className="flex items-center justify-center mb-1">
-                        <Target className="h-3 w-3 text-purple-500" />
-                      </div>
-                      <p className="text-lg font-bold text-gray-900 dark:text-white">{t._oppCount || 0}</p>
-                      <p className="text-[10px] text-gray-500">{tx('territoriosTab.oport')}</p>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 dark:bg-gray-900 p-2">
-                      <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                        {t._oppAmount ? formatear(t._oppAmount) : '—'}
-                      </p>
-                      <p className="text-[10px] text-gray-500 mt-1">{tx('territoriosTab.valor')}</p>
-                    </div>
+                  <p className="text-xs font-semibold leading-4 text-fg-secondary">{tp('reglas')}</p>
+                  <p className="text-[13px] leading-[18px] text-fg">{texto ?? tp('sinReglas')}</p>
+                  <p className="text-xs font-semibold leading-4 text-fg-secondary">{tp('equipo')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {equipos.length === 0 ? (
+                      <span className="text-[13px] leading-[18px] text-fg-muted">{tp('sinEquipo')}</span>
+                    ) : (
+                      equipos.map((e) => <StatusBadge key={e.id} estado="brand" etiqueta={e.nombre} tono="marca" />)
+                    )}
                   </div>
-
-                  {teamsInTerr.length > 0 && (
-                    <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                      <p className="text-[10px] text-gray-400 mb-1">{tx('territoriosTab.equipos')}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {teamsInTerr.map((tm) => (
-                          <span key={tm.id} className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                            {tm.name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  <p className="text-xs leading-4 text-fg-secondary">
+                    {conteos.estado === 'cargando' && !conteo ? (
+                      <span aria-hidden="true" className="inline-block h-4 w-40 animate-pulse rounded bg-subtle align-middle" />
+                    ) : conteo ? (
+                      tp('conteo', { clientes: conteo.clientes, valorClientes: entero(conteo.clientes), oportunidades: conteo.oportunidades, valorOportunidades: entero(conteo.oportunidades) })
+                    ) : (
+                      '—'
+                    )}
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          {nota}
+          {conteos.estado === 'error' && <p className="px-3 text-[13px] text-warning-text">{tp('errorConteo')}</p>}
+        </>
       )}
 
-      {/* Dialogs */}
       <TerritoryDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editing={editing}
+        open={!!dialogo}
+        onOpenChange={(v) => !v && setDialogo(null)}
+        editing={dialogo?.editando ?? null}
         form={form}
         onFormChange={setForm}
-        onSave={handleSave}
-        saving={saving}
-        criteriaError={criteriaError}
+        onSave={() => void guardar()}
+        saving={guardando}
+        criteriaError={errorCriterios}
+        onEliminar={dialogo?.editando ? () => setAEliminar(dialogo.editando) : undefined}
       />
       <DeleteConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={tx('territoriosTab.eliminarTerritorio')}
-        description={tx('territoriosTab.eliminara', { name: toDelete?.name ?? '' })}
-        onConfirm={handleDelete}
+        open={!!aEliminar}
+        onOpenChange={(v) => !v && setAEliminar(null)}
+        title={tp('eliminarTitulo')}
+        description={tp('eliminarDescripcion', { nombre: aEliminar?.name ?? '' })}
+        onConfirm={() => void eliminar()}
       />
-    </div>
+    </>
   );
 }

@@ -7,7 +7,9 @@
  *
  * Un solo canal por campaña. «Llamada con agente IA» sigue en su asistente
  * propio (`/app/crm/campanas/voz/nueva`) con el segmento y el nombre ya
- * elegidos; aquí se completan WhatsApp (y correo cuando el motor lo envíe).
+ * elegidos (allí se usa el nombre; el segmento aún no es audiencia de
+ * llamadas y se avisa); aquí se completan WhatsApp (y correo cuando el motor
+ * lo envíe).
  *
  * Mismos servicios de siempre: `CampanasService` (crear/editar borrador,
  * materializar, lanzar → `/api/crm/campaigns/**`) y `useWhatsAppCompose`

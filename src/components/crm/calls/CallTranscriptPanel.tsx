@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
 import { cn } from '@/utils/Utils';
+import { pedirTranscripcion } from './accionesInteligencia';
 import { useCallIntelligence, ERROR_LABELS, providerLabel, type TranscriptSegmentDto, type CallIntelligenceState } from './useCallIntelligence';
 
 export interface CallTranscriptPanelProps {
@@ -46,7 +47,7 @@ function highlight(text: string, q: string) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="rounded bg-yellow-200 px-0.5 dark:bg-yellow-600/60 dark:text-white">{text.slice(idx, idx + q.length)}</mark>
+      <mark className="rounded bg-warning-subtle px-0.5">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </>
   );
@@ -72,19 +73,17 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
     setRetrying(true);
     s.setBusy(true);
     try {
-      const res = await fetch(`/api/crm/calls/${callId}/transcribe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }) });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error ?? 'No se pudo encolar la transcripción');
+      const r = await pedirTranscripcion(callId, force);
       // Ronda 6 (tester r5 N1): el botón «Reintentar» se ofrece TAMBIÉN con el job
       // vivo (a los 10 min). La ruta ya no encola un segundo job en ese caso;
       // aquí se dice la verdad en vez de prometer una transcripción nueva.
-      const deduped = json.data?.deduped === true;
+      const deduped = r === 'reutilizado';
       // Ronda 7 (tester r6 F1): la ruta publica también `dedupe_checked:false`
       // cuando NO pudo comprobar si ya había otro trabajo vivo. Prometer «se
       // procesará en el próximo minuto» en ese caso es la misma promesa de más
       // que esta fase fue a quitar del caso `deduped`.
-      const unchecked = json.data?.dedupe_checked === false;
-      const queued = res.status === 202;
+      const unchecked = r === 'sinComprobar';
+      const queued = r === 'encolado' || unchecked;
       toast({
         title: deduped ? 'Ya había una transcripción en curso' : queued ? 'Transcripción en cola' : 'Transcripción lista',
         description: deduped
@@ -135,10 +134,10 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
   const stuck = !!working && Number.isFinite(startedMs) && Date.now() - startedMs > STUCK_MS;
 
   return (
-    <section className={cn('flex flex-col rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800', className)} aria-label="Transcripción de la llamada">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-700">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
-          <FileText size={16} className="text-blue-600 dark:text-blue-400" /> Transcripción
+    <section className={cn('flex flex-col rounded-lg border border-line bg-surface', className)} aria-label="Transcripción de la llamada">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
+        <div className="flex items-center gap-2 text-sm font-semibold text-fg">
+          <FileText size={16} className="text-brand" /> Transcripción
           {transcript?.status === 'completed' && (
             <Badge variant="secondary" className="text-[10px] font-normal">
               {providerLabel(transcript.provider)}
@@ -169,13 +168,13 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
         {s.loading && !transcript && (
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-4 animate-pulse rounded bg-gray-200 dark:bg-gray-700" style={{ width: `${70 + (i % 3) * 10}%` }} />
+              <div key={i} className="h-4 animate-pulse rounded bg-line" style={{ width: `${70 + (i % 3) * 10}%` }} />
             ))}
           </div>
         )}
 
         {!s.loading && !transcript && (
-          <div className="flex flex-col items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <div className="flex flex-col items-start gap-2 text-sm text-fg-secondary">
             <p className="flex items-center gap-2"><Mic size={16} className="opacity-60" /> Esta llamada aún no tiene transcripción.</p>
             <Button size="sm" variant="outline" onClick={() => retry(false)} disabled={retrying}>
               {retrying ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Mic size={14} className="mr-1" />} Transcribir ahora
@@ -185,11 +184,11 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
 
         {transcript && working && (
           <div className="flex flex-col items-start gap-2">
-            <p className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+            <p className="flex items-center gap-2 text-sm text-brand">
               <Loader2 size={16} className="animate-spin" /> Transcribiendo con {providerLabel(transcript.provider === 'pending' ? 'elevenlabs' : transcript.provider)}… (≈ 1-2 min)
             </p>
             {stuck && (
-              <div className="flex flex-col items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+              <div className="flex flex-col items-start gap-2 rounded-md border border-line-warning bg-warning-subtle p-2 text-sm text-warning-text">
                 <p className="flex items-center gap-2">
                   <AlertTriangle size={14} /> Está tardando más de lo normal. Puedes volver a lanzarla.
                 </p>
@@ -202,7 +201,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
         )}
 
         {transcript && !working && transcript.status === 'failed' && (
-          <div className="flex flex-col items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200">
+          <div className="flex flex-col items-start gap-2 rounded-md border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text">
             <p className="flex items-center gap-2"><AlertTriangle size={16} /> {ERROR_LABELS[transcript.error_code ?? ''] ?? 'La transcripción falló'}</p>
             {transcript.error_message && <p className="text-xs opacity-80">{transcript.error_message}</p>}
             {transcript.error_code === 'INSUFFICIENT_CREDITS' ? (
@@ -219,16 +218,16 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
           <>
             <div className="mb-2 flex items-center gap-2">
               <div className="relative flex-1">
-                <Search size={14} className="absolute left-2 top-2.5 text-gray-400" />
+                <Search size={14} className="absolute left-2 top-2.5 text-fg-muted" />
                 <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar en la transcripción" className="h-8 pl-7 text-sm" aria-label="Buscar en la transcripción" />
               </div>
-              {query && <span className="text-xs text-gray-500 dark:text-gray-400">{filtered.length} coincidencia{filtered.length === 1 ? '' : 's'}</span>}
+              {query && <span className="text-xs text-fg-secondary">{filtered.length} coincidencia{filtered.length === 1 ? '' : 's'}</span>}
             </div>
             {segments.length === 0 ? (
               transcript.full_text?.trim() ? (
-                <p className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200">{transcript.full_text}</p>
+                <p className="whitespace-pre-wrap text-sm text-fg">{transcript.full_text}</p>
               ) : (
-                <p className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                <p className="flex items-center gap-2 rounded-md border border-line-warning bg-warning-subtle p-2 text-sm text-warning-text">
                   <AlertTriangle size={14} /> No se detectó voz en la grabación (silencio o buzón vacío); no hay nada que analizar.
                 </p>
               )
@@ -245,15 +244,15 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
                         aria-current={active ? 'true' : undefined}
                         aria-label={`Ir a ${fmtMs(seg.start_ms)}, ${roleLabel(seg.speaker_role, seg.speaker_label).toLowerCase()}`}
                         className={cn(
-                          'flex w-full gap-2 rounded px-2 py-1 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
-                          active ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                          'flex w-full gap-2 rounded px-2 py-1 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                          active ? 'bg-brand-tint' : 'hover:bg-hover',
                         )}
                       >
-                        <span className="w-11 shrink-0 font-mono text-[11px] text-gray-400 dark:text-gray-500">{fmtMs(seg.start_ms)}</span>
-                        <span className={cn('w-16 shrink-0 text-[11px] font-semibold', isAgent ? 'text-blue-700 dark:text-blue-300' : seg.speaker_role === 'customer' ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500 dark:text-gray-400')}>
+                        <span className="w-11 shrink-0 font-mono text-[11px] text-fg-muted">{fmtMs(seg.start_ms)}</span>
+                        <span className={cn('w-16 shrink-0 text-[11px] font-semibold', isAgent ? 'text-brand' : seg.speaker_role === 'customer' ? 'text-success-text' : 'text-fg-secondary')}>
                           {roleLabel(seg.speaker_role, seg.speaker_label)}
                         </span>
-                        <span className="text-gray-800 dark:text-gray-100">{highlight(seg.text, query)}</span>
+                        <span className="text-fg">{highlight(seg.text, query)}</span>
                       </button>
                     </li>
                   );
@@ -265,7 +264,7 @@ export function CallTranscriptPanel({ callId, onSeek, currentMs, state, classNam
                 Mostrar {Math.min(pageSize, filtered.length - limit)} más
               </Button>
             )}
-            <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+            <p className="mt-2 text-[11px] text-fg-muted">
               {transcript.speaker_count ?? '?'} hablante(s) · {transcript.duration_seconds ? fmtMs(transcript.duration_seconds * 1000) : '--:--'}
               {typeof transcript.cost_amount === 'number' && ` · $${transcript.cost_amount.toFixed(4)}`}
             </p>

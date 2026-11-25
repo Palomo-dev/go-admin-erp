@@ -43,6 +43,7 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   'general.asistente': dynamic(() => import('../panels/asistente/AsistenteConfigPanel').then((m) => m.AsistenteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'sitioweb.general': dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.general': dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'crm.salud': dynamic(() => import('../crm/SaludTab').then((m) => m.SaludTab), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.agente-voz': dynamic(() => import('../panels/crm/AgenteVozSeccion').then((m) => m.AgenteVozSeccion), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.telefonia': dynamic(() => import('../crm/TelefoniaTab').then((m) => m.TelefoniaTab), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.proveedores': dynamic(() => import('../crm/ProveedoresTab').then((m) => m.ProveedoresTab), { loading: () => <LoadingSkeleton />, ssr: false }),

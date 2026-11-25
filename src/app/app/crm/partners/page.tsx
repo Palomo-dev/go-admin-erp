@@ -1,16 +1,16 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { PartnersPage } from '@/components/crm/partners/PartnersPage';
+import { PartnersPantalla } from '@/components/crm/partners/PartnersPantalla';
 
 export const metadata: Metadata = {
   title: 'Partners | CRM',
-  description: 'Partners y tiers: deals registrados y comisiones como registro, sin mover dinero (FASE-12)',
+  description: 'Aliados que traen o cierran negocios y su comisión: directorio, deals, comisiones y niveles',
 };
 
 export default function PartnersRoute() {
   return (
     <Suspense fallback={null}>
-      <PartnersPage />
+      <PartnersPantalla />
     </Suspense>
   );
 }

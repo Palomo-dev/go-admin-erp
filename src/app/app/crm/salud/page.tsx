@@ -2,10 +2,11 @@
 
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { SaludView } from '@/components/crm/health/SaludView';
+import { SaludTablaCargando } from '@/components/crm/health/SaludTabla';
 
 /**
- * Pagina de Salud de Clientes del CRM (FASE 4 - Post-venta).
- * Panel de salud con scores, bandas e indicadores.
+ * /app/crm/salud — Salud de clientes del CRM (Figma 1415:19, lista priorizada).
+ * Mientras se resuelve la organización, el mismo esqueleto de la tabla.
  */
 export default function CrmSaludPage() {
   const { organization } = useOrganization();
@@ -13,8 +14,8 @@ export default function CrmSaludPage() {
 
   if (!orgId) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-sm text-gray-500">Cargando organizacion...</p>
+      <div className="flex min-h-full flex-col gap-4 bg-canvas p-4 lg:p-6">
+        <SaludTablaCargando />
       </div>
     );
   }

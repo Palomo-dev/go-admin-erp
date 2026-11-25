@@ -79,7 +79,7 @@ export class AssignmentError extends Error {
 /**
  * Obtiene los miembros activos de un team, ordenados por created_at ASC.
  */
-async function getActiveTeamMembers(
+export async function getActiveTeamMembers(
   orgId: number,
   teamId: string,
   supabase: SupabaseClient
@@ -236,13 +236,39 @@ async function assignRoundRobin(
   supabase: SupabaseClient
 ): Promise<AssignmentResult> {
   const memberUserIds = members.map((m) => m.user_id);
+  const lastUserId = await ultimoAsignadoDelEquipo(orgId, memberUserIds, supabase);
+  let nextIdx = 0;
 
+  if (lastUserId) {
+    const lastIdx = memberUserIds.indexOf(lastUserId);
+    nextIdx = lastIdx >= 0 ? (lastIdx + 1) % members.length : 0;
+  }
+
+  const assignedUser = members[nextIdx].user_id;
+
+  return {
+    userId: assignedUser,
+    assignmentReason: `round_robin: índice ${nextIdx} de ${members.length} miembros`,
+  };
+}
+
+/**
+ * El último miembro del equipo que recibió una oportunidad o un lead: de él
+ * parte la rotación. También lo usa la previsualización del reparto
+ * (`assignmentPreviewService`), para que empiece en el mismo turno.
+ */
+export async function ultimoAsignadoDelEquipo(
+  orgId: number,
+  memberUserIds: readonly string[],
+  supabase: SupabaseClient
+): Promise<string | null> {
+  if (memberUserIds.length === 0) return null;
   // Buscar la oportunidad más reciente asignada a algún miembro del team
   const { data: lastOpp, error } = await supabase
     .from('opportunities')
     .select('salesperson_id, created_at')
     .eq('organization_id', orgId)
-    .in('salesperson_id', memberUserIds)
+    .in('salesperson_id', [...memberUserIds])
     .not('salesperson_id', 'is', null)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -260,7 +286,7 @@ async function assignRoundRobin(
     .from('customers')
     .select('owner_id, updated_at')
     .eq('organization_id', orgId)
-    .in('owner_id', memberUserIds)
+    .in('owner_id', [...memberUserIds])
     .not('lead_source', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -272,23 +298,11 @@ async function assignRoundRobin(
 
   const opp = lastOpp as { salesperson_id: string | null; created_at: string | null } | null;
   const lead = lastLead as { owner_id: string | null; updated_at: string | null } | null;
-  const lastUserId =
-    lead?.owner_id && (!opp?.salesperson_id || String(lead.updated_at ?? '') > String(opp.created_at ?? ''))
+  return (
+    (lead?.owner_id && (!opp?.salesperson_id || String(lead.updated_at ?? '') > String(opp.created_at ?? ''))
       ? lead.owner_id
-      : opp?.salesperson_id;
-  let nextIdx = 0;
-
-  if (lastUserId) {
-    const lastIdx = memberUserIds.indexOf(lastUserId);
-    nextIdx = lastIdx >= 0 ? (lastIdx + 1) % members.length : 0;
-  }
-
-  const assignedUser = members[nextIdx].user_id;
-
-  return {
-    userId: assignedUser,
-    assignmentReason: `round_robin: índice ${nextIdx} de ${members.length} miembros`,
-  };
+      : opp?.salesperson_id) ?? null
+  );
 }
 
 /**
@@ -372,7 +386,29 @@ async function assignLoadBalance(
   members: { user_id: string }[],
   supabase: SupabaseClient
 ): Promise<AssignmentResult> {
-  const counts = await Promise.all(
+  const counts = await cargaDeMiembros(orgId, members, supabase);
+
+  // Ordenar por menor carga, desempate por orden de membresía (estable)
+  counts.sort((a, b) => a.count - b.count);
+
+  const assigned = counts[0];
+
+  return {
+    userId: assigned.userId,
+    assignmentReason: `load_balance: ${assigned.count} oportunidades abiertas y leads activos (menor carga del team)`,
+  };
+}
+
+/**
+ * Carga de cada miembro: oportunidades abiertas + leads activos. La usan
+ * `load_balance` y la previsualización del reparto.
+ */
+export async function cargaDeMiembros(
+  orgId: number,
+  members: readonly { user_id: string }[],
+  supabase: SupabaseClient
+): Promise<{ userId: string; count: number }[]> {
+  return Promise.all(
     members.map(async (m) => {
       const { count, error } = await supabase
         .from('opportunities')
@@ -403,16 +439,6 @@ async function assignLoadBalance(
       return { userId: m.user_id, count: (count ?? 0) + (leads ?? 0) };
     })
   );
-
-  // Ordenar por menor carga, desempate por orden de membresía (estable)
-  counts.sort((a, b) => a.count - b.count);
-
-  const assigned = counts[0];
-
-  return {
-    userId: assigned.userId,
-    assignmentReason: `load_balance: ${assigned.count} oportunidades abiertas y leads activos (menor carga del team)`,
-  };
 }
 
 // ─── Función principal ───────────────────────────────────────────────────────

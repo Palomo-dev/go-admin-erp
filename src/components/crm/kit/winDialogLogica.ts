@@ -14,12 +14,52 @@ import { parsearMonto } from './camposCrm';
 
 export type PasoGanar = 'ficha' | 'acciones' | 'resumen';
 
-/** Pasos del Figma, en orden. */
-export const ACCIONES_GANAR = ['factura', 'pos', 'onboarding', 'renovacion', 'referido', 'agradecimiento'] as const;
+/**
+ * Pasos, en orden (Figma 1787:900392 «Ganar · qué hacer al ganar, derivado de
+ * las líneas»): factura y su emisión, membresía, reserva, cupo de clase y cita
+ * salen de las líneas; onboarding y renovación siguen como antes. Se retiró
+ * «Registrar la venta en el POS»: la venta ligada la crea la factura.
+ */
+export const ACCIONES_GANAR = ['factura', 'emitir', 'membresia', 'reserva', 'cupo', 'cita', 'onboarding', 'renovacion', 'referido', 'agradecimiento'] as const;
 export type AccionGanar = (typeof ACCIONES_GANAR)[number];
 
-/** Preseleccionadas en el Figma: factura, onboarding y renovación. */
+/** Sin líneas que derivar: factura, onboarding y renovación. */
 export const ACCIONES_POR_DEFECTO: readonly AccionGanar[] = ['factura', 'onboarding', 'renovacion'];
+
+/** Un paso que muestra el diálogo: qué hará y con qué RPC (texto técnico plegable). */
+export interface PasoGanarVista {
+  accion: AccionGanar;
+  titulo: string;
+  detalle: string;
+  tecnico?: string;
+  /** «Emitir la factura ahora»: interruptor sobre fondo suave. */
+  interruptor?: boolean;
+  /** Solo se puede elegir si `requiere` está elegido (emitir → factura). */
+  requiere?: AccionGanar;
+  /** Marcado al abrir. */
+  marcado?: boolean;
+}
+
+/** Acciones marcadas al abrir con pasos derivados. */
+export function accionesIniciales(pasos: readonly PasoGanarVista[] | null | undefined): AccionGanar[] {
+  if (!pasos || pasos.length === 0) return [...ACCIONES_POR_DEFECTO];
+  return ACCIONES_GANAR.filter((a) => pasos.some((p) => p.accion === a && p.marcado !== false));
+}
+
+/** Pasos elegidos que sí se ejecutan: un paso que requiere otro sin elegir no cuenta. */
+export function accionesEfectivas(acciones: readonly AccionGanar[], pasos: readonly PasoGanarVista[] | null | undefined): AccionGanar[] {
+  if (!pasos || pasos.length === 0) return [...acciones];
+  // Transitivo: membresía requiere emitir, que requiere factura.
+  let actuales = acciones.filter((a) => pasos.some((x) => x.accion === a));
+  for (;;) {
+    const siguientes = actuales.filter((a) => {
+      const p = pasos.find((x) => x.accion === a);
+      return !p?.requiere || actuales.includes(p.requiere);
+    });
+    if (siguientes.length === actuales.length) return siguientes;
+    actuales = siguientes;
+  }
+}
 
 export interface ValoresGanar {
   monto: string;
@@ -31,9 +71,9 @@ export interface ValoresGanar {
   acciones: AccionGanar[];
 }
 
-export function valoresInicialesGanar(op: { amount: number | string | null; currency: string | null }, monedaBase: string, hoy: string): ValoresGanar {
+export function valoresInicialesGanar(op: { amount: number | string | null; currency: string | null }, monedaBase: string, hoy: string, acciones?: readonly AccionGanar[]): ValoresGanar {
   const monto = op.amount === null || op.amount === '' ? '' : String(op.amount);
-  return { monto, moneda: op.currency || monedaBase, fechaCierre: hoy, motivoId: '', notas: '', acciones: [...ACCIONES_POR_DEFECTO] };
+  return { monto, moneda: op.currency || monedaBase, fechaCierre: hoy, motivoId: '', notas: '', acciones: [...(acciones ?? ACCIONES_POR_DEFECTO)] };
 }
 
 export function validarGanar(v: ValoresGanar, hoy: string): Partial<Record<'monto' | 'fechaCierre', 'obligatorio' | 'montoInvalido' | 'fechaFutura'>> {

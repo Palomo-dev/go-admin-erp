@@ -53,10 +53,12 @@ describe('catálogo: alcance coherente con el uso de branchId', () => {
   // categoría»). 95 = + asistencia, ausencias y préstamos de RR. HH., que eran
   // la pantalla `/app/hrm/reportes` (2026-11-15). 98 = + «Lo más vendido»,
   // «Ítems vendidos» y «Despacho de mercancías» (reportes de ventas ampliados,
-  // 2026-11-22). 99 = + «Ventas por canal y por sede» (2026-11-24). Si agregas
-  // o quitas un reporte, actualízalo aquí.
-  test('el catálogo trae las 99 definiciones y todas declaran alcance', () => {
-    expect(definiciones.length).toBe(99);
+  // 2026-11-22). 99 = + «Ventas por canal y por sede» (2026-11-24). 104 = + los
+  // cinco de ingresos comerciales del CRM, que eran el tablero «Pronóstico ›
+  // Análisis» (`crmIngresosReports.ts`, 2026-11-24). Si agregas o quitas un
+  // reporte, actualízalo aquí.
+  test('el catálogo trae las 104 definiciones y todas declaran alcance', () => {
+    expect(definiciones.length).toBe(104);
     const sinAlcance = definiciones.filter((d) => d.alcance !== 'sucursal' && d.alcance !== 'organizacion');
     expect(sinAlcance.map((d) => d.id)).toEqual([]);
   });

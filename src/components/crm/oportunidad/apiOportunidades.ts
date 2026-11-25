@@ -8,6 +8,7 @@ import { emitirCambioCrm, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import type { MotivoPerdida } from '@/components/crm/kit/loseDialogLogica';
 import type { ScoreResult } from '@/lib/services/crm/scoringCalculo';
 import type { OportunidadApi } from './oportunidadLogica';
+import { cuerpoLineas, lineasDesdeApi } from './lineasLogica';
 
 const base = (id: string) => `/api/crm/opportunities/${encodeURIComponent(id)}`;
 
@@ -92,9 +93,7 @@ export function cuerpoDuplicado(op: OportunidadDetalleApi, sufijo: string): Reco
     temperature: op.temperature ?? null,
     source: op.source ?? null,
     origen: 'general',
-    products: (op.opportunity_products ?? []).map((p) => ({ product_id: p.product_id, quantity: Number(p.quantity) || 1, unit_price: Number(p.unit_price) || 0 })),
-    custom_lines: (op.opportunity_custom_lines ?? []).map((c) => ({ concept: c.concept, quantity: Number(c.quantity) || 1, unit_price: Number(c.unit_price) || 0 })),
-    spaces: (op.opportunity_spaces ?? []).map((s) => ({ space_id: s.space_id, nights: Number(s.nights) || 1, unit_price: Number(s.unit_price) || 0 })),
+    ...cuerpoLineas(lineasDesdeApi(op), { sinIds: true }),
   };
 }
 
@@ -104,7 +103,27 @@ export interface LineaProductoApi {
   quantity: number | string | null;
   unit_price: number | string | null;
   total_price?: number | string | null;
-  producto?: { name?: string | null; sku?: string | null } | null;
+  modifiers?: unknown;
+  service_config?: Record<string, unknown> | null;
+  notes?: string | null;
+  created_at?: string | null;
+  producto?: {
+    name?: string | null;
+    sku?: string | null;
+    track_stock?: boolean | null;
+    product_type?: string | null;
+    service_type?: string | null;
+    variant_data?: Record<string, string> | null;
+    product_tax_relations?: { organization_taxes: ImpuestoProductoApi | ImpuestoProductoApi[] | null }[] | null;
+  } | null;
+}
+
+/** Impuesto del producto (`organization_taxes`) tal como llega en el detalle de la oportunidad. */
+export interface ImpuestoProductoApi {
+  rate?: number | string | null;
+  kind?: string | null;
+  is_active?: boolean | null;
+  tax_templates?: { code?: string | null } | { code?: string | null }[] | null;
 }
 
 export interface LineaLibreApi {
@@ -112,16 +131,25 @@ export interface LineaLibreApi {
   concept: string;
   quantity: number | string | null;
   unit_price: number | string | null;
-  total_price?: number | string | null;
+  total_price?: number | string | null;  created_at?: string | null;
 }
 
 export interface LineaEspacioApi {
   id: string;
-  space_id: string;
+  space_id: string | null;
+  space_type_id?: string | null;
   nights: number | string | null;
   unit_price: number | string | null;
   total_price?: number | string | null;
-  espacio?: { label?: string | null } | null;
+  checkin_date?: string | null;
+  checkout_date?: string | null;
+  adults?: number | null;
+  children?: number | null;
+  rate_plan?: string | null;
+  branch_id?: number | null;
+  created_at?: string | null;
+  espacio?: { label?: string | null; branch_id?: number | null } | null;
+  tipo?: { name?: string | null; capacity?: number | null } | null;
 }
 
 export interface ClienteDetalleApi {

@@ -2,6 +2,8 @@
  * POST /api/crm/segments/[id]/recount — recalcula `customer_count` de un
  * segmento con el MISMO conteo que el constructor (`crm_segment_preview`), en
  * el servidor. Antes el navegador contaba con PostgREST y escribía el número.
+ * Guarda también `counts_json` (desglose por canal, la columna «Contactables»
+ * del listado, Figma 1384:17) y `counted_at`.
  * Permiso `crm.segments.manage`; organización de la sesión.
  * Respuesta: `{ success, data: { customer_count, last_run_at } }`.
  */
@@ -10,6 +12,7 @@ import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { CRM_PERMISOS, CrmHttpError, exigirPermisoCrm, exigirUuid, respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
 import { contarSegmento } from '@/lib/services/crm/segmentosConteoService';
+import { conteosDesdeDesglose } from '@/lib/services/crm/segmentosConteosLogica';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,7 +35,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const last_run_at = new Date().toISOString();
     const upd = await ctx.supabase
       .from('segments')
-      .update({ customer_count: conteo.coinciden, last_run_at })
+      .update({
+        customer_count: conteo.coinciden,
+        last_run_at,
+        counts_json: conteosDesdeDesglose(conteo.coinciden, conteo.base, conteo.desglose),
+        counted_at: conteo.calculado_en || last_run_at,
+      })
       .eq('organization_id', ctx.organizationId)
       .eq('id', id);
     if (upd.error) throw upd.error;

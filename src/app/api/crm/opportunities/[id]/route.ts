@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const { data, error } = await ctx.supabase
       .from('opportunities')
       .select(
-        '*, opportunity_products(id, product_id, quantity, unit_price, total_price, producto:products(name, sku)), opportunity_custom_lines(id, concept, quantity, unit_price, total_price), opportunity_spaces(id, space_id, nights, unit_price, total_price, espacio:spaces(label)), cliente:customers(id, full_name, customer_type, doc_type, doc_number, email, phone, city, avatar_url, lifecycle_stage, created_at, do_not_call), etapa:stages(id, name, probability, color, position, is_won, is_lost), pipeline:pipelines(id, name, pipeline_type)',
+        '*, opportunity_products(id, product_id, quantity, unit_price, total_price, modifiers, service_config, notes, created_at, producto:products(name, sku, track_stock, product_type, service_type, variant_data, product_tax_relations(organization_taxes(rate, kind, is_active, tax_templates(code))))), opportunity_custom_lines(id, concept, quantity, unit_price, total_price, created_at), opportunity_spaces(id, space_id, space_type_id, nights, unit_price, total_price, checkin_date, checkout_date, adults, children, rate_plan, branch_id, created_at, espacio:spaces(label, branch_id), tipo:space_types(name, capacity)), cliente:customers(id, full_name, customer_type, doc_type, doc_number, email, phone, city, avatar_url, lifecycle_stage, created_at, do_not_call), etapa:stages(id, name, probability, color, position, is_won, is_lost), pipeline:pipelines(id, name, pipeline_type)',
       )
       .eq('id', id)
       .eq('organization_id', ctx.organizationId)

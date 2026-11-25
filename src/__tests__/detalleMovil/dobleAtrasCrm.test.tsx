@@ -52,6 +52,10 @@ jest.mock('@/components/crm/segmentos/SegmentosService', () => ({
       created_by: null,
     })),
     getSegmentCustomers: jest.fn(async () => []),
+    // Miembros (Figma 1384:1045): miembros, «Usado en» y conteo del servidor.
+    getMiembros: jest.fn(async () => []),
+    getUsos: jest.fn(async () => []),
+    previewFilter: jest.fn(async () => ({ base: 100, coinciden: 42, desglose: null, muestra: [], calculado_en: '2026-10-01T13:00:00Z' })),
   },
 }));
 

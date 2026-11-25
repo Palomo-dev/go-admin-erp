@@ -43,6 +43,16 @@ export interface CamposOportunidadProps {
   onAgregarLineas?: () => void;
   /** Opción extra del responsable antes de los usuarios (p. ej. «El de cada lead» en lote). */
   opcionResponsable?: { valor: string; etiqueta: string };
+  /** «Qué le vas a vender» entre Cliente y Negocio (Figma 1764:137304). */
+  trasCliente?: ReactNode;
+  /** Hay líneas: el monto sale de ellas (con impuestos) y deja de ser manual. */
+  montoDeLineas?: boolean;
+  /** Texto del cliente fijado tal cual («El de cada lead (25 clientes distintos)»). */
+  clienteFijoTexto?: string;
+  /** Debajo del nombre (lote: ayuda del marcador y vista previa de los nombres). */
+  debajoNombre?: (nombre: string) => ReactNode;
+  montoPlaceholder?: string;
+  montoAyuda?: string;
 }
 
 const PRIORIDADES: readonly Temperatura[] = ['cold', 'warm', 'hot'];
@@ -84,17 +94,20 @@ export function CamposOportunidad(p: CamposOportunidadProps) {
             <Titulo icono={User}>{t('cliente')}</Titulo>
             <p className="flex items-center gap-1.5 text-sm text-fg">
               <Lock aria-hidden="true" className="size-3.5 text-fg-muted" />
-              {origen === 'lead' ? t('clienteLead', { nombre: p.clienteNombre ?? '' }) : p.clienteNombre}
+              {p.clienteFijoTexto ?? (origen === 'lead' ? t('clienteLead', { nombre: p.clienteNombre ?? '' }) : p.clienteNombre)}
             </p>
           </section>
         )
       )}
+
+      {p.trasCliente}
 
       <section className="flex flex-col gap-3">
         <Titulo icono={TrendingUp}>{t('negocio')}</Titulo>
         <FormField etiqueta={t('nombre')} obligatorio error={errores.name}>
           <input value={v.name} maxLength={255} onChange={(e) => cambiar({ name: e.target.value })} placeholder={t('nombreEj')} className={CLASE_CAMPO} />
         </FormField>
+        {p.debajoNombre?.(v.name)}
         <div className={compacto ? grid2 : grid}>
           <FormField etiqueta={t('embudo')} obligatorio error={errores.pipeline_id} ayuda={compacto ? undefined : t('embudoAyuda')}>
             <SelectCrm
@@ -107,8 +120,8 @@ export function CamposOportunidad(p: CamposOportunidadProps) {
           <FormField etiqueta={t('etapa')} obligatorio error={errores.stage_id}>
             <SelectCrm valor={v.stage_id} onValorChange={(stage_id) => cambiar({ stage_id })} disabled={!v.pipeline_id} opcionVacia={t('elegir')} opciones={abiertas.map((x) => ({ valor: x.id, etiqueta: x.name }))} />
           </FormField>
-          <FormField etiqueta={t('monto')} error={errores.amount} ayuda={compacto ? undefined : t('montoAyuda')}>
-            <input inputMode="decimal" value={v.amount} disabled={bloqueado('amount')} onChange={(e) => cambiar({ amount: e.target.value })} placeholder={`${simboloMoneda(p.monedaBase)} 0`} className={CLASE_CAMPO} />
+          <FormField etiqueta={t('monto')} error={errores.amount} ayuda={compacto ? undefined : p.montoDeLineas ? t('montoDeLineas') : p.montoAyuda ?? t('montoAyuda')}>
+            <input inputMode="decimal" value={v.amount} disabled={bloqueado('amount')} readOnly={p.montoDeLineas} onChange={(e) => cambiar({ amount: e.target.value })} placeholder={p.montoPlaceholder ?? `${simboloMoneda(p.monedaBase)} 0`} className={CLASE_CAMPO} />
           </FormField>
           <FormField etiqueta={t('moneda')} error={errores.currency} ayuda={compacto ? undefined : t('monedaAyuda')}>
             <SelectCrm

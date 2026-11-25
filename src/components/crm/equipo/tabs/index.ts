@@ -1,4 +1,4 @@
 export { EquiposTab } from './EquiposTab';
-export { AsignarTab } from './AsignarTab';
-export { PerformanceTab } from './PerformanceTab';
+export { AsignacionTab } from './AsignacionTab';
+export { DesempenoTab } from './DesempenoTab';
 export { TerritoriosTab } from './TerritoriosTab';

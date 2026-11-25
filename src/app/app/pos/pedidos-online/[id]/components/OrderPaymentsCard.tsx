@@ -9,21 +9,19 @@ import { useEtiquetaMetodoPago } from '@/components/pos/cajas/paymentMethodLabel
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { metodoDeCobroEnCaja } from '@/lib/pos/pedidosWeb/metodosCaja';
-import {
-  INICIALES_PASARELA,
-  NOMBRE_PASARELA,
-  ordenarPagos,
-  textoMetodoPago,
-  tonoEstadoPago,
-  type Pasarela,
-} from '@/lib/pos/pedidosWeb/pagosDelPedido';
-import type { PaymentStatus, WebOrder } from '@/lib/services/webOrdersService';
+import { ordenarPagos, textoMetodoPago, tonoEstadoPago } from '@/lib/pos/pedidosWeb/pagosDelPedido';
+import { estadoTarjetaPagos, historialIntentos } from '@/lib/pos/pedidosWeb/intentosPago';
+import { ChipPasarela } from '@/components/pos/pedidos-online/pagos/ChipPasarela';
+import { HistorialIntentos } from '@/components/pos/pedidos-online/pagos/HistorialIntentos';
+import { CuerpoPagosIntentos, InsigniaPagos, type PedidoConStock } from '@/components/pos/pedidos-online/pagos/TarjetaPagosIntentos';
+import type { DatosIntentosPago } from '@/components/pos/pedidos-online/pagos/useIntentosPago';
+import type { PaymentStatus } from '@/lib/services/webOrdersService';
 import type { PagoDelPedido } from '../hooks/useTrazabilidadPedido';
 import type { CambioPedido } from '../hooks/useCambiosPedido';
 import { IconoCabecera } from './IconoCabecera';
 
 interface OrderPaymentsCardProps {
-  order: WebOrder;
+  order: PedidoConStock;
   pagos: PagoDelPedido[];
   /** Se cobra en la caja de la sede y aún no se ha cobrado. */
   porCobrarEnCaja: boolean;
@@ -35,6 +33,15 @@ interface OrderPaymentsCardProps {
   onVerCambio?: () => void;
   /** Marca hecho un reembolso manual (sin él, no se muestra la acción). */
   onReembolsoHecho?: (id: string) => void;
+  /**
+   * Intentos de pago y vencimiento (`useIntentosPago`). Con ellos la tarjeta muestra el método
+   * elegido y los intentos (estados A–G del diseño 2026-11-24); sin ellos, la de siempre.
+   */
+  intentosPago?: DatosIntentosPago;
+  /** Copia de arriba en el celular con pago rechazado (el «Reenviar» va en la barra fija). */
+  movil?: boolean;
+  /** Contraentrega (estado F): «Ver «Pago contra entrega»» lleva a esa tarjeta. */
+  onVerContraentrega?: () => void;
 }
 
 const CLAVE_ESTADO: Record<PaymentStatus, string> = {
@@ -54,99 +61,133 @@ const TONO_ESTADO_PEDIDO: Partial<Record<PaymentStatus, 'exito' | 'advertencia' 
 /** Procesadores de pago (Tesorería): donde se concilia lo que cobró la pasarela. */
 const RUTA_PROCESADORES = '/app/finanzas/tesoreria/procesadores-pago';
 
-/** Chip con las iniciales de la pasarela (no hay logos en el repositorio). */
-function ChipPasarela({ pasarela }: { pasarela: Pasarela }) {
-  return (
-    <span
-      aria-hidden="true"
-      title={NOMBRE_PASARELA[pasarela]}
-      className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-brand-tint px-1 text-[10px] font-semibold leading-none text-brand-deep"
-    >
-      {INICIALES_PASARELA[pasarela]}
-    </span>
-  );
-}
-
 /**
  * Tarjeta «Pagos» (Figma `2725:192149`, antes `1981:175699`): estado del cobro y los pagos
  * reales del pedido —pasarela con su chip, submétodo, referencia, fecha, importe y estado—,
  * uno debajo del otro. Contra entrega: «Se cobra al entregar» con la caja de la sede.
+ *
+ * Con `intentosPago` (diseño 2026-11-24): insignia de estado y, en los estados A–C2, E, F y G,
+ * el método elegido, el vencimiento y los intentos (`CuerpoPagosIntentos`); en D (pagado) lo de
+ * siempre más el historial. Fuera de esos estados, la tarjeta queda exactamente igual.
  */
-export function OrderPaymentsCard({ order, pagos, porCobrarEnCaja, cajaEtiqueta, cambios = [], onVerCambio, onReembolsoHecho }: OrderPaymentsCardProps) {
+export function OrderPaymentsCard({
+  order,
+  pagos,
+  porCobrarEnCaja,
+  cajaEtiqueta,
+  cambios = [],
+  onVerCambio,
+  onReembolsoHecho,
+  intentosPago,
+  movil = false,
+  onVerContraentrega,
+}: OrderPaymentsCardProps) {
   const t = useTranslations('pedidoWeb');
   const tm = useTranslations('detallesMarca.pagos');
-  const { formatDateTime } = useFormatDate(order.branch_id);
+  const { formatDateTime, timezone } = useFormatDate(order.branch_id);
   const { formatear } = useMonedaOrganizacion();
   const etiquetaMetodo = useEtiquetaMetodoPago();
   const nombreMetodo = (codigo: string) => (t.has(`cobro.metodos.${codigo}`) ? t(`cobro.metodos.${codigo}`) : etiquetaMetodo(codigo));
   const lista = ordenarPagos(pagos);
   const conPasarela = lista.some((p) => p.pasarela && tonoEstadoPago(p.estado) === 'exito');
+  // Estados A–G (diseño 2026-11-24); `null` = la tarjeta de siempre.
+  const estado = intentosPago ? estadoTarjetaPagos(order, intentosPago.intentos) : null;
+
+  const listaPagos =
+    lista.length > 0 ? (
+      <ul className="divide-y divide-line">
+        {lista.map((p) => (
+          <li key={p.id} className="py-2 first:pt-0 last:pb-0">
+            <ListaDatos etiqueta={tm('pagoDe', { metodo: textoMetodoPago(p, (s) => tm(`submetodos.${s}`), nombreMetodo) })}>
+              <FilaDato
+                etiqueta={tm('metodo')}
+                valor={
+                  <span className="inline-flex min-w-0 items-center justify-end gap-1.5">
+                    {p.pasarela && <ChipPasarela pasarela={p.pasarela} />}
+                    <span className="truncate">{textoMetodoPago(p, (s) => tm(`submetodos.${s}`), nombreMetodo)}</span>
+                  </span>
+                }
+                accesorio={tonoEstadoPago(p.estado) === 'exito' ? undefined : <StatusBadge estado={p.estado} tamano="sm" />}
+              />
+              {p.referencia && <FilaDato etiqueta={tm('referencia')} valor={<span className="font-mono text-[13px]">{p.referencia}</span>} />}
+              {p.fecha && <FilaDato etiqueta={tm('fecha')} valor={formatDateTime(p.fecha)} />}
+              <FilaDato
+                etiqueta={tonoEstadoPago(p.estado) === 'exito' ? tm('cobrado') : tm('importe')}
+                valor={formatear(p.monto)}
+                tono={tonoEstadoPago(p.estado) === 'exito' ? 'fuerte' : 'neutro'}
+              />
+            </ListaDatos>
+          </li>
+        ))}
+      </ul>
+    ) : null;
 
   return (
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <IconoCabecera icono={CreditCard} />
-          {t('pagos.titulo')}
+          <span className="flex-1">{t('pagos.titulo')}</span>
+          {estado && <InsigniaPagos estado={estado} />}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <ListaDatos>
-          <FilaDato
-            etiqueta={t('pagos.estado')}
-            valor={t(`pagos.${CLAVE_ESTADO[order.payment_status] ?? 'porCobrar'}`)}
-            tono={TONO_ESTADO_PEDIDO[order.payment_status] ?? 'fuerte'}
-          />
-        </ListaDatos>
-
-        {porCobrarEnCaja && (
-          <ListaDatos className="rounded-lg bg-subtle px-3 py-2">
-            <FilaDato etiqueta={tm('metodo')} valor={nombreMetodo(metodoDeCobroEnCaja(order.payment_method) ?? order.payment_method ?? 'cash')} />
-            <FilaDato etiqueta={tm('seCobraAlEntregar')} valor={formatear(order.total)} tono="fuerte" />
-            <FilaDato etiqueta={cajaEtiqueta ?? t('pagos.sinCaja')} valor={t('pagos.sinCobrar')} tamano="sm" />
-          </ListaDatos>
-        )}
-
-        {lista.length > 0 ? (
-          <ul className="divide-y divide-line">
-            {lista.map((p) => (
-              <li key={p.id} className="py-2 first:pt-0 last:pb-0">
-                <ListaDatos etiqueta={tm('pagoDe', { metodo: textoMetodoPago(p, (s) => tm(`submetodos.${s}`), nombreMetodo) })}>
-                  <FilaDato
-                    etiqueta={tm('metodo')}
-                    valor={
-                      <span className="inline-flex min-w-0 items-center justify-end gap-1.5">
-                        {p.pasarela && <ChipPasarela pasarela={p.pasarela} />}
-                        <span className="truncate">{textoMetodoPago(p, (s) => tm(`submetodos.${s}`), nombreMetodo)}</span>
-                      </span>
-                    }
-                    accesorio={tonoEstadoPago(p.estado) === 'exito' ? undefined : <StatusBadge estado={p.estado} tamano="sm" />}
-                  />
-                  {p.referencia && <FilaDato etiqueta={tm('referencia')} valor={<span className="font-mono text-[13px]">{p.referencia}</span>} />}
-                  {p.fecha && <FilaDato etiqueta={tm('fecha')} valor={formatDateTime(p.fecha)} />}
-                  <FilaDato
-                    etiqueta={tonoEstadoPago(p.estado) === 'exito' ? tm('cobrado') : tm('importe')}
-                    valor={formatear(p.monto)}
-                    tono={tonoEstadoPago(p.estado) === 'exito' ? 'fuerte' : 'neutro'}
-                  />
-                </ListaDatos>
-              </li>
-            ))}
-          </ul>
+        {intentosPago && estado && estado !== 'D' ? (
+          <>
+            <CuerpoPagosIntentos
+              order={order}
+              estado={estado}
+              datos={intentosPago}
+              timezone={timezone}
+              movil={movil}
+              onVerContraentrega={onVerContraentrega}
+            />
+            {/* Contraentrega con el anticipo ya cobrado: el pago real sigue aquí («Ver el anticipo»). */}
+            {estado === 'F' && listaPagos}
+          </>
         ) : (
-          !porCobrarEnCaja && <p className="text-sm text-fg-secondary">{t('pagos.sinPagos')}</p>
-        )}
+          <>
+            <ListaDatos>
+              <FilaDato
+                etiqueta={t('pagos.estado')}
+                valor={t(`pagos.${CLAVE_ESTADO[order.payment_status] ?? 'porCobrar'}`)}
+                tono={TONO_ESTADO_PEDIDO[order.payment_status] ?? 'fuerte'}
+              />
+            </ListaDatos>
 
-        {conPasarela && (
-          <p className="text-[13px] text-fg-secondary">
-            {tm.rich('concilia', {
-              enlace: (chunks) => (
-                <Link href={RUTA_PROCESADORES} className="font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-                  {chunks}
-                </Link>
-              ),
-            })}
-          </p>
+            {porCobrarEnCaja && (
+              <ListaDatos className="rounded-lg bg-subtle px-3 py-2">
+                <FilaDato etiqueta={tm('metodo')} valor={nombreMetodo(metodoDeCobroEnCaja(order.payment_method) ?? order.payment_method ?? 'cash')} />
+                <FilaDato etiqueta={tm('seCobraAlEntregar')} valor={formatear(order.total)} tono="fuerte" />
+                <FilaDato etiqueta={cajaEtiqueta ?? t('pagos.sinCaja')} valor={t('pagos.sinCobrar')} tamano="sm" />
+              </ListaDatos>
+            )}
+
+            {listaPagos ?? (!porCobrarEnCaja && <p className="text-sm text-fg-secondary">{t('pagos.sinPagos')}</p>)}
+
+            {conPasarela && (
+              <p className="text-[13px] text-fg-secondary">
+                {tm.rich('concilia', {
+                  enlace: (chunks) => (
+                    <Link href={RUTA_PROCESADORES} className="font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                      {chunks}
+                    </Link>
+                  ),
+                })}
+              </p>
+            )}
+
+            {/* D · pagado por pasarela: lo de hoy y, debajo, los intentos (rechazos previos incluidos). */}
+            {intentosPago && estado === 'D' && (
+              <HistorialIntentos
+                intentos={historialIntentos('D', order, intentosPago.intentos, intentosPago.venceAt)}
+                concepto="order"
+                plazoMinutos={intentosPago.plazoMinutos}
+                timezone={timezone}
+                formatear={formatear}
+              />
+            )}
+          </>
         )}
 
         {cambios

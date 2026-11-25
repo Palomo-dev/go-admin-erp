@@ -56,7 +56,7 @@ function harness(initial: RulesState) {
 const GET_500 = { GET: { status: 500, body: { error: 'boom' } } };
 const old = row({ id: 'a', is_active: true, updated_at: 't0' });
 const other = row({ id: 'b', priority: 20 });
-const loadedWith = (rules: AutomationRuleView[]): RulesState => ({ rules, loading: false, loaded: true, error: null });
+const loadedWith = (rules: AutomationRuleView[]): RulesState => ({ rules, loading: false, loaded: true, error: null, canManage: null, errorStatus: null });
 
 describe('R-2 ejecutado · mutación OK + recarga fallida (la respuesta de la mutación manda)', () => {
   it('PATCH OK + GET 500 → el interruptor muestra la fila que devolvió el servidor, no la vieja (M-A5)', async () => {
@@ -123,6 +123,6 @@ describe('loadRules · esqueleto solo en la primera carga (M26) y última lista 
     const p2 = loadRules(fakeFetch(GET_500).fetch, h.dispatch);
     expect(h.state).toMatchObject({ loading: false, error: null }); // la lista sigue montada mientras recarga
     await p2;
-    expect(h.state).toEqual({ ...loadedWith([old]), error: 'boom' });
+    expect(h.state).toEqual({ ...loadedWith([old]), error: 'boom', errorStatus: 500 });
   });
 });

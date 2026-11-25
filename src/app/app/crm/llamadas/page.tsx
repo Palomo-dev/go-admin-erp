@@ -6,18 +6,18 @@
  * La pantalla entera es `CallsTable` (kit): cabecera, cifras del rango, filtros
  * (incluida la búsqueda por transcripción), tabla, paginación y hoja de
  * detalle. El softphone global vive en el shell; «Llamar» lo despliega.
- * `?call={id}` abre esa llamada en la hoja y se quita al cerrarla.
+ * `?call={id}` (enlaces viejos: timeline, objeciones, campañas de voz) lleva al
+ * detalle de esa llamada, /app/crm/llamadas/[id] (Figma 1363:20).
  */
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CallsTable } from '@/components/voice/CallsTable';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CallsTable, rutaDetalleLlamada } from '@/components/voice/CallsTable';
 import { useSoftphone } from '@/components/voice/SoftphoneProvider';
 
 function LlamadasContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
   const openCallId = searchParams?.get('call') ?? null;
   const sp = useSoftphone();
   const [refreshKey, setRefreshKey] = useState(0);
@@ -37,17 +37,13 @@ function LlamadasContent() {
     setRefreshKey((k) => k + 1);
   }, [lastEnded]);
 
-  const quitarParametro = useCallback(() => {
-    if (!openCallId || !searchParams) return;
-    const p = new URLSearchParams(searchParams.toString());
-    p.delete('call');
-    const ruta = pathname ?? '/app/crm/llamadas';
-    router.replace(p.size ? `${ruta}?${p}` : ruta, { scroll: false });
-  }, [openCallId, pathname, router, searchParams]);
+  useEffect(() => {
+    if (openCallId) router.replace(rutaDetalleLlamada(openCallId));
+  }, [openCallId, router]);
 
   return (
     <div className="flex min-h-full w-full min-w-0 flex-col gap-4 bg-canvas p-4 lg:p-6">
-      <CallsTable openCallId={openCallId} refreshKey={refreshKey} onCerrarLlamada={quitarParametro} />
+      <CallsTable refreshKey={refreshKey} />
     </div>
   );
 }

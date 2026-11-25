@@ -6,8 +6,9 @@
  *
  * Regla de pestañas (2026-10-06): «Voces» es una SECCIÓN de la página (su
  * `TabBar`); aquí dentro Biblioteca / Mis voces es la VISTA y va en un
- * `SegmentedControl` con `?vista=` (Figma 1668:165932). «Clonar una voz» es
- * una acción (botón), no una vista: abre el asistente en el mismo lugar.
+ * `SegmentedControl` con `?vista=` (Figma 1668:165932). «Clonar una voz» y
+ * «Añadir por ID» son acciones de la cabecera de la página (Figma 1668:165932):
+ * abren una hoja lateral (Figma 1672:127218 → 1676:127925), no una vista.
  *
  * Una acción principal por vista:
  *  - Biblioteca: la biblioteca pública de ElevenLabs en tarjetas con avatar,
@@ -25,30 +26,34 @@
  * proveedor, y la base lo impone además con el CHECK `voices_cloned_requires_consent`.
  */
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { AlertTriangle, ArrowLeft, Mic } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/kit/SegmentedControl";
-import { clasesBoton } from "@/components/kit/botonClases";
 import { useOpcionUrl } from "@/components/kit/useParametroUrl";
 import { PROVIDERS_SETTINGS_HREF, useVoiceCatalog } from "./useVoiceCatalog";
 import { VoiceLibraryGrid } from "./voces/VoiceLibraryGrid";
 import { MyVoicesPanel } from "./voces/MyVoicesPanel";
 import { CloneVoiceWizard } from "./voces/CloneVoiceWizard";
+import { VoiceAddForms } from "./VoiceAddForms";
 
 const VISTAS = ["biblioteca", "mias"] as const;
 
-export function VoicesPanel() {
+/** Acción de la cabecera abierta en hoja lateral. */
+export type AccionVoces = "clonar" | "anadirId" | null;
+
+interface Props {
+  accion: AccionVoces;
+  onAccionChange: (accion: AccionVoces) => void;
+}
+
+export function VoicesPanel({ accion, onAccionChange }: Props) {
   const tx = useTranslations("crm.agentesIa");
   const t = useTranslations("crm.agentesIa.voces");
   const catalog = useVoiceCatalog();
-  const [view, setViewUrl] = useOpcionUrl("vista", VISTAS, "biblioteca");
-  const [clonando, setClonando] = useState(false);
-  const setView = (v: (typeof VISTAS)[number]) => {
-    setClonando(false);
-    setViewUrl(v);
-  };
+  const [view, setView] = useOpcionUrl("vista", VISTAS, "biblioteca");
   const { voices, tts, account, reload } = catalog;
 
   const ownedVoiceIds = useMemo(
@@ -95,33 +100,31 @@ export function VoicesPanel() {
             { valor: "mias", etiqueta: t("mias"), contador: voices.length > 0 ? voices.length : undefined },
           ]}
         />
-        <span className="flex-1" />
-        {!clonando && (
-          <button type="button" className={clasesBoton({ tamano: "sm" })} onClick={() => setClonando(true)}>
-            <Mic aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {t("clonar")}
-          </button>
-        )}
       </div>
 
-      {clonando ? (
-        <div className="space-y-3">
-          <button type="button" className={clasesBoton({ variante: "fantasma", tamano: "sm" })} onClick={() => setClonando(false)}>
-            <ArrowLeft aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {t("volver")}
-          </button>
-          <CloneVoiceWizard
-            account={account}
-            onCreated={() => {
-              void reload();
-            }}
-          />
-        </div>
-      ) : view === "biblioteca" ? (
+      {view === "biblioteca" ? (
         <VoiceLibraryGrid ownedVoiceIds={ownedVoiceIds} onAdded={() => void reload()} account={account} />
       ) : (
-        <MyVoicesPanel catalog={catalog} onGoToLibrary={() => setView("biblioteca")} onGoToClone={() => setClonando(true)} />
+        <MyVoicesPanel catalog={catalog} onGoToLibrary={() => setView("biblioteca")} onGoToClone={() => onAccionChange("clonar")} />
       )}
+
+      <Sheet open={accion !== null} onOpenChange={(open) => !open && onAccionChange(null)}>
+        <SheetContent
+          side="right"
+          className="flex h-dvh w-full flex-col gap-0 overflow-hidden bg-surface p-0 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-2xl"
+        >
+          <SheetHeader className="space-y-1 border-b border-line bg-surface px-4 pb-3 pr-12 pt-4 text-left sm:px-6">
+            <SheetTitle className="text-fg">{accion === "anadirId" ? t("anadirIdTitulo") : t("clonar")}</SheetTitle>
+            <SheetDescription className="text-fg-secondary">
+              {accion === "anadirId" ? t("anadirIdDescripcion") : t("clonarDescripcion")}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+            {accion === "clonar" && <CloneVoiceWizard account={account} onCreated={() => void reload()} />}
+            {accion === "anadirId" && <VoiceAddForms tts={tts} onChanged={() => void reload()} />}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

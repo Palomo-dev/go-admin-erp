@@ -17,6 +17,7 @@
  */
 import { sumarEnMonedaBase, type MontoEnMoneda, type ResumenMonedaBase, type TasaCambio } from '@/lib/crm/monedaCrm';
 import { probabilityToFraction } from './revenueOs/forecastScenarios';
+import { toPlainDate } from '@/lib/utils/dateCore';
 
 export const FORECAST_CATEGORIES = ['commit', 'best_case', 'pipeline', 'omitted'] as const;
 export type ForecastCategory = (typeof FORECAST_CATEGORIES)[number];
@@ -171,4 +172,54 @@ export function calcularPronostico(s: ForecastSnapshot): { rows: FilaPronostico[
 /** Porcentaje entero de `parte` sobre `total`; null sin total. */
 export function pctDe(parte: number, total: number): number | null {
   return total > 0 ? Math.round((100 * parte) / total) : null;
+}
+
+/** «2026-10» + 2 → «2026-12»; «2026-11» + 2 → «2027-01». */
+export function mesMas(mes: string, delta: number): string {
+  const total = Number(mes.slice(0, 4)) * 12 + Number(mes.slice(5, 7)) - 1 + delta;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Mes (YYYY-MM) en que cuenta una oportunidad: las ganadas por el día de
+ * cierre en la zona de la organización (`closed_at` es timestamptz; sin él,
+ * la fecha esperada, igual que la RPC); las abiertas por `expected_close_date`.
+ */
+export function mesDeOportunidad(o: Pick<ForecastOpportunity, 'status' | 'is_won' | 'closed_at' | 'expected_close_date'>, zona: string): string | null {
+  const dia = esGanada(o) && o.closed_at ? toPlainDate(new Date(o.closed_at), zona) : o.expected_close_date;
+  return dia ? dia.slice(0, 7) : null;
+}
+
+export interface MesPronostico {
+  /** YYYY-MM. */
+  mes: string;
+  /** Abiertas no omitidas con cierre esperado en el mes. */
+  oportunidades: number;
+  won: ResumenMonedaBase;
+  commit: ResumenMonedaBase;
+  bestCase: ResumenMonedaBase;
+  weighted: ResumenMonedaBase;
+}
+
+/**
+ * Vista «Por mes» (Figma CRM 1431:19, control «Por vendedor | Por mes»): los
+ * tres meses del trimestre con las mismas reglas que la fila del vendedor. Los
+ * ajustes con motivo son del trimestre y NO se reparten por mes.
+ */
+export function calcularPorMes(s: ForecastSnapshot): MesPronostico[] {
+  const sumar = (v: MontoEnMoneda[]) => sumarEnMonedaBase(v, s.base, s.rates, s.date);
+  return [0, 1, 2].map((d) => {
+    const mes = mesMas(s.start.slice(0, 7), d);
+    const delMes = s.opportunities.filter((o) => mesDeOportunidad(o, s.timezone) === mes);
+    const abiertas = delMes.filter((o) => o.status === 'open' && !o.is_lost && !o.is_won && categoriaPronostico(o) !== 'omitted');
+    const ganadas = montos(delMes.filter(esGanada));
+    return {
+      mes,
+      oportunidades: abiertas.length,
+      won: sumar(ganadas),
+      commit: sumar([...ganadas, ...montos(abiertas.filter((o) => categoriaPronostico(o) === 'commit'))]),
+      bestCase: sumar([...ganadas, ...montos(abiertas.filter((o) => categoriaPronostico(o) !== 'pipeline'))]),
+      weighted: sumar([...ganadas, ...montos(abiertas, true)]),
+    };
+  });
 }

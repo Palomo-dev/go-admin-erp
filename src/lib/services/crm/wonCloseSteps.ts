@@ -21,6 +21,9 @@ import { findOnboardingPipelineId, OnboardingPipelineError, startOnboardingForWo
 import { scheduleRenewal, SEQUENCE_ENROLL_DEFERRED } from '@/lib/services/crm/renewalService';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { toPlainDate } from '@/lib/utils/timezone';
+import { executeAppointment, executeClassSlot, executeEmit, executeReservations, requireOrg } from '@/lib/services/crm/wonCloseStepsLineas';
+
+export { executeAppointment, executeClassSlot, executeEmit, executeReservations };
 
 export type StepStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
 
@@ -34,7 +37,15 @@ export interface CloseStep {
   optional?: boolean;
 }
 
-export type WonStepId = 'invoice' | 'pos_sale' | 'reservations' | 'onboarding' | 'renewal' | 'referral' | 'commission';
+export type WonStepId = 'invoice' | 'emit' | 'pos_sale' | 'reservations' | 'class_slot' | 'appointment' | 'onboarding' | 'renewal' | 'referral' | 'commission';
+
+/**
+ * Orden de ejecución de «Ganar» con pasos derivados de las líneas (Figma
+ * 1787:900392): factura, emitirla, reserva, cupo de clase, cita, onboarding,
+ * renovación, referido y comisión. `buildInitialSteps` conserva la lista fija
+ * del `WonCloseModal`.
+ */
+export const ORDEN_PASOS_GANAR: readonly WonStepId[] = ['invoice', 'emit', 'reservations', 'class_slot', 'appointment', 'onboarding', 'renewal', 'referral', 'commission'];
 
 export interface OpportunityData {
   id: string;
@@ -67,6 +78,18 @@ export interface WonCloseDeps {
    */
   convertToInvoice: (quotationId: string, branchId: number, opportunityId: string) => Promise<{ invoiceId: string; numero: string | null; yaConvertida: boolean }>;
   accrueCommission: (opportunityId: string, salespersonId: string, baseAmount: number) => Promise<CommissionAccrualResult | null>;
+  /**
+   * Genera la cotización desde las líneas (`POST /api/crm/proposals`, que usa
+   * `fn_cotizacion_guardar` con product_id, impuestos y modificadores) cuando
+   * la oportunidad aún no tiene una. Opcional: sin ella, «factura» se omite.
+   */
+  generateProposal?: (opportunityId: string) => Promise<{ id: string; branch_id: number | null } | null>;
+  /**
+   * Emite la factura en el servidor (`POST /api/facturas-venta/[id]/emitir`,
+   * `fn_factura_venta_emitir`: descuenta stock de lo que lo controla y activa
+   * las membresías). El permiso Facturar lo resuelve el servidor.
+   */
+  emitInvoice?: (invoiceId: string) => Promise<void>;
   /** F11 (deuda D1). Opcional: por defecto el servicio real; las pruebas lo doblan. */
   startOnboarding?: typeof startOnboardingForWonOpportunity;
   /** F11 (deuda D2). Opcional: por defecto el servicio real; las pruebas lo doblan. */
@@ -85,14 +108,11 @@ export function buildInitialSteps(): CloseStep[] {
   ];
 }
 
-function requireOrg(deps: WonCloseDeps): number {
-  if (!deps.orgId || deps.orgId <= 0) throw new Error('Organización no válida');
-  return deps.orgId;
-}
-
 export async function executeInvoice(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
   requireOrg(deps);
-  const latestProposal = await deps.getLatestProposal(opp.id);
+  let latestProposal = await deps.getLatestProposal(opp.id);
+  // Pasos derivados de las líneas: sin cotización, se genera desde las líneas.
+  if (!latestProposal && deps.generateProposal) latestProposal = await deps.generateProposal(opp.id);
   if (!latestProposal) return 'Sin cotización vinculada — se omitió la factura';
   const branchId = deps.contextBranchId ?? latestProposal.branch_id;
   if (!branchId) return 'Sin sucursal definida (selecciona una sucursal concreta, no "Todas") — se omitió la factura';
@@ -137,31 +157,6 @@ export async function executePosSale(opp: OpportunityData, deps: WonCloseDeps): 
     .single();
   if (error) throw error;
   return `Venta CRM creada: ${(sale as { id: string }).id.substring(0, 8)}...`;
-}
-
-export async function executeReservations(opp: OpportunityData, deps: WonCloseDeps): Promise<string> {
-  const orgId = requireOrg(deps);
-  const { data: spaces } = await deps.supabase.from('opportunity_spaces').select('space_id, nights, unit_price, checkin_date, checkout_date').eq('opportunity_id', opp.id);
-  if (!spaces || spaces.length === 0) return 'Sin espacios reservables — se omitieron reservas';
-  const latestProposal = await deps.getLatestProposal(opp.id);
-  const reservationBranchId = deps.contextBranchId ?? latestProposal?.branch_id ?? null;
-  if (!reservationBranchId) throw new Error('No se puede crear la reserva: selecciona una sucursal concreta o asegúrate de que la oportunidad tenga una propuesta con sucursal asignada.');
-  const nowMs = (deps.now?.() ?? new Date()).getTime();
-  let created = 0;
-  for (const s of spaces as Array<Record<string, unknown>>) {
-    const checkinDate = s.checkin_date as string | null;
-    const checkoutDate = s.checkout_date as string | null;
-    const nights = Number(s.nights) || 1;
-    const startDate = checkinDate ? new Date(checkinDate).toISOString() : new Date(nowMs).toISOString();
-    const endDate = checkoutDate ? new Date(checkoutDate).toISOString() : new Date(nowMs + nights * 24 * 60 * 60 * 1000).toISOString();
-    const { error } = await deps.supabase.from('reservations').insert({
-      organization_id: orgId, branch_id: reservationBranchId, customer_id: opp.customer_id, space_id: s.space_id as string, start_date: startDate, end_date: endDate,
-      checkin: checkinDate || null, checkout: checkoutDate || null, opportunity_id: opp.id, status: 'confirmed', total_estimated: Number(s.unit_price) * nights,
-    });
-    if (error) throw error;
-    created++;
-  }
-  return `Reservas creadas: ${created}`;
 }
 
 /**
@@ -253,8 +248,11 @@ export async function executeCommission(opp: OpportunityData, deps: WonCloseDeps
 
 export const WON_STEP_EXECUTORS: Record<WonStepId, (opp: OpportunityData, deps: WonCloseDeps) => Promise<string>> = {
   invoice: executeInvoice,
+  emit: executeEmit,
   pos_sale: executePosSale,
   reservations: executeReservations,
+  class_slot: executeClassSlot,
+  appointment: executeAppointment,
   onboarding: executeOnboarding,
   renewal: executeRenewal,
   referral: executeReferral,

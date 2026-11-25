@@ -34,6 +34,7 @@ import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
+import { EditorCamposContacto, EditorCanales, EditorRedes } from './EditoresContacto';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
 import { InterruptorAvisoFicha } from './AvisoContraentregaEditor';
 import { EditorEtiquetasFicha } from './EditorEtiquetasFicha';
@@ -163,6 +164,16 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   const pestana: PestanaSeccion = pestanaElegida ?? (disenoVacio && campos('contenido').length > 0 ? 'contenido' : 'diseno');
 
   const pintarCampo = (c: ContentFieldDef) => {
+    // Contacto v2 (Figma 3108:85760, 3108:86969, 3112:87143): editores propios que escriben su clave.
+    if (c.type === 'contact_fields') {
+      return <EditorCamposContacto key={c.key} valor={contenido[c.key]} onCambiar={(v) => onCambiarContenido({ ...contenido, [c.key]: v })} />;
+    }
+    if (c.type === 'contact_channels') {
+      return <EditorCanales key={c.key} valor={contenido[c.key]} ajustes={ajustesSitio} onCambiar={(v) => onCambiarContenido({ ...contenido, [c.key]: v })} />;
+    }
+    if (c.type === 'social_networks') {
+      return <EditorRedes key={c.key} valor={contenido[c.key]} ajustes={ajustesSitio} onCambiar={(v) => onCambiarContenido({ ...contenido, [c.key]: v })} />;
+    }
     if (c.type === 'carta') {
       return (
         <div key={c.key} className="flex flex-col gap-2 rounded-lg border border-line p-3">

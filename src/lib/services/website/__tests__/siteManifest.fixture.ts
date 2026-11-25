@@ -75,7 +75,9 @@ export const siteManifestFixture: SectionManifest = {
         'title',
       ],
     },
-    { type: 'contact_form', variants: ['default', 'simple', 'split', 'with_map'], contentKeys: [] },
+    // Contacto v2 (Figma 3104:84056): `card_hours`, `contact_channels` y `social_networks`.
+    { type: 'contact_channels', variants: ['cards'], contentKeys: ['channels', 'show_help', 'subtitle', 'title', 'whatsapp_primary'] },
+    { type: 'contact_form', variants: ['card_hours', 'default', 'simple', 'split', 'with_map'], contentKeys: [] },
     { type: 'countdown', variants: ['banner', 'compact', 'inline'], contentKeys: [] },
     { type: 'coverage_map', variants: ['static'], contentKeys: [] },
     { type: 'cta', variants: ['banner', 'centered', 'split', 'with_image'], contentKeys: [] },
@@ -137,10 +139,11 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'gym_features', variants: ['icons'], contentKeys: [] },
     {
       type: 'hero',
-      variants: ['brand_giant', 'carousel_editorial', 'floating', 'fullscreen', 'minimal', 'search', 'slider', 'split', 'split_products', 'video'],
+      variants: ['brand_giant', 'carousel_editorial', 'floating', 'fullscreen', 'minimal', 'page_header', 'search', 'slider', 'split', 'split_products', 'video'],
       variantsWithoutKeys: ['fullscreen', 'minimal', 'slider', 'split', 'video'],
       contentKeys: [
         'autoplay',
+        'badges',
         'brand_layer',
         'brand_text',
         'buttons',
@@ -169,6 +172,7 @@ export const siteManifestFixture: SectionManifest = {
         'rating_chip',
         'search_placeholder',
         'show_arrows',
+        'show_breadcrumb',
         'show_category_select',
         'show_cta',
         'show_dots',
@@ -190,6 +194,7 @@ export const siteManifestFixture: SectionManifest = {
       contentKeys: [
         'branch_ids',
         'eyebrow',
+        'featured_branch_id',
         'order_url',
         'reserve_url',
         'show_call',
@@ -198,6 +203,7 @@ export const siteManifestFixture: SectionManifest = {
         'show_order',
         'show_photos',
         'show_reserve',
+        'show_whatsapp',
         'subtitle',
         'title',
       ],
@@ -509,6 +515,7 @@ export const siteManifestFixture: SectionManifest = {
         'title',
       ],
     },
+    { type: 'social_networks', variants: ['row'], contentKeys: ['display', 'networks', 'subtitle', 'title'] },
     { type: 'specialties', variants: ['featured'], contentKeys: [] },
     { type: 'stats', variants: ['cards', 'counters', 'inline'], contentKeys: [] },
     {

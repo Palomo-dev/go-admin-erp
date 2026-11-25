@@ -257,5 +257,17 @@ export function vistaPrevia(
 
 /** Condiciones de partida del formulario: las guardadas de la sede o el defecto (= como hoy). */
 export function condicionesIniciales(guardadas: CondicionesContraentrega | null): CondicionesContraentrega {
-  return normalizarCondiciones(guardadas ?? CONDICIONES_POR_DEFECTO);
+  return soloDevolverAnticipo(normalizarCondiciones(guardadas ?? CONDICIONES_POR_DEFECTO));
+}
+
+/**
+ * Criterio del Contador (2026-11-25): si el cliente no recibe el pedido, el anticipo SOLO se
+ * devuelve. «La tienda se lo queda» (`retener`) está apagado: no hay concepto DIAN para llevar el
+ * anticipo a 4255 sin IVA y hay riesgo de consumidor (retracto, art. 47 Ley 1480 de 2011; queja
+ * ante la SIC). Si una tienda lo necesita algún día: primero Legal y después el Contador.
+ * `reglaContraentrega.ts` (copia byte a byte en la tienda) conserva el tipo para leer lo guardado;
+ * el ERP nunca lo ofrece ni lo guarda.
+ */
+export function soloDevolverAnticipo(c: CondicionesContraentrega): CondicionesContraentrega {
+  return c.siNoRecibe === 'devolver' ? c : { ...c, siNoRecibe: 'devolver' };
 }

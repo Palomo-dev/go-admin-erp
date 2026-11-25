@@ -1,10 +1,12 @@
 import {
+  condicionesIniciales,
   erroresCondiciones,
   leerCuerpoCondiciones,
   resumenReglas,
   resumenUnaLinea,
   sinRestricciones,
   soloDeLaOrganizacion,
+  soloDevolverAnticipo,
   vistaPrevia,
   type NombresCatalogo,
 } from '../condicionesWeb';
@@ -156,5 +158,16 @@ describe('«Así lo ve tu cliente»', () => {
     expect(v.ejemplo.anticipo).toBeNull();
     expect(v.ejemplo.alRecibir).toBe(151000);
     expect(v.motivos).toEqual([]);
+  });
+});
+
+describe('anticipo: solo devolución (criterio del Contador 2026-11-25)', () => {
+  test('«la tienda se lo queda» nunca se ofrece ni se guarda: lo guardado como retener se lee como devolver', () => {
+    const viejo = normalizarCondiciones({ anticipo: { tipo: 'envio' }, siNoRecibe: 'retener' });
+    expect(viejo.siNoRecibe).toBe('retener'); // la regla compartida con la tienda lo sigue leyendo
+    expect(condicionesIniciales(viejo).siNoRecibe).toBe('devolver');
+    expect(soloDevolverAnticipo(viejo).siNoRecibe).toBe('devolver');
+    expect(soloDevolverAnticipo(viejo).anticipo).toEqual(viejo.anticipo);
+    expect(condicionesIniciales(null).siNoRecibe).toBe('devolver');
   });
 });

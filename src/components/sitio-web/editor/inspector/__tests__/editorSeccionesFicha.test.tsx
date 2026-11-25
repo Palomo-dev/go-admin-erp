@@ -131,12 +131,47 @@ describe('Opciones que el estilo no usa: Reseñas, Relacionados y Descripción',
 });
 
 describe('Reseñas', () => {
-  test('Contenido: fuente «Como el sitio» no escribe; «Reales» escribe reviews_source', () => {
+  test('Contenido: origen de primero; tienda de antes = «Solo ejemplos» sin escribir; «Solo reales» escribe reviews_source', () => {
     const onCambiar = jest.fn();
-    render(<PanelSeccionFicha tipo="product_reviews" pestana="contenido" contenido={{}} onCambiar={onCambiar} />);
+    render(<PanelSeccionFicha tipo="product_reviews" pestana="contenido" contenido={{}} onCambiar={onCambiar} origenTiendaResenas={null} />);
     expect(onCambiar).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('radio', { name: 'Reales' }));
+    const grupo = screen.getByRole('radiogroup', { name: 'Origen de las reseñas' });
+    expect(within(grupo).getByRole('radio', { name: /Solo ejemplos/ }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(grupo).getByRole('radio', { name: /Solo reales/ }));
     expect(ultimo(onCambiar)).toEqual({ reviews_source: 'real' });
+  });
+
+  test('Contenido: tienda nueva («real») sin clave = «Solo reales» y sin el switch de las de ejemplo', () => {
+    render(<PanelSeccionFicha tipo="product_reviews" pestana="contenido" contenido={{}} onCambiar={jest.fn()} origenTiendaResenas="real" />);
+    expect(screen.getByRole('radio', { name: /Solo reales/ }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.queryByText('Mostrar «Compra verificada» en las de ejemplo')).toBeNull();
+  });
+
+  test('Contenido: switch «Compra verificada» en las de ejemplo, encendido por defecto; apagarlo escribe false', () => {
+    const onCambiar = jest.fn();
+    render(<PanelSeccionFicha tipo="product_reviews" pestana="contenido" contenido={{ reviews_source: 'generated' }} onCambiar={onCambiar} origenTiendaResenas={null} />);
+    expect(screen.getByText(/la Superintendencia de Industria y Comercio puede considerarlo publicidad engañosa/)).toBeTruthy();
+    const sw = screen.getByRole('switch', { name: 'Mostrar «Compra verificada» en las de ejemplo' });
+    expect(sw.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(sw);
+    expect(ultimo(onCambiar)).toEqual({ reviews_source: 'generated', examples_verified_badge: false });
+  });
+
+  test('Contenido: «Reales + ejemplos hasta tener N» usa mixed y su N es min_visible', () => {
+    const onCambiar = jest.fn();
+    render(<PanelSeccionFicha tipo="product_reviews" pestana="contenido" contenido={{ reviews_source: 'mixed', min_visible: 3 }} onCambiar={onCambiar} origenTiendaResenas={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Una más' }));
+    expect(ultimo(onCambiar)).toEqual({ reviews_source: 'mixed', min_visible: 4 });
+  });
+
+  test('Diseño: con ejemplos, aviso «Tus clientes ven opiniones de ejemplo» y «Cambiar a Solo reales»', () => {
+    const onCambiar = jest.fn();
+    const { rerender } = render(<PanelSeccionFicha tipo="product_reviews" pestana="diseno" contenido={{}} onCambiar={onCambiar} origenTiendaResenas={null} />);
+    expect(screen.getByText('Tus clientes ven opiniones de ejemplo')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar a Solo reales' }));
+    expect(ultimo(onCambiar)).toEqual({ reviews_source: 'real' });
+    rerender(<PanelSeccionFicha tipo="product_reviews" pestana="diseno" contenido={{ reviews_source: 'real' }} onCambiar={onCambiar} origenTiendaResenas={null} />);
+    expect(screen.queryByText('Tus clientes ven opiniones de ejemplo')).toBeNull();
   });
 
   test('Diseño: filtros como chips múltiples', () => {

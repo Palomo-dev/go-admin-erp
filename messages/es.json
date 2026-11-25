@@ -41170,6 +41170,151 @@
       "noDisponible": "Aplicar una plantilla a la sede se activa cuando se aplique su migración.",
       "avisoFormulario": "Tu sitio de sede se crea con la plantilla de {tipo}. Queda en borrador hasta que lo publiques.",
       "avisoCambioTipo": "Al guardar, el sitio de la sede pasa a la plantilla de {tipo}. Si ya tiene cambios propios no se pisan: te preguntaremos antes de aplicarla."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Origen de las reseñas",
+        "recomendado": "Recomendado",
+        "real": {
+          "titulo": "Solo reales",
+          "ayuda": "Solo opiniones de tus clientes. Si un producto no tiene, se ve «Sé el primero en opinar»."
+        },
+        "hastaN": {
+          "titulo": "Reales + ejemplos hasta tener N",
+          "ayuda": "Completa con opiniones de ejemplo mientras el producto no tenga las reales pedidas. Al llegar, los ejemplos se van solos.",
+          "quitar": "Quitar ejemplos al tener",
+          "reales": "reales",
+          "menos": "Una menos",
+          "mas": "Una más"
+        },
+        "generated": {
+          "titulo": "Solo ejemplos",
+          "ayuda": "Muchas opiniones de ejemplo, aleatorias, como hoy. Cuentan en el promedio y en las estrellas de las tarjetas."
+        },
+        "nota": "Las tiendas nuevas empiezan en «Solo reales»; las que ya existen siguen como están. Vale para todos los productos de la tienda.",
+        "deLaTienda": "Es el origen de la tienda: esta sección no lo ha cambiado.",
+        "nombres": {
+          "real": "Solo reales",
+          "hastaN": "Reales + ejemplos",
+          "generated": "Solo ejemplos"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Mostrar «Compra verificada» en las de ejemplo",
+        "ayuda": "Las reseñas de ejemplo no son de clientes reales. Mostrarlas como compra verificada es decisión de la tienda; la Superintendencia de Industria y Comercio puede considerarlo publicidad engañosa."
+      },
+      "aviso": {
+        "titulo": "Tus clientes ven opiniones de ejemplo",
+        "texto": "Origen: «{origen}». Se ven como opiniones normales y cuentan en el promedio y en las estrellas. Las opiniones reales que lleguen no se ven mientras no cambies el origen.",
+        "textoHastaN": "Origen: «{origen}». Se ven como opiniones normales y cuentan en el promedio y en las estrellas, hasta que el producto tenga {n} opiniones reales.",
+        "cambiar": "Cambiar a Solo reales",
+        "nota": "Este aviso sale mientras el origen sea «Solo ejemplos» o «Reales + ejemplos». Con «Solo reales» no sale."
+      },
+      "ajustes": {
+        "boton": "Ajustes de reseñas",
+        "titulo": "Ajustes de reseñas",
+        "descripcion": "Valen para toda la tienda",
+        "origen": "Origen de las reseñas: {origen}",
+        "origenAyuda": "Se elige en el editor, en la sección Reseñas de Producto.",
+        "abrirEditor": "Abrir editor",
+        "publicacion": "Publicación",
+        "moderar": "Moderar antes de publicar",
+        "moderarAyuda": "Apagado, cada opinión sale apenas llega. Es el mismo ajuste que «Aprobar reseñas automáticamente», al revés.",
+        "quien": "Quién puede escribir",
+        "cualquiera": "Cualquier cliente",
+        "compradores": "Solo compradores",
+        "quienAyuda": "Con «Solo compradores» la tienda pide entrar a Mi cuenta o el correo y el número de pedido, y lo comprueba antes de guardar. Esas opiniones salen con «Compra verificada».",
+        "fotos": "Permitir fotos",
+        "fotosAyuda": "Hasta 3 por opinión, 5 MB cada una.",
+        "correo": "Pedir opinión por correo",
+        "enviar": "Enviar «¿Qué te pareció tu compra?»",
+        "enviarAyuda": "Con la marca y el remitente de tu tienda.",
+        "dias": "Días después de entregado",
+        "diasAyuda": "Se cuenta desde que el pedido pasa a «Entregado». De 1 a 30 días.",
+        "menos": "Un día menos",
+        "mas": "Un día más",
+        "recordatorio": "Enviar un recordatorio",
+        "recordatorioAyuda": "Si no ha opinado, uno solo, 5 días después. Nunca más de 2 correos por pedido.",
+        "remitente": "Remitente",
+        "dominioVerificado": "Dominio verificado",
+        "sinDominio": "Sin dominio verificado sale con el nombre de tu tienda desde la dirección de respaldo. Nunca con la marca GO Admin.",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar",
+        "guardado": "Guardamos los ajustes de reseñas.",
+        "error": "No pudimos guardar: {mensaje}",
+        "errorCarga": "No pudimos cargar los ajustes de reseñas.",
+        "reintentar": "Reintentar",
+        "soloLectura": "Solo lectura: pide el permiso «Editar sitio web» para cambiar estos ajustes."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "Pendientes",
+          "approved": "Publicadas",
+          "rejected": "Ocultas",
+          "all": "Todas"
+        },
+        "estados": {
+          "pending": "Pendiente",
+          "approved": "Publicada",
+          "rejected": "Oculta"
+        },
+        "vacio": {
+          "pending": "No tienes opiniones pendientes.",
+          "approved": "Aún no publicas opiniones.",
+          "rejected": "No tienes opiniones ocultas.",
+          "all": "Aún no tienes opiniones. Llegan cuando un cliente califica un producto en tu sitio."
+        },
+        "detalle": "Opinión de {autor}",
+        "publicar": "Publicar",
+        "ocultar": "Ocultar",
+        "responder": "Responder",
+        "editarRespuesta": "Editar respuesta",
+        "publicarYResponder": "Publicar y responder",
+        "guardarRespuesta": "Guardar respuesta",
+        "responderComo": "Responder como {tienda}",
+        "responderComoTienda": "Responder como la tienda",
+        "respuestaAyuda": "Se publica debajo de la opinión con el nombre de tu tienda.",
+        "respuestaPlaceholder": "Agradece y responde con amabilidad.",
+        "destacar": "Destacar esta opinión",
+        "destacarAyuda": "Sale primero en la ficha y en el estilo Carrusel. Hasta 3 por producto.",
+        "destacada": "Destacada",
+        "quitarDestacada": "Quitar de destacadas",
+        "ocultarFoto": "Ocultar foto",
+        "mostrarFoto": "Mostrar foto",
+        "fotoOculta": "Foto oculta: no se ve en la tienda",
+        "foto": "Foto {n} de {autor}",
+        "llegoPor": "Llegó por: {canal}",
+        "canales": {
+          "ficha": "ficha del producto",
+          "correo": "correo tras la entrega",
+          "pedido": "Consultar pedido",
+          "cuenta": "Mi cuenta"
+        },
+        "correo": "Correo: {correo} (no se publica)",
+        "pedido": "Pedido {numero}",
+        "entregado": "entregado el {fecha}",
+        "sinTexto": "Sin texto: solo calificó con estrellas.",
+        "publicada": "Publicaste la opinión.",
+        "oculta": "Ocultaste la opinión.",
+        "respondida": "Guardamos tu respuesta.",
+        "destacadaOk": "Destacaste la opinión.",
+        "quitadaDestacada": "Quitaste la opinión de las destacadas.",
+        "fotoOcultada": "Ocultaste la foto.",
+        "fotoMostrada": "La foto vuelve a verse en la tienda.",
+        "publicarTodas": "Publicar las {n}",
+        "pieTodas": "{n} por revisar · se publican en la ficha cuando las apruebas",
+        "kpis": {
+          "etiqueta": "Resumen de reseñas",
+          "porRevisar": "Por revisar",
+          "masVieja": "La más vieja, {fecha}",
+          "publicadas": "Publicadas",
+          "mes": "+{n} en 30 días",
+          "promedio": "Promedio publicado",
+          "soloClientes": "Solo opiniones de clientes",
+          "verificadas": "Con compra verificada",
+          "deTotal": "{n} de {total}"
+        }
+      }
     }
   },
   "roles": {

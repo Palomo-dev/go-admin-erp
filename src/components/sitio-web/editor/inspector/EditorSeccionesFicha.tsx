@@ -4,7 +4,9 @@
  * Paneles de las secciones de la ficha de producto: Beneficios, Reseñas, Productos relacionados y
  * Descripción (Figma «16 Sitio web», sección 2983:72501, aprobada por el dueño el 2026-11-24):
  * - Beneficios: Diseño 2985:72792 · Contenido 2985:72976 · Estilo 2985:73273.
- * - Reseñas: Diseño 2987:73690 · Contenido 2987:73880 · Estilo 2987:74017.
+ * - Reseñas: Diseño 2987:73690 · Contenido 2987:73880 · Estilo 2987:74017. Origen de las reseñas
+ *   (de primero en Contenido), aviso con ejemplos en Diseño/Estilo y switch «Compra verificada» en
+ *   las de ejemplo: Figma 3123-88477 (1A, 1B, 1D), `OrigenResenasEditor.tsx`.
  * - Relacionados: Diseño 2989:74314 · Contenido 2989:74523 · Estilo 2989:74670.
  * - Descripción: Diseño 2991:74640 · Contenido 2991:74830 · Estilo 2991:74978.
  *
@@ -63,6 +65,7 @@ import {
   type ParteDescripcion,
 } from '@/lib/website/v2/seccionesFicha';
 import { EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion, TituloBloque } from './PartesZonaGlobal';
+import { AvisoOrigenEjemplos, OrigenResenas, useOrigenTienda } from './OrigenResenasEditor';
 
 /** Inventario › Productos: los relacionados a mano y la ficha técnica se editan en cada producto (pestaña Tienda). */
 export const RUTA_INVENTARIO_PRODUCTOS = '/app/inventario/productos';
@@ -81,7 +84,7 @@ export function esSeccionFichaConPanel(tipo: string): tipo is TipoSeccionFicha {
  */
 export const CAMPOS_CUBIERTOS_FICHA: Readonly<Record<TipoSeccionFicha, readonly string[]>> = {
   product_benefits: ['items', 'columns', 'gap'],
-  product_reviews: ['reviews_source', 'empty_state_title', 'empty_state_message', 'empty_state_cta'],
+  product_reviews: ['reviews_source', 'auto_switch_threshold', 'min_visible', 'empty_state_title', 'empty_state_message', 'empty_state_cta'],
   related_products: ['source', 'max_items', 'title'],
   product_description: ['layout', 'max_height', 'show_specs'],
 };
@@ -611,8 +614,9 @@ function SelectorIcono({ valor, onCambiar }: { valor: string; onCambiar: (v: str
 
 // ─── Reseñas ────────────────────────────────────────────────────────────────────────────────
 
-function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanelFicha; contenido: Record<string, unknown>; onCambiar: Cambiar }) {
+function PanelResenas({ pestana, contenido, onCambiar, origenTiendaInicial }: { pestana: PestanaPanelFicha; contenido: Record<string, unknown>; onCambiar: Cambiar; origenTiendaInicial?: unknown }) {
   const t = useT();
+  const origenTienda = useOrigenTienda(origenTiendaInicial);
   const o = useMemo(() => leerOpcionesResenas(contenido), [contenido]);
   const k = CLAVES_RESENAS;
   const poner = (clave: string, v: unknown) => onCambiar(conClave(contenido, clave, v));
@@ -624,6 +628,7 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
   if (pestana === 'diseno') {
     return (
       <>
+        <AvisoOrigenEjemplos contenido={contenido} onCambiar={onCambiar} origenTienda={origenTienda} />
         <EstilosTarjetas estilos={['clasico', 'carrusel', 'compacta', 'fotos'] as const} valor={o.estilo} onElegir={(v) => poner(k.estilo, v)} etiqueta={(v) => t(`resenas.estilos.${v}`)} />
         <Segmento etiqueta={t('resenas.porPagina')} opciones={['5', '10', '20'].map((v) => ({ valor: v, etiqueta: v }))} valor={String(o.porPagina)} onCambiar={(v) => ponerNueva(k.porPagina, Number(v))} />
         <Segmento
@@ -652,22 +657,11 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
     );
   }
   if (pestana === 'contenido') {
-    const fuente = typeof contenido.reviews_source === 'string' ? contenido.reviews_source : 'site';
     return (
       <>
-        <Segmento
-          etiqueta={t('resenas.fuente')}
-          opciones={[
-            { valor: 'site', etiqueta: t('resenas.fuentes.sitio') },
-            { valor: 'real', etiqueta: t('resenas.fuentes.real') },
-            { valor: 'mixed', etiqueta: t('resenas.fuentes.mixed') },
-            { valor: 'auto', etiqueta: t('resenas.fuentes.auto') },
-            { valor: 'generated', etiqueta: t('resenas.fuentes.generated') },
-          ]}
-          valor={fuente}
-          onCambiar={(v) => poner('reviews_source', v === 'site' ? undefined : v)}
-          ayuda={t('resenas.ayudaFuente')}
-        />
+        {/* Origen de las reseñas de primero (Figma 1A): reemplaza al «De dónde salen las opiniones» de
+            cinco botones; los mismos valores (real, mixed, auto, generated) y la misma clave. */}
+        <OrigenResenas contenido={contenido} onCambiar={onCambiar} origenTienda={origenTienda} />
         <CampoTextoFicha etiqueta={t('resenas.titulo')} valor={typeof contenido[k.titulo] === 'string' ? (contenido[k.titulo] as string) : ''} placeholder={o.titulo} onCambiar={(v) => ponerNueva(k.titulo, v)} />
         {ayudaTitulo && <Ayuda>{ayudaTitulo}</Ayuda>}
         <CampoTextoFicha etiqueta={t('resenas.textoBoton')} valor={typeof contenido[k.textoBoton] === 'string' ? (contenido[k.textoBoton] as string) : ''} placeholder={o.textoBoton} max={60} onCambiar={(v) => ponerNueva(k.textoBoton, v)} />
@@ -693,6 +687,7 @@ function PanelResenas({ pestana, contenido, onCambiar }: { pestana: PestanaPanel
   }
   return (
     <>
+      <AvisoOrigenEjemplos contenido={contenido} onCambiar={onCambiar} origenTienda={origenTienda} />
       <Segmento etiqueta={t('resenas.colorEstrellas')} nuevo opciones={[{ valor: 'amarillo', etiqueta: t('resenas.amarillo') }, { valor: 'tienda', etiqueta: t('colorTienda') }]} valor={o.colorEstrellas} onCambiar={(v) => ponerNueva(k.colorEstrellas, v)} />
       {usa('colorBarras', t('resenas.colorBarras')) && (
         <Segmento etiqueta={t('resenas.colorBarras')} nuevo opciones={[{ valor: 'tienda', etiqueta: t('colorTienda') }, { valor: 'gris', etiqueta: t('resenas.grisOscuro') }]} valor={o.colorBarras} onCambiar={(v) => ponerNueva(k.colorBarras, v)} />
@@ -905,13 +900,18 @@ export interface PanelSeccionFichaProps {
   pestana: PestanaPanelFicha;
   contenido: Record<string, unknown>;
   onCambiar: Cambiar;
+  /**
+   * Reseñas: `website_settings.reviews_default_source` si los ajustes del sitio ya lo traen (puede
+   * ser `null`); `undefined` = no se sabe y el panel lo pide a la ruta de ajustes de reseñas.
+   */
+  origenTiendaResenas?: unknown;
 }
 
 /** Panel de la pestaña dada para una de las cuatro secciones de la ficha. */
-export function PanelSeccionFicha({ tipo, pestana, contenido, onCambiar }: PanelSeccionFichaProps) {
+export function PanelSeccionFicha({ tipo, pestana, contenido, onCambiar, origenTiendaResenas }: PanelSeccionFichaProps) {
   const cuerpo =
     tipo === 'product_benefits' ? <PanelBeneficios pestana={pestana} contenido={contenido} onCambiar={onCambiar} />
-      : tipo === 'product_reviews' ? <PanelResenas pestana={pestana} contenido={contenido} onCambiar={onCambiar} />
+      : tipo === 'product_reviews' ? <PanelResenas pestana={pestana} contenido={contenido} onCambiar={onCambiar} origenTiendaInicial={origenTiendaResenas} />
         : tipo === 'related_products' ? <PanelRelacionados pestana={pestana} contenido={contenido} onCambiar={onCambiar} />
           : <PanelDescripcion pestana={pestana} contenido={contenido} onCambiar={onCambiar} />;
   return (

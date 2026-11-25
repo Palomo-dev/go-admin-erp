@@ -41172,6 +41172,151 @@
       "noDisponible": "Applying a template to a location turns on once its migration is applied.",
       "avisoFormulario": "Your location site is created with the {tipo} template. It stays as a draft until you publish it.",
       "avisoCambioTipo": "When you save, the location site switches to the {tipo} template. If it already has its own changes they are kept: we will ask before applying it."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Review source",
+        "recomendado": "Recommended",
+        "real": {
+          "titulo": "Real only",
+          "ayuda": "Only reviews from your customers. If a product has none, it shows «Be the first to review»."
+        },
+        "hastaN": {
+          "titulo": "Real + samples until N",
+          "ayuda": "Fills in with sample reviews while the product doesn't have the real ones you ask for. Once they arrive, the samples go away on their own.",
+          "quitar": "Remove samples at",
+          "reales": "real",
+          "menos": "One less",
+          "mas": "One more"
+        },
+        "generated": {
+          "titulo": "Samples only",
+          "ayuda": "Many random sample reviews, as today. They count in the average and in the stars on product cards."
+        },
+        "nota": "New stores start on «Real only»; existing stores stay as they are. Applies to every product in the store.",
+        "deLaTienda": "This is the store's source: this section hasn't changed it.",
+        "nombres": {
+          "real": "Real only",
+          "hastaN": "Real + samples",
+          "generated": "Samples only"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Show «Verified purchase» on samples",
+        "ayuda": "Sample reviews don't come from real customers. Showing them as verified purchases is the store's decision; Colombia's Superintendence of Industry and Commerce may consider it misleading advertising."
+      },
+      "aviso": {
+        "titulo": "Your customers see sample reviews",
+        "texto": "Source: «{origen}». They look like normal reviews and count in the average and in the stars. Real reviews that arrive aren't shown until you change the source.",
+        "textoHastaN": "Source: «{origen}». They look like normal reviews and count in the average and in the stars, until the product has {n} real reviews.",
+        "cambiar": "Switch to Real only",
+        "nota": "This notice shows while the source is «Samples only» or «Real + samples». With «Real only» it doesn't."
+      },
+      "ajustes": {
+        "boton": "Review settings",
+        "titulo": "Review settings",
+        "descripcion": "Apply to the whole store",
+        "origen": "Review source: {origen}",
+        "origenAyuda": "Chosen in the editor, in the Product Reviews section.",
+        "abrirEditor": "Open editor",
+        "publicacion": "Publishing",
+        "moderar": "Moderate before publishing",
+        "moderarAyuda": "Off, each review goes live as soon as it arrives. Same setting as «Approve reviews automatically», reversed.",
+        "quien": "Who can write",
+        "cualquiera": "Any customer",
+        "compradores": "Buyers only",
+        "quienAyuda": "With «Buyers only» the store asks customers to sign in to My account or for their email and order number, and checks it before saving. Those reviews show «Verified purchase».",
+        "fotos": "Allow photos",
+        "fotosAyuda": "Up to 3 per review, 5 MB each.",
+        "correo": "Ask for reviews by email",
+        "enviar": "Send «How was your purchase?»",
+        "enviarAyuda": "With your store's brand and sender.",
+        "dias": "Days after delivery",
+        "diasAyuda": "Counted from when the order becomes «Delivered». 1 to 30 days.",
+        "menos": "One day less",
+        "mas": "One day more",
+        "recordatorio": "Send a reminder",
+        "recordatorioAyuda": "If they haven't reviewed, just one, 5 days later. Never more than 2 emails per order.",
+        "remitente": "Sender",
+        "dominioVerificado": "Verified domain",
+        "sinDominio": "Without a verified domain, it's sent with your store's name from the fallback address. Never with the GO Admin brand.",
+        "cancelar": "Cancel",
+        "guardar": "Save",
+        "guardado": "Review settings saved.",
+        "error": "We couldn't save: {mensaje}",
+        "errorCarga": "We couldn't load the review settings.",
+        "reintentar": "Retry",
+        "soloLectura": "Read only: ask for the «Edit website» permission to change these settings."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "Pending",
+          "approved": "Published",
+          "rejected": "Hidden",
+          "all": "All"
+        },
+        "estados": {
+          "pending": "Pending",
+          "approved": "Published",
+          "rejected": "Hidden"
+        },
+        "vacio": {
+          "pending": "You have no pending reviews.",
+          "approved": "You haven't published any reviews yet.",
+          "rejected": "You have no hidden reviews.",
+          "all": "You don't have reviews yet. They arrive when a customer rates a product on your site."
+        },
+        "detalle": "Review by {autor}",
+        "publicar": "Publish",
+        "ocultar": "Hide",
+        "responder": "Reply",
+        "editarRespuesta": "Edit reply",
+        "publicarYResponder": "Publish and reply",
+        "guardarRespuesta": "Save reply",
+        "responderComo": "Reply as {tienda}",
+        "responderComoTienda": "Reply as the store",
+        "respuestaAyuda": "Published below the review with your store's name.",
+        "respuestaPlaceholder": "Say thanks and reply kindly.",
+        "destacar": "Feature this review",
+        "destacarAyuda": "Shown first on the product page and in the Carousel style. Up to 3 per product.",
+        "destacada": "Featured",
+        "quitarDestacada": "Remove from featured",
+        "ocultarFoto": "Hide photo",
+        "mostrarFoto": "Show photo",
+        "fotoOculta": "Hidden photo: not shown in the store",
+        "foto": "Photo {n} by {autor}",
+        "llegoPor": "Came from: {canal}",
+        "canales": {
+          "ficha": "product page",
+          "correo": "email after delivery",
+          "pedido": "Order lookup",
+          "cuenta": "My account"
+        },
+        "correo": "Email: {correo} (not published)",
+        "pedido": "Order {numero}",
+        "entregado": "delivered on {fecha}",
+        "sinTexto": "No text: star rating only.",
+        "publicada": "You published the review.",
+        "oculta": "You hid the review.",
+        "respondida": "Your reply was saved.",
+        "destacadaOk": "You featured the review.",
+        "quitadaDestacada": "You removed the review from featured.",
+        "fotoOcultada": "You hid the photo.",
+        "fotoMostrada": "The photo is visible in the store again.",
+        "publicarTodas": "Publish all {n}",
+        "pieTodas": "{n} to review · they appear on the product page once you approve them",
+        "kpis": {
+          "etiqueta": "Reviews summary",
+          "porRevisar": "To review",
+          "masVieja": "Oldest, {fecha}",
+          "publicadas": "Published",
+          "mes": "+{n} in 30 days",
+          "promedio": "Published average",
+          "soloClientes": "Customer reviews only",
+          "verificadas": "Verified purchase",
+          "deTotal": "{n} of {total}"
+        }
+      }
     }
   },
   "roles": {

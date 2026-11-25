@@ -41182,6 +41182,151 @@
       "noDisponible": "Aplicar um modelo à unidade é ativado quando a migração for aplicada.",
       "avisoFormulario": "O site da unidade é criado com o modelo de {tipo}. Fica em rascunho até você publicá-lo.",
       "avisoCambioTipo": "Ao salvar, o site da unidade passa para o modelo de {tipo}. Se já tiver alterações próprias, elas são mantidas: perguntaremos antes de aplicá-lo."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Origem das avaliações",
+        "recomendado": "Recomendado",
+        "real": {
+          "titulo": "Somente reais",
+          "ayuda": "Somente avaliações dos seus clientes. Se um produto não tiver, aparece «Seja o primeiro a avaliar»."
+        },
+        "hastaN": {
+          "titulo": "Reais + exemplos até ter N",
+          "ayuda": "Completa com avaliações de exemplo enquanto o produto não tiver as reais pedidas. Quando chegam, os exemplos saem sozinhos.",
+          "quitar": "Tirar exemplos ao ter",
+          "reales": "reais",
+          "menos": "Uma a menos",
+          "mas": "Uma a mais"
+        },
+        "generated": {
+          "titulo": "Somente exemplos",
+          "ayuda": "Muitas avaliações de exemplo, aleatórias, como hoje. Contam na média e nas estrelas dos cartões."
+        },
+        "nota": "As lojas novas começam em «Somente reais»; as que já existem continuam como estão. Vale para todos os produtos da loja.",
+        "deLaTienda": "É a origem da loja: esta seção não a mudou.",
+        "nombres": {
+          "real": "Somente reais",
+          "hastaN": "Reais + exemplos",
+          "generated": "Somente exemplos"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Mostrar «Compra verificada» nas de exemplo",
+        "ayuda": "As avaliações de exemplo não são de clientes reais. Mostrá-las como compra verificada é decisão da loja; a Superintendência de Indústria e Comércio (Colômbia) pode considerá-lo publicidade enganosa."
+      },
+      "aviso": {
+        "titulo": "Seus clientes veem avaliações de exemplo",
+        "texto": "Origem: «{origen}». Aparecem como avaliações normais e contam na média e nas estrelas. As avaliações reais que chegarem não aparecem enquanto você não mudar a origem.",
+        "textoHastaN": "Origem: «{origen}». Aparecem como avaliações normais e contam na média e nas estrelas, até o produto ter {n} avaliações reais.",
+        "cambiar": "Mudar para Somente reais",
+        "nota": "Este aviso aparece enquanto a origem for «Somente exemplos» ou «Reais + exemplos». Com «Somente reais» não aparece."
+      },
+      "ajustes": {
+        "boton": "Ajustes de avaliações",
+        "titulo": "Ajustes de avaliações",
+        "descripcion": "Valem para toda a loja",
+        "origen": "Origem das avaliações: {origen}",
+        "origenAyuda": "É escolhida no editor, na seção Avaliações do produto.",
+        "abrirEditor": "Abrir editor",
+        "publicacion": "Publicação",
+        "moderar": "Moderar antes de publicar",
+        "moderarAyuda": "Desligado, cada avaliação é publicada assim que chega. É o mesmo ajuste que «Aprovar avaliações automaticamente», ao contrário.",
+        "quien": "Quem pode escrever",
+        "cualquiera": "Qualquer cliente",
+        "compradores": "Somente compradores",
+        "quienAyuda": "Com «Somente compradores» a loja pede para entrar em Minha conta ou o e-mail e o número do pedido, e confere antes de salvar. Essas avaliações saem com «Compra verificada».",
+        "fotos": "Permitir fotos",
+        "fotosAyuda": "Até 3 por avaliação, 5 MB cada uma.",
+        "correo": "Pedir avaliação por e-mail",
+        "enviar": "Enviar «O que achou da sua compra?»",
+        "enviarAyuda": "Com a marca e o remetente da sua loja.",
+        "dias": "Dias depois da entrega",
+        "diasAyuda": "Conta a partir de quando o pedido passa a «Entregue». De 1 a 30 dias.",
+        "menos": "Um dia a menos",
+        "mas": "Um dia a mais",
+        "recordatorio": "Enviar um lembrete",
+        "recordatorioAyuda": "Se não avaliou, um só, 5 dias depois. Nunca mais de 2 e-mails por pedido.",
+        "remitente": "Remetente",
+        "dominioVerificado": "Domínio verificado",
+        "sinDominio": "Sem domínio verificado, sai com o nome da sua loja pelo endereço de reserva. Nunca com a marca GO Admin.",
+        "cancelar": "Cancelar",
+        "guardar": "Salvar",
+        "guardado": "Salvamos os ajustes de avaliações.",
+        "error": "Não foi possível salvar: {mensaje}",
+        "errorCarga": "Não foi possível carregar os ajustes de avaliações.",
+        "reintentar": "Tentar de novo",
+        "soloLectura": "Somente leitura: peça a permissão «Editar site» para mudar estes ajustes."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "Pendentes",
+          "approved": "Publicadas",
+          "rejected": "Ocultas",
+          "all": "Todas"
+        },
+        "estados": {
+          "pending": "Pendente",
+          "approved": "Publicada",
+          "rejected": "Oculta"
+        },
+        "vacio": {
+          "pending": "Você não tem avaliações pendentes.",
+          "approved": "Você ainda não publicou avaliações.",
+          "rejected": "Você não tem avaliações ocultas.",
+          "all": "Você ainda não tem avaliações. Elas chegam quando um cliente avalia um produto no seu site."
+        },
+        "detalle": "Avaliação de {autor}",
+        "publicar": "Publicar",
+        "ocultar": "Ocultar",
+        "responder": "Responder",
+        "editarRespuesta": "Editar resposta",
+        "publicarYResponder": "Publicar e responder",
+        "guardarRespuesta": "Salvar resposta",
+        "responderComo": "Responder como {tienda}",
+        "responderComoTienda": "Responder como a loja",
+        "respuestaAyuda": "Publicada abaixo da avaliação com o nome da sua loja.",
+        "respuestaPlaceholder": "Agradeça e responda com gentileza.",
+        "destacar": "Destacar esta avaliação",
+        "destacarAyuda": "Aparece primeiro na página do produto e no estilo Carrossel. Até 3 por produto.",
+        "destacada": "Destacada",
+        "quitarDestacada": "Tirar dos destaques",
+        "ocultarFoto": "Ocultar foto",
+        "mostrarFoto": "Mostrar foto",
+        "fotoOculta": "Foto oculta: não aparece na loja",
+        "foto": "Foto {n} de {autor}",
+        "llegoPor": "Chegou por: {canal}",
+        "canales": {
+          "ficha": "página do produto",
+          "correo": "e-mail depois da entrega",
+          "pedido": "Consultar pedido",
+          "cuenta": "Minha conta"
+        },
+        "correo": "E-mail: {correo} (não é publicado)",
+        "pedido": "Pedido {numero}",
+        "entregado": "entregue em {fecha}",
+        "sinTexto": "Sem texto: só deu estrelas.",
+        "publicada": "Você publicou a avaliação.",
+        "oculta": "Você ocultou a avaliação.",
+        "respondida": "Salvamos sua resposta.",
+        "destacadaOk": "Você destacou a avaliação.",
+        "quitadaDestacada": "Você tirou a avaliação dos destaques.",
+        "fotoOcultada": "Você ocultou a foto.",
+        "fotoMostrada": "A foto voltou a aparecer na loja.",
+        "publicarTodas": "Publicar as {n}",
+        "pieTodas": "{n} para revisar · aparecem na página do produto quando você as aprova",
+        "kpis": {
+          "etiqueta": "Resumo de avaliações",
+          "porRevisar": "Para revisar",
+          "masVieja": "A mais antiga, {fecha}",
+          "publicadas": "Publicadas",
+          "mes": "+{n} em 30 dias",
+          "promedio": "Média publicada",
+          "soloClientes": "Somente avaliações de clientes",
+          "verificadas": "Com compra verificada",
+          "deTotal": "{n} de {total}"
+        }
+      }
     }
   },
   "roles": {

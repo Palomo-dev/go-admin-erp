@@ -823,3 +823,49 @@ export function leerOpcionesEtiquetasFicha(contenido: Contenido): OpcionesEtique
     propias: Array.isArray(c[k.propias]) ? (c[k.propias] as unknown[]) : null,
   };
 }
+
+// ─── Origen de las reseñas y «Compra verificada» en las de ejemplo (Figma 3123-88477) ───────────
+//
+// El origen (`reviews_source`) va en el contenido de la sección, sin columna nueva. Sin él manda el
+// de la tienda (`website_settings.reviews_default_source`): NULL en las tiendas anteriores al
+// 2026-11-25 (= ejemplos, como siempre) y `real` en las nuevas. El switch NO cuenta como «opción
+// nueva» del pintado (`CLAVES_NUEVAS_RESENAS`): ponerlo no cambia el aspecto de la sección.
+
+export const ORIGENES_RESENAS = ['real', 'mixed', 'auto', 'generated'] as const;
+export type OrigenResenas = (typeof ORIGENES_RESENAS)[number];
+/** Grupos del editor: «Solo reales», «Reales + ejemplos hasta tener N» (mixed o auto) y «Solo ejemplos». */
+export type GrupoOrigenResenas = 'real' | 'hasta_n' | 'generated';
+/** `false` = las reseñas de ejemplo sin «Compra verificada». Sin clave = como hoy (con la insignia). */
+export const CLAVE_EJEMPLOS_VERIFICADA = 'examples_verified_badge';
+
+export function esOrigenResenas(v: unknown): v is OrigenResenas {
+  return typeof v === 'string' && (ORIGENES_RESENAS as readonly string[]).includes(v);
+}
+
+/** Origen con que se pinta la sección: el suyo, si no el de la tienda, si no ejemplos (lo de siempre). */
+export function origenEfectivoResenas(contenido: Contenido, porDefectoTienda: unknown): OrigenResenas {
+  const c = (contenido ?? {}) as Record<string, unknown>;
+  if (esOrigenResenas(c.reviews_source)) return c.reviews_source;
+  if (esOrigenResenas(porDefectoTienda)) return porDefectoTienda;
+  return 'generated';
+}
+
+export function grupoOrigenResenas(o: OrigenResenas): GrupoOrigenResenas {
+  return o === 'real' ? 'real' : o === 'generated' ? 'generated' : 'hasta_n';
+}
+
+export function origenIncluyeEjemplos(o: OrigenResenas): boolean {
+  return o !== 'real';
+}
+
+/** N de «hasta tener N»: `min_visible` en mixed (10 por defecto) y `auto_switch_threshold` en auto (3). */
+export function umbralOrigenResenas(contenido: Contenido, o: OrigenResenas): number {
+  const c = (contenido ?? {}) as Record<string, unknown>;
+  if (o === 'auto') return entero(c.auto_switch_threshold, 1, 100) ?? 3;
+  return entero(c.min_visible, 1, 100) ?? 10;
+}
+
+export function ejemplosConVerificada(contenido: Contenido): boolean {
+  const c = (contenido ?? {}) as Record<string, unknown>;
+  return c[CLAVE_EJEMPLOS_VERIFICADA] !== false;
+}

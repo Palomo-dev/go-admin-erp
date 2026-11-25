@@ -27,10 +27,15 @@ import { esPlantillaTienda, TIPOS_PLANTILLA_TIENDA } from '@/components/sitio-we
 import { tiposDetalleFaltantes, type TipoPaginaDetalle } from '@/components/sitio-web/paginas/paginasDetalle';
 import { agotadoAhora } from '@/lib/services/website/cartaSede';
 import {
+  MAX_DESTACADAS_POR_PRODUCTO,
   actualizarResenaProducto,
+  cambiarFotoResena,
+  contarDestacadas,
   listarResenasProducto,
+  privadoDe,
   type EstadoResena,
 } from '@/lib/services/website/resenasProducto';
+import { COLUMNAS_AJUSTES_RESENAS, columnasDeCambios, leerAjustesResenas, type AjustesResenas } from '@/lib/website/ajustesResenas';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase' | 'memberId'>;
 
@@ -82,6 +87,30 @@ export interface ResenaTienda {
   respondidaEn: string | null;
   creadaEn: string;
   producto: { id: number; nombre: string } | null;
+  /** Moderación (Figma 4A-4D, 2026-11-25). Opcionales: el panel heredado no los trae. */
+  imagenes?: string[];
+  imagenesOcultas?: string[];
+  destacada?: boolean;
+  /** «Llegó por»: ficha | correo | pedido | cuenta; null = anterior al flujo. */
+  llegoPor?: string | null;
+  /** No se publica. */
+  correo?: string | null;
+  /** sesion | pedido | enlace; null = sin verificar. */
+  verificadaPor?: string | null;
+  pedido?: { id: string; numero: string; entregadoEn: string | null } | null;
+}
+
+/** Tarjetas de la pestaña Reseñas (Figma 4A). */
+export interface ResumenResenas {
+  porRevisar: number;
+  /** La pendiente más antigua (fecha de creación), si hay. */
+  pendienteMasVieja: string | null;
+  publicadas: number;
+  /** Publicadas en los últimos 30 días. */
+  publicadasMes: number;
+  /** Promedio de las publicadas (solo opiniones de clientes); 0 sin publicadas. */
+  promedio: number;
+  verificadas: number;
 }
 
 export interface RespuestaResenas {
@@ -90,14 +119,22 @@ export interface RespuestaResenas {
   pagina: number;
   tamano: number;
   puedeEditar: boolean;
+  resumen?: ResumenResenas;
 }
 
 export const TAMANO_PAGINA_RESENAS = 20;
-export type AccionResena = 'aprobar' | 'rechazar' | 'responder';
+/**
+ * - `aprobar` / `rechazar`: «Publicar» / «Ocultar» (los nombres de la UI cambiaron el 2026-11-25;
+ *   el estado de la BD sigue siendo approved / rejected).
+ * - `publicar`: publica y, si trae texto, responde en la misma escritura («Publicar y responder»).
+ * - `destacar` / `quitarDestacada`, `ocultarFoto` / `mostrarFoto` (con `foto`).
+ */
+export type AccionResena = 'aprobar' | 'rechazar' | 'responder' | 'publicar' | 'destacar' | 'quitarDestacada' | 'ocultarFoto' | 'mostrarFoto';
+export const ACCIONES_RESENA: readonly AccionResena[] = ['aprobar', 'rechazar', 'responder', 'publicar', 'destacar', 'quitarDestacada', 'ocultarFoto', 'mostrarFoto'];
 
 export class ErrorTienda extends Error {
   constructor(
-    public readonly codigo: 'sin_permiso' | 'peticion_invalida' | 'sin_ajustes' | 'no_encontrada',
+    public readonly codigo: 'sin_permiso' | 'peticion_invalida' | 'sin_ajustes' | 'no_encontrada' | 'limite_destacadas',
     public readonly status: number,
     mensaje: string,
   ) {
@@ -204,12 +241,26 @@ export async function leerResenasTienda(
   const permisos = await permisosSitio(ctx);
   if (!permisos.editar) throw new ErrorTienda('sin_permiso', 403, 'No tienes permiso para moderar reseñas.');
   const pagina = Math.max(1, Math.floor(filtros.pagina) || 1);
-  const { resenas, total } = await listarResenasProducto(getServiceClient(), ctx.organizationId, {
-    estado: filtros.estado,
-    pagina,
-    tamano: TAMANO_PAGINA_RESENAS,
-  });
+  const db = getServiceClient();
+  const [{ resenas, total }, resumen] = await Promise.all([
+    listarResenasProducto(db, ctx.organizationId, {
+      estado: filtros.estado,
+      pagina,
+      tamano: TAMANO_PAGINA_RESENAS,
+      columnas: 'moderacion',
+    }),
+    resumenResenas(db, ctx.organizationId),
+  ]);
+  // «Ver pedido»: número y entrega de los pedidos de la página (una consulta).
+  const idsPedido = Array.from(new Set(resenas.map((r) => r.order_id).filter((x): x is string => typeof x === 'string')));
+  const pedidos = new Map<string, { numero: string; entregadoEn: string | null }>();
+  if (idsPedido.length > 0) {
+    const { data, error } = await db.from('web_orders').select('id, order_number, delivered_at').eq('organization_id', ctx.organizationId).in('id', idsPedido);
+    if (error) throw error;
+    for (const p of (data ?? []) as { id: string; order_number: string; delivered_at: string | null }[]) pedidos.set(p.id, { numero: p.order_number, entregadoEn: p.delivered_at });
+  }
   return {
+    resumen,
     resenas: resenas.map((r) => ({
       id: r.id,
       autor: r.author_name,
@@ -223,6 +274,13 @@ export async function leerResenasTienda(
       respondidaEn: r.reply_at,
       creadaEn: r.created_at,
       producto: r.products ? { id: r.products.id, nombre: r.products.name } : null,
+      imagenes: r.images ?? [],
+      imagenesOcultas: privadoDe(r)?.hidden_images ?? [],
+      destacada: r.is_featured === true,
+      llegoPor: r.source ?? null,
+      correo: privadoDe(r)?.author_email ?? null,
+      verificadaPor: privadoDe(r)?.verification_method ?? null,
+      pedido: r.order_id && pedidos.has(r.order_id) ? { id: r.order_id, ...pedidos.get(r.order_id)! } : null,
     })),
     total,
     pagina,
@@ -233,24 +291,133 @@ export async function leerResenasTienda(
 
 const MAX_RESPUESTA = 1000;
 
-/** Aprueba, rechaza o responde una reseña. Exige `website.sites.edit`. */
-export async function moderarResenaTienda(ctx: Ctx, id: string, accion: AccionResena, respuesta?: string | null): Promise<void> {
+type ClienteServicio = ReturnType<typeof getServiceClient>;
+
+async function contarResenas(db: ClienteServicio, org: number, filtro: (q: any) => any): Promise<number> { // eslint-disable-line @typescript-eslint/no-explicit-any -- constructor de PostgREST
+  const { count, error } = await filtro(db.from('product_reviews').select('id', { count: 'exact', head: true }).eq('organization_id', org));
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Tarjetas de Reseñas: conteos exactos sin traer filas (head), en paralelo. */
+async function resumenResenas(db: ClienteServicio, org: number, ahora: Date = new Date()): Promise<ResumenResenas> {
+  const hace30 = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const [porRevisar, publicadas, publicadasMes, verificadas, ...estrellas] = await Promise.all([
+    contarResenas(db, org, (q) => q.eq('status', 'pending')),
+    contarResenas(db, org, (q) => q.eq('status', 'approved')),
+    contarResenas(db, org, (q) => q.eq('status', 'approved').gte('created_at', hace30)),
+    contarResenas(db, org, (q) => q.eq('status', 'approved').eq('is_verified_purchase', true)),
+    ...[1, 2, 3, 4, 5].map((n) => contarResenas(db, org, (q) => q.eq('status', 'approved').eq('rating', n))),
+  ]);
+  const vieja = await db.from('product_reviews').select('created_at').eq('organization_id', org).eq('status', 'pending').order('created_at', { ascending: true }).limit(1);
+  if (vieja.error) throw vieja.error;
+  const cantidad = estrellas.reduce((s, n) => s + n, 0);
+  const suma = estrellas.reduce((s, n, i) => s + n * (i + 1), 0);
+  return {
+    porRevisar,
+    pendienteMasVieja: (vieja.data as { created_at: string }[] | null)?.[0]?.created_at ?? null,
+    publicadas,
+    publicadasMes,
+    promedio: cantidad > 0 ? Math.round((suma / cantidad) * 10) / 10 : 0,
+    verificadas,
+  };
+}
+
+/**
+ * Modera una reseña. Exige `website.sites.edit`.
+ * - aprobar / rechazar / responder: como siempre.
+ * - publicar: aprueba y, con texto, responde (una sola escritura).
+ * - destacar: hasta 3 por producto (409 `limite_destacadas`).
+ * - ocultarFoto / mostrarFoto: mueve la foto entre la lista pública y la privada.
+ */
+export async function moderarResenaTienda(ctx: Ctx, id: string, accion: AccionResena, respuesta?: string | null, foto?: string | null): Promise<void> {
   const permisos = await permisosSitio(ctx);
   if (!permisos.editar) throw new ErrorTienda('sin_permiso', 403, 'No tienes permiso para moderar reseñas.');
+  const db = getServiceClient();
+  const noExiste = () => new ErrorTienda('no_encontrada', 404, 'Esa reseña no existe.');
+
+  if (accion === 'ocultarFoto' || accion === 'mostrarFoto') {
+    if (typeof foto !== 'string' || !foto.startsWith('https://') || foto.length > 500) throw new ErrorTienda('peticion_invalida', 400, 'Falta la foto.');
+    const r = await cambiarFotoResena(db, ctx.organizationId, id, foto, accion === 'ocultarFoto');
+    if (!r) throw noExiste();
+    return;
+  }
+
+  if (accion === 'destacar') {
+    const { data, error } = await db.from('product_reviews').select('product_id').eq('id', id).eq('organization_id', ctx.organizationId).maybeSingle();
+    if (error) throw error;
+    if (!data) throw noExiste();
+    const otras = await contarDestacadas(db, ctx.organizationId, (data as { product_id: number }).product_id, id);
+    if (otras >= MAX_DESTACADAS_POR_PRODUCTO) {
+      throw new ErrorTienda('limite_destacadas', 409, `Ya hay ${MAX_DESTACADAS_POR_PRODUCTO} opiniones destacadas en este producto. Quita una para destacar otra.`);
+    }
+  }
+
   let texto: string | null | undefined;
-  if (accion === 'responder') {
+  if (accion === 'responder' || (accion === 'publicar' && typeof respuesta === 'string')) {
     texto = typeof respuesta === 'string' ? respuesta.trim() : '';
     if (texto.length > MAX_RESPUESTA) throw new ErrorTienda('peticion_invalida', 400, `La respuesta admite hasta ${MAX_RESPUESTA} caracteres.`);
     if (texto === '') texto = null;
   }
-  const r = await actualizarResenaProducto(
-    getServiceClient(),
-    ctx.organizationId,
-    id,
-    accion === 'responder' ? { respuesta: texto } : { estado: accion === 'aprobar' ? 'approved' : 'rejected' },
-    ctx.userId,
-  );
-  if (!r) throw new ErrorTienda('no_encontrada', 404, 'Esa reseña no existe.');
+  const cambio =
+    accion === 'responder' ? { respuesta: texto }
+      : accion === 'publicar' ? { estado: 'approved' as const, ...(texto !== undefined ? { respuesta: texto } : {}) }
+        : accion === 'destacar' ? { destacada: true }
+          : accion === 'quitarDestacada' ? { destacada: false }
+            : { estado: accion === 'aprobar' ? ('approved' as const) : ('rejected' as const) };
+  const r = await actualizarResenaProducto(db, ctx.organizationId, id, cambio, ctx.userId);
+  if (!r) throw noExiste();
+}
+
+// ─── Ajustes de reseñas (Figma 3C) ───────────────────────────────────────────
+
+export interface AjustesResenasTienda extends AjustesResenas {
+  /** Con qué nombre y desde qué dirección salen los correos a compradores. */
+  remitente: { nombre: string; correo: string | null; dominioVerificado: boolean };
+  puedeEditar: boolean;
+}
+
+/** Lee los ajustes (fila principal) y el remitente. Exige `website.sites.edit`. */
+export async function leerAjustesResenasTienda(ctx: Ctx): Promise<AjustesResenasTienda> {
+  const permisos = await permisosSitio(ctx);
+  if (!permisos.editar) throw new ErrorTienda('sin_permiso', 403, 'No tienes permiso para ver el sitio web.');
+  const db = getServiceClient();
+  const [ajustes, org, dominios] = await Promise.all([
+    db.from('website_settings').select(COLUMNAS_AJUSTES_RESENAS).eq('organization_id', ctx.organizationId).is('branch_id', null).maybeSingle(),
+    db.from('organizations').select('name').eq('id', ctx.organizationId).maybeSingle(),
+    db.from('email_domains').select('from_email, is_default').eq('organization_id', ctx.organizationId).eq('status', 'verified'),
+  ]);
+  if (ajustes.error) throw ajustes.error;
+  if (org.error) throw org.error;
+  if (dominios.error) throw dominios.error;
+  const lista = (dominios.data ?? []) as { from_email: string | null; is_default: boolean | null }[];
+  const dominio = lista.find((d) => d.is_default) ?? lista[0] ?? null;
+  return {
+    ...leerAjustesResenas(ajustes.data as Record<string, unknown> | null),
+    remitente: {
+      nombre: ((org.data as { name?: string } | null)?.name ?? '').trim(),
+      correo: dominio?.from_email ?? null,
+      dominioVerificado: !!dominio?.from_email,
+    },
+    puedeEditar: permisos.editar,
+  };
+}
+
+/** Guarda los cambios de la hoja (solo lo que viene). Exige `website.sites.edit`. */
+export async function guardarAjustesResenasTienda(ctx: Ctx, body: unknown): Promise<AjustesResenasTienda> {
+  const permisos = await permisosSitio(ctx);
+  if (!permisos.editar) throw new ErrorTienda('sin_permiso', 403, 'No tienes permiso para editar el sitio web.');
+  const cambios = columnasDeCambios(body);
+  if (!cambios.ok) throw new ErrorTienda('peticion_invalida', 400, cambios.mensaje);
+  const { data, error } = await getServiceClient()
+    .from('website_settings')
+    .update({ ...cambios.columnas, updated_at: new Date().toISOString() })
+    .eq('organization_id', ctx.organizationId)
+    .is('branch_id', null)
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new ErrorTienda('sin_ajustes', 404, 'El sitio aún no tiene ajustes. Créalo desde el Resumen.');
+  return leerAjustesResenasTienda(ctx);
 }
 
 export function respuestaErrorTienda(error: unknown, ruta: string, organizationId: number): Response {

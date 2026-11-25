@@ -41172,6 +41172,151 @@
       "noDisponible": "Appliquer un modèle à un site s’active une fois sa migration appliquée.",
       "avisoFormulario": "Le site de cet établissement est créé avec le modèle {tipo}. Il reste en brouillon jusqu’à sa publication.",
       "avisoCambioTipo": "À l’enregistrement, le site de l’établissement passe au modèle {tipo}. S’il contient déjà vos modifications, elles sont conservées : nous vous demanderons avant de l’appliquer."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Origine des avis",
+        "recomendado": "Recommandé",
+        "real": {
+          "titulo": "Réels uniquement",
+          "ayuda": "Uniquement les avis de vos clients. Si un produit n'en a pas, on voit «Soyez le premier à donner votre avis»."
+        },
+        "hastaN": {
+          "titulo": "Réels + exemples jusqu'à N",
+          "ayuda": "Complète avec des avis d'exemple tant que le produit n'a pas les avis réels demandés. Ensuite, les exemples disparaissent d'eux-mêmes.",
+          "quitar": "Retirer les exemples à",
+          "reales": "réels",
+          "menos": "Un de moins",
+          "mas": "Un de plus"
+        },
+        "generated": {
+          "titulo": "Exemples uniquement",
+          "ayuda": "Beaucoup d'avis d'exemple, aléatoires, comme aujourd'hui. Ils comptent dans la moyenne et dans les étoiles des fiches."
+        },
+        "nota": "Les nouvelles boutiques commencent en «Réels uniquement» ; celles qui existent restent comme elles sont. Vaut pour tous les produits de la boutique.",
+        "deLaTienda": "C'est l'origine de la boutique : cette section ne l'a pas modifiée.",
+        "nombres": {
+          "real": "Réels uniquement",
+          "hastaN": "Réels + exemples",
+          "generated": "Exemples uniquement"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Afficher «Achat vérifié» sur les exemples",
+        "ayuda": "Les avis d'exemple ne viennent pas de vrais clients. Les afficher comme achats vérifiés est la décision de la boutique ; la Superintendance de l'industrie et du commerce (Colombie) peut le considérer comme de la publicité trompeuse."
+      },
+      "aviso": {
+        "titulo": "Vos clients voient des avis d'exemple",
+        "texto": "Origine : «{origen}». Ils apparaissent comme des avis normaux et comptent dans la moyenne et les étoiles. Les vrais avis qui arrivent ne s'affichent pas tant que vous ne changez pas l'origine.",
+        "textoHastaN": "Origine : «{origen}». Ils apparaissent comme des avis normaux et comptent dans la moyenne et les étoiles, jusqu'à ce que le produit ait {n} avis réels.",
+        "cambiar": "Passer à Réels uniquement",
+        "nota": "Cet avertissement s'affiche tant que l'origine est «Exemples uniquement» ou «Réels + exemples». Avec «Réels uniquement», il ne s'affiche pas."
+      },
+      "ajustes": {
+        "boton": "Réglages des avis",
+        "titulo": "Réglages des avis",
+        "descripcion": "Valables pour toute la boutique",
+        "origen": "Origine des avis : {origen}",
+        "origenAyuda": "Se choisit dans l'éditeur, dans la section Avis produit.",
+        "abrirEditor": "Ouvrir l'éditeur",
+        "publicacion": "Publication",
+        "moderar": "Modérer avant de publier",
+        "moderarAyuda": "Désactivé, chaque avis est publié dès son arrivée. C'est le même réglage que «Approuver les avis automatiquement», inversé.",
+        "quien": "Qui peut écrire",
+        "cualquiera": "Tout client",
+        "compradores": "Acheteurs uniquement",
+        "quienAyuda": "Avec «Acheteurs uniquement», la boutique demande de se connecter à Mon compte ou l'e-mail et le numéro de commande, et le vérifie avant d'enregistrer. Ces avis portent «Achat vérifié».",
+        "fotos": "Autoriser les photos",
+        "fotosAyuda": "Jusqu'à 3 par avis, 5 Mo chacune.",
+        "correo": "Demander un avis par e-mail",
+        "enviar": "Envoyer «Qu'avez-vous pensé de votre achat ?»",
+        "enviarAyuda": "Avec la marque et l'expéditeur de votre boutique.",
+        "dias": "Jours après la livraison",
+        "diasAyuda": "Compté à partir du passage de la commande à «Livrée». De 1 à 30 jours.",
+        "menos": "Un jour de moins",
+        "mas": "Un jour de plus",
+        "recordatorio": "Envoyer un rappel",
+        "recordatorioAyuda": "S'il n'a pas donné son avis, un seul, 5 jours plus tard. Jamais plus de 2 e-mails par commande.",
+        "remitente": "Expéditeur",
+        "dominioVerificado": "Domaine vérifié",
+        "sinDominio": "Sans domaine vérifié, l'e-mail part avec le nom de votre boutique depuis l'adresse de secours. Jamais avec la marque GO Admin.",
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer",
+        "guardado": "Réglages des avis enregistrés.",
+        "error": "Impossible d'enregistrer : {mensaje}",
+        "errorCarga": "Impossible de charger les réglages des avis.",
+        "reintentar": "Réessayer",
+        "soloLectura": "Lecture seule : demandez l'autorisation «Modifier le site web» pour changer ces réglages."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "En attente",
+          "approved": "Publiés",
+          "rejected": "Masqués",
+          "all": "Tous"
+        },
+        "estados": {
+          "pending": "En attente",
+          "approved": "Publié",
+          "rejected": "Masqué"
+        },
+        "vacio": {
+          "pending": "Vous n'avez aucun avis en attente.",
+          "approved": "Vous n'avez encore publié aucun avis.",
+          "rejected": "Vous n'avez aucun avis masqué.",
+          "all": "Vous n'avez pas encore d'avis. Ils arrivent quand un client note un produit sur votre site."
+        },
+        "detalle": "Avis de {autor}",
+        "publicar": "Publier",
+        "ocultar": "Masquer",
+        "responder": "Répondre",
+        "editarRespuesta": "Modifier la réponse",
+        "publicarYResponder": "Publier et répondre",
+        "guardarRespuesta": "Enregistrer la réponse",
+        "responderComo": "Répondre en tant que {tienda}",
+        "responderComoTienda": "Répondre en tant que boutique",
+        "respuestaAyuda": "Publiée sous l'avis avec le nom de votre boutique.",
+        "respuestaPlaceholder": "Remerciez et répondez avec amabilité.",
+        "destacar": "Mettre en avant cet avis",
+        "destacarAyuda": "Apparaît en premier sur la fiche et dans le style Carrousel. Jusqu'à 3 par produit.",
+        "destacada": "En avant",
+        "quitarDestacada": "Retirer de la mise en avant",
+        "ocultarFoto": "Masquer la photo",
+        "mostrarFoto": "Afficher la photo",
+        "fotoOculta": "Photo masquée : elle ne s'affiche pas dans la boutique",
+        "foto": "Photo {n} de {autor}",
+        "llegoPor": "Arrivé par : {canal}",
+        "canales": {
+          "ficha": "fiche produit",
+          "correo": "e-mail après la livraison",
+          "pedido": "Suivi de commande",
+          "cuenta": "Mon compte"
+        },
+        "correo": "E-mail : {correo} (non publié)",
+        "pedido": "Commande {numero}",
+        "entregado": "livrée le {fecha}",
+        "sinTexto": "Sans texte : note en étoiles uniquement.",
+        "publicada": "Vous avez publié l'avis.",
+        "oculta": "Vous avez masqué l'avis.",
+        "respondida": "Votre réponse est enregistrée.",
+        "destacadaOk": "Vous avez mis l'avis en avant.",
+        "quitadaDestacada": "Vous avez retiré l'avis de la mise en avant.",
+        "fotoOcultada": "Vous avez masqué la photo.",
+        "fotoMostrada": "La photo est de nouveau visible dans la boutique.",
+        "publicarTodas": "Publier les {n}",
+        "pieTodas": "{n} à vérifier · ils apparaissent sur la fiche une fois approuvés",
+        "kpis": {
+          "etiqueta": "Résumé des avis",
+          "porRevisar": "À vérifier",
+          "masVieja": "Le plus ancien, {fecha}",
+          "publicadas": "Publiés",
+          "mes": "+{n} en 30 jours",
+          "promedio": "Moyenne publiée",
+          "soloClientes": "Avis clients uniquement",
+          "verificadas": "Achat vérifié",
+          "deTotal": "{n} sur {total}"
+        }
+      }
     }
   },
   "roles": {

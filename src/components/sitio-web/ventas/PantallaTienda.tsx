@@ -13,12 +13,15 @@
  * - Plantillas de producto y categoría: las páginas de detalle que Páginas no
  *   lista; «Editar» abre el editor.
  * - Reseñas: «Aprobar automáticamente» y la moderación con el kit
- *   (`ModeracionResenas`, por `/api/sitio-web/tienda/resenas` con permiso).
+ *   (`ModeracionResenas`, por `/api/sitio-web/tienda/resenas` con permiso), y «Ajustes de
+ *   reseñas» (`AjustesResenasHoja`, Figma 3131-92277: quién escribe, fotos y correo tras la entrega).
  */
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Boxes, EyeOff, FileText, Package, PackageX, Pencil, Plus, Star, Tags, type LucideIcon } from 'lucide-react';
+import { Boxes, EyeOff, FileText, Package, PackageX, Pencil, Plus, Settings, Star, Tags, type LucideIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useOrganization } from '@/lib/hooks/useOrganization';
 import {
   DataTable,
   EmptyState,
@@ -53,6 +56,7 @@ import { RAIZ_SITIO_WEB, rutaEditorSitio } from '../rutasSitioWeb';
 import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '../ui/iconosSitio';
 import { ICONO_INTERRUPTOR_CATALOGO, ICONO_PESTANA_TIENDA, iconoDestino } from './iconosVentas';
 import { ModeracionResenas } from './ModeracionResenas';
+import { AjustesResenasHoja } from './AjustesResenas';
 import { useTextosVentas, type TraductorVentas } from './textos';
 import { useCatalogoSede, useTiendaSitio } from './useTiendaSitio';
 import { ErrorApiVentas } from './useVentasSitio';
@@ -369,13 +373,18 @@ function Resenas({
   onAutoAprobar,
   onModerada,
   t,
+  rutaEditor,
 }: {
   datos: RespuestaTienda;
   onAutoAprobar: (v: boolean) => Promise<void>;
   onModerada: () => void;
   t: TraductorVentas;
+  rutaEditor: string | null;
 }) {
   const { toast } = useToast();
+  const tr = useTranslations('sitioWeb.resenas');
+  const { organization } = useOrganization() as { organization?: { name?: string | null } | null };
+  const [ajustes, setAjustes] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const alternar = async (v: boolean) => {
     setOcupado(true);
@@ -390,6 +399,12 @@ function Resenas({
   };
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setAjustes(true)} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+          <Settings aria-hidden="true" className={CLASE_TAMANO_ICONO.base} strokeWidth={TRAZO_ICONO} />
+          {tr('ajustes.boton')}
+        </button>
+      </div>
       <Tarjeta>
         <SettingRow titulo={t('tienda.resenas.autoAprobar')} descripcion={t('tienda.resenas.autoAprobarAyuda')} htmlFor="auto-aprobar-resenas">
           <Switch
@@ -400,7 +415,9 @@ function Resenas({
           />
         </SettingRow>
       </Tarjeta>
-      <ModeracionResenas t={t} puedeEditar={datos.permisos.editar} pendientes={datos.kpis.resenasPendientes} alCambiar={onModerada} />
+      <ModeracionResenas t={t} puedeEditar={datos.permisos.editar} pendientes={datos.kpis.resenasPendientes} alCambiar={onModerada} nombreTienda={organization?.name ?? null} />
+      {/* «Moderar» de la hoja es el mismo ajuste que el interruptor de arriba: al guardar se relee. */}
+      <AjustesResenasHoja abierto={ajustes} onAbiertoChange={setAjustes} rutaEditor={rutaEditor} alGuardar={onModerada} />
     </div>
   );
 }
@@ -474,7 +491,7 @@ export function PantallaTienda() {
                     <StatusBadge estado="pendiente" etiqueta={t('tienda.resenas.pendientes', { n: datos.kpis.resenasPendientes })} tamano="sm" />
                   </p>
                 )}
-                <Resenas datos={datos} onAutoAprobar={alternarAutoAprobar} onModerada={() => void refrescar()} t={t} />
+                <Resenas datos={datos} onAutoAprobar={alternarAutoAprobar} onModerada={() => void refrescar()} t={t} rutaEditor={plantillaProducto ? rutaEditorSitio(plantillaProducto.id) : null} />
               </>
             )}
           </div>

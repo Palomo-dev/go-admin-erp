@@ -696,6 +696,9 @@ export function mapIdentificationType(type: string | undefined): string {
     'CE': '22',  // Cédula extranjería
     'TI': '12',  // Tarjeta de identidad
     'PP': '41',  // Pasaporte
+    // Código que guardan `customers.identification_type` y `country_identification_types`
+    // («passport»): antes caía en '13' (cédula) y la DIAN recibía un pasaporte como cédula.
+    'PASSPORT': '41',
     'RC': '11',  // Registro civil
     'TE': '21',  // Tarjeta extranjería
     'NUIP': '91', // NUIP

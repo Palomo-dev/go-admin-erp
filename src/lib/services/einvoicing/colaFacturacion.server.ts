@@ -35,6 +35,8 @@ import {
   conceptoNotaCredito,
   elegirRango,
   mapearCliente,
+  clienteFacturaPedidoWeb,
+  leerFacturaPedidoWeb,
   DatosIncompletosError,
   DependenciaPendienteError,
   CONCEPTOS_NOTA_CREDITO,
@@ -284,6 +286,52 @@ async function conCodigosUnidad(db: SupabaseClient, lineas: LineaDocumento[] | n
   return filas.map((l) => ({ ...l, unit_measure_code: l.unit_measure_id != null ? codigos.get(l.unit_measure_id) ?? null : null }));
 }
 
+/**
+ * Adquiriente de una factura (o de la factura original de una nota crédito). Si la factura es la de
+ * un pedido de la tienda web con «factura a nombre de empresa» (`web_orders.billing_data`, migración
+ * 20261125061424), el documento, el nombre y el correo son los que pidió el comprador en el
+ * checkout (`clienteFacturaPedidoWeb`); si no, el cliente de la factura, como siempre. La nota
+ * crédito usa el mismo adquiriente que su factura.
+ */
+async function adquirienteFactura(
+  db: SupabaseClient,
+  organizationId: number,
+  f: Record<string, unknown> & { customer?: Record<string, unknown> | null },
+): Promise<{ cliente: ClienteDocumento | null; municipioId: string | null }> {
+  const clienteFactura = (f.customer as ClienteDocumento | null) ?? null;
+  const municipioCliente = (f.customer?.fiscal_municipality_id as string | null) ?? null;
+  const saleId = typeof f.sale_id === 'string' ? f.sale_id : null;
+  if (!saleId) return { cliente: clienteFactura, municipioId: municipioCliente };
+
+  const { data: pedido } = await db
+    .from('web_orders')
+    .select('billing_data')
+    .eq('organization_id', organizationId)
+    .eq('sale_id', saleId)
+    .not('billing_data', 'is', null)
+    .limit(1)
+    .maybeSingle();
+  const factura = leerFacturaPedidoWeb((pedido as { billing_data?: unknown } | null)?.billing_data);
+  if (!factura) return { cliente: clienteFactura, municipioId: municipioCliente };
+
+  let ficha: (ClienteDocumento & { fiscal_municipality_id?: string | null }) | null = null;
+  if (factura.customer_id) {
+    const { data } = await db
+      .from('customers')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .eq('id', factura.customer_id)
+      .maybeSingle();
+    ficha = (data as (ClienteDocumento & { fiscal_municipality_id?: string | null }) | null) ?? null;
+  } else {
+    // Sin ficha que facture (documento de otro cliente o pedido sin cliente): solo lo del pedido.
+  }
+  return {
+    cliente: clienteFacturaPedidoWeb(factura, clienteFactura, ficha),
+    municipioId: ficha?.fiscal_municipality_id ?? municipioCliente,
+  };
+}
+
 async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<Envio> {
   const { data: factura, error } = await db
     .from('invoice_sales')
@@ -296,8 +344,9 @@ async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<
 
   const ctx = await contextoOrganizacion(db, job.organization_id);
   const municipioSucursal = await codigoMunicipio(db, f.branch?.municipality_id);
+  const adquiriente = await adquirienteFactura(db, job.organization_id, f);
   const municipioCliente =
-    (await codigoMunicipio(db, (f.customer?.fiscal_municipality_id as string | null) ?? null)) ?? municipioSucursal ?? ctx.municipioOrg;
+    (await codigoMunicipio(db, adquiriente.municipioId)) ?? municipioSucursal ?? ctx.municipioOrg;
   const faltan: string[] = [];
   if (!municipioCliente) faltan.push('ni el cliente, ni la sucursal, ni la organización tienen municipio');
 
@@ -319,7 +368,7 @@ async function construirEnvioFactura(db: SupabaseClient, job: JobCola): Promise<
   const { payload, total } = construirFactura({
     factura: f as never,
     lineas: await conCodigosUnidad(db, lineas as LineaDocumento[] | null),
-    cliente: mapearCliente((f.customer as ClienteDocumento | null) ?? null, municipioCliente as string),
+    cliente: mapearCliente(adquiriente.cliente, municipioCliente as string),
     referencia,
     numberingRangeId: eleccion.rango!.factus_numbering_range_id as number,
     establecimiento: establecimiento(f.branch ?? null, ctx, municipioSucursal ?? ctx.municipioOrg),
@@ -374,8 +423,9 @@ async function construirEnvioNotaCredito(db: SupabaseClient, job: JobCola): Prom
 
   const ctx = await contextoOrganizacion(db, job.organization_id);
   const municipioSucursal = await codigoMunicipio(db, o.branch?.municipality_id);
+  const adquiriente = await adquirienteFactura(db, job.organization_id, o);
   const municipioCliente =
-    (await codigoMunicipio(db, (o.customer?.fiscal_municipality_id as string | null) ?? null)) ?? municipioSucursal ?? ctx.municipioOrg;
+    (await codigoMunicipio(db, adquiriente.municipioId)) ?? municipioSucursal ?? ctx.municipioOrg;
   if (!municipioCliente) throw new DatosIncompletosError(['ni el cliente, ni la sucursal, ni la organización tienen municipio']);
 
   const { data: lineas } = await db.from('invoice_items').select('*').eq('invoice_sales_id', n.id as string);
@@ -402,7 +452,7 @@ async function construirEnvioNotaCredito(db: SupabaseClient, job: JobCola): Prom
 
   const { payload, total } = construirNotaCredito({
     lineas: lineasNota,
-    cliente: mapearCliente((o.customer as ClienteDocumento | null) ?? null, municipioCliente),
+    cliente: mapearCliente(adquiriente.cliente, municipioCliente),
     referencia,
     numberingRangeId: eleccion.rango?.factus_numbering_range_id ?? null,
     numeroFacturaDian: String(o.einvoice_number),

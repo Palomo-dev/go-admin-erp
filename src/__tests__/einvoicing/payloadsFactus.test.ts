@@ -11,6 +11,8 @@ import {
   cantidadFactus,
   unidadFactus,
   mapearCliente,
+  clienteFacturaPedidoWeb,
+  leerFacturaPedidoWeb,
   elegirRango,
   construirFactura,
   construirNotaCredito,
@@ -79,6 +81,75 @@ describe('mapearCliente', () => {
   test('empresa con NIT → persona jurídica', () => {
     const c = mapearCliente({ identification_type: 'NIT', identification_number: '900123456', dv: 7, company_name: 'Empresa de prueba', customer_type: 'company' }, '11001');
     expect(c).toMatchObject({ identification_document_code: '31', dv: '7', company: 'Empresa de prueba', legal_organization_code: '1' });
+  });
+});
+
+describe('cliente: correo de factura y pasaporte (20261125061424)', () => {
+  test('billing_email manda sobre email; sin él, email como siempre', () => {
+    const base = { identification_type: 'cc', identification_number: '1020304050', first_name: 'Ana', email: 'ana@ejemplo.test' };
+    expect(mapearCliente({ ...base, billing_email: 'factura@ejemplo.test' }, '11001')).toMatchObject({ email: 'factura@ejemplo.test' });
+    expect(mapearCliente(base, '11001')).toMatchObject({ email: 'ana@ejemplo.test' });
+    expect(mapearCliente({ ...base, billing_email: '  ' }, '11001')).toMatchObject({ email: 'ana@ejemplo.test' });
+  });
+
+  test('«passport» (el código que guarda el ERP) viaja como pasaporte, no como cédula', () => {
+    const c = mapearCliente({ identification_type: 'passport', identification_number: 'AB12345', first_name: 'Ana' }, '11001');
+    expect(c.identification_document_code).toBe('41');
+  });
+});
+
+describe('factura pedida en el checkout de la tienda (web_orders.billing_data)', () => {
+  const nit = { tipo: 'NIT', numero: '900123456', dv: 8, razon_social: 'Empresa de prueba S.A.S.', correo: 'factura@ejemplo.test', customer_id: 'emp-1', perfil: 'empresa_creada' };
+  const comprador = { identification_type: null, identification_number: null, first_name: 'Ana', last_name: 'Pérez', email: 'ana@ejemplo.test', phone: '3001234567', address: 'Calle 1' };
+
+  test('leerFacturaPedidoWeb: valida tipo y campos; el DV solo en NIT', () => {
+    expect(leerFacturaPedidoWeb(null)).toBeNull();
+    expect(leerFacturaPedidoWeb({ ...nit, tipo: 'XX' })).toBeNull();
+    expect(leerFacturaPedidoWeb({ ...nit, correo: '' })).toBeNull();
+    expect(leerFacturaPedidoWeb(nit)).toMatchObject({ tipo: 'NIT', numero: '900123456', dv: 8, customer_id: 'emp-1' });
+    expect(leerFacturaPedidoWeb({ ...nit, tipo: 'CC', numero: '1020304050', dv: 3 })).toMatchObject({ tipo: 'CC', dv: null });
+  });
+
+  test('sin factura pedida: el cliente de la factura, como siempre', () => {
+    expect(clienteFacturaPedidoWeb(null, comprador)).toBe(comprador);
+  });
+
+  test('NIT sin ficha de empresa: persona jurídica con la razón social y el correo de la factura', () => {
+    const cliente = clienteFacturaPedidoWeb(leerFacturaPedidoWeb({ ...nit, customer_id: null }), comprador, null);
+    const f = mapearCliente(cliente, '11001');
+    expect(f).toMatchObject({
+      identification_document_code: '31', identification: '900123456', dv: '8', company: 'Empresa de prueba S.A.S.',
+      names: 'Empresa de prueba S.A.S.', email: 'factura@ejemplo.test', legal_organization_code: '1', address: 'Calle 1',
+    });
+  });
+
+  test('NIT con la ficha de la empresa: toma de ella tributo y responsabilidades', () => {
+    const ficha = { id: 'emp-1', identification_type: 'nit', identification_number: '900123456', customer_type: 'company', tribute_id: 18, fiscal_responsibilities: ['O-13'], address: 'Cra 7', email: 'otro@ejemplo.test' };
+    const f = mapearCliente(clienteFacturaPedidoWeb(leerFacturaPedidoWeb(nit), comprador, ficha), '11001');
+    expect(f).toMatchObject({ tribute_code: '01', responsibilities: ['O-13'], address: 'Cra 7', email: 'factura@ejemplo.test', legal_organization_code: '1' });
+  });
+
+  test('la ficha que no tiene ese documento no aporta datos fiscales (no se mezcla con otra persona)', () => {
+    const ajena = { id: 'emp-1', identification_number: '800999888', customer_type: 'company', tribute_id: 18, fiscal_responsibilities: ['O-13'] };
+    const f = mapearCliente(clienteFacturaPedidoWeb(leerFacturaPedidoWeb(nit), comprador, ajena), '11001');
+    expect(f).toMatchObject({ identification: '900123456', tribute_code: 'ZZ', responsibilities: ['R-99-PN'] });
+  });
+
+  test('NIT de persona natural (la ficha es la persona): legal 2, sin «company»', () => {
+    const persona = { id: 'p-1', identification_type: 'cc', identification_number: '1020304050', customer_type: 'person' };
+    const datos = leerFacturaPedidoWeb({ ...nit, numero: '1020304050', dv: 3, razon_social: 'Ana Pérez', customer_id: 'p-1' });
+    const f = mapearCliente(clienteFacturaPedidoWeb(datos, comprador, persona), '11001');
+    expect(f).toMatchObject({ identification_document_code: '31', identification: '1020304050', dv: '3', legal_organization_code: '2', names: 'Ana Pérez' });
+    expect(f).not.toHaveProperty('company');
+  });
+
+  test('cédula y pasaporte: el documento y el nombre del pedido, aunque la ficha tenga otro', () => {
+    const conOtro = { ...comprador, identification_type: 'cc', identification_number: '111' };
+    const cc = mapearCliente(clienteFacturaPedidoWeb(leerFacturaPedidoWeb({ ...nit, tipo: 'CC', numero: '1020304050', razon_social: 'Ana Pérez', customer_id: null }), conOtro, null), '11001');
+    expect(cc).toMatchObject({ identification_document_code: '13', identification: '1020304050', names: 'Ana Pérez', legal_organization_code: '2' });
+    expect(cc).not.toHaveProperty('dv');
+    const pa = mapearCliente(clienteFacturaPedidoWeb(leerFacturaPedidoWeb({ ...nit, tipo: 'PA', numero: 'AB12345', customer_id: null }), comprador, null), '11001');
+    expect(pa.identification_document_code).toBe('41');
   });
 });
 

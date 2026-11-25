@@ -6,6 +6,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  CLAVES_SELECTOR_FICHA,
+  CLAVES_GALERIA_FICHA_NUEVAS,
+  normalizarGaleriaFicha,
+  normalizarInfoFicha,
+  descripcionCortaFicha,
+  normalizarSelectorFicha,
+  textoElegirOpcion,
   CLAVES_AJUSTE_TIENDA,
   CLAVES_SECCION_TIENDA,
   DEFAULT_AJUSTES_CATEGORIAS,
@@ -443,5 +450,100 @@ describe('secciones nuevas', () => {
 
   test('paginador', () => {
     expect(normalizarPaginadorFicha({ prev_text: 'Anterior', next_text: '' })).toEqual({ prevText: 'Anterior', nextText: 'Pieza siguiente' });
+  });
+});
+
+// Figma «16 Sitio web», bloque 1 (2026-11-25): talla al abrir la ficha, cabecera, recuadro y textos.
+describe('selector de la ficha (product_actions)', () => {
+  test('sin claves = la ficha de hoy: primera disponible, cabecera y recuadro, textos de siempre', () => {
+    expect(normalizarSelectorFicha({})).toEqual({
+      inicial: 'first_available',
+      textoElegir: 'Elige tu {opción}',
+      cabecera: true,
+      textoCabecera: 'Selecciona una variante',
+      recuadro: true,
+      textos: { cantidad: 'Cantidad', sinStock: 'Sin stock', agotado: 'Agotado', agregado: '¡Agregado al carrito!' },
+    });
+    expect(normalizarSelectorFicha(null)).toEqual(normalizarSelectorFicha({}));
+  });
+
+  test('la pista de antes (`button_hint: auto`) no cambia nada: sigue la primera disponible', () => {
+    expect(normalizarSelectorFicha({ button_hint: 'auto' }).inicial).toBe('first_available');
+  });
+
+  test('con valores, y basura = default; texto vacío = el de siempre', () => {
+    const s = normalizarSelectorFicha({
+      initial_variant: 'customer',
+      choose_text: 'Escoge {opción}',
+      selector_header: false,
+      selected_summary: 'false',
+      text_quantity: '  ',
+      text_added: 'Listo',
+    });
+    expect(s).toMatchObject({ inicial: 'customer', textoElegir: 'Escoge {opción}', cabecera: false, recuadro: false });
+    expect(s.textos).toMatchObject({ cantidad: 'Cantidad', agregado: 'Listo' });
+    expect(normalizarSelectorFicha({ initial_variant: 'random', selector_header: 'si' })).toMatchObject({ inicial: 'first_available', cabecera: true });
+  });
+
+  test('«Elige tu {opción}» con el nombre del tipo de variante', () => {
+    expect(textoElegirOpcion('Elige tu {opción}', 'Talla')).toBe('Elige tu talla');
+    expect(textoElegirOpcion('Elige tu {opción}', '')).toBe('Elige una opción');
+    expect(textoElegirOpcion('Escoge {opción} primero', 'Color')).toBe('Escoge color primero');
+    expect(textoElegirOpcion('Escoge primero', 'Color')).toBe('Escoge primero');
+    // Igual que el texto de antes («Elige tu talla»).
+    expect(textoElegirOpcion('Elige tu {opción}', 'Talla')).toBe(textoAyudaVariante('Talla'));
+  });
+
+  test('las claves nuevas están declaradas como ajuste de product_actions', () => {
+    for (const k of CLAVES_SELECTOR_FICHA) expect(CLAVES_AJUSTE_TIENDA.product_actions).toContain(k);
+  });
+});
+
+// Figma «16 Sitio web», bloque 3 (2026-11-25): galería, cada control hace lo que dice.
+describe('galería de la ficha (product_gallery)', () => {
+  test('sin claves = la galería de hoy', () => {
+    expect(normalizarGaleriaFicha({})).toEqual({ proporcion: 'square', zoom: 'none', miniatura: 64, puntos: true, columnas: 3, sigueVariante: false });
+  });
+  test('con valores; basura = default', () => {
+    expect(normalizarGaleriaFicha({ aspect_ratio: '4/5', zoom: 'lightbox', thumb_size: '96', gallery_dots: false, gallery_grid_columns: '2', follow_variant: true })).toEqual({
+      proporcion: '4/5', zoom: 'lightbox', miniatura: 96, puntos: false, columnas: 2, sigueVariante: true,
+    });
+    expect(normalizarGaleriaFicha({ aspect_ratio: '1:1', zoom: 'lupa', thumb_size: 500, gallery_grid_columns: 7 })).toMatchObject({ proporcion: 'square', zoom: 'none', miniatura: 64, columnas: 3 });
+  });
+  test('las claves nuevas están declaradas como ajuste de product_gallery', () => {
+    for (const k of CLAVES_GALERIA_FICHA_NUEVAS) expect(CLAVES_AJUSTE_TIENDA.product_gallery).toContain(k);
+  });
+});
+
+// Figma «16 Sitio web», bloque 4 (2026-11-25): Información del producto, solo partes que funcionan.
+describe('información de la ficha (product_info)', () => {
+  test('sin lista = las 4 de siempre, en su orden', () => {
+    expect(normalizarInfoFicha({}).partes).toEqual(['sku', 'title', 'rating', 'price']);
+    expect(normalizarInfoFicha({}).textoSku).toBe('SKU:');
+  });
+  test('la lista manda el orden; las que la tienda no pinta se ignoran', () => {
+    const r = normalizarInfoFicha({
+      blocks: [
+        { id: 'title' }, { id: 'price' }, { id: 'savings' }, { id: 'variants' }, { id: 'share' },
+        { id: 'sku', visible: false }, { id: 'rating' }, { id: 'stock', visible: true }, { id: 'short_description', visible: false },
+      ],
+    });
+    expect(r.partes).toEqual(['title', 'price', 'savings', 'rating', 'stock']);
+  });
+  test('una de las 4 de siempre que la lista no nombra sigue visible, en su lugar', () => {
+    expect(normalizarInfoFicha({ blocks: [{ id: 'sku', visible: false }] }).partes).toEqual(['title', 'rating', 'price']);
+    expect(normalizarInfoFicha({ blocks: [{ id: 'savings' }] }).partes).toEqual(['sku', 'title', 'rating', 'price', 'savings']);
+  });
+  test('textos propios; vacío = el de siempre', () => {
+    expect(normalizarInfoFicha({ sku_label: 'Ref.', stock_text: '', out_of_stock_text: 'Sin unidades' })).toMatchObject({
+      textoSku: 'Ref.', textoDisponible: 'Disponible', textoAgotado: 'Sin unidades',
+    });
+  });
+  test('descripción corta: primer párrafo, cortado en palabra', () => {
+    expect(descripcionCortaFicha('Corte recto.\n\nSegundo párrafo')).toBe('Corte recto.');
+    expect(descripcionCortaFicha('')).toBe('');
+    const larga = descripcionCortaFicha('palabra '.repeat(60), 40);
+    expect(larga.endsWith('…')).toBe(true);
+    expect(larga.length).toBeLessThanOrEqual(40);
   });
 });

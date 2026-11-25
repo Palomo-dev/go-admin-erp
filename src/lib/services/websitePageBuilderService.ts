@@ -35,6 +35,8 @@ import {
   VARIANTE_RESERVA_PLANO_CATALOGO,
 } from '@/lib/services/website/seccionesCafeCatalogo';
 import { VARIANTE_PORTADA_EDITORIAL } from '@/lib/website/contrato/seccionesCafe';
+import { PARTES_INFO_FICHA, POR_PAGINA_CATEGORIA, TEXTOS_INFO_FICHA } from '@/lib/website/contrato/seccionesTienda';
+import { FILAS_ESPECIFICACIONES, TEXTOS_ENVIO_FICHA } from '@/lib/website/v2/seccionesFicha';
 import {
   CAMPO_PESTANAS_PRODUCTOS,
   OPCION_ESTILO_LISTA_TEXTO,
@@ -3598,65 +3600,15 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'Images',
     description: 'Galería de imágenes del producto con thumbnails y zoom',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Figma «16 Sitio web», bloque 3 (2026-11-25): «Disposición de thumbnails» (`layout`) repetía
+    // «Distribución» y «Miniaturas», y «Mostrar video» no tenía de dónde sacar el video: se quitan
+    // (lo guardado se conserva y se ignora). Proporción, zoom y tamaño de miniatura empiezan a
+    // funcionar; sus opciones y el resto de la galería están en `seccionesTiendaCatalogo.ts`.
     contentFields: [
-      {
-        key: 'layout',
-        label: 'Disposición de thumbnails',
-        type: 'select',
-        group: 'layout',
-        defaultValue: 'thumbs_bottom',
-        options: [
-          { value: 'thumbs_bottom', label: 'Thumbnails abajo' },
-          { value: 'thumbs_left', label: 'Thumbnails izquierda' },
-          { value: 'grid', label: 'Grid' },
-          { value: 'carousel', label: 'Carrusel' },
-          { value: 'stacked', label: 'Apiladas' },
-        ],
-      },
-      {
-        key: 'zoom',
-        label: 'Tipo de zoom',
-        type: 'select',
-        group: 'behavior',
-        defaultValue: 'hover',
-        options: [
-          { value: 'hover', label: 'Al pasar el mouse' },
-          { value: 'click', label: 'Al hacer clic' },
-          { value: 'lightbox', label: 'Lightbox' },
-          { value: 'none', label: 'Sin zoom' },
-        ],
-      },
-      {
-        key: 'aspect_ratio',
-        label: 'Relación de aspecto',
-        type: 'select',
-        group: 'layout',
-        defaultValue: 'square',
-        options: [
-          { value: 'square', label: 'Cuadrada (1:1)' },
-          { value: '4/3', label: '4:3' },
-          { value: '16/9', label: '16:9' },
-          { value: 'auto', label: 'Automática' },
-        ],
-      },
-      { key: 'show_video', label: 'Mostrar video', type: 'boolean', defaultValue: false, group: 'content' },
       // `show_badges` (sin cambiar clave ni default): la tienda lo lee como «etiquetas sobre la
       // foto». `false` oculta las etiquetas A de la ficha aunque Información del producto las pida
       // (panel «Etiquetas», `labels_placement` = foto o ambas). Solo cambió el nombre visible.
       { key: 'show_badges', label: 'Etiquetas sobre la foto', type: 'boolean', defaultValue: true, group: 'content', helpText: 'Apagado: no salen etiquetas sobre la foto, aunque Información del producto las pida.' },
-      {
-        key: 'thumb_size',
-        label: 'Tamaño de miniaturas',
-        type: 'range',
-        group: 'layout',
-        min: 40,
-        max: 120,
-        step: 5,
-        defaultValue: 80,
-        suffix: 'px',
-        showIf: { field: 'layout', in: ['thumbs_bottom', 'thumbs_left'] },
-        helpText: 'Tamaño de las miniaturas en píxeles',
-      },
     ],
   },
   {
@@ -3665,35 +3617,61 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'ShoppingBag',
     description: 'Bloques de información del producto: SKU, título, rating, precio, descripción',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Figma «16 Sitio web», bloque 4 (2026-11-25): solo partes que la tienda pinta. Ahorro,
+    // descripción corta y disponibilidad empiezan a funcionar; variantes, modificadores, cantidad y
+    // compartir se configuran en «Botones de compra» y el contador en Urgencia (lo guardado se
+    // ignora). Regla de lectura: `normalizarInfoFicha` (contrato de tienda).
     contentFields: [
       {
         key: 'blocks',
-        label: 'Bloques de información',
+        label: 'Partes',
         type: 'repeater',
         group: 'content',
         itemLabelKey: 'id',
+        helpText: 'Arrastra para ordenar. Apaga las que no quieras mostrar.',
+        maxItems: PARTES_INFO_FICHA.length,
+        // Lo que pinta la tienda sin lista: las 4 de siempre encendidas y las 3 nuevas apagadas.
+        defaultItems: PARTES_INFO_FICHA.map((id) => ({ id, visible: ['sku', 'title', 'rating', 'price'].includes(id) })),
         itemFields: [
           {
             key: 'id',
-            label: 'Tipo de bloque',
+            label: 'Parte',
             type: 'select',
             options: [
               { value: 'sku', label: 'SKU' },
               { value: 'title', label: 'Título' },
-              { value: 'rating', label: 'Valoración' },
+              { value: 'rating', label: 'Estrellas' },
               { value: 'price', label: 'Precio' },
               { value: 'savings', label: 'Ahorro' },
-              { value: 'countdown', label: 'Countdown' },
-              { value: 'short_description', label: 'Descripción breve' },
-              { value: 'variants', label: 'Variantes' },
-              { value: 'modifiers', label: 'Modificadores' },
-              { value: 'quantity', label: 'Cantidad' },
-              { value: 'stock', label: 'Stock' },
-              { value: 'share', label: 'Compartir' },
+              { value: 'short_description', label: 'Descripción corta' },
+              { value: 'stock', label: 'Disponibilidad' },
             ],
           },
           { key: 'visible', label: 'Visible', type: 'boolean', defaultValue: true },
         ],
+      },
+      {
+        key: 'sku_label',
+        label: 'Texto antes del SKU',
+        type: 'text',
+        group: 'content',
+        placeholder: TEXTOS_INFO_FICHA.sku,
+        helpText: 'Si el producto no tiene SKU, la línea no sale.',
+      },
+      {
+        key: 'stock_text',
+        label: 'Texto de disponibilidad',
+        type: 'text',
+        group: 'content',
+        placeholder: TEXTOS_INFO_FICHA.disponible,
+      },
+      {
+        key: 'out_of_stock_text',
+        label: 'Texto de agotado',
+        type: 'text',
+        group: 'content',
+        placeholder: TEXTOS_INFO_FICHA.agotado,
+        helpText: 'El aviso «Quedan N» sigue en Urgencia.',
       },
       { key: 'show_countdown', label: 'Mostrar countdown', type: 'boolean', defaultValue: true, group: 'behavior' },
     ],
@@ -3800,6 +3778,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'List',
     description: 'Tabla de atributos y especificaciones técnicas del producto',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Figma «16 Sitio web», bloque 5 (2026-11-25): «Por defecto» lee la ficha técnica del producto
+    // (Inventario › producto: columnas y filas propias), como «Íconos» y «Panel». Antes buscaba una
+    // tabla que no existe y nunca pintaba nada. Regla: `normalizarEspecificacionesFicha`.
     contentFields: [
       {
         key: 'title',
@@ -3812,28 +3793,56 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         key: 'layout',
         label: 'Disposición',
         type: 'select',
-        group: 'layout',
+        group: 'content',
         defaultValue: 'table',
         options: [
           { value: 'table', label: 'Tabla' },
-          { value: 'grid', label: 'Grid' },
+          { value: 'grid', label: 'Rejilla' },
           { value: 'list', label: 'Lista' },
         ],
       },
       {
+        key: 'spec_rows',
+        label: 'Filas',
+        type: 'repeater',
+        group: 'content',
+        itemLabelKey: 'id',
+        maxItems: FILAS_ESPECIFICACIONES.length,
+        helpText: 'Salen de Inventario › producto › Ficha técnica. Arrastra para ordenar.',
+        defaultItems: FILAS_ESPECIFICACIONES.map((id) => ({ id, visible: true })),
+        itemFields: [
+          {
+            key: 'id',
+            label: 'Fila',
+            type: 'select',
+            options: [
+              { value: 'marca', label: 'Marca' },
+              { value: 'referencia', label: 'Referencia' },
+              { value: 'medidas', label: 'Medidas' },
+              { value: 'peso', label: 'Peso' },
+              { value: 'garantia', label: 'Garantía' },
+              { value: 'categoria', label: 'Categoría' },
+              { value: 'propias', label: 'Filas propias del producto' },
+            ],
+          },
+          { key: 'visible', label: 'Visible', type: 'boolean', defaultValue: true },
+        ],
+      },
+      {
         key: 'show_empty',
-        label: 'Mostrar atributos vacíos',
+        label: 'Mostrar filas vacías',
         type: 'boolean',
         defaultValue: false,
         group: 'content',
-        helpText: 'Muestra atributos sin valor',
+        helpText: 'Con «—» cuando el producto no tiene el dato.',
       },
       {
         key: 'group_by_category',
-        label: 'Agrupar por categoría',
+        label: 'Agrupar',
         type: 'boolean',
         defaultValue: true,
-        group: 'layout',
+        group: 'content',
+        helpText: '«General» y «Del producto» por separado.',
       },
     ],
   },
@@ -3881,6 +3890,9 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'Truck',
     description: 'Información de envío, tiempos y política de devoluciones',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Figma «16 Sitio web», bloque 2, opción B del dueño (2026-11-25): cada línea usa el dato real
+    // del ERP si existe (tiempo de entrega de las zonas de envío, «envío gratis desde»); si no, el
+    // texto de aquí, que vacío es la frase de siempre. La parte «Envío» de la Descripción dice lo mismo.
     contentFields: [
       {
         key: 'title',
@@ -3897,6 +3909,15 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
       },
       {
+        key: 'delivery_time_text',
+        label: 'Tiempo de entrega',
+        type: 'text',
+        placeholder: TEXTOS_ENVIO_FICHA.entrega,
+        group: 'content',
+        helpText: 'Si configuras zonas de envío con tiempo de entrega (Logística), sale ese y no este texto.',
+        showIf: { field: 'show_delivery_time', in: [true, undefined] },
+      },
+      {
         key: 'show_shipping_cost',
         label: 'Mostrar costo de envío',
         type: 'boolean',
@@ -3904,11 +3925,43 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         group: 'content',
       },
       {
+        key: 'shipping_cost_text',
+        label: 'Costo de envío',
+        type: 'text',
+        placeholder: TEXTOS_ENVIO_FICHA.costo,
+        group: 'content',
+        helpText: 'Si tienes «Envío gratis desde» configurado, sale ese monto y no este texto.',
+        showIf: { field: 'show_shipping_cost', in: [true, undefined] },
+      },
+      {
         key: 'show_return_policy',
         label: 'Mostrar política de devoluciones',
         type: 'boolean',
         defaultValue: true,
         group: 'content',
+      },
+      {
+        key: 'return_policy_text',
+        label: 'Tu política de cambios y devoluciones',
+        type: 'text',
+        placeholder: TEXTOS_ENVIO_FICHA.devoluciones,
+        group: 'content',
+        showIf: { field: 'show_return_policy', in: [true, undefined] },
+      },
+      {
+        key: 'show_coverage',
+        label: 'Mostrar cobertura',
+        type: 'boolean',
+        defaultValue: true,
+        group: 'content',
+      },
+      {
+        key: 'coverage_text',
+        label: 'Cobertura',
+        type: 'text',
+        placeholder: TEXTOS_ENVIO_FICHA.cobertura,
+        group: 'content',
+        showIf: { field: 'show_coverage', in: [true, undefined] },
       },
       {
         key: 'custom_message',
@@ -3938,17 +3991,20 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'Filter',
     description: 'Pills de subcategorías, selector de ordenamiento y toggle de vista',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Figma «16 Sitio web», bloque 6 (2026-11-25): «Posición de los filtros» funciona (arriba,
+    // columna lateral o panel). Opciones de orden, orden al entrar y conteo: `seccionesTiendaCatalogo.ts`.
     contentFields: [
       {
         key: 'filter_position',
-        label: 'Posición de filtros',
+        label: 'Posición de los filtros',
         type: 'select',
-        group: 'layout',
+        group: 'content',
         defaultValue: 'top',
+        helpText: 'En el celular siempre van en el panel del botón «Filtros».',
         options: [
-          { value: 'top', label: 'Barra superior' },
-          { value: 'sidebar', label: 'Sidebar izquierdo' },
-          { value: 'drawer', label: 'Drawer móvil' },
+          { value: 'top', label: 'Arriba' },
+          { value: 'sidebar', label: 'Columna lateral' },
+          { value: 'drawer', label: 'Panel' },
         ],
       },
       { key: 'show_sort', label: 'Mostrar ordenamiento', type: 'boolean', defaultValue: true, group: 'content' },
@@ -3961,10 +4017,55 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'LayoutGrid',
     description: 'Grid de productos de la categoría con paginación',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Figma «16 Sitio web», bloque 6 (2026-11-25): columnas, productos por página y paginación
+    // funcionan. Sin tocar: 4 columnas (3 desde tableta), el tamaño de página del sitio y números.
     contentFields: [
-      { key: 'columns', label: 'Columnas', type: 'number', defaultValue: 4, min: 1, max: 6, group: 'layout' },
-      { key: 'max_items', label: 'Productos por página', type: 'number', defaultValue: 12, min: 1, max: 48, group: 'data' },
-      { key: 'empty_message', label: 'Mensaje sin productos', type: 'text', placeholder: 'No hay productos en esta categoría', group: 'content' },
+      {
+        key: 'columns',
+        label: 'Columnas en computador',
+        type: 'select',
+        group: 'content',
+        defaultValue: '4',
+        options: [
+          { value: '2', label: '2' },
+          { value: '3', label: '3' },
+          { value: '4', label: '4' },
+          { value: '5', label: '5' },
+        ],
+      },
+      {
+        key: 'mobile_columns',
+        label: 'Columnas en celular',
+        type: 'select',
+        group: 'content',
+        defaultValue: '2',
+        options: [
+          { value: '1', label: '1' },
+          { value: '2', label: '2' },
+        ],
+      },
+      {
+        key: 'max_items',
+        label: 'Productos por página',
+        type: 'select',
+        group: 'content',
+        helpText: 'Sin elegir: el ajuste general del sitio.',
+        options: POR_PAGINA_CATEGORIA.map((n) => ({ value: String(n), label: String(n) })),
+      },
+      {
+        key: 'pagination',
+        label: 'Paginación',
+        type: 'select',
+        group: 'content',
+        defaultValue: 'numbers',
+        helpText: '«Ver más» agrega la página siguiente debajo; «Al bajar» lo hace sola al llegar al final.',
+        options: [
+          { value: 'numbers', label: 'Números' },
+          { value: 'load_more', label: 'Ver más' },
+          { value: 'infinite', label: 'Al bajar' },
+        ],
+      },
+      { key: 'empty_message', label: 'Texto si no hay productos', type: 'text', placeholder: 'No hay productos en esta categoría', group: 'content' },
     ],
   },
   {
@@ -3996,7 +4097,14 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     variants: [{ id: 'default', label: 'Por defecto' }],
     contentFields: [
       { key: 'title', label: 'Título', type: 'text', placeholder: 'Sobre esta categoría', group: 'content' },
-      { key: 'content', label: 'Contenido', type: 'textarea', placeholder: 'Texto descriptivo para SEO...', group: 'content' },
+      {
+        key: 'content',
+        label: 'Contenido',
+        type: 'textarea',
+        placeholder: 'Texto descriptivo para SEO...',
+        group: 'content',
+        helpText: 'Línea en blanco = párrafo nuevo. **negrita** y [texto](https://… o /ruta) para un enlace.',
+      },
     ],
   },
 ];

@@ -1167,6 +1167,91 @@ export function normalizarAjustesFiltrosCategoria(content: Record<string, unknow
   return { subcategoryStyle: unoDe(c.subcategory_style, ESTILOS_SUBCATEGORIA, 'chips'), search: booleano(c.search, false) };
 }
 
+// ─── Página de categoría: orden, filtros y productos (Figma «16 Sitio web», bloque 6) ───────
+
+/** Órdenes del listado, en el orden de siempre de la lista. */
+export const ORDENES_CATEGORIA = ['best_selling', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'newest'] as const;
+export type OrdenCategoria = (typeof ORDENES_CATEGORIA)[number];
+export const ETIQUETAS_ORDEN_CATEGORIA: Readonly<Record<OrdenCategoria, string>> = {
+  best_selling: 'Más vendidos',
+  name_asc: 'Nombre A-Z',
+  name_desc: 'Nombre Z-A',
+  price_asc: 'Precio: Menor a Mayor',
+  price_desc: 'Precio: Mayor a Menor',
+  newest: 'Más recientes',
+};
+/** `top` = la barra de hoy; `sidebar` = columna lateral; `drawer` = todo en el panel del botón «Filtros». */
+export const POSICIONES_FILTROS_CATEGORIA = ['top', 'sidebar', 'drawer'] as const;
+
+export interface OrdenFiltrosCategoria {
+  posicion: (typeof POSICIONES_FILTROS_CATEGORIA)[number];
+  /** Opciones que se ofrecen, en orden (al menos una). */
+  ordenes: OrdenCategoria[];
+  /** Orden al entrar (sin `?orden=`). Siempre está entre `ordenes`. */
+  ordenInicial: OrdenCategoria;
+  /** «N productos» en la barra (si el encabezado ya lo muestra, sale solo allí). */
+  mostrarConteo: boolean;
+}
+
+export const CLAVES_ORDEN_FILTROS_CATEGORIA = ['sort_options', 'default_sort', 'show_count'] as const;
+
+/** Lista `[{ id, visible }]` → ids visibles en orden; los que no nombra van al final (encendidos). */
+function listaOrdenada<T extends string>(valor: unknown, todos: readonly T[]): T[] {
+  if (!Array.isArray(valor)) return [...todos];
+  const vistos = new Set<string>();
+  const salida: T[] = [];
+  for (const crudo of valor) {
+    if (!crudo || typeof crudo !== 'object') continue;
+    const id = (crudo as Record<string, unknown>).id;
+    if (typeof id !== 'string' || !(todos as readonly string[]).includes(id) || vistos.has(id)) continue;
+    vistos.add(id);
+    if ((crudo as Record<string, unknown>).visible !== false) salida.push(id as T);
+  }
+  for (const id of todos) if (!vistos.has(id)) salida.push(id);
+  return salida;
+}
+
+/** Sin claves = la barra de hoy: arriba, las seis opciones, «Más vendidos» al entrar, con conteo. */
+export function normalizarOrdenFiltrosCategoria(content: Record<string, unknown> | null | undefined): OrdenFiltrosCategoria {
+  const c = content ?? {};
+  const lista = listaOrdenada(c.sort_options, ORDENES_CATEGORIA);
+  const ordenes = lista.length > 0 ? lista : [...ORDENES_CATEGORIA];
+  const pedido = unoDe(c.default_sort, ORDENES_CATEGORIA, 'best_selling');
+  return {
+    posicion: unoDe(c.filter_position, POSICIONES_FILTROS_CATEGORIA, 'top'),
+    ordenes,
+    ordenInicial: ordenes.includes(pedido) ? pedido : ordenes[0],
+    mostrarConteo: booleano(c.show_count, true),
+  };
+}
+
+export const PAGINACIONES_CATEGORIA = ['numbers', 'load_more', 'infinite'] as const;
+export const POR_PAGINA_CATEGORIA = [12, 24, 36, 48] as const;
+
+export interface ProductosCategoria {
+  /** Columnas en computador (2-5). */
+  columnas: number;
+  /** Columnas en el celular (1-2). */
+  columnasCelular: 1 | 2;
+  /** Productos por página; `null` = el ajuste general del sitio (lo de hoy). */
+  porPagina: number | null;
+  paginacion: (typeof PAGINACIONES_CATEGORIA)[number];
+}
+
+export const CLAVES_PRODUCTOS_CATEGORIA_NUEVAS = ['mobile_columns', 'pagination'] as const;
+
+/** `columns` y `max_items` ya existían (sin efecto en la tienda); ausentes = la rejilla de hoy. */
+export function normalizarProductosCategoria(content: Record<string, unknown> | null | undefined): ProductosCategoria {
+  const c = content ?? {};
+  const porPagina = enteroEntre(c.max_items, 1, 96, 0);
+  return {
+    columnas: enteroEntre(c.columns, 2, 5, 4),
+    columnasCelular: enteroEntre(c.mobile_columns, 1, 2, 2) as 1 | 2,
+    porPagina: porPagina > 0 ? porPagina : null,
+    paginacion: unoDe(c.pagination, PAGINACIONES_CATEGORIA, 'numbers'),
+  };
+}
+
 export interface FiltrosLaterales {
   /** Casillas de selección única = `?sub=` (lo que el servidor ya filtra). */
   showSubcategories: boolean;
@@ -1217,10 +1302,188 @@ export function textoAyudaVariante(nombreTipo: string | null | undefined): strin
   return n ? `Elige tu ${n.toLocaleLowerCase('es-CO')}` : 'Elige una opción';
 }
 
+// ─── Ficha: selector de talla, color u opción (Figma «16 Sitio web», bloque 1, 2026-11-25) ──
+
+/**
+ * `initial_variant`: qué pasa al abrir la ficha de un producto con tallas o colores.
+ * - `first_available`: se elige la primera opción con existencias (lo de hoy en todas las tiendas).
+ * - `customer`: no se elige nada; el botón dice qué falta («Elige tu talla») hasta que el cliente elija.
+ */
+export const VARIANTE_INICIAL = ['first_available', 'customer'] as const;
+
+/** Marcador de `choose_text` que se cambia por el nombre del tipo de variante («talla», «color»). */
+export const MARCADOR_OPCION = '{opción}';
+
+/** Textos de siempre del selector y de la compra. Vacío en el editor = estos. */
+export const TEXTOS_SELECTOR_FICHA = {
+  elegir: `Elige tu ${MARCADOR_OPCION}`,
+  cabecera: 'Selecciona una variante',
+  cantidad: 'Cantidad',
+  sinStock: 'Sin stock',
+  agotado: 'Agotado',
+  agregado: '¡Agregado al carrito!',
+} as const;
+
+export interface SelectorFicha {
+  inicial: (typeof VARIANTE_INICIAL)[number];
+  /** Texto del botón mientras el cliente no elige (solo con `customer`), con {@link MARCADOR_OPCION}. */
+  textoElegir: string;
+  /** Nombre del producto y la línea «Selecciona una variante» encima de las tallas. */
+  cabecera: boolean;
+  textoCabecera: string;
+  /** Recuadro con foto, nombre, SKU y precio de la opción elegida. */
+  recuadro: boolean;
+  textos: { cantidad: string; sinStock: string; agotado: string; agregado: string };
+}
+
+/** Claves de `product_actions` que lee {@link normalizarSelectorFicha}. */
+export const CLAVES_SELECTOR_FICHA = [
+  'initial_variant',
+  'choose_text',
+  'selector_header',
+  'selector_header_text',
+  'selected_summary',
+  'text_quantity',
+  'text_out_of_stock',
+  'text_sold_out',
+  'text_added',
+] as const;
+
+/** Lo que lee el selector de la ficha. Sin claves = la ficha de hoy (primera disponible, todo visible). */
+export function normalizarSelectorFicha(content: Record<string, unknown> | null | undefined): SelectorFicha {
+  const c = content ?? {};
+  const t = TEXTOS_SELECTOR_FICHA;
+  return {
+    inicial: unoDe(c.initial_variant, VARIANTE_INICIAL, 'first_available'),
+    textoElegir: texto(c.choose_text, t.elegir, MAX_ETIQUETA),
+    cabecera: booleano(c.selector_header, true),
+    textoCabecera: texto(c.selector_header_text, t.cabecera, MAX_ETIQUETA),
+    recuadro: booleano(c.selected_summary, true),
+    textos: {
+      cantidad: texto(c.text_quantity, t.cantidad, MAX_ETIQUETA),
+      sinStock: texto(c.text_out_of_stock, t.sinStock, MAX_ETIQUETA),
+      agotado: texto(c.text_sold_out, t.agotado, MAX_ETIQUETA),
+      agregado: texto(c.text_added, t.agregado, MAX_ETIQUETA),
+    },
+  };
+}
+
+/**
+ * Texto del botón mientras falta elegir: cambia {@link MARCADOR_OPCION} por el nombre del tipo de
+ * variante en minúscula. Sin nombre, la frase de siempre «Elige una opción».
+ */
+export function textoElegirOpcion(plantilla: string, nombreTipo: string | null | undefined): string {
+  const n = (nombreTipo ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-CO');
+  if (!plantilla.includes(MARCADOR_OPCION)) return plantilla;
+  if (!n) return plantilla === TEXTOS_SELECTOR_FICHA.elegir ? 'Elige una opción' : plantilla.split(MARCADOR_OPCION).join('opción');
+  return plantilla.split(MARCADOR_OPCION).join(n);
+}
+
+// ─── Ficha: product_info, solo partes que funcionan (Figma «16 Sitio web», bloque 4) ───────
+
+/**
+ * Partes de «Información del producto», en el orden de siempre. Las 4 primeras salen hoy; las 3
+ * nuevas (ahorro, descripción corta y disponibilidad) solo si el editor las enciende. Las otras que
+ * ofrecía el editor y la tienda nunca pintó (variantes, modificadores, cantidad y compartir viven en
+ * «Botones de compra»; el contador, en Urgencia) se ignoran si están guardadas.
+ */
+export const PARTES_INFO_FICHA = ['sku', 'title', 'rating', 'price', 'savings', 'short_description', 'stock'] as const;
+export type ParteInfoFicha = (typeof PARTES_INFO_FICHA)[number];
+const PARTES_INFO_DE_SIEMPRE: readonly ParteInfoFicha[] = ['sku', 'title', 'rating', 'price'];
+
+export const TEXTOS_INFO_FICHA = { sku: 'SKU:', disponible: 'Disponible', agotado: 'Agotado' } as const;
+
+export interface InfoFicha {
+  /** Partes visibles, en orden. */
+  partes: ParteInfoFicha[];
+  textoSku: string;
+  textoDisponible: string;
+  textoAgotado: string;
+}
+
+export const CLAVES_INFO_FICHA_NUEVAS = ['sku_label', 'stock_text', 'out_of_stock_text'] as const;
+
+/**
+ * `blocks` = `[{ id, visible }]` en el orden del editor. Sin lista, las 4 de siempre. Con lista:
+ * las marcadas visibles en su orden; una de las 4 de siempre que la lista no nombra sigue visible
+ * (así leía la tienda antes: solo `visible: false` la apagaba) en su lugar de siempre.
+ */
+export function normalizarInfoFicha(content: Record<string, unknown> | null | undefined): InfoFicha {
+  const c = content ?? {};
+  const textos = {
+    textoSku: texto(c.sku_label, TEXTOS_INFO_FICHA.sku, MAX_ETIQUETA),
+    textoDisponible: texto(c.stock_text, TEXTOS_INFO_FICHA.disponible, MAX_ETIQUETA),
+    textoAgotado: texto(c.out_of_stock_text, TEXTOS_INFO_FICHA.agotado, MAX_ETIQUETA),
+  };
+  if (!Array.isArray(c.blocks)) return { partes: [...PARTES_INFO_DE_SIEMPRE], ...textos };
+  const nombradas = new Set<string>();
+  const partes: ParteInfoFicha[] = [];
+  for (const b of c.blocks) {
+    if (typeof b !== 'object' || b === null) continue;
+    const id = (b as { id?: unknown }).id;
+    if (typeof id !== 'string' || !(PARTES_INFO_FICHA as readonly string[]).includes(id) || nombradas.has(id)) continue;
+    nombradas.add(id);
+    if ((b as { visible?: unknown }).visible !== false) partes.push(id as ParteInfoFicha);
+  }
+  const lugar = (p: ParteInfoFicha) => PARTES_INFO_FICHA.indexOf(p);
+  for (const p of PARTES_INFO_DE_SIEMPRE) {
+    if (nombradas.has(p)) continue;
+    const antes = partes.findIndex((x) => lugar(x) > lugar(p));
+    partes.splice(antes < 0 ? partes.length : antes, 0, p);
+  }
+  return { partes, ...textos };
+}
+
+/** Primer párrafo de la descripción en texto plano, hasta `max` caracteres (con «…» si se corta). */
+export function descripcionCortaFicha(textoPlano: string | null | undefined, max = 180): string {
+  const primero = (textoPlano ?? '').split(/\n\s*\n|\n/).map((t) => t.replace(/\s+/g, ' ').trim()).find(Boolean) ?? '';
+  if (primero.length <= max) return primero;
+  const corte = primero.slice(0, max - 1);
+  const espacio = corte.lastIndexOf(' ');
+  return `${(espacio > max * 0.6 ? corte.slice(0, espacio) : corte).trimEnd()}…`;
+}
+
 // ─── Ficha: product_gallery (ajuste, PLANO §2 ítem 26) ──────────────────────────────────────
 
 /** Valor nuevo de `gallery_layout`: 1 grande · 2 medianas · 1 grande. */
 export const GALERIA_MOSAICO = 'mosaic' as const;
+
+/**
+ * Galería de la ficha (Figma «16 Sitio web», bloque 3, 2026-11-25): «cada control hace lo que dice».
+ * `aspect_ratio`, `zoom` y `thumb_size` estaban en el editor sin efecto (MCP 2026-11-25: ninguna
+ * sección los guardó). Sin claves = la galería de hoy: foto cuadrada, sin zoom, miniaturas de 64 px,
+ * puntos encendidos, rejilla de 3 y la foto que no cambia al elegir talla o color.
+ */
+export const PROPORCIONES_FOTO_FICHA = ['square', '4/5', '3/4', '4/3', '16/9', 'auto'] as const;
+export const ZOOMS_GALERIA_FICHA = ['none', 'hover', 'click', 'lightbox'] as const;
+export const COLUMNAS_REJILLA_GALERIA = [2, 3, 4] as const;
+export const MINIATURA_GALERIA = { min: 40, max: 120, porDefecto: 64 } as const;
+
+export interface GaleriaFicha {
+  proporcion: (typeof PROPORCIONES_FOTO_FICHA)[number];
+  zoom: (typeof ZOOMS_GALERIA_FICHA)[number];
+  /** Lado de cada miniatura en px. */
+  miniatura: number;
+  puntos: boolean;
+  columnas: (typeof COLUMNAS_REJILLA_GALERIA)[number];
+  /** «Cambiar la foto al elegir talla o color»: la foto grande pasa a la primera de la opción. */
+  sigueVariante: boolean;
+}
+
+export const CLAVES_GALERIA_FICHA_NUEVAS = ['aspect_ratio', 'zoom', 'thumb_size', 'gallery_dots', 'gallery_grid_columns', 'follow_variant'] as const;
+
+export function normalizarGaleriaFicha(content: Record<string, unknown> | null | undefined): GaleriaFicha {
+  const c = content ?? {};
+  const col = enteroEntre(c.gallery_grid_columns, 2, 4, 3);
+  return {
+    proporcion: unoDe(c.aspect_ratio, PROPORCIONES_FOTO_FICHA, 'square'),
+    zoom: unoDe(c.zoom, ZOOMS_GALERIA_FICHA, 'none'),
+    miniatura: enteroEntre(c.thumb_size, MINIATURA_GALERIA.min, MINIATURA_GALERIA.max, MINIATURA_GALERIA.porDefecto),
+    puntos: booleano(c.gallery_dots, true),
+    columnas: col as GaleriaFicha['columnas'],
+    sigueVariante: booleano(c.follow_variant, false),
+  };
+}
 
 /** Columnas de la ficha en V2 (`product_gallery.contenido.page_layout`). Defaults = la ficha de hoy. */
 export interface DisenoFicha {
@@ -1477,9 +1740,11 @@ export const CLAVES_AJUSTE_TIENDA: Readonly<Record<string, readonly string[]>> =
   products_grid: ['tabs_style'],
   categories_grid: ['category_text_position', 'category_card_color', 'category_cta_icon'],
   category_header: ['layout'],
-  category_filters: ['subcategory_style', 'search'],
-  product_actions: ['show_price_in_button', 'button_hint'],
-  product_gallery: ['page_layout'],
+  category_filters: ['subcategory_style', 'search', ...CLAVES_ORDEN_FILTROS_CATEGORIA],
+  category_products: [...CLAVES_PRODUCTOS_CATEGORIA_NUEVAS],
+  product_actions: ['show_price_in_button', 'button_hint', ...CLAVES_SELECTOR_FICHA],
+  product_info: [...CLAVES_INFO_FICHA_NUEVAS],
+  product_gallery: ['page_layout', ...CLAVES_GALERIA_FICHA_NUEVAS],
 };
 
 /**

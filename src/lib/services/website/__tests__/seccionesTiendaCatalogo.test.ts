@@ -219,10 +219,14 @@ describe('ficha y página de categoría (B5)', () => {
     expect(c).toEqual({ gallery_layout: 'mosaic' });
   });
 
-  it('acciones: precio en el botón y pista de variante, apagados por defecto', () => {
+  it('acciones: precio en el botón apagado; talla al abrir = primera disponible (lo de hoy)', () => {
     const campos = def('product_actions').contentFields;
     expect(campos.find((f) => f.key === 'show_price_in_button')).toMatchObject({ type: 'boolean', defaultValue: false });
-    expect(campos.find((f) => f.key === 'button_hint')?.options?.map((o) => o.value)).toEqual(['none', 'auto']);
+    expect(campos.find((f) => f.key === 'initial_variant')).toMatchObject({ defaultValue: 'first_available' });
+    expect(campos.find((f) => f.key === 'initial_variant')?.options?.map((o) => o.value)).toEqual(['first_available', 'customer']);
+    expect(campos.find((f) => f.key === 'choose_text')?.showIf).toEqual({ field: 'initial_variant', equals: 'customer' });
+    for (const k of ['selector_header', 'selected_summary']) expect(campos.find((f) => f.key === k)).toMatchObject({ type: 'boolean', defaultValue: true });
+    expect(campos.some((f) => f.key === 'button_hint')).toBe(false);
   });
 
   it('encabezado partido y filtros de la barra de hoy', () => {

@@ -4,6 +4,8 @@
  * la ficha técnica. La tienda tiene la misma copia y `npm run verify:secciones-ficha` allá.
  */
 import {
+  leerTextosEnvio,
+  normalizarEspecificacionesFicha,
   CLAVES_NUEVAS_BENEFICIOS,
   CLAVES_NUEVAS_DESCRIPCION,
   CLAVES_NUEVAS_RELACIONADOS,
@@ -110,5 +112,47 @@ describe('ficha técnica propia', () => {
     expect(leerFilasPropias('no')).toEqual([]);
     expect(filasParaGuardar([{ nombre: ' ', valor: '' }])).toBeNull();
     expect(filasParaGuardar([{ nombre: 'Capacidad', valor: '251 L' }])).toEqual([{ nombre: 'Capacidad', valor: '251 L' }]);
+  });
+});
+
+// Figma «16 Sitio web», bloque 5 (2026-11-25): Especificaciones «Por defecto» con la ficha técnica real.
+describe('especificaciones «Por defecto» (spec_rows)', () => {
+  it('sin lista: las seis columnas y las filas propias al final', () => {
+    expect(normalizarEspecificacionesFicha({})).toEqual({
+      filas: ['marca', 'referencia', 'medidas', 'peso', 'garantia', 'categoria'],
+      filasPropias: true,
+      posicionPropias: 6,
+    });
+  });
+  it('orden y apagadas del editor; las propias donde se pusieron', () => {
+    expect(
+      normalizarEspecificacionesFicha({
+        spec_rows: [
+          { id: 'peso' }, { id: 'propias' }, { id: 'marca' }, { id: 'referencia', visible: false },
+          { id: 'medidas', visible: false }, { id: 'garantia', visible: false }, { id: 'categoria', visible: false }, { id: 'otra' },
+        ],
+      }),
+    ).toEqual({ filas: ['peso', 'marca'], filasPropias: true, posicionPropias: 1 });
+    expect(normalizarEspecificacionesFicha({ spec_rows: [{ id: 'propias', visible: false }] })).toMatchObject({ filasPropias: false });
+  });
+});
+
+// Figma «16 Sitio web», bloque 2, opción B (2026-11-25): textos de envío editables.
+describe('textos de «Envío y devoluciones»', () => {
+  it('sin claves: las frases de siempre y la cobertura visible', () => {
+    expect(leerTextosEnvio({})).toEqual({
+      entrega: '24-48 horas hábiles',
+      costo: 'Calculado al finalizar la compra',
+      devoluciones: '30 días para devoluciones',
+      cobertura: 'Envíos a todo el país',
+      conCobertura: true,
+    });
+  });
+  it('con textos del comercio; vacío = la frase de siempre', () => {
+    expect(leerTextosEnvio({ delivery_time_text: 'Llega en 3 días', return_policy_text: '  ', show_coverage: false })).toMatchObject({
+      entrega: 'Llega en 3 días',
+      devoluciones: '30 días para devoluciones',
+      conCobertura: false,
+    });
   });
 });

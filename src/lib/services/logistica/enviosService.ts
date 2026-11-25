@@ -15,7 +15,9 @@
  *
  * Columnas verificadas por MCP el 2026-11-24 (proyecto taqjemqjtumhwptchcxk): `shipments` no tiene
  * `trip_id` (el viaje va en metadata.trip_id); `shipping_zone_id` → shipping_zones; `sales` no
- * tiene número propio.
+ * tiene número propio. Desde el 2026-11-25 «Frágil» es la columna `shipments.is_fragile`
+ * (migración 20261125220000); la clave vieja `metadata.is_fragile` se sigue leyendo y se retira
+ * al guardar.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { canalDeEnvio } from '@/lib/logistica/despacho';
@@ -42,7 +44,7 @@ import {
 /** Tope de envíos del periodo que se traen (la lista filtra, cuenta y pagina en memoria). */
 export const MAX_FILAS_ENVIOS = 2000;
 
-const COLUMNAS_EXTRA = ['weight_kg', 'delivered_at', 'dispatched_at', 'picked_at', 'shipping_zone_id', 'notes', 'insurance_fee', 'customer_id'].join(', ');
+const COLUMNAS_EXTRA = ['weight_kg', 'delivered_at', 'dispatched_at', 'picked_at', 'shipping_zone_id', 'notes', 'insurance_fee', 'customer_id', 'is_fragile'].join(', ');
 
 const EMBEDS_ENVIOS = [
   'customer:customers(full_name, phone)',
@@ -70,6 +72,7 @@ export interface EnvioCrudoHistorial extends EnvioCrudo {
   notes: string | null;
   insurance_fee: number | string | null;
   customer_id: string | null;
+  is_fragile?: boolean | null;
   driver?: Uno<{ id: string; full_name: string | null; phone: string | null; vehicle_type: string | null }>;
   zone?: Uno<{ name: string | null }>;
 }
@@ -357,7 +360,7 @@ export async function leerEnvioEditable(db: SupabaseClient, organizationId: numb
       tipoPaquete: (texto(m.package_type) as DatosFormularioEnvio['tipoPaquete']) ?? 'small_box',
       pesoKg: numONulo(e.weight_kg),
       valorDeclarado: numONulo(e.declared_value),
-      fragil: m.is_fragile === true,
+      fragil: e.is_fragile === true || m.is_fragile === true,
       firma: m.requires_signature === true,
       modo: viajeId ? 'viaje' : e.fulfillment_mode === 'national_carrier' ? 'national_carrier' : 'own',
       domiciliarioId: e.driver_id,
@@ -396,7 +399,8 @@ export function metadataDeFormulario(d: DatosFormularioEnvio, previa: Record<str
   poner('sender_name', nulo(d.remitente));
   poner('sender_phone', nulo(d.telefonoRemitente));
   poner('package_type', d.tipoPaquete);
-  poner('is_fragile', d.fragil || null);
+  // «Frágil» vive en la columna `is_fragile` (20261125220000): la clave vieja de la metadata se retira.
+  poner('is_fragile', null);
   poner('requires_signature', d.firma || null);
   poner('barrio', nulo(d.barrio));
   poner('trip_id', d.modo === 'viaje' ? d.viajeId : null);
@@ -404,6 +408,23 @@ export function metadataDeFormulario(d: DatosFormularioEnvio, previa: Record<str
   poner('destination_stop_id', d.modo === 'viaje' ? d.paradaDestinoId : null);
   if (fuenteCosto) m.shipping_fee_source = fuenteCosto;
   return m;
+}
+
+/**
+ * Marca o desmarca «Frágil — manipular con cuidado» en un envío (formulario y diálogo «Imprimir
+ * guías»). Un UPDATE de la columna con el cliente de la sesión: la RLS de `shipments` exige el
+ * permiso de Logística (`fn_logistica_ve_todo`) y la organización sale del contexto de la sesión,
+ * nunca del cliente. Si la fila no se ve o no se puede tocar, lanza `SIN_PERMISO`.
+ */
+export async function marcarFragil(db: SupabaseClient, organizationId: number, id: string, fragil: boolean): Promise<void> {
+  const { data, error } = await db
+    .from('shipments')
+    .update({ is_fragile: fragil, updated_at: new Date().toISOString() })
+    .eq('organization_id', organizationId)
+    .eq('id', id)
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error('SIN_PERMISO');
 }
 
 export interface ResultadoGuardar {
@@ -428,6 +449,8 @@ export async function crearEnvio(
     if (!pedido) throw new Error('PEDIDO_NO_ENCONTRADO');
     const envio = await deliveryIntegrationService.createShipmentFromWebOrder(pedido);
     id = envio.id;
+    // La ruta única del pedido no sabe de «Frágil»: se marca en el envío recién creado.
+    if (d.fragil) await shipmentsService.updateShipment(id, { is_fragile: true });
   } else {
     const modo = fulfillmentDeModo(d.modo);
     const costo = Math.max(0, Number(d.costoEnvio) || 0);
@@ -455,6 +478,7 @@ export async function crearEnvio(
       total_cost: costo + seguro,
       expected_delivery_date: d.promesa ?? undefined,
       status: 'pending',
+      is_fragile: d.fragil,
       notes: nulo(d.notas) ?? undefined,
       metadata: metadataDeFormulario(d, null, extra.fuenteCosto),
       ...({ fulfillment_mode: modo, cod_status: cod > 0 ? 'pending' : null, shipping_zone_id: extra.zonaId } as Partial<ShipmentWithDetails>),
@@ -527,6 +551,7 @@ export async function actualizarEnvio(
     cambios.cod_status = cod > 0 ? 'pending' : null;
   }
   if (puede('notas')) cambios.notes = nulo(d.notas);
+  if (puede('fragil')) cambios.is_fragile = d.fragil;
   if (puede('tipoPaquete') || puede('remitente') || puede('viaje') || puede('fragil') || puede('firma') || puede('barrio')) {
     cambios.metadata = metadataDeFormulario(d, original.metadata, puede('costo') ? extra.fuenteCosto : null);
   }

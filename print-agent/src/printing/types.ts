@@ -355,6 +355,11 @@ export interface ShipmentLabelPayload {
   /** Codigo de barras de la guia de la transportadora. */
   carrierGuideCode: string | null;
   charge: ShipmentLabelCharge;
+  /**
+   * Nota de manipulacion bajo el cobro, en recuadro punteado: «FRAGIL · MANIPULAR CON CUIDADO ·
+   * ESTE LADO ARRIBA» cuando el envio esta marcado como fragil. null/ausente = no sale.
+   */
+  handling?: string | null;
   /** La guia impresa (`shipment_number`, con sufijo -k si hay varios paquetes). */
   guideNumber: string;
   /** «GUIA». */

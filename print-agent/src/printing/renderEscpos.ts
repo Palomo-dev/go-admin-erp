@@ -703,6 +703,7 @@ function shipmentLabelLines(l: ShipmentLabelPayload): {
   cells: string;
   carrier: string[];
   charge: string[];
+  handling: string[];
   after: string[];
 } {
   return {
@@ -717,6 +718,7 @@ function shipmentLabelLines(l: ShipmentLabelPayload): {
       .join('  '),
     carrier: l.carrierGuideText ? [l.carrierGuideLabel, l.carrierGuideText] : [],
     charge: [l.charge.title, l.charge.amount ?? null, l.charge.note].filter(Boolean) as string[],
+    handling: l.handling ? [l.handling] : [],
     after: [l.qrCaptionLong, l.footer].filter(Boolean) as string[],
   };
 }
@@ -759,6 +761,11 @@ export function printShipmentGuide(device: EscposDevice, payload: ShipmentGuideP
   if (l.charge.amount) device.size(...SIZE_DOUBLE).text(l.charge.amount).size(...SIZE_NORMAL);
   device.style('normal');
   for (const w of wrapText(l.charge.note, chars)) device.text(w);
+  if (r.handling.length) {
+    device.text(sepLight(chars)).style('b');
+    for (const line of r.handling) for (const w of wrapText(line, chars)) device.text(w);
+    device.style('normal').text(sepLight(chars));
+  }
   device.text(sep(chars));
   try {
     device.code128(l.guideNumber, { width: 2, height: 60 });
@@ -796,6 +803,11 @@ export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, 
   }
   lines.push(sep(chars));
   lines.push(...r.charge.flatMap((t) => wrapText(t, chars)));
+  if (r.handling.length) {
+    lines.push(sepLight(chars));
+    lines.push(...r.handling.flatMap((t) => wrapText(t, chars)));
+    lines.push(sepLight(chars));
+  }
   lines.push(sep(chars));
   lines.push(l.guideLabel);
   lines.push(`** ${l.guideNumber} **`);

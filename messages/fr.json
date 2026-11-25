@@ -69425,7 +69425,11 @@
           "confirmarTermica": "{count, plural, one {Imprimer # étiquette} other {Imprimer # étiquettes}}",
           "confirmarPdf": "{count, plural, one {Ouvrir le PDF de # étiquette} other {Ouvrir le PDF de # étiquettes}}",
           "confirmarA4": "{count, plural, one {Imprimer la feuille A4} other {Imprimer # feuilles A4}}",
-          "cancelar": "Annuler"
+          "cancelar": "Annuler",
+          "fragil": "Fragile — manipuler avec soin",
+          "fragilAyuda": "Enregistré sur l’envoi ; l’étiquette {numero} porte la mention « FRAGILE ».",
+          "fragilBloqueado": "Cet envoi est déjà parti : « Fragile » ne se modifie que pendant la préparation.",
+          "fragilError": "Impossible d’enregistrer « Fragile ». Réessayez."
         }
       },
       "form": {
@@ -69528,7 +69532,7 @@
           "pesoTotalAyuda": "Somme des lignes ; modifiable à la pesée.",
           "valorDeclarado": "Valeur déclarée",
           "valorDeclaradoAyuda": "Base de l’assurance du transporteur.",
-          "fragil": "Fragile",
+          "fragil": "Fragile — manipuler avec soin",
           "fragilAyuda": "Indiqué sur l’étiquette",
           "firma": "Demander une signature",
           "firmaAyuda": "Le destinataire signe à la livraison",
@@ -69642,7 +69646,14 @@
         "cerrar": "Fermer",
         "sinTrabajoTitulo": "Aucune étiquette à imprimer",
         "sinTrabajo": "Revenez à Logistique et choisissez « Imprimer l’étiquette » à nouveau."
-      }
+      },
+      "manipulacion": "FRAGILE · MANIPULER AVEC SOIN · HAUT",
+      "entregaEncomienda": "Colis · retrait au guichet",
+      "indicacionesTerminal": "Retrait au guichet sur présentation d’une pièce d’identité.",
+      "notaCobroTerminal": "Encaisser au guichet avant de remettre.",
+      "pieViaje": "Voyage {codigo}",
+      "pieViajeSalida": "Voyage {codigo}, départ {fecha}",
+      "vehiculoBus": "Car {placa}"
     }
   },
   "transporte": {

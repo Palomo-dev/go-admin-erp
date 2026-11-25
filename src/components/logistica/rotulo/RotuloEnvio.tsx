@@ -193,6 +193,13 @@ export function RotuloEnvio({ textos: l, formato = '10x15', className, style, on
         {texto(l.charge.note, { fontSize: u(8.5), lineHeight: 1.3 })}
       </section>
 
+      {/* Manipulación (Figma 3224:15741): recuadro punteado bajo el cobro, solo si el envío es frágil. */}
+      {l.handling && (
+        <section data-rotulo-manipulacion="" style={{ border: `${u(2)} dashed ${NEGRO}`, padding: `${u(5)} ${u(8)}`, textAlign: 'center' }}>
+          {texto(l.handling, { fontSize: u(10), fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1.25 })}
+        </section>
+      )}
+
       {!termica && <div style={{ flex: 1, minHeight: 0 }} />}
 
       {/* La guía: Code 128 + número + QR de seguimiento. */}

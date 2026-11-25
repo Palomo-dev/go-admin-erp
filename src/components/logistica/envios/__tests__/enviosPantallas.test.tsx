@@ -57,10 +57,11 @@ const ROTULO_PRUEBA = {
   id: 'e1', numero: 'DEL-WO-412-0031', qr: 'DEL-WO-412-0031', qrEsSeguimiento: false,
   remitente: { tienda: 'Tienda de prueba', iniciales: 'TP', logo: null, sede: 'Sede Centro', ciudad: 'Bogotá', telefono: '601 555 00 00' },
   destinatario: { nombre: 'Ana Gómez', direccion: 'Cra 45 #12-30', barrio: 'Chapinero', ciudad: 'Bogotá D.C.', departamento: 'Cundinamarca', telefono: '300 555 12 34', indicaciones: null },
-  paquete: { numero: 1, total: 1 }, pesoKg: 1.2, entrega: { tipo: 'propio', transportadora: null }, guiaExterna: null,
+  paquete: { numero: 1, total: 1 }, pesoKg: 1.2, entrega: { tipo: 'propio', transportadora: null }, guiaExterna: null, fragil: false, encomienda: null,
   cobro: { monto: '$ 128.900', anticipoPagado: false, pedirCodigo: true },
   pie: { momento: 'despachado', fecha: '24 nov 2026, 11:52', pedido: 'WO-412', vehiculo: null },
 };
+const guardarFragil = jest.fn<Promise<void>, [string, boolean]>(async () => undefined);
 const prepararRotulos = jest.fn(async (ids: string[]) => ids.map((id, i) => ({ ...ROTULO_PRUEBA, id, numero: i === 0 ? ROTULO_PRUEBA.numero : `DEL-WO-412-00${40 + i}` })));
 jest.mock('../../useImpresionLogistica', () => {
   const { rotulosParaImprimir, textosRotulo } = jest.requireActual('@/lib/logistica/rotuloEnvio');
@@ -73,6 +74,7 @@ jest.mock('../../useImpresionLogistica', () => {
     resolverRotulos: (d: unknown[], c: number) =>
       rotulosParaImprimir(d, c).map((x: { id: string }) => ({ id: x.id, textos: textosRotulo(x, t, (kg: number) => String(kg).replace('.', ',')) })),
     estacionRotulos: async () => ({ enLinea: false, impresoras: [] }),
+    guardarFragil: (id: string, v: boolean) => guardarFragil(id, v),
   };
   return { useImpresionLogistica: () => api };
 });
@@ -320,5 +322,30 @@ describe('Diálogos (2965:9890, 9958, 10022, 10078)', () => {
     const opciones = onImprimir.mock.calls[0][0];
     expect(opciones).toMatchObject({ copias: 1, formato: '10x15' });
     expect(opciones.rotulos.map((r: { textos: { guideNumber: string } }) => r.textos.guideNumber)).toEqual(['DEL-WO-412-0031', 'DEL-WO-412-0041']);
+  });
+
+  test('imprimir guías: «Frágil» se marca por guía, se guarda en el envío y la vista previa lo muestra', async () => {
+    pintar(<DialogoImprimirGuias abierto onAbiertoChange={() => undefined} envios={[enDialogo({ status: 'pending' })]} organizacion="Org 1" onImprimir={() => undefined} />);
+    const vista = await screen.findByTestId('vista-previa-guia');
+    expect(vista.textContent).not.toContain('FRÁGIL');
+    const interruptor = await screen.findByRole('switch', { name: 'Frágil — manipular con cuidado' });
+    fireEvent.click(interruptor);
+    await waitFor(() => expect(guardarFragil).toHaveBeenCalledWith('e1', true));
+    expect(vista.textContent).toContain('FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA');
+  });
+
+  test('imprimir guías: si no se puede guardar «Frágil», vuelve atrás y avisa', async () => {
+    guardarFragil.mockRejectedValueOnce(new Error('SIN_PERMISO'));
+    pintar(<DialogoImprimirGuias abierto onAbiertoChange={() => undefined} envios={[enDialogo({ status: 'pending' })]} organizacion="Org 1" onImprimir={() => undefined} />);
+    const vista = await screen.findByTestId('vista-previa-guia');
+    fireEvent.click(await screen.findByRole('switch', { name: 'Frágil — manipular con cuidado' }));
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith('No se pudo guardar «Frágil». Inténtalo otra vez.'));
+    expect(vista.textContent).not.toContain('FRÁGIL');
+  });
+
+  test('imprimir guías: un envío que ya salió no cambia «Frágil»', async () => {
+    pintar(<DialogoImprimirGuias abierto onAbiertoChange={() => undefined} envios={[enDialogo({ status: 'out_for_delivery' })]} organizacion="Org 1" onImprimir={() => undefined} />);
+    await screen.findByTestId('vista-previa-guia');
+    expect(((await screen.findByRole('switch', { name: 'Frágil — manipular con cuidado' })) as HTMLButtonElement).disabled).toBe(true);
   });
 });

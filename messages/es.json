@@ -69423,7 +69423,11 @@
           "confirmarTermica": "{count, plural, one {Imprimir # guía} other {Imprimir # guías}}",
           "confirmarPdf": "{count, plural, one {Abrir PDF de # guía} other {Abrir PDF de # guías}}",
           "confirmarA4": "{count, plural, one {Imprimir hoja A4} other {Imprimir # hojas A4}}",
-          "cancelar": "Cancelar"
+          "cancelar": "Cancelar",
+          "fragil": "Frágil — manipular con cuidado",
+          "fragilAyuda": "Se guarda en el envío y la guía {numero} lleva el aviso «FRÁGIL».",
+          "fragilBloqueado": "Este envío ya salió: «Frágil» solo se cambia mientras está en preparación.",
+          "fragilError": "No se pudo guardar «Frágil». Inténtalo otra vez."
         }
       },
       "form": {
@@ -69526,7 +69530,7 @@
           "pesoTotalAyuda": "Suma de las líneas; se puede corregir al pesar.",
           "valorDeclarado": "Valor declarado",
           "valorDeclaradoAyuda": "Base del seguro de la transportadora.",
-          "fragil": "Frágil",
+          "fragil": "Frágil — manipular con cuidado",
           "fragilAyuda": "Se marca en la guía",
           "firma": "Pedir firma",
           "firmaAyuda": "Quien recibe firma al entregar",
@@ -69640,7 +69644,14 @@
         "cerrar": "Cerrar",
         "sinTrabajoTitulo": "No hay guías para imprimir",
         "sinTrabajo": "Vuelve a Logística y elige «Imprimir guía» otra vez."
-      }
+      },
+      "manipulacion": "FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA",
+      "entregaEncomienda": "Encomienda · recoge en oficina",
+      "indicacionesTerminal": "Recoge en oficina presentando cédula.",
+      "notaCobroTerminal": "Cobrar en la oficina antes de entregar.",
+      "pieViaje": "Viaje {codigo}",
+      "pieViajeSalida": "Viaje {codigo}, sale {fecha}",
+      "vehiculoBus": "Bus {placa}"
     }
   },
   "transporte": {

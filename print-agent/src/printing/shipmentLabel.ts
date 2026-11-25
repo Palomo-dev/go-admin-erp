@@ -49,6 +49,7 @@ export function resolveShipmentLabel(payload: ShipmentGuidePrintPayload): Shipme
     charge: cod
       ? { kind: 'collect', title: 'COBRAR AL ENTREGAR', amount: cod, note: 'No entregue sin cobrar.' }
       : { kind: 'paid', title: 'PAGADO · NO COBRAR', note: 'El cliente ya pagó. No reciba dinero.' },
+    handling: payload.isFragile ? 'FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA' : null,
     guideNumber: number,
     guideLabel: 'GUÍA',
     qrData: number,

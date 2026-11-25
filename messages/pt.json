@@ -69435,7 +69435,11 @@
           "confirmarTermica": "{count, plural, one {Imprimir # guia} other {Imprimir # guias}}",
           "confirmarPdf": "{count, plural, one {Abrir PDF de # guia} other {Abrir PDF de # guias}}",
           "confirmarA4": "{count, plural, one {Imprimir folha A4} other {Imprimir # folhas A4}}",
-          "cancelar": "Cancelar"
+          "cancelar": "Cancelar",
+          "fragil": "Frágil — manusear com cuidado",
+          "fragilAyuda": "Fica salvo no envio e a etiqueta {numero} leva o aviso «FRÁGIL».",
+          "fragilBloqueado": "Este envio já saiu: «Frágil» só muda enquanto está em preparação.",
+          "fragilError": "Não foi possível salvar «Frágil». Tente novamente."
         }
       },
       "form": {
@@ -69538,7 +69542,7 @@
           "pesoTotalAyuda": "Soma das linhas; pode ser corrigido ao pesar.",
           "valorDeclarado": "Valor declarado",
           "valorDeclaradoAyuda": "Base do seguro da transportadora.",
-          "fragil": "Frágil",
+          "fragil": "Frágil — manusear com cuidado",
           "fragilAyuda": "Marcado na etiqueta",
           "firma": "Pedir assinatura",
           "firmaAyuda": "Quem recebe assina na entrega",
@@ -69652,7 +69656,14 @@
         "cerrar": "Fechar",
         "sinTrabajoTitulo": "Não há guias para imprimir",
         "sinTrabajo": "Volte a Logística e escolha «Imprimir guia» novamente."
-      }
+      },
+      "manipulacion": "FRÁGIL · MANUSEAR COM CUIDADO · ESTE LADO PARA CIMA",
+      "entregaEncomienda": "Encomenda · retirar no escritório",
+      "indicacionesTerminal": "Retirar no escritório apresentando documento de identidade.",
+      "notaCobroTerminal": "Cobrar no escritório antes de entregar.",
+      "pieViaje": "Viagem {codigo}",
+      "pieViajeSalida": "Viagem {codigo}, sai {fecha}",
+      "vehiculoBus": "Ônibus {placa}"
     }
   },
   "transporte": {

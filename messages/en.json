@@ -69425,7 +69425,11 @@
           "confirmarTermica": "{count, plural, one {Print # label} other {Print # labels}}",
           "confirmarPdf": "{count, plural, one {Open PDF of # label} other {Open PDF of # labels}}",
           "confirmarA4": "{count, plural, one {Print A4 sheet} other {Print # A4 sheets}}",
-          "cancelar": "Cancel"
+          "cancelar": "Cancel",
+          "fragil": "Fragile — handle with care",
+          "fragilAyuda": "Saved on the shipment; label {numero} carries the “FRAGILE” notice.",
+          "fragilBloqueado": "This shipment has already left: “Fragile” can only be changed while it is being prepared.",
+          "fragilError": "Couldn’t save “Fragile”. Try again."
         }
       },
       "form": {
@@ -69528,7 +69532,7 @@
           "pesoTotalAyuda": "Sum of the lines; can be corrected when weighed.",
           "valorDeclarado": "Declared value",
           "valorDeclaradoAyuda": "Basis for the carrier’s insurance.",
-          "fragil": "Fragile",
+          "fragil": "Fragile — handle with care",
           "fragilAyuda": "Marked on the label",
           "firma": "Ask for signature",
           "firmaAyuda": "The recipient signs on delivery",
@@ -69642,7 +69646,14 @@
         "cerrar": "Close",
         "sinTrabajoTitulo": "There are no labels to print",
         "sinTrabajo": "Go back to Logistics and choose “Print label” again."
-      }
+      },
+      "manipulacion": "FRAGILE · HANDLE WITH CARE · THIS SIDE UP",
+      "entregaEncomienda": "Parcel · pick up at the office",
+      "indicacionesTerminal": "Pick up at the office with an ID.",
+      "notaCobroTerminal": "Collect at the office before handing over.",
+      "pieViaje": "Trip {codigo}",
+      "pieViajeSalida": "Trip {codigo}, departs {fecha}",
+      "vehiculoBus": "Bus {placa}"
     }
   },
   "transporte": {

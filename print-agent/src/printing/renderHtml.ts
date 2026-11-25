@@ -588,6 +588,7 @@ function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload, paper: Paper
       ${line(l.charge.amount, 'font-size:22px;font-weight:bold')}
       ${line(l.charge.note, 'font-size:9px')}
     </div>
+    ${l.handling ? `<div style="border:2px dashed #000;padding:3px 6px;margin:6px 0;text-align:center">${line(l.handling, 'font-size:10px;font-weight:bold;letter-spacing:0.4px')}</div>` : ''}
     ${line(l.guideLabel, 'font-size:8px;font-weight:600;margin-top:6px')}
     ${line(l.guideNumber, 'font-size:17px;font-weight:bold')}
     ${line(l.qrCaptionLong, 'font-size:8px')}

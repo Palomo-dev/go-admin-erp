@@ -35,6 +35,23 @@ import {
 } from '@/lib/promotions/motorPromociones';
 import { promocionRequiereCliente, type ClientePromocion } from '@/lib/promotions/precioVolumen';
 import { promocionesConListas } from '@/lib/listasPrecios/promocionesConLista';
+import { crearMemoriaCorta } from '@/lib/pos/venta/memoriaCorta';
+
+/**
+ * Lista de promociones activas que el carrito del mostrador puede reutilizar
+ * entre toques seguidos (`PromotionContext.memoria`). Nadie más la usa: sin
+ * `memoria`, y siempre en el servidor (`ctx.db`), se lee de la base como antes.
+ * 30 s: el recálculo del carrito (al abrirlo, al volver, por realtime y cada
+ * minuto) y el cobro piden `refrescar`, así que un cambio de promociones llega
+ * igual de rápido que hoy.
+ */
+export const VIGENCIA_PROMOCIONES_EN_MEMORIA_MS = 30_000;
+const memoriaPromociones = crearMemoriaCorta<FilaPromocion[]>(VIGENCIA_PROMOCIONES_EN_MEMORIA_MS);
+
+/** Vacía la lista de promociones en memoria (pruebas). */
+export function olvidarPromocionesEnMemoria(): void {
+  memoriaPromociones.olvidar();
+}
 
 // --- Tipos públicos ---
 
@@ -94,6 +111,14 @@ export interface PromotionContext {
    * service role con la organización ya validada.
    */
   db?: SupabaseClient;
+  /**
+   * Solo el carrito del mostrador, en el navegador. `usar`: vale la lista de
+   * promociones leída hace menos de 30 s (toques seguidos de «+»). `refrescar`:
+   * la lee de la base y la deja guardada. Sin este campo —o con `db` o `date`—
+   * se lee siempre y no se guarda nada. Los segmentos y usos del cliente no
+   * pasan por aquí: se leen en cada evaluación.
+   */
+  memoria?: 'usar' | 'refrescar';
 }
 
 export interface AppliedPromotion {
@@ -139,6 +164,28 @@ class PromotionEngineService {
     organizationId: number,
     channel: PromotionChannel,
     date: Date,
+    memoria?: 'usar' | 'refrescar',
+  ): Promise<FilaPromocion[]> {
+    try {
+      if (!memoria) return await this.leerPromocionesActivas(db, organizationId, channel, date);
+      // Un fallo no se guarda: el siguiente toque vuelve a leer.
+      return await memoriaPromociones.obtener(
+        `${organizationId}|${channel}`,
+        () => this.leerPromocionesActivas(db, organizationId, channel, date),
+        { fresco: memoria === 'refrescar' },
+      );
+    } catch (error) {
+      console.error('[promotionEngine] Error loading promotions:', error);
+      return [];
+    }
+  }
+
+  /** La lectura en sí; lanza si falla (así un error nunca queda guardado como «sin promociones»). */
+  private async leerPromocionesActivas(
+    db: SupabaseClient,
+    organizationId: number,
+    channel: PromotionChannel,
+    date: Date,
   ): Promise<FilaPromocion[]> {
     let query = db
       .from('promotions')
@@ -174,10 +221,7 @@ class PromotionEngineService {
     else if (channel === 'finances') query = query.eq('applies_to_finances', true);
 
     const { data, error } = await query;
-    if (error) {
-      console.error('[promotionEngine] Error loading promotions:', error);
-      return [];
-    }
+    if (error) throw error;
     // PostgREST embebe las reglas con el nombre de la tabla
     // (`promotion_rules`); el módulo puro lee ambas formas.
     return (Array.isArray(data) ? data : []) as FilaPromocion[];
@@ -203,7 +247,8 @@ class PromotionEngineService {
 
     // Listas de precios: las promociones «no aplica con listas» no tocan las líneas con lista.
     const promotions = promocionesConListas(
-      await this.loadActivePromotions(db, ctx.organization_id, ctx.channel, date),
+      // La memoria solo vale en el navegador y con la hora real (ver `PromotionContext.memoria`).
+      await this.loadActivePromotions(db, ctx.organization_id, ctx.channel, date, ctx.db || ctx.date ? undefined : ctx.memoria),
       ctx.items,
     );
     if (promotions.length === 0) return vacio;

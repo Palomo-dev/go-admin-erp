@@ -30,7 +30,7 @@ jest.mock('@/lib/pos/display/posDisplay', () => ({
 }));
 jest.mock('@/lib/utils/offlineCache', () => ({ isAppOnline: jest.fn(() => true) }));
 
-import { promotionEngine } from '@/lib/services/promotionEngine';
+import { olvidarPromocionesEnMemoria, promotionEngine } from '@/lib/services/promotionEngine';
 import { POSService } from '@/lib/services/posService';
 import { PedidosService } from '@/components/pos/mesas/id/pedidosService';
 import { almacen, carrito, guardarCarritos, instalarAlmacen, leerCarritos, linea } from '../venta/utilesServicio';
@@ -101,6 +101,9 @@ beforeAll(() => instalarAlmacen());
 beforeEach(() => {
   fake.reset();
   fake.setHandler(manejador);
+  // Cada caso arranca con otras promociones «en la base»: la lista que el
+  // carrito reutiliza 30 s entre toques no puede venir del caso anterior.
+  olvidarPromocionesEnMemoria();
   promociones = [];
   lineasMesa = [];
   almacen.clear();

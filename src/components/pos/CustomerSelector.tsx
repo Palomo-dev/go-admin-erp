@@ -7,7 +7,12 @@ import { CustomerPicker, lineaSecundaria, type ClientePicker } from '@/component
 import type { PaginaEntidad } from '@/components/kit/selectorEntidadLogica';
 import { POSService } from '@/lib/services/posService';
 import { useOrganization, getCurrentBranchIdWithFallback } from '@/lib/hooks/useOrganization';
-import { ClienteFormDialog } from '@/components/shared/form-dialogs';
+// Directo al archivo, NO al barril `@/components/shared/form-dialogs`: el barril
+// reexporta también los formularios de producto y de proveedor, y con ellos el
+// POS, Mesas y la cuenta de la mesa cargaban al abrir ~3 MB que no usan para
+// vender (los 4.040 iconos de `react-icons/gi` del selector de iconos, `xlsx` y
+// `jspdf`). Lo vigila `src/__tests__/pos/pesoArranque.test.ts`.
+import { ClienteFormDialog } from '@/components/shared/form-dialogs/ClienteFormDialog';
 import { OfflineCustomerDialog } from './OfflineCustomerDialog';
 import { Customer } from './types';
 import { supabase } from '@/lib/supabase/config';

@@ -27,7 +27,6 @@ import { SerialSelectorDialog } from '@/components/pos/SerialSelectorDialog';
 import { debePedirSerialAlAgregar } from '@/lib/pos/venta/cobro/serialesCobro';
 import { cn } from '@/utils/Utils';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { VentasService, DailySummary } from '@/components/pos/ventas';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import KitchenService from '@/lib/services/kitchenService';
 import { getUserName } from '@/lib/services/userService';
@@ -127,7 +126,6 @@ export default function POSPage() {
   const router = useRouter();
   const enlaceAplicadoRef = useRef<string | null>(null);
   const tMembresias = useTranslations('membresias.pos');
-  const [, setDailySummary] = useState<DailySummary | null>(null);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const permisosCaja = usePermisosCaja();
@@ -231,7 +229,11 @@ export default function POSPage() {
     if (organization?.id) {
       loadUserInfo();
     }
-  }, [organization]);
+    // Por el id, no por el objeto: `useOrganization` entrega primero la
+    // organización guardada en el navegador y enseguida OTRO objeto con la
+    // misma organización. Con el objeto como dependencia, todo el arranque del
+    // POS corría dos veces (usuario, carritos, caja y las ventas del día).
+  }, [organization?.id]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -240,7 +242,7 @@ export default function POSPage() {
       loadDashboardData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [organization, branchFilter, branchLoading]);
+  }, [organization?.id, branchFilter, branchLoading]);
 
   // Pantalla del cliente (PLAN §12 Fase 0): un emisor por ventana de caja.
   // Arranca con la organización y su moneda; al salir del POS se despide
@@ -355,14 +357,13 @@ export default function POSPage() {
     };
   }, [organization?.id]);
 
+  // Solo la caja. Antes también pedía el resumen del día (todas las ventas de
+  // hoy, más la zona horaria y el horario de la organización) y lo guardaba en
+  // un estado que ninguna parte de la pantalla leía: tres consultas por cada
+  // apertura, y si esa lectura fallaba la caja tampoco se cargaba.
   const loadDashboardData = async () => {
     try {
-      const [summary, session] = await Promise.all([
-        VentasService.getDailySummary(),
-        CajasService.getActiveSession()
-      ]);
-      setDailySummary(summary);
-      setCashSession(session);
+      setCashSession(await CajasService.getActiveSession());
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
@@ -787,6 +788,8 @@ export default function POSPage() {
                 requiereCaja,
                 onAbrirCaja: abrirDialogoCaja,
                 onCambiarPeso: pesar.abrirCambiar,
+                // Hoja del carrito (< 1024 px): un solo scroll y las acciones en una fila.
+                compacto: !isDesktopLayout,
               }}
             />
           );
@@ -824,7 +827,7 @@ export default function POSPage() {
                   el total y «Cobrar · F4» (o «Abrir caja para cobrar») y el carrito se abre en una hoja. */}
               <div className="min-h-0 flex-1 overflow-hidden">{productsPane}</div>
               <Sheet open={mobileView === 'cart'} onOpenChange={(abierta) => setMobileView(abierta ? 'cart' : 'products')}>
-                <SheetContent side="bottom" hideCloseButton className="flex h-[92dvh] flex-col gap-2 rounded-t-2xl border-line bg-canvas p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <SheetContent side="bottom" hideCloseButton className="flex h-[92dvh] max-h-[92dvh] flex-col gap-2 rounded-t-2xl border-line bg-canvas p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                   <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-line-strong" aria-hidden="true" />
                   <div className="flex shrink-0 items-center justify-between gap-2">
                     <SheetTitle className="text-base font-semibold text-fg">{tBarra('hojaCarrito')}</SheetTitle>

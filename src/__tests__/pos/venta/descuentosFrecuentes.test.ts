@@ -33,6 +33,8 @@ const filas = (...valores: Array<string | number>) => ({ data: valores.map((v) =
 afterEach(() => {
   delete mockRespuestas.sale_items;
   delete mockRespuestas.invoice_items;
+  // Se recuerdan 10 min por producto: cada caso parte sin nada guardado.
+  POSService.olvidarLecturasEnMemoria();
 });
 
 describe('descuentos frecuentes (L9)', () => {
@@ -46,7 +48,27 @@ describe('descuentos frecuentes (L9)', () => {
     mockRespuestas.sale_items = filas('2500');
     mockRespuestas.invoice_items = filas();
     expect(await POSService.getFrequentDiscounts(1001, 120)).toEqual([2500]);
+    POSService.olvidarLecturasEnMemoria();
     mockRespuestas.sale_items = filas();
     expect(await POSService.getFrequentDiscounts(1001, 120)).toEqual([]);
+  });
+
+  it('se recuerdan por producto: abrir el carrito otra vez no vuelve a consultar', async () => {
+    mockRespuestas.sale_items = filas('5000', '5000', '1000');
+    expect(await POSService.getFrequentDiscounts(1001, 120)).toEqual([5000, 1000]);
+    // La base cambia, pero dentro de los 10 min se responde con lo guardado…
+    mockRespuestas.sale_items = filas('9000');
+    expect(await POSService.getFrequentDiscounts(1001, 120)).toEqual([5000, 1000]);
+    // …y otro producto u otra organización no lo heredan.
+    expect(await POSService.getFrequentDiscounts(1002, 120)).toEqual([9000]);
+    expect(await POSService.getFrequentDiscounts(1001, 121)).toEqual([9000]);
+  });
+
+  it('una lectura con error no se guarda: muestra lo que haya y la siguiente vuelve a consultar', async () => {
+    mockRespuestas.sale_items = filas('5000');
+    mockRespuestas.invoice_items = { data: null, error: { message: 'sin red' } };
+    expect(await POSService.getFrequentDiscounts(1001, 120)).toEqual([5000]);
+    mockRespuestas.invoice_items = filas('700', '700');
+    expect(await POSService.getFrequentDiscounts(1001, 120)).toEqual([700, 5000]);
   });
 });

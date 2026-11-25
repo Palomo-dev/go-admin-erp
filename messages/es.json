@@ -39557,7 +39557,7 @@
           "etiqueta": "Vista previa",
           "donde": {
             "carrito": "Carrito · debajo del total",
-            "ficha": "Ficha del producto · debajo del precio"
+            "ficha": "Ficha del producto · encima del botón de compra"
           },
           "linea": {
             "carrito": "Contraentrega disponible: pagas al recibir.",

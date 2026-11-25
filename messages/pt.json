@@ -5533,7 +5533,11 @@
       "esteMes": "Este mês",
       "mesPasado": "Mês passado",
       "dias7": "7 dias",
-      "dias30": "30 dias"
+      "dias30": "30 dias",
+      "semana": "Esta semana",
+      "estaSemana": "Esta semana (segunda a hoje)",
+      "fecha": "Data",
+      "rangoCorto": "Período…"
     },
     "calendario": {
       "etiqueta": "Calendário",
@@ -43752,7 +43756,9 @@
       "last7": "os 7 dias anteriores",
       "last30": "os 30 dias anteriores",
       "custom": "o período anterior",
-      "all": "o período anterior"
+      "all": "o período anterior",
+      "week": "a semana passada",
+      "month": "o mês passado"
     },
     "buscar": {
       "placeholder": "Buscar por n.º do pedido, cliente, telefone, e-mail, endereço ou produto…",
@@ -43776,7 +43782,9 @@
       "last7": "Últimos 7 dias",
       "last30": "Últimos 30 dias",
       "custom": "Personalizado",
-      "all": "Tudo"
+      "all": "Tudo",
+      "week": "Esta semana",
+      "month": "Este mês"
     },
     "chips": {
       "periodo": "Período: {valor}",
@@ -73921,6 +73929,66 @@
       "aprox": "aprox. {hora}",
       "transportadora": "Transportadora",
       "logistica": "Logística"
+    }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Buscar meio…",
+      "sinOpciones": "Nada corresponde à busca",
+      "limpiar": "Limpar",
+      "aplicar": "Aplicar",
+      "medio": "Meio de pagamento",
+      "medioResumen": "Meio de pagamento: {valor}",
+      "estadoPago": "Status do pagamento",
+      "estadoResumen": "Status do pagamento: {valor}",
+      "todos": "Todos",
+      "grupoPasarelas": "Gateways (online)",
+      "grupoOtros": "Na entrega ou na loja",
+      "notaMedio": "Vêm de Finanças › Meios de pagamento. Um pedido com sinal por um gateway e saldo em dinheiro aparece nos dois meios; cada um soma só o que entrou por ele.",
+      "notaEstado": "Contagens com a data e o meio escolhidos. «Sinal pago» e «A cobrar na entrega» se cruzam: um pedido com sinal ainda não entregue está nos dois."
+    },
+    "medios": {
+      "efectivo": "Dinheiro",
+      "datafono": "Maquininha",
+      "transferencia": "Transferência",
+      "noConectada": "Não conectada"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Pago integralmente",
+      "anticipoPagado": "Sinal pago",
+      "porCobrarPuerta": "A cobrar na entrega",
+      "cobradoPuerta": "Cobrado na entrega",
+      "pendiente": "Pendente",
+      "vencido": "Vencido"
+    },
+    "chips": {
+      "medio": "Meio de pagamento: {valor}",
+      "estadoPago": "Status do pagamento: {valor}"
+    },
+    "errorLectura": "Não foi possível ler a arrecadação",
+    "incluyeAnticipos": "Inclui {monto} em sinais de pagamento na entrega",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, mesmo filtro",
+      "kpis": {
+        "etiqueta": "Arrecadação do período",
+        "recaudado": "Arrecadado",
+        "recaudadoPor": "Arrecadado por {medio}",
+        "pagos": "{n, plural, one {# pagamento aprovado} other {# pagamentos aprovados}}",
+        "completos": "Pagamentos integrais",
+        "anticipos": "Sinais de pagamento na entrega",
+        "anticiposDetalle": "{n, plural, one {# sinal} other {# sinais}} · conta 2805",
+        "puerta": "Cobrado na entrega",
+        "puertaDetalle": "{n, plural, one {# pagamento} other {# pagamentos}} · entra pelo caixa"
+      }
+    },
+    "ventas": {
+      "recaudado": "Arrecadado",
+      "recaudadoPor": "Arrecadado por {medio}",
+      "incluyeAnticipos": "Inclui {monto} em sinais (não são vendas)",
+      "recaudadoDetalle": "{count, plural, one {{n} pagamento aprovado} other {{n} pagamentos aprovados}}",
+      "netasHoy": "Vendas líquidas de hoje",
+      "netasPeriodo": "Vendas líquidas do período",
+      "notaMedio": "Filtra as vendas pagas com estes métodos. «Arrecadado» soma os pagamentos aprovados do período por meio."
     }
   }
 }

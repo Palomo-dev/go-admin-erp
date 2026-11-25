@@ -12870,7 +12870,11 @@
       "esteMes": "Este mes",
       "mesPasado": "Mes pasado",
       "dias7": "7 días",
-      "dias30": "30 días"
+      "dias30": "30 días",
+      "semana": "Esta semana",
+      "estaSemana": "Esta semana (lunes a hoy)",
+      "fecha": "Fecha",
+      "rangoCorto": "Rango…"
     },
     "calendario": {
       "etiqueta": "Calendario",
@@ -43740,7 +43744,9 @@
       "last7": "los 7 días anteriores",
       "last30": "los 30 días anteriores",
       "custom": "el periodo anterior",
-      "all": "el periodo anterior"
+      "all": "el periodo anterior",
+      "week": "la semana pasada",
+      "month": "el mes pasado"
     },
     "buscar": {
       "placeholder": "Buscar por N.º de pedido, cliente, teléfono, correo, dirección o producto…",
@@ -43764,7 +43770,9 @@
       "last7": "Últimos 7 días",
       "last30": "Últimos 30 días",
       "custom": "Personalizado",
-      "all": "Todo"
+      "all": "Todo",
+      "week": "Esta semana",
+      "month": "Este mes"
     },
     "chips": {
       "periodo": "Periodo: {valor}",
@@ -73909,6 +73917,66 @@
       "aprox": "aprox {hora}",
       "transportadora": "Transportadora",
       "logistica": "Logística"
+    }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Buscar medio…",
+      "sinOpciones": "Nada coincide con la búsqueda",
+      "limpiar": "Limpiar",
+      "aplicar": "Aplicar",
+      "medio": "Medio de pago",
+      "medioResumen": "Medio de pago: {valor}",
+      "estadoPago": "Estado del pago",
+      "estadoResumen": "Estado del pago: {valor}",
+      "todos": "Todos",
+      "grupoPasarelas": "Pasarelas (en línea)",
+      "grupoOtros": "Al entregar o en tienda",
+      "notaMedio": "Salen de Finanzas › Métodos de pago. Un pedido con anticipo por una pasarela y saldo en efectivo aparece en los dos medios; cada uno suma solo lo que entró por él.",
+      "notaEstado": "Conteos con la fecha y el medio elegidos. «Anticipo pagado» y «Por cobrar en puerta» se cruzan: un pedido con anticipo que aún no se entrega está en los dos."
+    },
+    "medios": {
+      "efectivo": "Efectivo",
+      "datafono": "Datáfono",
+      "transferencia": "Transferencia",
+      "noConectada": "No conectada"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Pagado completo",
+      "anticipoPagado": "Anticipo pagado",
+      "porCobrarPuerta": "Por cobrar en puerta",
+      "cobradoPuerta": "Cobrado en puerta",
+      "pendiente": "Pendiente",
+      "vencido": "Vencido"
+    },
+    "chips": {
+      "medio": "Medio de pago: {valor}",
+      "estadoPago": "Estado del pago: {valor}"
+    },
+    "errorLectura": "No se pudo leer el recaudo",
+    "incluyeAnticipos": "Incluye {monto} en anticipos de contraentrega",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, mismo filtro",
+      "kpis": {
+        "etiqueta": "Recaudo del periodo",
+        "recaudado": "Recaudado",
+        "recaudadoPor": "Recaudado por {medio}",
+        "pagos": "{n, plural, one {# pago aprobado} other {# pagos aprobados}}",
+        "completos": "Pagos completos",
+        "anticipos": "Anticipos contraentrega",
+        "anticiposDetalle": "{n, plural, one {# anticipo} other {# anticipos}} · cuenta 2805",
+        "puerta": "Cobrado en puerta",
+        "puertaDetalle": "{n, plural, one {# pago} other {# pagos}} · entra por caja"
+      }
+    },
+    "ventas": {
+      "recaudado": "Recaudado",
+      "recaudadoPor": "Recaudado por {medio}",
+      "incluyeAnticipos": "Incluye {monto} en anticipos (no son venta)",
+      "recaudadoDetalle": "{count, plural, one {{n} pago aprobado} other {{n} pagos aprobados}}",
+      "netasHoy": "Ventas netas de hoy",
+      "netasPeriodo": "Ventas netas del periodo",
+      "notaMedio": "Filtra las ventas pagadas con estos métodos. «Recaudado» suma los pagos aprobados del periodo por su medio."
     }
   }
 }

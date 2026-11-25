@@ -69,15 +69,24 @@ export function porCobrarAlEntregar(pedidos: readonly PedidoContraentrega[]): { 
   let monto = 0;
   let n = 0;
   for (const o of pedidos) {
-    if (!esPedidoContraentrega(o)) continue;
-    if (CERRADOS.has(o.status ?? '') || o.payment_status === 'paid') continue;
-    if (estadoAnticipo(o) === 'pendiente' || estadoAnticipo(o) === 'vencido') continue;
-    const valor = cobrarAlEntregar(o);
+    const valor = porCobrarEnPuerta(o);
     if (valor <= 0) continue;
     monto += valor;
     n += 1;
   }
   return { monto: Math.round(monto * 100) / 100, pedidos: n };
+}
+
+/**
+ * Lo que este pedido tiene «Por cobrar en puerta» (0 si nada): contraentrega aún en la calle, sin
+ * pagar del todo y con el anticipo, si lo piden, ya pagado. Es la regla de `porCobrarAlEntregar`
+ * pedido a pedido (filtro «Estado del pago» de Pedidos online).
+ */
+export function porCobrarEnPuerta(o: PedidoContraentrega): number {
+  if (!esPedidoContraentrega(o)) return 0;
+  if (CERRADOS.has(o.status ?? '') || o.payment_status === 'paid') return 0;
+  if (estadoAnticipo(o) === 'pendiente' || estadoAnticipo(o) === 'vencido') return 0;
+  return Math.max(0, cobrarAlEntregar(o));
 }
 
 /** ¿Se puede confirmar? Con anticipo pendiente, no: «Falta el anticipo». */

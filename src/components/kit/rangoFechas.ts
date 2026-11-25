@@ -15,7 +15,7 @@ export interface RangoFechas {
   hasta: string;
 }
 
-export type IdPresetRango = 'hoy' | 'ayer' | '7d' | '30d' | 'mes' | 'mesPasado';
+export type IdPresetRango = 'hoy' | 'ayer' | 'semana' | '7d' | '30d' | 'mes' | 'mesPasado';
 
 export interface PresetRango {
   id: IdPresetRango;
@@ -111,6 +111,16 @@ export function inicioDeMes(fecha: string): string {
   return `${fecha.slice(0, 7)}-01`;
 }
 
+/**
+ * Lunes de la semana de `fecha` (semana de lunes a domingo, como el calendario del kit). Día
+ * calendario puro: no hay zona horaria en juego.
+ */
+export function inicioDeSemana(fecha: string): string {
+  const { a, m, d } = partes(fecha);
+  const diaSemana = new Date(Date.UTC(a, m - 1, d)).getUTCDay(); // 0 = domingo
+  return addPlainDays(fecha, -((diaSemana + 6) % 7));
+}
+
 /** Atajos del selector, calculados sobre el «hoy» de la organización. */
 export function presetsRango(hoy: string): PresetRango[] {
   const inicioMes = inicioDeMes(hoy);
@@ -118,6 +128,8 @@ export function presetsRango(hoy: string): PresetRango[] {
   return [
     { id: 'hoy', etiqueta: 'Hoy', rango: { desde: hoy, hasta: hoy } },
     { id: 'ayer', etiqueta: 'Ayer', rango: { desde: addPlainDays(hoy, -1), hasta: addPlainDays(hoy, -1) } },
+    // «Esta semana» (lunes a hoy), Figma 3306-209149. El lunes coincide con «Hoy».
+    { id: 'semana', etiqueta: 'Esta semana', rango: { desde: inicioDeSemana(hoy), hasta: hoy } },
     { id: '7d', etiqueta: 'Últimos 7 días', rango: { desde: addPlainDays(hoy, -6), hasta: hoy } },
     { id: '30d', etiqueta: 'Últimos 30 días', rango: { desde: addPlainDays(hoy, -29), hasta: hoy } },
     { id: 'mes', etiqueta: 'Este mes', rango: { desde: inicioMes, hasta: hoy } },

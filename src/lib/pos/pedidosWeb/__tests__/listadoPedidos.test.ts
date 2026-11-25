@@ -26,6 +26,25 @@ describe('rangosDelPeriodo', () => {
     expect(r.anterior?.to).toBe('2026-09-30T23:59:59.999-05:00');
   });
 
+  it('«Esta semana» va de lunes a hoy y se compara con la semana pasada a esta hora', () => {
+    // 2026-10-06 es martes: la semana empieza el lunes 5.
+    const r = rangosDelPeriodo('week', 'America/Bogota', '2026-10-06', AHORA);
+    expect(r.actual.from).toBe('2026-10-05T00:00:00.000-05:00');
+    expect(r.actual.to).toBe('2026-10-06T23:59:59.999-05:00');
+    expect(r.anterior?.from).toBe('2026-09-28T00:00:00.000-05:00');
+    expect(r.anterior?.to).toBe('2026-09-29T14:17:00.000-05:00');
+  });
+
+  it('«Este mes» va del 1 a hoy y se compara con el mes pasado hasta el mismo día y hora', () => {
+    const r = rangosDelPeriodo('month', 'America/Bogota', '2026-10-06', AHORA);
+    expect(r.actual.from).toBe('2026-10-01T00:00:00.000-05:00');
+    expect(r.anterior?.from).toBe('2026-09-01T00:00:00.000-05:00');
+    expect(r.anterior?.to).toBe('2026-09-06T14:17:00.000-05:00');
+    // 31 de marzo: el mes pasado se corta en el 28 de febrero.
+    const marzo = rangosDelPeriodo('month', 'America/Bogota', '2026-03-31', new Date('2026-03-31T19:17:00.000Z'));
+    expect(marzo.anterior?.to).toBe('2026-02-28T14:17:00.000-05:00');
+  });
+
   it('«Todo» no filtra ni compara', () => {
     expect(rangosDelPeriodo('all', 'America/Bogota', '2026-10-06', AHORA)).toEqual({ actual: {}, anterior: null });
   });

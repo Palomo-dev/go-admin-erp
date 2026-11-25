@@ -12869,7 +12869,11 @@
       "esteMes": "This month",
       "mesPasado": "Last month",
       "dias7": "7 days",
-      "dias30": "30 days"
+      "dias30": "30 days",
+      "semana": "This week",
+      "estaSemana": "This week (Monday to today)",
+      "fecha": "Date",
+      "rangoCorto": "Range…"
     },
     "calendario": {
       "etiqueta": "Calendar",
@@ -43742,7 +43746,9 @@
       "last7": "the previous 7 days",
       "last30": "the previous 30 days",
       "custom": "the previous period",
-      "all": "the previous period"
+      "all": "the previous period",
+      "week": "last week",
+      "month": "last month"
     },
     "buscar": {
       "placeholder": "Search by order no., customer, phone, email, address or product…",
@@ -43766,7 +43772,9 @@
       "last7": "Last 7 days",
       "last30": "Last 30 days",
       "custom": "Custom",
-      "all": "All time"
+      "all": "All time",
+      "week": "This week",
+      "month": "This month"
     },
     "chips": {
       "periodo": "Period: {valor}",
@@ -73911,6 +73919,66 @@
       "aprox": "approx. {hora}",
       "transportadora": "Carrier",
       "logistica": "Logistics"
+    }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Search method…",
+      "sinOpciones": "Nothing matches the search",
+      "limpiar": "Clear",
+      "aplicar": "Apply",
+      "medio": "Payment method",
+      "medioResumen": "Payment method: {valor}",
+      "estadoPago": "Payment status",
+      "estadoResumen": "Payment status: {valor}",
+      "todos": "All",
+      "grupoPasarelas": "Gateways (online)",
+      "grupoOtros": "On delivery or in store",
+      "notaMedio": "They come from Finance › Payment methods. An order with a deposit through a gateway and the balance in cash shows up under both methods; each one adds only what came in through it.",
+      "notaEstado": "Counts use the selected date and method. \"Deposit paid\" and \"To collect at the door\" overlap: an order with a deposit that has not been delivered yet is in both."
+    },
+    "medios": {
+      "efectivo": "Cash",
+      "datafono": "Card terminal",
+      "transferencia": "Bank transfer",
+      "noConectada": "Not connected"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Paid in full",
+      "anticipoPagado": "Deposit paid",
+      "porCobrarPuerta": "To collect at the door",
+      "cobradoPuerta": "Collected at the door",
+      "pendiente": "Pending",
+      "vencido": "Expired"
+    },
+    "chips": {
+      "medio": "Payment method: {valor}",
+      "estadoPago": "Payment status: {valor}"
+    },
+    "errorLectura": "Collections could not be loaded",
+    "incluyeAnticipos": "Includes {monto} in cash-on-delivery deposits",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, same filter",
+      "kpis": {
+        "etiqueta": "Collections in the period",
+        "recaudado": "Collected",
+        "recaudadoPor": "Collected via {medio}",
+        "pagos": "{n, plural, one {# approved payment} other {# approved payments}}",
+        "completos": "Payments in full",
+        "anticipos": "Cash-on-delivery deposits",
+        "anticiposDetalle": "{n, plural, one {# deposit} other {# deposits}} · account 2805",
+        "puerta": "Collected at the door",
+        "puertaDetalle": "{n, plural, one {# payment} other {# payments}} · goes into the till"
+      }
+    },
+    "ventas": {
+      "recaudado": "Collected",
+      "recaudadoPor": "Collected via {medio}",
+      "incluyeAnticipos": "Includes {monto} in deposits (not sales)",
+      "recaudadoDetalle": "{count, plural, one {{n} approved payment} other {{n} approved payments}}",
+      "netasHoy": "Today's net sales",
+      "netasPeriodo": "Net sales in the period",
+      "notaMedio": "Filters sales paid with these methods. \"Collected\" adds the approved payments of the period by their method."
     }
   }
 }

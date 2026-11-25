@@ -5532,7 +5532,11 @@
       "esteMes": "Ce mois-ci",
       "mesPasado": "Le mois dernier",
       "dias7": "7 jours",
-      "dias30": "30 jours"
+      "dias30": "30 jours",
+      "semana": "Cette semaine",
+      "estaSemana": "Cette semaine (lundi à aujourd'hui)",
+      "fecha": "Date",
+      "rangoCorto": "Période…"
     },
     "calendario": {
       "etiqueta": "Calendrier",
@@ -43742,7 +43746,9 @@
       "last7": "les 7 jours précédents",
       "last30": "les 30 jours précédents",
       "custom": "la période précédente",
-      "all": "la période précédente"
+      "all": "la période précédente",
+      "week": "la semaine dernière",
+      "month": "le mois dernier"
     },
     "buscar": {
       "placeholder": "Rechercher par n° de commande, client, téléphone, e-mail, adresse ou produit…",
@@ -43766,7 +43772,9 @@
       "last7": "7 derniers jours",
       "last30": "30 derniers jours",
       "custom": "Personnalisée",
-      "all": "Tout"
+      "all": "Tout",
+      "week": "Cette semaine",
+      "month": "Ce mois-ci"
     },
     "chips": {
       "periodo": "Période : {valor}",
@@ -73911,6 +73919,66 @@
       "aprox": "vers {hora}",
       "transportadora": "Transporteur",
       "logistica": "Logistique"
+    }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Rechercher un moyen…",
+      "sinOpciones": "Aucun résultat",
+      "limpiar": "Effacer",
+      "aplicar": "Appliquer",
+      "medio": "Moyen de paiement",
+      "medioResumen": "Moyen de paiement : {valor}",
+      "estadoPago": "État du paiement",
+      "estadoResumen": "État du paiement : {valor}",
+      "todos": "Tous",
+      "grupoPasarelas": "Passerelles (en ligne)",
+      "grupoOtros": "À la livraison ou en boutique",
+      "notaMedio": "Ils viennent de Finances › Moyens de paiement. Une commande avec un acompte par passerelle et le solde en espèces apparaît dans les deux moyens ; chacun n'additionne que ce qui est entré par lui.",
+      "notaEstado": "Décomptes avec la date et le moyen choisis. « Acompte payé » et « À encaisser à la livraison » se recoupent : une commande avec acompte pas encore livrée est dans les deux."
+    },
+    "medios": {
+      "efectivo": "Espèces",
+      "datafono": "Terminal de paiement",
+      "transferencia": "Virement",
+      "noConectada": "Non connectée"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Payé en totalité",
+      "anticipoPagado": "Acompte payé",
+      "porCobrarPuerta": "À encaisser à la livraison",
+      "cobradoPuerta": "Encaissé à la livraison",
+      "pendiente": "En attente",
+      "vencido": "Expiré"
+    },
+    "chips": {
+      "medio": "Moyen de paiement : {valor}",
+      "estadoPago": "État du paiement : {valor}"
+    },
+    "errorLectura": "Impossible de lire l'encaissement",
+    "incluyeAnticipos": "Dont {monto} en acomptes de paiement à la livraison",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, même filtre",
+      "kpis": {
+        "etiqueta": "Encaissement de la période",
+        "recaudado": "Encaissé",
+        "recaudadoPor": "Encaissé par {medio}",
+        "pagos": "{n, plural, one {# paiement approuvé} other {# paiements approuvés}}",
+        "completos": "Paiements complets",
+        "anticipos": "Acomptes paiement à la livraison",
+        "anticiposDetalle": "{n, plural, one {# acompte} other {# acomptes}} · compte 2805",
+        "puerta": "Encaissé à la livraison",
+        "puertaDetalle": "{n, plural, one {# paiement} other {# paiements}} · entre en caisse"
+      }
+    },
+    "ventas": {
+      "recaudado": "Encaissé",
+      "recaudadoPor": "Encaissé par {medio}",
+      "incluyeAnticipos": "Dont {monto} en acomptes (pas des ventes)",
+      "recaudadoDetalle": "{count, plural, one {{n} paiement approuvé} other {{n} paiements approuvés}}",
+      "netasHoy": "Ventes nettes d'aujourd'hui",
+      "netasPeriodo": "Ventes nettes de la période",
+      "notaMedio": "Filtre les ventes payées avec ces moyens. « Encaissé » additionne les paiements approuvés de la période par moyen."
     }
   }
 }

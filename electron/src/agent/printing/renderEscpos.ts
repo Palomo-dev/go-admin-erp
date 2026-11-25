@@ -1,11 +1,11 @@
 /* AUTO-GENERADO por sync-agent.js — NO EDITAR */
-﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, SaleTicketPayment, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ShipmentLabelPayload, ElectronicInvoicePrintPayload } from './types';
+import { moneyFormatter } from './money';
+import { formatQuantity, isMeasuredLine, itemsSummary, linePriceDetail } from './quantity';
 import type { PaperSpec } from './paper';
-import { writeRasterImage } from './escposImage';
+import { writeRasterImage, writeRasterPage } from './escposImage';
+import { resolveShipmentLabel } from './shipmentLabel';
 
-function formatMoney(value: number): string {
-  return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
 
 /**
  * Lineas de impuesto a imprimir: el desglose por tipo (IVA, ICA...) si viene
@@ -81,6 +81,22 @@ const SIZE_TALL: readonly [number, number] = [0, 1];
 const SIZE_DOUBLE: readonly [number, number] = [1, 1];
 
 /** Linea separadora fuerte al ancho exacto del papel. */
+/**
+ * Lo que estas plantillas usan de `escpos.Printer` (API encadenable). Antes
+ * era `any`; el agente y el ERP pasan su `Printer` tal cual.
+ */
+export interface EscposDevice {
+  text(content: string): EscposDevice;
+  style(type: string): EscposDevice;
+  size(width: number, height: number): EscposDevice;
+  align(align: string): EscposDevice;
+  font(family: string): EscposDevice;
+  feed(lines?: number): EscposDevice;
+  cut(partial?: boolean, feed?: number): EscposDevice;
+  qrimage(content: string, options?: { cellSize?: number }): unknown;
+  code128(content: string, options?: { width?: number; height?: number }): unknown;
+}
+
 function sep(chars: number): string {
   return '='.repeat(chars);
 }
@@ -141,7 +157,7 @@ function wrapText(text: string, width: number): string[] {
  * linea con el importe alineado a la derecha; si no, el nombre se envuelve en
  * varias lineas y el importe cierra alineado a la derecha.
  */
-function writeItemLine(device: any, label: string, value: string, chars: number): void {
+function writeItemLine(device: EscposDevice, label: string, value: string, chars: number): void {
   if (label.length + value.length + 1 <= chars) {
     device.style('b').text(padRight(label, value, chars)).style('normal');
     return;
@@ -150,6 +166,16 @@ function writeItemLine(device: any, label: string, value: string, chars: number)
   device.style('b');
   for (const line of wrapText(label, chars)) device.text(line);
   device.style('normal').text(padRight('', value, chars));
+}
+
+/** Etiqueta de la línea de venta: «3x  Producto» por unidad; solo el nombre por peso (la cantidad va en el detalle). */
+function saleLabel(item: { quantity: number; unit?: string | null; qtyDecimals?: number | null; productName: string }, locale?: string): string {
+  return isMeasuredLine(item) ? item.productName : `${formatQuantity(item, locale)}x  ${item.productName}`;
+}
+
+/** Etiqueta de la comanda: «2x  Plato» o «0,500 kg  Carne». */
+function kitchenLabel(item: { quantity: number; unit?: string | null; qtyDecimals?: number | null; productName: string }): string {
+  return isMeasuredLine(item) ? `${formatQuantity(item)}  ${item.productName}` : `${formatQuantity(item)}x  ${item.productName}`;
 }
 
 function formatDateParts(iso: string, timezone?: string): { date: string; time: string } {
@@ -169,11 +195,11 @@ function formatDateParts(iso: string, timezone?: string): { date: string; time: 
  * comanda de cocina. `device` es una instancia de `escpos.Printer` ya
  * conectada a un `escpos.<Interface>` (network/usb/bluetooth).
  */
-export function printKitchenTicket(device: any, payload: KitchenTicketPrintPayload, paper: PaperSpec): void {
+export function printKitchenTicket(device: EscposDevice, payload: KitchenTicketPrintPayload, paper: PaperSpec): void {
   const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
 
   // --- Header: datos del negocio ---
   // Doble alto (no doble ancho) para que un nombre largo no se parta de linea.
@@ -206,7 +232,7 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
   device.text(`Mesa: ${payload.tableName || '-'}`);
   if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
-  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(`Items: ${itemsText}`);
   device.text(sepLight(chars));
 
   // --- Items ---
@@ -214,7 +240,7 @@ export function printKitchenTicket(device: any, payload: KitchenTicketPrintPaylo
     // Doble alto para que el cocinero lo lea de lejos, ancho normal para
     // aprovechar las columnas completas en nombres largos.
     device.style('b').size(...SIZE_TALL);
-    for (const line of wrapText(`${item.quantity}x  ${item.productName}`, chars)) {
+    for (const line of wrapText(kitchenLabel(item), chars)) {
       device.text(line);
     }
     device.style('normal').size(...SIZE_NORMAL);
@@ -260,7 +286,7 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
   const chars = paper.charsPerLine;
   const stationLabel = STATION_LABELS[payload.station] || payload.station.toUpperCase();
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const lines: string[] = [];
 
   // --- Header ---
@@ -276,11 +302,11 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
   lines.push(`Mesa: ${payload.tableName || '-'}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
-  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(`Items: ${itemsText}`);
   lines.push(sepLight(chars));
 
   for (const item of payload.items) {
-    lines.push(...wrapText(`${item.quantity}x  ${item.productName}`, chars));
+    lines.push(...wrapText(kitchenLabel(item), chars));
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -309,13 +335,14 @@ export function buildPlainTextTicket(payload: KitchenTicketPrintPayload, paper: 
 /**
  * Imprime el ticket de venta (recibo de caja) en un dispositivo escpos.
  */
-export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, paper: PaperSpec): void {
+export function printSaleTicket(device: EscposDevice, payload: SaleTicketPrintPayload, paper: PaperSpec): void {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   // Una linea en doble ancho dispone de la mitad de columnas.
   const doubleChars = Math.floor(chars / 2);
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
 
   // --- Header: datos del negocio ---
   device.font('a').align('ct');
@@ -361,7 +388,7 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
   if (payload.serverName) device.text(`Mesero: ${payload.serverName}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
-  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(`Items: ${itemsText}`);
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
@@ -408,8 +435,8 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
   for (const item of payload.items) {
     // Nombre e importe en la misma linea; si no caben, el nombre se envuelve y
     // el importe cierra alineado a la derecha.
-    writeItemLine(device, `${item.quantity}x  ${item.productName}`, formatMoney(item.total), chars);
-    device.text(`  ${formatMoney(item.unitPrice)} c/u`);
+    writeItemLine(device, saleLabel(item, payload.locale), formatMoney(item.total), chars);
+    device.text(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -424,6 +451,10 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
       device.style('b');
       for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
       device.style('normal');
+    }
+
+    if (item.note) {
+      for (const line of wrapText(`» ${item.note}`, chars - 2)) device.text(`  ${line}`);
     }
 
     if (item.taxAmount && item.taxAmount > 0) {
@@ -518,10 +549,11 @@ export function printSaleTicket(device: any, payload: SaleTicketPrintPayload, pa
  * VersiÃ³n en texto plano del ticket de venta, para impresoras 'system'.
  */
 export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const lines: string[] = [];
 
   // --- Header: datos del negocio ---
@@ -552,7 +584,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
   if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
   if (payload.serverName) lines.push(`Mesero: ${payload.serverName}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
-  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(`Items: ${itemsText}`);
 
   // --- Info del cliente ---
   if (payload.customerName || payload.customerDocNumber) {
@@ -591,7 +623,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
 
   // --- Items ---
   for (const item of payload.items) {
-    const label = `${item.quantity}x  ${item.productName}`;
+    const label = saleLabel(item, payload.locale);
     const money = formatMoney(item.total);
     if (label.length + money.length + 1 <= chars) {
       lines.push(padRight(label, money, chars));
@@ -599,7 +631,7 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
       lines.push(...wrapText(label, chars));
       lines.push(padRight('', money, chars));
     }
-    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
+    lines.push(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -611,6 +643,8 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
       const text = `+ ${item.modifiers.map((m) => m.extraPrice > 0 ? `${m.name} (+${formatMoney(m.extraPrice)})` : m.name).join(', ')}`;
       lines.push(...wrapText(text, chars - 2).map((l) => `  ${l}`));
     }
+
+    if (item.note) lines.push(...wrapText(`» ${item.note}`, chars - 2).map((l) => `  ${l}`));
 
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
@@ -659,248 +693,126 @@ export function buildPlainTextSaleTicket(payload: SaleTicketPrintPayload, paper:
 }
 
 /**
- * Imprime la guia de envio en un dispositivo ESC/POS con corte automatico.
+ * Lineas de texto del rotulo de envio (Figma «21 Logistica» 3223:15627, version termica
+ * 3223:16129), en el mismo orden que la imagen: remitente, destinatario, paquete/peso/entrega,
+ * guia de la transportadora, cobro, guia con barras y QR, pie. Solo se usa cuando no llega la
+ * imagen (`label.raster`) o la impresora no acepta bytes crudos.
  */
-export function printShipmentGuide(device: any, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
+function shipmentLabelLines(l: ShipmentLabelPayload): {
+  sender: string[];
+  receiver: string[];
+  cells: string;
+  carrier: string[];
+  charge: string[];
+  handling: string[];
+  after: string[];
+} {
+  return {
+    sender: [l.senderLabel, l.storeName, l.branchLine].filter(Boolean) as string[],
+    receiver: [l.receiverLabel, l.receiverName, l.address, l.neighborhood, l.destination, l.phone, l.instructions].filter(Boolean) as string[],
+    cells: [
+      `${l.packageLabel}: ${l.packageText}`,
+      l.weightText ? `${l.weightLabel}: ${l.weightText}` : null,
+      l.deliveryText ? `${l.deliveryLabel}: ${l.deliveryText}` : null,
+    ]
+      .filter(Boolean)
+      .join('  '),
+    carrier: l.carrierGuideText ? [l.carrierGuideLabel, l.carrierGuideText] : [],
+    charge: [l.charge.title, l.charge.amount ?? null, l.charge.note].filter(Boolean) as string[],
+    handling: l.handling ? [l.handling] : [],
+    after: [l.qrCaptionLong, l.footer].filter(Boolean) as string[],
+  };
+}
+
+/**
+ * Imprime el rotulo de envio con corte automatico. Con `label.raster` imprime la IMAGEN del
+ * rotulo (la misma de la vista previa del ERP); si no, la version en texto con los mismos datos.
+ */
+export function printShipmentGuide(device: EscposDevice, payload: ShipmentGuidePrintPayload, paper: PaperSpec): void {
+  const l = resolveShipmentLabel(payload);
+  const dots = paper.charsPerLine * 12;
+  if (writeRasterPage(device, l.raster, dots)) {
+    device.feed(1).cut();
+    return;
+  }
+
   const chars = paper.charsPerLine;
-  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
-
-  // --- Header: datos del negocio ---
-  device.font('a').align('ct');
-  if (payload.businessName) {
-    device.style('b').size(...SIZE_TALL).text(payload.businessName).style('normal').size(...SIZE_NORMAL);
+  const r = shipmentLabelLines(l);
+  device.font('a').align('lt');
+  r.sender.forEach((line, i) => {
+    if (i === 1) device.style('b');
+    for (const w of wrapText(line, chars)) device.text(w);
+    if (i === 1) device.style('normal');
+  });
+  device.text(sep(chars));
+  for (const line of r.receiver) {
+    const strong = line === l.receiverName || line === l.destination;
+    if (strong) device.style('b').size(...SIZE_TALL);
+    for (const w of wrapText(line, chars)) device.text(w);
+    if (strong) device.size(...SIZE_NORMAL).style('normal');
   }
-  if (payload.businessNit) device.text(`NIT: ${payload.businessNit}`);
-  if (payload.businessPhone) device.text(`Tel: ${payload.businessPhone}`);
-  if (payload.businessAddress) device.text(payload.businessAddress);
-
-  // --- Titulo ---
-  device
-    .text(sep(chars))
-    .style('b')
-    .size(...SIZE_DOUBLE)
-    .text('GUIA DE ENVIO')
-    .size(...SIZE_NORMAL)
-    .style('normal')
-    .text(sep(chars));
-
-  // --- Tracking number ---
-  device.style('b').text(`No: ${tracking}`).style('normal');
-  device.text(`Fecha: ${date} ${time}`);
-  if (payload.status) device.text(`Estado: ${payload.status.toUpperCase()}`);
-
-  // --- Remitente ---
-  device.text(sepLight(chars)).style('b').text('REMITENTE').style('normal');
-  if (payload.senderName) device.text(payload.senderName);
-  if (payload.senderPhone) device.text(`Tel: ${payload.senderPhone}`);
-
-  // --- Destinatario ---
-  device.text(sepLight(chars)).style('b').text('DESTINATARIO').style('normal');
-  if (payload.receiverName) device.text(payload.receiverName);
-  if (payload.receiverPhone) device.text(`Tel: ${payload.receiverPhone}`);
-  if (payload.receiverAddress) {
-    for (const line of wrapText(`Dir: ${payload.receiverAddress}`, chars)) device.text(line);
-  }
-  if (payload.receiverCity) device.text(`Ciudad: ${payload.receiverCity}`);
-  if (payload.receiverInstructions) {
-    for (const line of wrapText(`Instr: ${payload.receiverInstructions}`, chars)) device.text(line);
-  }
-
-  // --- Ruta ---
-  device.text(sepLight(chars)).style('b').text('RUTA').style('normal');
-  if (payload.originStop) device.text(`Origen: ${payload.originStop}`);
-  if (payload.destinationStop) device.text(`Destino: ${payload.destinationStop}`);
-
-  // --- Conductor ---
-  if (payload.driver) {
-    device.text(sepLight(chars)).style('b').text('CONDUCTOR').style('normal');
-    device.text(payload.driver.name || 'Sin asignar');
-    if (payload.driver.phone) device.text(`Tel: ${payload.driver.phone}`);
-    if (payload.driver.licenseNumber) device.text(`Lic: ${payload.driver.licenseNumber}`);
-    if (payload.driver.licenseCategory) device.text(`Cat: ${payload.driver.licenseCategory}`);
-  }
-
-  // --- Detalles ---
-  device.text(sepLight(chars)).style('b').text('DETALLES').style('normal');
-  if (payload.weightKg) device.text(padRight('Peso:', `${payload.weightKg} kg`, chars));
-  if (payload.packageCount) device.text(padRight('Paquetes:', String(payload.packageCount), chars));
-  if (payload.packageType) device.text(padRight('Tipo:', payload.packageType, chars));
-  if (payload.deliveryType) device.text(padRight('Entrega:', payload.deliveryType, chars));
-  if (payload.declaredValue) device.text(padRight('Valor Decl.:', formatMoney(payload.declaredValue), chars));
-  if (payload.isFragile) device.text('** FRAGIL **');
-  if (payload.requiresSignature) device.text('** REQUIERE FIRMA **');
-
-  // --- Items ---
-  if (payload.items && payload.items.length > 0) {
-    device.text(sepLight(chars)).style('b').text('ITEMS').style('normal');
+  device.text(sep(chars));
+  for (const w of wrapText(r.cells, chars)) device.text(w);
+  if (r.carrier.length) {
     device.text(sepLight(chars));
-    for (const item of payload.items) {
-      const qty = item.quantity || 1;
-      const desc = item.description || '-';
-      const total = item.totalValue || (qty * (item.unitValue || 0));
-      writeItemLine(device, `${qty}x ${desc}`, formatMoney(total), chars);
-      if (item.sku) device.text(`  SKU: ${item.sku}`);
-      if (item.weightKg) device.text(`  Peso: ${item.weightKg} kg`);
-      if (item.variantData) {
-        const entries = Object.entries(item.variantData);
-        if (entries.length > 0) {
-          for (const line of wrapText(`  ${entries.map(([k, v]) => `${k}: ${v}`).join(', ')}`, chars)) device.text(line);
-        }
-      }
-      if (item.modifiers && item.modifiers.length > 0) {
-        const modStr = item.modifiers.map((m) => `${m.name}${m.extraPrice > 0 ? ` (+${formatMoney(m.extraPrice)})` : ''}`).join(', ');
-        for (const line of wrapText(`  ${modStr}`, chars)) device.text(line);
-      }
-      if (item.discountAmount && item.discountAmount > 0) device.text(`  Desc: -${formatMoney(item.discountAmount)}`);
-      if (item.taxAmount && item.taxAmount > 0) device.text(`  Imp: ${formatMoney(item.taxAmount)}`);
-      device.text(sepLight(chars));
-    }
+    for (const line of r.carrier) for (const w of wrapText(line, chars)) device.text(w);
   }
-
-  // --- Totales ---
-  device.text(sepLight(chars)).style('b').text('TOTALES').style('normal');
-  if (payload.itemsTotalValue) device.text(padRight('Valor Items:', formatMoney(payload.itemsTotalValue), chars));
-  if (payload.freightCost) device.text(padRight('Flete:', formatMoney(payload.freightCost), chars));
-  if (payload.insuranceCost) device.text(padRight('Seguro:', formatMoney(payload.insuranceCost), chars));
-  if (payload.codAmount) device.text(padRight('Contra Entrega:', formatMoney(payload.codAmount), chars));
-  if (payload.totalCost) device.style('b').text(padRight('TOTAL:', formatMoney(payload.totalCost), chars)).style('normal');
-
-  // --- Barcode ---
-  device.text(sepLight(chars));
+  device.text(sep(chars)).align('ct').style('b');
+  device.text(l.charge.title);
+  if (l.charge.amount) device.size(...SIZE_DOUBLE).text(l.charge.amount).size(...SIZE_NORMAL);
+  device.style('normal');
+  for (const w of wrapText(l.charge.note, chars)) device.text(w);
+  if (r.handling.length) {
+    device.text(sepLight(chars)).style('b');
+    for (const line of r.handling) for (const w of wrapText(line, chars)) device.text(w);
+    device.style('normal').text(sepLight(chars));
+  }
+  device.text(sep(chars));
+  try {
+    device.code128(l.guideNumber, { width: 2, height: 60 });
+  } catch {
+    device.text(`** ${l.guideNumber} **`);
+  }
+  device.align('lt').text(l.guideLabel).style('b').size(...SIZE_TALL).text(l.guideNumber).size(...SIZE_NORMAL).style('normal');
+  for (const line of r.after) for (const w of wrapText(line, chars)) device.text(w);
   device.align('ct');
   try {
-    device.code128(tracking, { width: 2, height: 50 });
+    device.qrimage(l.qrData, { cellSize: 4 });
   } catch {
-    device.text(`** ${tracking} **`);
+    // Sin soporte de QR se omite: la guia ya va en barras y en texto.
   }
-  device.text(tracking);
-
-  // --- Firma ---
-  device.text(sepLight(chars)).text('').text('');
-  device.text('Firma Conductor:');
-  device.text('________________');
-  device.text('').text('');
-  device.text('Firma Destinatario:');
-  device.text('________________');
-
-  // --- Footer ---
-  device.text(sepLight(chars));
-  for (const line of GO_ADMIN_FOOTER) {
-    device.text(line);
-  }
-
   device.feed(2).cut();
 }
 
 /**
- * Version en texto plano de la guia de envio, para impresoras 'system'.
+ * Version en texto plano del rotulo de envio, para impresoras 'system' sin HTML y para la vista
+ * previa de Configuracion › Impresiones.
  */
 export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
   const chars = paper.charsPerLine;
-  const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
+  const l = resolveShipmentLabel(payload);
+  const r = shipmentLabelLines(l);
   const lines: string[] = [];
-
-  if (payload.businessName) lines.push(payload.businessName);
-  if (payload.businessNit) lines.push(`NIT: ${payload.businessNit}`);
-  if (payload.businessPhone) lines.push(`Tel: ${payload.businessPhone}`);
-  if (payload.businessAddress) lines.push(payload.businessAddress);
-
+  lines.push(...r.sender.flatMap((t) => wrapText(t, chars)));
   lines.push(sep(chars));
-  lines.push('GUIA DE ENVIO');
+  lines.push(...r.receiver.flatMap((t) => wrapText(t, chars)));
   lines.push(sep(chars));
-  lines.push(`No: ${tracking}`);
-  lines.push(`Fecha: ${date} ${time}`);
-  if (payload.status) lines.push(`Estado: ${payload.status.toUpperCase()}`);
-
-  lines.push(sepLight(chars));
-  lines.push('REMITENTE');
-  if (payload.senderName) lines.push(payload.senderName);
-  if (payload.senderPhone) lines.push(`Tel: ${payload.senderPhone}`);
-
-  lines.push(sepLight(chars));
-  lines.push('DESTINATARIO');
-  if (payload.receiverName) lines.push(...wrapText(payload.receiverName, chars));
-  if (payload.receiverPhone) lines.push(`Tel: ${payload.receiverPhone}`);
-  if (payload.receiverAddress) lines.push(...wrapText(`Dir: ${payload.receiverAddress}`, chars));
-  if (payload.receiverCity) lines.push(`Ciudad: ${payload.receiverCity}`);
-  if (payload.receiverInstructions) lines.push(...wrapText(`Instr: ${payload.receiverInstructions}`, chars));
-
-  lines.push(sepLight(chars));
-  lines.push('RUTA');
-  if (payload.originStop) lines.push(`Origen: ${payload.originStop}`);
-  if (payload.destinationStop) lines.push(`Destino: ${payload.destinationStop}`);
-
-  if (payload.driver) {
+  lines.push(...wrapText(r.cells, chars));
+  if (r.carrier.length) {
     lines.push(sepLight(chars));
-    lines.push('CONDUCTOR');
-    lines.push(payload.driver.name || 'Sin asignar');
-    if (payload.driver.phone) lines.push(`Tel: ${payload.driver.phone}`);
-    if (payload.driver.licenseNumber) lines.push(`Lic: ${payload.driver.licenseNumber}`);
-    if (payload.driver.licenseCategory) lines.push(`Cat: ${payload.driver.licenseCategory}`);
+    lines.push(...r.carrier.flatMap((t) => wrapText(t, chars)));
   }
-
-  lines.push(sepLight(chars));
-  lines.push('DETALLES');
-  if (payload.weightKg) lines.push(padRight('Peso:', `${payload.weightKg} kg`, chars));
-  if (payload.packageCount) lines.push(padRight('Paquetes:', String(payload.packageCount), chars));
-  if (payload.packageType) lines.push(padRight('Tipo:', payload.packageType, chars));
-  if (payload.deliveryType) lines.push(padRight('Entrega:', payload.deliveryType, chars));
-  if (payload.declaredValue) lines.push(padRight('Valor Decl.:', formatMoney(payload.declaredValue), chars));
-  if (payload.isFragile) lines.push('** FRAGIL **');
-  if (payload.requiresSignature) lines.push('** REQUIERE FIRMA **');
-
-  if (payload.items && payload.items.length > 0) {
+  lines.push(sep(chars));
+  lines.push(...r.charge.flatMap((t) => wrapText(t, chars)));
+  if (r.handling.length) {
     lines.push(sepLight(chars));
-    lines.push('ITEMS');
+    lines.push(...r.handling.flatMap((t) => wrapText(t, chars)));
     lines.push(sepLight(chars));
-    for (const item of payload.items) {
-      const qty = item.quantity || 1;
-      const desc = item.description || '-';
-      const total = item.totalValue || (qty * (item.unitValue || 0));
-      lines.push(padRight(`${qty}x ${desc}`, formatMoney(total), chars));
-      if (item.sku) lines.push(`  SKU: ${item.sku}`);
-      if (item.weightKg) lines.push(`  Peso: ${item.weightKg} kg`);
-      if (item.variantData) {
-        const entries = Object.entries(item.variantData);
-        if (entries.length > 0) lines.push(...wrapText(`  ${entries.map(([k, v]) => `${k}: ${v}`).join(', ')}`, chars));
-      }
-      if (item.modifiers && item.modifiers.length > 0) {
-        const modStr = item.modifiers.map((m) => `${m.name}${m.extraPrice > 0 ? ` (+${formatMoney(m.extraPrice)})` : ''}`).join(', ');
-        lines.push(...wrapText(`  ${modStr}`, chars));
-      }
-      if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
-      if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
-      lines.push(sepLight(chars));
-    }
   }
-
-  lines.push(sepLight(chars));
-  lines.push('TOTALES');
-  if (payload.itemsTotalValue) lines.push(padRight('Valor Items:', formatMoney(payload.itemsTotalValue), chars));
-  if (payload.freightCost) lines.push(padRight('Flete:', formatMoney(payload.freightCost), chars));
-  if (payload.insuranceCost) lines.push(padRight('Seguro:', formatMoney(payload.insuranceCost), chars));
-  if (payload.codAmount) lines.push(padRight('Contra Entrega:', formatMoney(payload.codAmount), chars));
-  if (payload.totalCost) lines.push(padRight('TOTAL:', formatMoney(payload.totalCost), chars));
-
-  lines.push(sepLight(chars));
-  lines.push(`** ${tracking} **`);
-
-  lines.push(sepLight(chars));
-  lines.push('');
-  lines.push('Firma Conductor:');
-  lines.push('________________');
-  lines.push('');
-  lines.push('Firma Destinatario:');
-  lines.push('________________');
-
-  lines.push(sepLight(chars));
-  for (const line of GO_ADMIN_FOOTER) {
-    lines.push(line);
-  }
-  lines.push('\n\n');
-
+  lines.push(sep(chars));
+  lines.push(l.guideLabel);
+  lines.push(`** ${l.guideNumber} **`);
+  lines.push(...r.after.flatMap((t) => wrapText(t, chars)));
   return lines.join('\n');
 }
 
@@ -908,11 +820,12 @@ export function buildPlainTextShipmentGuide(payload: ShipmentGuidePrintPayload, 
  * Imprime una factura electronica validada por DIAN en una impresora ESC/POS.
  * Incluye CUFE, QR de validacion y entorno (produccion/pruebas).
  */
-export function printElectronicInvoice(device: any, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
+export function printElectronicInvoice(device: EscposDevice, payload: ElectronicInvoicePrintPayload, paper: PaperSpec): void {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const doubleChars = Math.floor(chars / 2);
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
 
   // --- Header: datos del negocio ---
@@ -952,7 +865,7 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
   // --- Info del documento ---
   device.text(`Factura No: ${payload.invoiceNumber}`);
   device.text(`Fecha: ${date}  Hora: ${time}`);
-  device.text(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  device.text(`Items: ${itemsText}`);
   if (payload.cashierName) device.text(`Cajero: ${payload.cashierName}`);
   if (payload.validationDate) {
     const vd = new Date(payload.validationDate);
@@ -985,8 +898,8 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
 
   // --- Items ---
   for (const item of payload.items) {
-    writeItemLine(device, `${item.quantity}x  ${item.productName}`, formatMoney(item.total), chars);
-    device.text(`  ${formatMoney(item.unitPrice)} c/u`);
+    writeItemLine(device, saleLabel(item, payload.locale), formatMoney(item.total), chars);
+    device.text(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
 
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
     if (variantEntries.length > 0) {
@@ -1001,6 +914,10 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
       device.style('b');
       for (const line of wrapText(text, chars - 2)) device.text(`  ${line}`);
       device.style('normal');
+    }
+
+    if (item.note) {
+      for (const line of wrapText(`» ${item.note}`, chars - 2)) device.text(`  ${line}`);
     }
 
     if (item.taxAmount && item.taxAmount > 0) {
@@ -1091,9 +1008,10 @@ export function printElectronicInvoice(device: any, payload: ElectronicInvoicePr
  * Version en texto plano de la factura electronica, para impresoras 'system'.
  */
 export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: false });
   const chars = paper.charsPerLine;
   const { date, time } = formatDateParts(payload.createdAt, payload.timezone);
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, (payload as { locale?: string }).locale);
   const envLabel = payload.environment === 'production' ? 'PRODUCCION' : 'PRUEBAS';
 
   const lines: string[] = [];
@@ -1121,7 +1039,7 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
   // --- Info ---
   lines.push(`Factura No: ${payload.invoiceNumber}`);
   lines.push(`Fecha: ${date}  Hora: ${time}`);
-  lines.push(`Items: ${payload.items.length} (${itemCount} unidades)`);
+  lines.push(`Items: ${itemsText}`);
   if (payload.cashierName) lines.push(`Cajero: ${payload.cashierName}`);
   if (payload.validationDate) {
     const vd = new Date(payload.validationDate);
@@ -1150,8 +1068,8 @@ export function buildPlainTextElectronicInvoice(payload: ElectronicInvoicePrintP
   lines.push(sepLight(chars));
 
   for (const item of payload.items) {
-    lines.push(padRight(`${item.quantity}x ${item.productName}`, formatMoney(item.total), chars));
-    lines.push(`  ${formatMoney(item.unitPrice)} c/u`);
+    lines.push(padRight(saleLabel(item, payload.locale), formatMoney(item.total), chars));
+    lines.push(`  ${linePriceDetail(item, formatMoney, payload.locale)}`);
     if (item.taxAmount && item.taxAmount > 0) lines.push(`  Imp: ${formatMoney(item.taxAmount)}`);
     if (item.discountAmount && item.discountAmount > 0) lines.push(`  Desc: -${formatMoney(item.discountAmount)}`);
     lines.push(sepLight(chars));

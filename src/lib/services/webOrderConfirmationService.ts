@@ -23,6 +23,7 @@ import {
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { bloqueoConfirmarPorAnticipo, seCobraAlEntregar } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { clienteFacturaPedidoWebId } from '@/lib/pos/pedidosWeb/adquirientePedido';
 import {
   debeCobrarseEnCaja,
   esMetodoCobroEnCaja,
@@ -1096,13 +1097,15 @@ class WebOrderConfirmationService {
       const deliveryFee = Number(order.delivery_fee) || 0;
       const total = Number(order.total) || (subtotal + taxTotal - discountTotal + deliveryFee);
       const reparto = repartirTotalesPedidoWeb(order);
+      // Adquiriente (20261125170000): con NIT, la empresa del checkout; si no, el cliente del pedido.
+      const clienteFactura = await clienteFacturaPedidoWebId(supabase, order.id, order.customer_id || null);
 
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoice_sales')
         .insert({
           organization_id: order.organization_id,
           branch_id: order.branch_id,
-          customer_id: order.customer_id || null,
+          customer_id: clienteFactura,
           sale_id: saleId,
           number: invoiceNumber,
           // Emisión y vencimiento: hora del servidor, nunca el reloj del equipo.
@@ -1307,11 +1310,13 @@ class WebOrderConfirmationService {
       if (existingAR) return existingAR.id;
 
       const total = Number(order.total) || 0;
+      // La cartera, a nombre del adquiriente de la factura (la empresa del NIT si la hay).
+      const clienteFactura = await clienteFacturaPedidoWebId(supabase, order.id, order.customer_id ?? null);
       const { data: ar, error: arError } = await supabase
         .from('accounts_receivable')
         .insert({
           organization_id: order.organization_id,
-          customer_id: order.customer_id!,
+          customer_id: clienteFactura ?? order.customer_id!,
           sale_id: saleId,
           amount: total,
           balance: 0, // Pedido pagado → balance 0

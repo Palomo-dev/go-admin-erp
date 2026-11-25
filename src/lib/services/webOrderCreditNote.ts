@@ -48,7 +48,7 @@ export async function crearNotaCreditoPedidoWeb(
   // 2. Buscar la factura original (invoice_sales con sale_id = order.sale_id)
   const { data: originalInvoice } = await supabase
     .from('invoice_sales')
-    .select('id, number, total, balance, status, tax_included, currency')
+    .select('id, number, total, balance, status, tax_included, currency, customer_id')
     .eq('sale_id', order.sale_id)
     .eq('document_type', 'invoice')
     .limit(1)
@@ -83,7 +83,9 @@ export async function crearNotaCreditoPedidoWeb(
       .insert({
         organization_id: order.organization_id,
         branch_id: order.branch_id,
-        customer_id: order.customer_id || null,
+        // El mismo adquiriente de la factura que revierte (la empresa del NIT si la factura salió a
+        // su nombre, 20261125170000); sin factura o sin cliente en ella, el del pedido, como antes.
+        customer_id: originalInvoice?.customer_id || order.customer_id || null,
         sale_id: order.sale_id,
         related_invoice_id: originalInvoice?.id || null,
         number: creditNoteNumber,

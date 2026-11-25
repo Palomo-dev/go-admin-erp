@@ -26,9 +26,10 @@
 import type { ContentFieldDef, SectionTypeDefinition } from '@/lib/services/websitePageBuilderService';
 import {
   ANCHOS_TARJETA_EDITORIAL,
-  AYUDAS_BOTON,
   CAPAS_MARCA,
   CHIPS_CALIFICACION,
+  COLUMNAS_CELULAR_TESTIMONIOS,
+  COLUMNAS_TABLETA_TESTIMONIOS,
   COLORES_MANIJA,
   COLORES_TARJETA_CATEGORIA,
   DEFAULT_ANTES_DESPUES,
@@ -52,7 +53,14 @@ import {
   ESTILOS_RESALTADO,
   ESTILOS_SUBCATEGORIA,
   ESTILO_CATEGORIA_TITULO_ARRIBA,
+  ETIQUETAS_ORDEN_CATEGORIA,
   ETIQUETAS_VARIANTE_TIENDA,
+  MARCADOR_OPCION,
+  MINIATURA_GALERIA,
+  ORDENES_CATEGORIA,
+  PROPORCIONES_FOTO_FICHA,
+  TEXTOS_SELECTOR_FICHA,
+  VARIANTE_INICIAL,
   FRECUENCIAS_BIENVENIDA,
   FUENTES_FICHA_TECNICA,
   FUENTES_LOOK,
@@ -91,6 +99,7 @@ import {
   TIPOS_TARJETA_FLOTANTE,
   VARIANTES_TIENDA,
   VARIANTE_BOTON_ENLACE,
+  celularPorDefectoTestimonios,
   type TipoSeccionTienda,
 } from '@/lib/website/contrato/seccionesTienda';
 
@@ -571,6 +580,28 @@ const CAMPOS_TESTIMONIOS: ContentFieldDef[] = [
     options: opciones(PAGINADORES_CITAS, { none: 'Sin paginador (como hoy)', fraction: '«1 / 5»' }),
     showIf: solo('quotes'),
   },
+  // Columnas por dispositivo (QA 2026-11-25: «Columnas» se veía también en el celular, 3 de ~90 px).
+  // «Columnas» sigue siendo el computador; sin clave, cada dispositivo usa lo de abajo.
+  {
+    key: 'columns_tablet',
+    label: 'Columnas en tableta',
+    type: 'select',
+    group: 'layout',
+    defaultValue: '2',
+    helpText: 'Desde 768 px. Sin elegir: 2 (o 1 si «Columnas» es 1).',
+    options: opciones(COLUMNAS_TABLETA_TESTIMONIOS, { 1: '1', 2: '2', 3: '3' }),
+    showIf: solo('grid', 'carousel'),
+  },
+  ...(['grid', 'carousel'] as const).map((variante): ContentFieldDef => ({
+    key: 'columns_mobile',
+    label: 'Columnas en celular',
+    type: 'select',
+    group: 'layout',
+    defaultValue: celularPorDefectoTestimonios(variante),
+    helpText: '«Carrusel»: una tarjeta a la vez que se desliza con el dedo y deja asomar la siguiente.',
+    options: opciones(COLUMNAS_CELULAR_TESTIMONIOS, { 1: '1 por fila', 2: '2 por fila', carousel: 'Carrusel' }),
+    showIf: solo(variante),
+  })),
 ];
 
 // ─── categories_grid (ajuste, B2): estilo «Título arriba» y color, texto y flecha ──────────
@@ -639,6 +670,37 @@ const CAMPOS_FILTROS_CATEGORIA: ContentFieldDef[] = [
     type: 'boolean',
     defaultValue: false,
     helpText: `«${TEXTO_BUSCADOR_CATEGORIA}»: busca en toda la tienda.`,
+    showIf: solo('default'),
+  },
+  {
+    key: 'sort_options',
+    label: 'Opciones de orden',
+    type: 'repeater',
+    itemLabelKey: 'id',
+    maxItems: ORDENES_CATEGORIA.length,
+    helpText: 'Elige cuáles ofrecer y en qué orden.',
+    defaultItems: ORDENES_CATEGORIA.map((id) => ({ id, visible: true })),
+    itemFields: [
+      { key: 'id', label: 'Orden', type: 'select', options: opciones(ORDENES_CATEGORIA, ETIQUETAS_ORDEN_CATEGORIA) },
+      { key: 'visible', label: 'Visible', type: 'boolean', defaultValue: true },
+    ],
+    showIf: solo('default'),
+  },
+  {
+    key: 'default_sort',
+    label: 'Orden al entrar',
+    type: 'select',
+    display: 'dropdown',
+    defaultValue: 'best_selling',
+    options: opciones(ORDENES_CATEGORIA, ETIQUETAS_ORDEN_CATEGORIA),
+    showIf: solo('default'),
+  },
+  {
+    key: 'show_count',
+    label: 'Mostrar «N productos»',
+    type: 'boolean',
+    defaultValue: true,
+    helpText: 'Si el encabezado también lo muestra, queda uno solo (el del encabezado).',
     showIf: solo('default'),
   },
   {
@@ -750,6 +812,68 @@ const CAMPOS_GALERIA_FICHA: ContentFieldDef[] = [
     showIf: { field: 'gallery_layout', in: ['carousel', undefined, ''] },
   },
   {
+    key: 'gallery_dots',
+    label: 'Puntos debajo de la foto',
+    type: 'boolean',
+    section: 'Galería',
+    defaultValue: true,
+    showIf: { field: 'gallery_layout', in: ['carousel', undefined, ''] },
+  },
+  {
+    key: 'gallery_grid_columns',
+    label: 'Columnas de la rejilla',
+    type: 'select',
+    section: 'Galería',
+    defaultValue: '3',
+    options: [
+      { value: '2', label: '2' },
+      { value: '3', label: '3' },
+      { value: '4', label: '4' },
+    ],
+    showIf: { field: 'gallery_layout', equals: 'grid' },
+  },
+  {
+    key: 'thumb_size',
+    label: 'Tamaño de las miniaturas',
+    type: 'range',
+    section: 'Galería',
+    min: MINIATURA_GALERIA.min,
+    max: MINIATURA_GALERIA.max,
+    step: 4,
+    suffix: 'px',
+    defaultValue: MINIATURA_GALERIA.porDefecto,
+    showIf: { field: 'gallery_layout', in: ['carousel', 'scroll', undefined, ''] },
+  },
+  {
+    key: 'aspect_ratio',
+    label: 'Proporción de la foto',
+    type: 'select',
+    section: 'Galería',
+    defaultValue: 'square',
+    helpText: '«Original»: cada foto con su forma, sin recortar.',
+    options: opciones(PROPORCIONES_FOTO_FICHA.filter((p) => p !== '16/9'), { square: 'Cuadrada', '4/5': '4:5', '3/4': '3:4', '4/3': '4:3', auto: 'Original' }),
+    showIf: { field: 'gallery_layout', in: ['carousel', 'grid', 'show_all', undefined, ''] },
+  },
+  {
+    key: 'zoom',
+    label: 'Zoom',
+    type: 'select',
+    section: 'Galería',
+    defaultValue: 'none',
+    helpText: '«Al pasar»: con el ratón. «Al tocar»: un toque acerca. «Ampliar»: la foto a pantalla completa.',
+    options: opciones(['hover', 'click', 'lightbox', 'none'], { hover: 'Al pasar', click: 'Al tocar', lightbox: 'Ampliar', none: 'Sin zoom' }),
+    showIf: { field: 'gallery_layout', in: ['carousel', undefined, ''] },
+  },
+  {
+    key: 'follow_variant',
+    label: 'Cambiar la foto al elegir talla o color',
+    type: 'boolean',
+    section: 'Galería',
+    defaultValue: false,
+    helpText: 'Usa la primera foto de la opción elegida. Sin foto propia, se queda la del producto.',
+    showIf: { field: 'gallery_layout', in: ['carousel', undefined, ''] },
+  },
+  {
     key: 'page_layout.columns',
     label: 'Columnas de la ficha',
     type: 'select',
@@ -776,7 +900,16 @@ const CAMPOS_GALERIA_FICHA: ContentFieldDef[] = [
   { key: 'page_layout.show_breadcrumb', label: 'Migas de pan', type: 'boolean', section: 'Página', defaultValue: DEFAULT_DISENO_FICHA.showBreadcrumb },
 ];
 
-// ─── product_actions (ajuste): precio en el botón y pista de variante ──────────────────────
+// ─── product_actions (ajuste): precio en el botón, talla al abrir y textos de la compra ──────
+
+/**
+ * Figma «16 Sitio web», bloque 1 (aprobado el 2026-11-25): «Al abrir la ficha» reemplaza a la
+ * «Pista antes de elegir variante» (`button_hint`), que dejó de hacer algo cuando la tienda pasó a
+ * elegir siempre la primera talla disponible. Por defecto, «Elegir la primera disponible»: así
+ * quedan todas las tiendas. Cabecera, recuadro y textos: encendidos y con los textos de siempre.
+ */
+const SECCION_SELECTOR = 'Talla, color u opción';
+const SECCION_TEXTOS_COMPRA = 'Textos de la compra';
 
 const CAMPOS_ACCIONES_FICHA: ContentFieldDef[] = [
   {
@@ -787,13 +920,58 @@ const CAMPOS_ACCIONES_FICHA: ContentFieldDef[] = [
     helpText: '«Agregar · $ 189.000», con el precio vigente.',
   },
   {
-    key: 'button_hint',
-    label: 'Pista antes de elegir variante',
+    key: 'initial_variant',
+    label: 'Al abrir la ficha',
     type: 'select',
-    defaultValue: 'none',
-    helpText: '«Elige tu acabado», con el nombre del tipo de variante. Solo presentación.',
-    options: opciones(AYUDAS_BOTON, { none: 'Ninguna (como hoy)', auto: 'Automática' }),
+    section: SECCION_SELECTOR,
+    defaultValue: 'first_available',
+    helpText: 'Si la primera está agotada, se elige la siguiente con existencias.',
+    options: opciones(VARIANTE_INICIAL, { first_available: 'Elegir la primera disponible', customer: 'Que el cliente elija' }),
   },
+  {
+    key: 'choose_text',
+    label: 'Texto del botón mientras no elija',
+    type: 'text',
+    section: SECCION_SELECTOR,
+    placeholder: TEXTOS_SELECTOR_FICHA.elegir,
+    helpText: `${MARCADOR_OPCION} se cambia por talla, color o acabado.`,
+    showIf: { field: 'initial_variant', equals: 'customer' },
+  },
+  {
+    key: 'selector_header',
+    label: 'Cabecera del selector',
+    type: 'boolean',
+    section: SECCION_SELECTOR,
+    defaultValue: true,
+    helpText: 'Nombre del producto y la línea de abajo.',
+  },
+  {
+    key: 'selector_header_text',
+    label: 'Texto de la cabecera',
+    type: 'text',
+    section: SECCION_SELECTOR,
+    placeholder: TEXTOS_SELECTOR_FICHA.cabecera,
+    showIf: { field: 'selector_header', in: [true, undefined] },
+  },
+  {
+    key: 'selected_summary',
+    label: 'Recuadro de la opción elegida',
+    type: 'boolean',
+    section: SECCION_SELECTOR,
+    defaultValue: true,
+    helpText: 'Foto, nombre, SKU y precio de la opción elegida.',
+  },
+  {
+    key: 'text_quantity',
+    label: 'Cantidad',
+    type: 'text',
+    section: SECCION_TEXTOS_COMPRA,
+    placeholder: TEXTOS_SELECTOR_FICHA.cantidad,
+    helpText: 'Vacío = el texto de siempre.',
+  },
+  { key: 'text_out_of_stock', label: 'Sin existencias', type: 'text', section: SECCION_TEXTOS_COMPRA, placeholder: TEXTOS_SELECTOR_FICHA.sinStock },
+  { key: 'text_sold_out', label: 'Agotado (restaurante)', type: 'text', section: SECCION_TEXTOS_COMPRA, placeholder: TEXTOS_SELECTOR_FICHA.agotado },
+  { key: 'text_added', label: 'Al agregar', type: 'text', section: SECCION_TEXTOS_COMPRA, placeholder: TEXTOS_SELECTOR_FICHA.agregado },
 ];
 
 // ─── Registro por tipo existente ───────────────────────────────────────────────────────────
@@ -839,6 +1017,9 @@ const CAMPOS_POR_TIPO: Readonly<Record<string, readonly ContentFieldDef[]>> = {
 /** Dónde va cada campo de ajuste dentro de la lista de su tipo: después de esta clave. */
 const INSERTAR_DESPUES: Readonly<Record<string, string>> = {
   'categories_grid.category_text_position': 'category_style',
+  // Junto a «Columnas» (el computador): tableta y celular.
+  'testimonials.columns_tablet': 'columns',
+  'testimonials.columns_mobile': 'columns',
 };
 
 /** Variantes de tienda de un tipo existente, con su nombre visible del contrato. */

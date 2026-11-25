@@ -10,9 +10,37 @@ import { formatInstantWithOffset } from '@/lib/utils/dateCore';
 import { sumarDiasCalendario } from '@/lib/utils/taskReminderDates';
 import { esComerAqui, esDomicilio } from './tipoEntrega';
 
-export type PeriodoListado = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom' | 'all';
+export type PeriodoListado = 'today' | 'yesterday' | 'week' | 'month' | 'last7' | 'last30' | 'custom' | 'all';
 
-export const PERIODOS_LISTADO: readonly PeriodoListado[] = ['today', 'yesterday', 'last7', 'last30', 'custom', 'all'];
+/**
+ * «Esta semana» (lunes a hoy) y «Este mes» se suman el 2026-11-25 (barra a la vista, Figma
+ * 3300-420478); los de antes siguen igual.
+ */
+export const PERIODOS_LISTADO: readonly PeriodoListado[] = ['today', 'yesterday', 'week', 'month', 'last7', 'last30', 'custom', 'all'];
+
+export function esPeriodoListado(v: unknown): v is PeriodoListado {
+  return typeof v === 'string' && (PERIODOS_LISTADO as readonly string[]).includes(v);
+}
+
+/** Días calendario entre dos fechas planas (b − a). */
+function diasEntre(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+}
+
+/** Lunes de la semana de `dia` (semana de lunes a domingo). */
+function lunesDe(dia: string): string {
+  const semana = new Date(`${dia}T00:00:00Z`).getUTCDay();
+  return sumarDiasCalendario(dia, -((semana + 6) % 7));
+}
+
+/** El mismo día del mes anterior (el último, si ese mes es más corto). */
+function mismoDiaMesAnterior(dia: string): string {
+  const [a, m, d] = dia.split('-').map(Number);
+  const ultimo = new Date(Date.UTC(a, m - 1, 0)).getUTCDate();
+  const anio = m === 1 ? a - 1 : a;
+  const mes = m === 1 ? 12 : m - 1;
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`;
+}
 
 export interface Rango {
   from?: string;
@@ -47,6 +75,23 @@ export function rangosDelPeriodo(
     case 'yesterday': {
       const ayer = sumarDiasCalendario(hoy, -1);
       return { actual: desdeHasta(ayer, ayer), anterior: desdeHasta(sumarDiasCalendario(hoy, -2), sumarDiasCalendario(hoy, -2)) };
+    }
+    case 'week': {
+      // Lunes a hoy, contra la semana pasada hasta esta misma hora.
+      const lunes = lunesDe(hoy);
+      return {
+        actual: { from: dia(lunes).start, to: dia(hoy).end },
+        anterior: { from: dia(sumarDiasCalendario(lunes, -7)).start, to: hastaAhora(7) },
+      };
+    }
+    case 'month': {
+      // Del día 1 a hoy, contra el mes pasado hasta el mismo día y hora.
+      const inicio = `${hoy.slice(0, 7)}-01`;
+      const comparado = mismoDiaMesAnterior(hoy);
+      return {
+        actual: { from: dia(inicio).start, to: dia(hoy).end },
+        anterior: { from: dia(`${comparado.slice(0, 7)}-01`).start, to: hastaAhora(diasEntre(comparado, hoy)) },
+      };
     }
     case 'last7':
     case 'last30': {

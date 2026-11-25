@@ -76,12 +76,25 @@ export function tributoDianCliente(resps: readonly unknown[] | null | undefined)
 }
 
 /**
- * Responsabilidades que viajan en el documento electrónico: sin O-48 / O-49 (van como tributo) y,
- * si no queda ninguna, R-99-PN, como exige la DIAN.
+ * Responsabilidades que admite el documento electrónico (Anexo técnico 1.9, Res. DIAN 000165 de
+ * 2023, tabla 13.2.6.1). Confirmado por el Contador el 2026-11-25: O-13, O-15, O-23, O-47 y
+ * R-99-PN. O-48 / O-49 NUNCA viajan como responsabilidad: van como tributo (01 / ZZ).
+ */
+export const RESPONSABILIDADES_DIAN_FE: readonly string[] = [
+  RESPONSABILIDAD.granContribuyente,
+  RESPONSABILIDAD.autorretenedor,
+  RESPONSABILIDAD.agenteRetencionIva,
+  RESPONSABILIDAD.simple,
+  RESPONSABILIDAD.noAplica,
+];
+
+/**
+ * Responsabilidades que viajan en el documento electrónico: solo las de la tabla 13.2.6.1 (sin
+ * O-48 / O-49, que van como tributo, ni códigos viejos que la DIAN rechaza) y, si no queda
+ * ninguna, R-99-PN, como exige la DIAN. El perfil del cliente sigue guardando y mostrando 48/49.
  */
 export function responsabilidadesParaDian(resps: readonly unknown[] | null | undefined): string[] {
-  const iva = new Set<string>([RESPONSABILIDAD_IVA['48'], RESPONSABILIDAD_IVA['49']]);
-  const lista = limpias(resps).filter((r) => !iva.has(r));
+  const lista = limpias(resps).filter((r) => RESPONSABILIDADES_DIAN_FE.includes(r));
   return lista.length > 0 ? Array.from(new Set(lista)) : [RESPONSABILIDAD.noAplica];
 }
 

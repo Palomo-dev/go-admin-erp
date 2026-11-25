@@ -37,6 +37,7 @@ import { direccionDelSitio } from '@/components/sitio-web/seoanalitica/seo.serve
 import { giroDesdeTipo, leerOnboarding, type GiroSitio } from './onboardingSitio';
 import { tienePasarela } from './resumenSitio';
 import { resumirTarifasDomicilio, type FilaTarifaDomicilio, type TarifasDomicilio } from './tarifasDomicilio';
+import { CLAVE_FORMULARIO_CHECKOUT, leerFormularioCheckout, type AjusteCampoFormulario } from './formularioCheckout';
 import {
   COLUMNAS_PENDIENTES_CHECKOUT,
   TIPOS_ENTREGA,
@@ -92,6 +93,11 @@ export interface AjustesCheckout {
   barraPago: BarraPagoMovil;
   /** Compra como invitado y pedido mínimo esperan la migración `sitio_web_ventas_sedes`. */
   pendienteMigracion: boolean;
+  /**
+   * Formulario del checkout (Parte F): lo guardado en `organization_settings` key
+   * `checkout_formulario`. `null` (o ausente) = el formulario de siempre.
+   */
+  formulario?: AjusteCampoFormulario[] | null;
 }
 
 export interface RespuestaVentas {
@@ -222,6 +228,17 @@ async function leerAjustes(ctx: Ctx): Promise<AjustesCheckout | null> {
     pedidoMinimo = numero(e?.checkout_min_order_amount);
   }
 
+  // Formulario del checkout (Parte F): una fila por organización y clave en organization_settings
+  // (columnas verificadas por MCP el 2026-11-25; RLS de pertenencia). Sin fila: el de siempre.
+  const filaFormulario = await ctx.supabase
+    .from('organization_settings')
+    .select('settings')
+    .eq('organization_id', ctx.organizationId)
+    .eq('key', CLAVE_FORMULARIO_CHECKOUT)
+    .maybeSingle();
+  if (filaFormulario.error) throw filaFormulario.error;
+  const formulario = leerFormularioCheckout((filaFormulario.data as { settings?: unknown } | null)?.settings ?? null);
+
   return {
     modo: f.checkout_mode === 'one_page' ? 'one_page' : 'steps',
     tiposEntrega: (f.available_delivery_types ?? []).filter((t): t is TipoEntrega => TIPOS_VALIDOS.has(t)),
@@ -236,6 +253,7 @@ async function leerAjustes(ctx: Ctx): Promise<AjustesCheckout | null> {
     envioGratisDesde: numero(f.free_shipping_threshold),
     barraPago: normalizarBarraPago(f.checkout_mobile_bar_style),
     pendienteMigracion,
+    formulario,
   };
 }
 
@@ -527,6 +545,7 @@ async function exigirEditar(ctx: Ctx): Promise<void> {
 export async function guardarCheckout(ctx: Ctx, cambios: CambiosCheckout): Promise<void> {
   await exigirEditar(ctx);
   const fila = filaDeCambios(cambios);
+  if (cambios.formulario !== undefined) await guardarFormulario(ctx, cambios.formulario);
   if (Object.keys(fila).length === 0) return;
   const { data, error } = await getServiceClient()
     .from('website_settings')
@@ -541,6 +560,28 @@ export async function guardarCheckout(ctx: Ctx, cambios: CambiosCheckout): Promi
     throw error;
   }
   if (!data || data.length === 0) throw new ErrorVentas('sin_ajustes', 404, 'El sitio aún no tiene ajustes. Créalo desde el Resumen.');
+}
+
+/**
+ * Formulario del checkout (Parte F) ya validado por `validarFormularioCheckout` (lista blanca,
+ * candados de los indispensables). Organización de la sesión y permiso `website.sites.edit` ya
+ * exigido por `guardarCheckout`. `null` o el recomendado → borra la fila: la tienda vuelve al
+ * formulario de siempre, exactamente como antes de configurarlo.
+ */
+async function guardarFormulario(ctx: Ctx, formulario: CambiosCheckout['formulario']): Promise<void> {
+  const db = getServiceClient();
+  if (formulario === null || formulario === undefined) {
+    const { error } = await db.from('organization_settings').delete().eq('organization_id', ctx.organizationId).eq('key', CLAVE_FORMULARIO_CHECKOUT);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await db
+    .from('organization_settings')
+    .upsert(
+      { organization_id: ctx.organizationId, key: CLAVE_FORMULARIO_CHECKOUT, settings: formulario, updated_at: new Date().toISOString() },
+      { onConflict: 'organization_id,key' },
+    );
+  if (error) throw error;
 }
 
 /**

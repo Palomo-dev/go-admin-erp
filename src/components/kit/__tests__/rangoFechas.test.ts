@@ -49,6 +49,14 @@ describe('presetsRango', () => {
     expect(p.mesPasado).toEqual({ desde: '2026-08-01', hasta: '2026-08-31' });
   });
 
+  it('«Esta semana» va del lunes a hoy (el lunes coincide con «Hoy»)', () => {
+    const p = (hoy: string) => presetsRango(hoy).find((x) => x.id === 'semana')?.rango;
+    expect(p('2026-11-25')).toEqual({ desde: '2026-11-23', hasta: '2026-11-25' }); // miércoles
+    expect(p('2026-11-29')).toEqual({ desde: '2026-11-23', hasta: '2026-11-29' }); // domingo
+    expect(p('2026-11-23')).toEqual({ desde: '2026-11-23', hasta: '2026-11-23' });
+    expect(presetDe({ desde: '2026-11-23', hasta: '2026-11-25' }, '2026-11-25')).toBe('semana');
+  });
+
   it('mes pasado cruza el año en enero', () => {
     const p = presetsRango('2026-01-10').find((x) => x.id === 'mesPasado');
     expect(p?.rango).toEqual({ desde: '2025-12-01', hasta: '2025-12-31' });

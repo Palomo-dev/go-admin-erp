@@ -32,6 +32,8 @@ export interface DetalleClic {
   href?: string;
   texto?: string;
   productoId?: number;
+  /** El clic cayó en la fila de íconos de la cabecera (`data-acciones-encabezado`, Figma B1 3265:99803). */
+  iconos?: boolean;
 }
 
 const ORIGENES_DESARROLLO = ['http://localhost:3002', 'http://localhost:3000', 'https://erp.goadmin.io', 'https://go-admin-erp.vercel.app'];
@@ -203,6 +205,7 @@ export function usePuenteLienzo({ iframe, url, secciones, ajustes, seleccion, av
           ...(enlace && typeof d.href === 'string' ? { href: d.href.slice(0, 512) } : {}),
           ...(enlace && typeof d.texto === 'string' ? { texto: d.texto.slice(0, 120) } : {}),
           ...(Number.isInteger(d.productoId) && (d.productoId as number) > 0 ? { productoId: d.productoId as number } : {}),
+          ...(d.iconos === true ? { iconos: true } : {}),
         });
       }
       if (d.type === 'goadmin:accion' && typeof d.sectionId === 'string' && d.accion === 'quitar') onQuitar?.(d.sectionId);

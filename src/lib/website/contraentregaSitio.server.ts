@@ -18,7 +18,7 @@ import { resolverContextoMoneda } from '@/lib/services/monedaOrganizacion';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import type { ContextoMoneda } from '@/lib/utils/moneda';
 import { conCondicionesDeSede, condicionesDeSede, type CondicionesContraentrega } from '@/lib/contraentrega/reglaContraentrega';
-import { erroresCondiciones, soloDeLaOrganizacion } from '@/lib/contraentrega/condicionesWeb';
+import { erroresCondiciones, soloDeLaOrganizacion, soloDevolverAnticipo } from '@/lib/contraentrega/condicionesWeb';
 import { ErrorVentas } from './ventasSitio.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase' | 'memberId'>;
@@ -96,7 +96,8 @@ export function condicionesPorSede(settings: unknown, sedes: readonly { id: numb
   const r: Record<string, CondicionesContraentrega> = {};
   for (const s of sedes) {
     const c = condicionesDeSede(settings, s.id);
-    if (c) r[String(s.id)] = c;
+    // «La tienda se lo queda» está apagado (criterio del Contador 2026-11-25): solo devolver.
+    if (c) r[String(s.id)] = soloDevolverAnticipo(c);
   }
   return r;
 }
@@ -273,11 +274,13 @@ export async function guardarContraentrega(ctx: Ctx, branchId: number, condicion
     if (zonas.error) throw zonas.error;
     if (categorias.error) throw categorias.error;
     if (productos.error) throw productos.error;
-    limpias = soloDeLaOrganizacion(condiciones, {
+    // Criterio del Contador (2026-11-25): el anticipo solo se devuelve; nunca se guarda «retener»
+    // aunque lo mande el navegador (ver `soloDevolverAnticipo`).
+    limpias = soloDevolverAnticipo(soloDeLaOrganizacion(condiciones, {
       zonas: new Set(((zonas.data ?? []) as { id: string }[]).map((z) => z.id)),
       categorias: new Set(((categorias.data ?? []) as { id: number }[]).map((c) => c.id)),
       productos: new Set(((productos.data ?? []) as { id: number }[]).map((p) => p.id)),
-    });
+    }));
     // Pasarela del anticipo: solo una de las que la tienda sabe cobrar.
     const pasarela = limpias.anticipo.pasarela;
     if (pasarela !== null && !(CONECTORES_PASARELA_WEB as readonly string[]).includes(pasarela)) {

@@ -2,7 +2,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, CircleAlert, Package, Trash2, TriangleAlert } from 'lucide-react';
+import { CircleAlert, Package, Trash2, TriangleAlert } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CampoNumero } from '../CampoNumero';
@@ -13,6 +13,7 @@ import { formatearTarifa } from '../resumenTotalesLogica';
 import { useKitT, useLocaleIntl } from '../useIdiomaKit';
 import type { OpcionImpuesto } from './edicionDocumentoLogica';
 import { ImpuestosLinea } from './ImpuestosLinea';
+import { NombreLinea } from './NombreLinea';
 import {
   decimalesDocumento,
   decimalesLinea,
@@ -128,8 +129,13 @@ export function DocumentoLineas({
   const oculta = (c: 'sku' | 'descuento' | 'impuestos') => ocultar.includes(c);
   const editable = modo === 'edicion' && !!onCambiar;
 
-  const producto = (l: LineaDocumento) => (
-    <div className="flex min-w-0 flex-col gap-0.5">
+  /**
+   * Producto de la línea. En la tarjeta de celular (`enTarjeta`) el nombre va
+   * en hasta 3 líneas y la columna ocupa lo que deja el total; en la tabla,
+   * una línea con «…» como siempre.
+   */
+  const producto = (l: LineaDocumento, enTarjeta = false) => (
+    <div className={cn('flex min-w-0 flex-col gap-0.5', enTarjeta && 'flex-1')}>
       {editable && l.descripcionEditable ? (
         <input
           type="text"
@@ -144,17 +150,8 @@ export function DocumentoLineas({
             l.error ? 'border-line-danger' : 'border-line-strong',
           )}
         />
-      ) : l.enlace ? (
-        <Link
-          href={l.enlace}
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex min-w-0 items-center gap-1 self-start rounded font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          <span className="truncate">{l.descripcion}</span>
-          <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.75} />
-        </Link>
       ) : (
-        <span className="truncate font-medium text-fg">{l.descripcion}</span>
+        <NombreLinea nombre={l.descripcion} href={l.enlace} ajuste={enTarjeta ? 'envolver' : 'truncar'} className={l.enlace ? 'self-start' : undefined} />
       )}
       {(l.variante || (!oculta('sku') && l.sku)) && (
         <span className="truncate text-xs text-fg-muted">
@@ -326,7 +323,7 @@ export function DocumentoLineas({
 
   const conUnidad = lineas.some((l) => !!unidadDe(l));
   const columnas: ColumnaTabla<LineaDocumento>[] = [
-    { id: 'producto', encabezado: t('documento.lineas.producto'), celda: producto },
+    { id: 'producto', encabezado: t('documento.lineas.producto'), celda: (l) => producto(l) },
   ];
   if (modo === 'recepcion') {
     columnas.push(
@@ -383,10 +380,10 @@ export function DocumentoLineas({
   }
 
   const tarjeta = (l: LineaDocumento) => (
-    <div className={cn('flex flex-col gap-3 rounded-xl border p-4', l.error ? 'border-line-danger bg-surface' : l.aviso ? 'border-line-warning bg-warning-subtle' : 'border-line bg-surface')}>
-      <div className="flex items-start justify-between gap-3">
-        {producto(l)}
-        {modo !== 'recepcion' && <span className="shrink-0 font-semibold tabular-nums text-fg">{formatear(l.total)}</span>}
+    <div className={cn('flex min-w-0 flex-col gap-3 rounded-xl border p-4', l.error ? 'border-line-danger bg-surface' : l.aviso ? 'border-line-warning bg-warning-subtle' : 'border-line bg-surface')}>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        {producto(l, true)}
+        {modo !== 'recepcion' && <span className="shrink-0 whitespace-nowrap text-right font-semibold tabular-nums text-fg">{formatear(l.total)}</span>}
       </div>
       {modo === 'recepcion' ? (
         <div className="flex items-center justify-between gap-3 text-[13px] text-fg-secondary">

@@ -510,18 +510,16 @@ export function DialogoContraentrega({ abierto, onAbiertoChange, datos, sedeInic
                   <ShieldCheck aria-hidden="true" className="size-4 text-fg-secondary" strokeWidth={1.5} />
                   {t('anticipo.siNoRecibe')}
                 </p>
-                <RadioGroup value={form.siNoRecibe} onValueChange={(v) => poner('siNoRecibe', v === 'retener' ? 'retener' : 'devolver')} className="flex flex-col gap-2 pl-6">
-                  <label className="flex items-center gap-2.5 text-sm text-fg">
-                    <RadioGroupItem value="devolver" />
-                    {t('anticipo.devolver')}
-                  </label>
-                  <label className="flex items-center gap-2.5 text-sm text-fg">
-                    <RadioGroupItem value="retener" />
-                    {t('anticipo.retener')}
-                  </label>
-                </RadioGroup>
+                {/*
+                  Criterio del Contador (2026-11-25): si el cliente no recibe el pedido, el anticipo
+                  SOLO se devuelve. «La tienda se lo queda» queda apagado: no hay concepto DIAN para
+                  llevarlo a 4255 sin IVA y hay riesgo de consumidor (retracto, art. 47 Ley 1480 de
+                  2011; queja ante la SIC). Si algún día una tienda lo necesita: primero Legal y
+                  después el Contador. `condicionesIniciales` y el servidor fuerzan «devolver».
+                */}
+                <p className="pl-6 text-sm text-fg">{t('anticipo.devolver')}</p>
                 <p className="text-xs text-fg-secondary">
-                  {t('anticipo.siNoRecibeAyuda', { linea: form.siNoRecibe === 'retener' ? t('anticipo.lineaRetener') : t('anticipo.lineaDevolver') })}
+                  {t('anticipo.siNoRecibeAyuda', { linea: t('anticipo.lineaDevolver') })}
                 </p>
               </div>
 

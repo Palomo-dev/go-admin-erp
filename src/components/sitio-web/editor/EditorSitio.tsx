@@ -157,6 +157,12 @@ function Editor() {
   const [descartando, setDescartando] = useState(false);
   const [herencia, setHerencia] = useState(false);
   const [hojaMenu, setHojaMenu] = useState(false);
+  // Cada clic en la fila de íconos del lienzo suma uno: el inspector del encabezado abre el orden.
+  // Al dejar el encabezado vuelve a 0, para que abrirlo después por otro camino no lo repita.
+  const [pedidoOrdenIconos, setPedidoOrdenIconos] = useState(0);
+  useEffect(() => {
+    if (ed.zonaGlobal !== 'header') setPedidoOrdenIconos(0);
+  }, [ed.zonaGlobal]);
   const [seoAbierto, setSeoAbierto] = useState(false);
   const [disenoPagina, setDisenoPagina] = useState(false);
   const [cambioPagina, setCambioPagina] = useState<string | null>(null);
@@ -316,7 +322,15 @@ function Editor() {
   }, [ed.enV2, ed.programacion, ed.hasChanges, ed.estadoGuardado, ed.listaCambios, ed.hayPublicacion, ed.cambiosSinPublicar]);
 
   const seleccionarDesdeLienzo = useCallback(
-    (id: string, detalle: { enlace: boolean; productoId?: number }) => {
+    (id: string, detalle: { enlace: boolean; productoId?: number; iconos?: boolean }) => {
+      // Clic en la fila de íconos de la cabecera (Figma B1 3265:99803): abre Encabezado › Íconos
+      // con «Orden en la cabecera» a la vista (resaltado 1 s), no el menú.
+      if (id === 'header' && detalle.iconos) {
+        ed.seleccionarZona('header');
+        setPedidoOrdenIconos((n) => n + 1);
+        setPanelDerecho('inspector');
+        return;
+      }
       if (id === 'header' || id === 'footer') {
         const zona = id as ZonaGlobal;
         if (detalle.enlace && ed.zonaGlobal === zona) setHojaMenu(true);
@@ -801,6 +815,7 @@ function Editor() {
                 coloresTema={coloresTema}
                 giro={giroShell}
                 organizationId={ed.organizationId}
+                abrirOrdenIconos={pedidoOrdenIconos}
                 onEditarMenu={() => setHojaMenu(true)}
                 onCerrar={() => ed.seleccionarZona(null)}
               />

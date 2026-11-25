@@ -34,6 +34,15 @@ export interface DateRangeButtonProps {
   /** Si llega, el pie muestra «Limpiar» (la pantalla decide a qué rango vuelve). */
   onLimpiar?: () => void;
   deshabilitado?: boolean;
+  /**
+   * `chip`: el disparador es una píldora de 28 px («Rango…» de la barra de filtros a la vista,
+   * Figma 3300-420478) en lugar del botón de 40 px. El panel es el mismo.
+   */
+  variante?: 'boton' | 'chip';
+  /** Texto visible del disparador (por defecto, el rango elegido). */
+  texto?: string;
+  /** Con `variante="chip"`: se pinta como elegido (tinte de marca y ✓). */
+  activo?: boolean;
   className?: string;
 }
 
@@ -41,6 +50,7 @@ export interface DateRangeButtonProps {
 const CLAVE_PRESET: Record<IdPresetRango, [string, string]> = {
   hoy: ['hoy', 'hoy'],
   ayer: ['ayer', 'ayer'],
+  semana: ['semana', 'estaSemana'],
   '7d': ['dias7', 'ultimos7'],
   '30d': ['dias30', 'ultimos30'],
   mes: ['esteMes', 'esteMes'],
@@ -56,6 +66,9 @@ export function DateRangeButton({
   min,
   onLimpiar,
   deshabilitado,
+  variante = 'boton',
+  texto,
+  activo: chipActivo = false,
   className,
 }: DateRangeButtonProps) {
   const t = useKitT();
@@ -104,15 +117,25 @@ export function DateRangeButton({
           disabled={deshabilitado}
           aria-haspopup="dialog"
           aria-label={`${etiqueta}: ${etiquetaRango(valor)}`}
+          aria-pressed={variante === 'chip' ? chipActivo : undefined}
           className={cn(
-            'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg transition-colors hover:bg-hover',
+            variante === 'chip'
+              ? cn(
+                  'inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors',
+                  chipActivo ? 'border-brand bg-brand-tint text-brand-deep' : 'border-line-strong bg-surface text-fg-secondary hover:bg-hover',
+                )
+              : 'inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg transition-colors hover:bg-hover',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-brand',
             className,
           )}
         >
-          <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
-          <span className="whitespace-nowrap tabular-nums">{etiquetaRango(valor)}</span>
-          <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+          {variante === 'chip' ? (
+            chipActivo && <Check aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+          ) : (
+            <CalendarDays aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+          )}
+          <span className="whitespace-nowrap tabular-nums">{texto ?? etiquetaRango(valor)}</span>
+          {variante !== 'chip' && <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />}
         </button>
       </PopoverPrimitive.Trigger>
       <PopoverPrimitive.Portal>

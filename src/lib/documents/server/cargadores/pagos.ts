@@ -4,8 +4,8 @@
  *   cartera, folio, pedido web…).
  * - `comprobante-egreso`: dinero que SALE hacia un proveedor (factura de
  *   compra o cuenta por pagar).
- * El valor es `amount - change_amount` (en el POS `amount` guarda lo recibido
- * y el cambio va aparte). El número es el consecutivo de la organización
+ * El valor es `amount - change_amount` (ver `finanzas/pagos/vueltas.ts`); lo
+ * recibido y las vueltas, informativos, salen de `cash_received`/`change_given`. El número es el consecutivo de la organización
  * (`payments.receipt_number`, RC-0001 / CE-0001, asignado por la base); en un
  * pago único, el del grupo (`payment_groups.receipt_number`). El documento que el pago abona y su contraparte se
  * resuelven en el servidor, siempre dentro de la organización de la sesión.
@@ -39,6 +39,7 @@ import {
   type SesionDocumento,
 } from '../base';
 import { filasRetencion, retencionesDeCompra } from './compras';
+import { recibidoPago, vueltasPago } from '@/lib/finanzas/pagos/vueltas';
 
 /** Orígenes de pago que son egresos a proveedores. */
 export const ORIGENES_EGRESO = new Set(['invoice_purchase', 'account_payable']);
@@ -52,6 +53,8 @@ interface FilaPagoCompleta {
   method: string | null;
   amount: number | string | null;
   change_amount: number | string | null;
+  cash_received?: number | string | null;
+  change_given?: number | string | null;
   discount_amount: number | string | null;
   currency: string | null;
   reference: string | null;
@@ -147,7 +150,7 @@ export async function cargarComprobantePago(
   const id = exigirUuid(idCrudo);
   const { data, error } = await sesion.supabase
     .from('payments')
-    .select('id, organization_id, branch_id, source, source_id, method, amount, change_amount, discount_amount, currency, reference, status, payment_date, created_at, receipt_number, payment_groups:payment_group_id (receipt_number)')
+    .select('id, organization_id, branch_id, source, source_id, method, amount, change_amount, cash_received, change_given, discount_amount, currency, reference, status, payment_date, created_at, receipt_number, payment_groups:payment_group_id (receipt_number)')
     .eq('id', id)
     .eq('organization_id', sesion.organizationId)
     .maybeSingle();
@@ -170,7 +173,7 @@ export async function cargarComprobantePago(
   ]);
 
   const aplicado = valorAplicado(pago);
-  const cambio = num(pago.change_amount);
+  const cambio = vueltasPago(pago);
   const numero = numeroComprobantePago(pago, esEgreso);
 
   const metadatos: Campo[] = [
@@ -202,7 +205,7 @@ export async function cargarComprobantePago(
     );
   }
   if (cambio > 0) {
-    totales.push({ clave: 'recibido', valor: num(pago.amount) });
+    totales.push({ clave: 'recibido', valor: recibidoPago(pago) });
     totales.push({ clave: 'cambio', valor: cambio, resta: true });
   }
   if (num(pago.discount_amount) > 0) totales.push({ clave: 'descuentoPago', valor: num(pago.discount_amount), estilo: 'informativo' });

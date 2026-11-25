@@ -5,7 +5,10 @@
  *
  * Cuerpo (todos opcionales, lista blanca): modo, tiposEntrega, invitado,
  * pedidoMinimo, sellos, listaSellos, logosPago, ventaEnLinea, envioActivo,
- * tarifaPlana, envioGratisDesde. Cualquier otra clave → 400.
+ * tarifaPlana, envioGratisDesde, barraPago y formulario (Checkout v2, Parte F:
+ * campos del checkout; `validarFormularioCheckout`, candados de los indispensables;
+ * se guarda en organization_settings `checkout_formulario`, `null` = el de siempre).
+ * Cualquier otra clave → 400.
  *
  * Organización de la sesión (`withOrg` + `readOrgBody`: una organización
  * ajena en el body → 403 y registro). Permiso `website.sites.edit`.

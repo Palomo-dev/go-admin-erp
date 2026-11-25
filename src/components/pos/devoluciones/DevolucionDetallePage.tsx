@@ -377,13 +377,13 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
               vacio={{ titulo: t('sinLineas') }}
               tarjetaMovil={(l) => (
                 <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0">
-                  <div className="min-w-0">
-                    <EnlaceFichaProducto nombre={l.producto.nombre ?? t('sinDato')} enlace={enlaceDe(l)} className="text-sm" />
+                  <div className="min-w-0 flex-1">
+                    <EnlaceFichaProducto nombre={l.producto.nombre ?? t('sinDato')} enlace={enlaceDe(l)} ajuste="envolver" className="text-sm" />
                     <p className="text-xs text-fg-secondary">
                       {cantidad(l.cantidad)} · {l.repuesta ? t('repuesto') : t('noRepuesto')}
                     </p>
                   </div>
-                  <span className="text-sm font-medium tabular-nums text-fg">{formatear(l.reintegro)}</span>
+                  <span className="shrink-0 whitespace-nowrap text-right text-sm font-medium tabular-nums text-fg">{formatear(l.reintegro)}</span>
                 </div>
               )}
             />

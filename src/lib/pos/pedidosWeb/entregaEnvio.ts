@@ -154,6 +154,30 @@ export function cobroDeEntrega(order: PedidoContraentrega, envio: EnvioParaCobro
   return { tipo: 'pagado' };
 }
 
+/** ¿El envío aún no salió de la sede? (el paquete sigue en la oficina). */
+export function envioSinSalir(statusEnvio: string | null | undefined): boolean {
+  return ANTES_DE_SALIR.has(String(statusEnvio ?? ''));
+}
+
+const ENVIO_SIN_CONTRAENTREGA_VIVA = new Set(['cancelled', 'returned', 'failed']);
+
+/**
+ * ¿«Cobrar» (sin entregar) choca con la contraentrega del envío? Misma regla que la base
+ * (fn_cobro_caja_contraentrega_envio, migración 20261125195945): contraentrega mayor que cero,
+ * pendiente (`en_envio`: la cobra el domiciliario) o cobrada sin cuadrar (`en_cuadre`: entra con su
+ * cuadre), en un envío que no está cancelado, devuelto ni fallido. Quien bloquea es la base; esto
+ * solo evita abrir el diálogo de cobro para recibir el rechazo.
+ */
+export function bloqueoCobroSimple(
+  envio: (EnvioParaCobro & { status?: string | null }) | null,
+): 'en_envio' | 'en_cuadre' | null {
+  if (!envio || (Number(envio.cod_amount) || 0) <= 0) return null;
+  if (ENVIO_SIN_CONTRAENTREGA_VIVA.has(String(envio.status ?? ''))) return null;
+  const cod = envio.cod_status ?? 'pending';
+  if (cod === 'collected') return 'en_cuadre';
+  return cod === 'pending' ? 'en_envio' : null;
+}
+
 /**
  * Saldo que muestra «Cobrar y entregar» cuando el pedido tiene envío activo (decisión del dueño
  * 2026-11-25: abre el registro de entrega de Logística y cobra en la caja). Lo que se cobra lo

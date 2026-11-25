@@ -10,6 +10,8 @@
  * claves de texto. La base vuelve a validar todo al guardar.
  */
 
+import type { TarifaProcesador } from './tarifaProcesador';
+
 export const PROCESADORES = ['datafono', 'wompi', 'bold', 'mercadopago', 'payu', 'stripe', 'paypal'] as const;
 export type CodigoProcesador = (typeof PROCESADORES)[number];
 export type OrigenProcesador = 'nacional' | 'exterior';
@@ -60,6 +62,11 @@ export interface DatosProcesador {
   tipoDocumento: TipoDocumentoProcesador | null;
   origen: OrigenProcesador;
   retieneSaldo: boolean;
+  /**
+   * Tarifa de la organización para ESTIMAR comisión y retenciones en «Cobros»
+   * (`fee_schedule`, 2026-11-25). `null` = sin tarifa (la pantalla pide configurarla).
+   */
+  tarifa?: TarifaProcesador | null;
 }
 
 export const TIPOS_DOCUMENTO_PROCESADOR = ['31', '42', '43'] as const;
@@ -253,6 +260,7 @@ const CODIGOS_BASE = [
   'SESION_REQUERIDA',
   'SIN_PERMISO',
   'PROCESADOR_INVALIDO',
+  'TARIFA_INVALIDA',
   'FECHA_REQUERIDA',
   'FECHA_FUTURA',
   'PERIODO_CERRADO',

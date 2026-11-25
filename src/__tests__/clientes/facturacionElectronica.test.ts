@@ -5,6 +5,7 @@
  * pedido web y el aviso de la empresa marcada 49 que cobra IVA.
  */
 import {
+  RESPONSABILIDADES_DIAN_FE,
   conResponsabilidadIva,
   dvAutomatico,
   erroresFacturacion,
@@ -82,6 +83,49 @@ describe('IVA 48 / 49', () => {
       '11001',
     );
     expect(noResponsable).toMatchObject({ tribute_code: 'ZZ', responsibilities: ['R-99-PN'] });
+  });
+});
+
+describe('Factus: responsabilidad de IVA confirmada por el Contador (2026-11-25)', () => {
+  // Anexo técnico 1.9 (Res. DIAN 000165 de 2023): 01 si responsable, ZZ si no; responsabilidades
+  // solo O-13, O-15, O-23, O-47 y R-99-PN. En el perfil se sigue mostrando 48/49.
+  it('las únicas responsabilidades que viajan son O-13, O-15, O-23, O-47 y R-99-PN', () => {
+    expect([...RESPONSABILIDADES_DIAN_FE].sort()).toEqual(['O-13', 'O-15', 'O-23', 'O-47', 'R-99-PN']);
+    expect(responsabilidadesParaDian(['O-13', 'O-15', 'O-23', 'O-47'])).toEqual(['O-13', 'O-15', 'O-23', 'O-47']);
+    expect(responsabilidadesParaDian(['R-99-PN'])).toEqual(['R-99-PN']);
+    // Códigos viejos o desconocidos no viajan; sin ninguna válida, R-99-PN.
+    expect(responsabilidadesParaDian(['O-05', 'O-07', 'O-48'])).toEqual(['R-99-PN']);
+  });
+
+  it('O-48 / O-49 nunca como responsabilidad: solo como tributo 01 / ZZ, y el perfil sigue en 48/49', () => {
+    const casos: Array<{ resps: string[]; tributo: '01' | 'ZZ'; iva: '48' | '49' }> = [
+      { resps: ['O-48'], tributo: '01', iva: '48' },
+      { resps: ['O-13', 'O-15', 'O-48'], tributo: '01', iva: '48' },
+      { resps: ['O-23', 'O-47', 'O-48'], tributo: '01', iva: '48' },
+      { resps: ['O-49'], tributo: 'ZZ', iva: '49' },
+      { resps: ['O-49', 'R-99-PN'], tributo: 'ZZ', iva: '49' },
+      { resps: ['O-47', 'O-49'], tributo: 'ZZ', iva: '49' },
+    ];
+    for (const c of casos) {
+      // Tributo contrario en la ficha: manda el RUT.
+      const tributeId = c.tributo === '01' ? 21 : 18;
+      const doc = mapearCliente(
+        { identification_type: 'cc', identification_number: '1020456789', first_name: 'Ana', last_name: 'Pérez', tribute_id: tributeId, fiscal_responsibilities: c.resps },
+        '11001',
+      );
+      expect(doc.tribute_code).toBe(c.tributo);
+      const resps = doc.responsibilities ?? [];
+      expect(resps).not.toContain('O-48');
+      expect(resps).not.toContain('O-49');
+      expect(resps.every((r) => RESPONSABILIDADES_DIAN_FE.includes(r))).toBe(true);
+      expect(resps.length).toBeGreaterThan(0);
+      // El perfil del cliente (TarjetaFacturacionCliente) sigue leyendo 48/49 de la ficha.
+      expect(responsabilidadIvaDe(c.resps)).toBe(c.iva);
+    }
+  });
+
+  it('consumidor final: ZZ y R-99-PN', () => {
+    expect(mapearCliente(null, '11001')).toMatchObject({ tribute_code: 'ZZ', responsibilities: ['R-99-PN'] });
   });
 });
 

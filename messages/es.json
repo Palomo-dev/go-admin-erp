@@ -12870,7 +12870,11 @@
       "esteMes": "Este mes",
       "mesPasado": "Mes pasado",
       "dias7": "7 días",
-      "dias30": "30 días"
+      "dias30": "30 días",
+      "semana": "Esta semana",
+      "estaSemana": "Esta semana (lunes a hoy)",
+      "fecha": "Fecha",
+      "rangoCorto": "Rango…"
     },
     "calendario": {
       "etiqueta": "Calendario",
@@ -22202,7 +22206,8 @@
       "peso_inestable": "La lectura de la báscula no estaba estable. {detalle}",
       "pesaje_no_coincide": "La cantidad no coincide con el peso leído de la báscula. {detalle}",
       "etiqueta_invalida": "La etiqueta de peso no trae el código leído. {detalle}",
-      "sin_permiso_quitar_promocion": "Quitar la promoción de una línea necesita el permiso «Quitar promoción». {detalle}"
+      "sin_permiso_quitar_promocion": "Quitar la promoción de una línea necesita el permiso «Quitar promoción». {detalle}",
+      "documento_requerido_credito": "Esta venta deja saldo por cobrar y el cliente no tiene documento. Registra su NIT o cédula, o cobra la venta completa."
     },
     "ventaAnulada": "Venta anulada: se revirtieron pagos, stock y factura.",
     "anulacionFallida": "No se pudo anular la venta",
@@ -24479,7 +24484,8 @@
       "linea_invalida": "Revisa las líneas: descripción, cantidad y precio.",
       "producto_invalido": "Un producto de la factura no es de la organización.",
       "producto_eliminado": "Un producto de la factura está eliminado del inventario: quítelo o restáurelo en Inventario.",
-      "vendedor_invalido": "El vendedor no es miembro de la organización."
+      "vendedor_invalido": "El vendedor no es miembro de la organización.",
+      "documento_requerido_credito": "La factura queda con saldo por cobrar y el cliente no tiene documento (NIT o cédula). Regístralo antes de emitirla."
     },
     "listado": {
       "sustantivo": {
@@ -37738,6 +37744,59 @@
             "showLabel": "Mostrar texto"
           }
         },
+        "categoriasCabecera": {
+          "editarInventario": "Editar imagen, color e ícono en Inventario › Categorías",
+          "estilo": {
+            "titulo": "Categorías en el menú",
+            "ayuda": "Cómo se ve cada categoría en el cajón, la pantalla completa, el panel y la hoja de categorías.",
+            "porDefecto": "Por defecto",
+            "opcion": {
+              "icono": {
+                "titulo": "Lista con ícono",
+                "ayuda": "Como hoy: el ícono de la categoría, sin color ni imagen."
+              },
+              "redonda": {
+                "titulo": "Lista con imagen redonda",
+                "ayuda": "Imagen de la categoría; si no tiene, su ícono sobre su color; si no, la inicial."
+              },
+              "tarjetas": {
+                "titulo": "Tarjetas con imagen",
+                "ayuda": "Cuadrícula de 2 columnas en la hoja de categorías y en la pantalla completa. En el cajón y el panel: lista redonda."
+              }
+            },
+            "avisoTarjetas": "Tu menú del celular es «{menu}»: ahí se verá como lista redonda. Las tarjetas salen en la hoja de «Categorías» (pestañas y menú inferior) y en la pantalla completa."
+          },
+          "contenido": {
+            "titulo": "Contenido del botón",
+            "ayuda": "Qué lista el botón en computador y «Todas las categorías» en el celular. Vale en todas las composiciones.",
+            "comoHoy": "Como hoy",
+            "opcion": {
+              "auto": {
+                "titulo": "Automático",
+                "ahora": {
+                  "menu": "Con la composición Mega: el menú armado en el editor (si tiene enlaces).",
+                  "inventory": "Con esta composición: las categorías del inventario."
+                }
+              },
+              "inventory": {
+                "titulo": "Categorías del inventario",
+                "ayuda": "El árbol de Inventario › Categorías, con subcategorías, imagen, color e ícono."
+              },
+              "menu": {
+                "titulo": "Menú armado en el editor",
+                "ayuda": "Un menú de Páginas › Menús: puedes mezclar categorías, páginas y enlaces."
+              }
+            },
+            "menu": "Menú del botón",
+            "elegirMenu": "Elige un menú",
+            "sinMenu": "Sin menú",
+            "sinMenuAyuda": "Sin menú, el botón lista las categorías del inventario.",
+            "editarMenus": "Armar o editar en Páginas › Menús",
+            "celularTambien": "También cambia el celular: cajón, pantalla completa y hoja de categorías listan este menú.",
+            "aviso": "Tienes el menú «{menu}» guardado para el botón, pero con la composición {composicion} hoy no se ve en ninguna parte.",
+            "usarlo": "Usarlo en el botón"
+          }
+        },
         "movilEncabezado": {
           "mi": {
             "accion": {
@@ -38989,6 +39048,76 @@
           "beneficiosEditables": "Cada texto es editable (vacío = texto por defecto).",
           "beneficiosTitulo": "Título de los beneficios",
           "beneficioLinea": "Línea {n}"
+        },
+        "orden": {
+          "titulo": "Orden en la cabecera",
+          "ayuda": "Así salen los íconos de izquierda a derecha. Arrastra con el asa o usa las flechas ↑ ↓.",
+          "editando": "Editando",
+          "computador": "Computador",
+          "celular": "Celular",
+          "igualComputador": "Igual que en el computador",
+          "igualAyudaSi": "Prendido: el celular usa el mismo orden que el computador.",
+          "igualAyudaNo": "Apagado: el celular tiene su propio orden.",
+          "vistaPreviaComputador": "Vista previa en vivo · computador",
+          "vistaPreviaCelular": "Vista previa en vivo · celular",
+          "logo": "Tu tienda",
+          "barraMuestra": "Buscar…",
+          "lista": "Orden de los íconos",
+          "nombre": {
+            "search": "Buscar",
+            "currency": "Moneda",
+            "favorites": "Favoritos",
+            "cart": "Carrito",
+            "auth": "Cuenta"
+          },
+          "detalle": {
+            "search": "Ícono · abre el buscador",
+            "currency": "Selector de moneda",
+            "favorites": "Corazón",
+            "cart": "Bolsa · contador",
+            "auth": "Persona · lleva a Ingresar"
+          },
+          "barra": "Buscar · barra",
+          "barraAyuda": "No se ordena: su lugar lo pone la composición.",
+          "barraIr": "Buscador",
+          "ocultos": "Ocultos · no salen en la cabecera",
+          "ocultoAyuda": "Al prenderlo vuelve a su lugar.",
+          "buscadorApagado": "Apagado en Diseño › Buscador.",
+          "mostrar": "Mostrar {nombre}",
+          "fuera": "No salen en la barra del celular",
+          "motivo": {
+            "menuInferior": "Está en el menú inferior: no se repite arriba.",
+            "monedaMenu": "Va en el menú (hoja inferior). Para traerla: Moneda › En la barra.",
+            "favoritosCelular": "En el celular vive en el menú y en el menú inferior.",
+            "apagadoCelular": "Apagado para el celular en Celular › Íconos."
+          },
+          "monedaIr": "Moneda",
+          "asa": "Mover {nombre}, posición {n} de {total}",
+          "subir": "Subir {nombre}",
+          "bajar": "Bajar {nombre}",
+          "botonesSede": "Botones y selector de sede",
+          "botonesSedeAyuda": "Van siempre después de los íconos («Reservar», segundo botón, sede). No entran en este orden.",
+          "menuLogo": "Menú ≡ y logo",
+          "menuLogoAyuda": "Su lugar lo pone «Disposición del celular». No entran en este orden.",
+          "restablecer": "Restablecer orden",
+          "restablecerCelular": "Restablecer orden del celular",
+          "igualSiempre": "Igual al de siempre",
+          "restablecerAyuda": "Restablecer: Buscar · Moneda · Carrito · Cuenta (Favoritos, si está prendido, antes del Carrito). Los interruptores no cambian.",
+          "restablecerAyudaCelular": "En Celular, «Restablecer» vuelve a «Igual que en el computador».",
+          "confirmarTitulo": "¿Restablecer el orden?",
+          "confirmarComputador": "Los íconos vuelven al orden de siempre en el computador: Buscar · Moneda · Carrito · Cuenta. El celular vuelve a «Igual que en el computador». Qué íconos se ven, su forma y su dibujo no cambian.",
+          "confirmarCelular": "El celular vuelve a «Igual que en el computador». Qué íconos se ven, su forma y su dibujo no cambian.",
+          "confirmarDeshacer": "Se puede deshacer con «Deshacer» de la barra del editor.",
+          "confirmar": "Restablecer",
+          "constructor": "El orden lo da el Constructor",
+          "constructorAyuda": "Este sitio arma el encabezado con zonas del Constructor: los íconos salen en el orden de sus zonas. Este bloque no cambia nada.",
+          "arrastre": {
+            "instrucciones": "Para mover un ícono, enfoca su asa y pulsa Espacio o Enter. Muévelo con las flechas ↑ ↓, suéltalo con Espacio o cancela con Esc.",
+            "tomado": "Tomaste {nombre}, posición {n} de {total}.",
+            "movido": "{nombre}, ahora en la posición {n} de {total}.",
+            "soltado": "{nombre} quedó en la posición {n} de {total}.",
+            "cancelado": "Se canceló. {nombre} vuelve a su lugar."
+          }
         }
       },
       "accionesFicha": {
@@ -39199,6 +39328,7 @@
           "circle": "Círculo",
           "square": "Cuadrado"
         },
+        "fondoAyudaCabecera": "No cambia la lupa dentro de la barra de búsqueda: solo los íconos sueltos (carrito, cuenta, favoritos, moneda y la lupa con forma «Ícono»).",
         "colorFondo": "Color del fondo",
         "colorFondoNulo": "Tono del ícono",
         "colorFondoNuloMenu": "Tono del ícono (el activo, la marca)",
@@ -39841,6 +39971,33 @@
           "texto": "Vuelve a la apariencia de hoy en computador y celular. La forma, el interruptor y las búsquedas populares no cambian.",
           "confirmar": "Restablecer"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Usa las flechas para ordenar · la estrella marca «Popular» (uno solo).",
+        "cargando": "Cargando tus planes…",
+        "error": "No pudimos leer tus planes. Revisa la conexión e inténtalo de nuevo.",
+        "reintentar": "Reintentar",
+        "vacioTitulo": "Aún no tienes planes activos",
+        "vacioTexto": "Los planes se crean en Membresías › Planes con su precio, duración y beneficios. Mientras no haya ninguno, tus clientes no ven esta página.",
+        "crearPlan": "Crear plan en Membresías",
+        "abrirPlanes": "Abrir Membresías › Planes",
+        "notaTitulo": "Los datos del plan viven en Membresías",
+        "nota": "Precio, duración, beneficios y si el plan está activo se cambian en Membresías › Planes. Aquí solo: orden, cuáles se ven y cuál es «Popular».",
+        "enLinea": "En línea · {precio}",
+        "enLineaSinPrecio": "En línea",
+        "consulta": "Sin precio · botón «Consultar»",
+        "pausado": "Producto pausado · «No disponible por ahora»",
+        "inactivo": "Inactivo en Membresías · no se publica",
+        "inactivosEtiqueta": "Planes inactivos",
+        "oculto": "Oculto en la tienda",
+        "subir": "Subir {nombre}",
+        "bajar": "Bajar {nombre}",
+        "marcarPopular": "Marcar {nombre} como «Popular»",
+        "quitarPopular": "Quitar «Popular» de {nombre}",
+        "ocultar": "Ocultar {nombre} en la tienda",
+        "mostrar": "Mostrar {nombre} en la tienda",
+        "paginaNoVisibleTitulo": "Esta página no se ve en la tienda",
+        "paginaNoVisible": "No tienes planes activos: tus clientes ven «Esta página no está disponible» y la página sale del menú y del sitemap. En el lienzo ves planes de ejemplo."
       }
     },
     "paginas": {
@@ -41968,7 +42125,10 @@
       "errorMarcarPagado": "No se pudo marcar como pagado",
       "pendienteMarcarPagado": "Pedido confirmado sin marcar como pagado",
       "sinStockReactivar": "No hay stock suficiente para reactivar el pedido. Ajusta el inventario de los productos faltantes y vuelve a intentarlo; el pedido no cambió.",
-      "confirmarCanceladoAntiguo": "El pedido {numero} se canceló hace {dias} días. ¿Marcarlo como pagado de todas formas?"
+      "confirmarCanceladoAntiguo": "El pedido {numero} se canceló hace {dias} días. ¿Marcarlo como pagado de todas formas?",
+      "contraentregaEnEnvio": "El envío lleva una contraentrega que cobra el domiciliario: la caja no la cobra aparte. Si el paquete sigue en la sede, usa «Cobrar y entregar».",
+      "contraentregaEnCuadre": "El domiciliario ya cobró la contraentrega: ese dinero entra a la caja con su cuadre.",
+      "totalNoCoincide": "El total del pedido no coincide con sus productos o con su factura. Vuelve a cargar el pedido y revísalo antes de cobrar."
     },
     "tipoCorto": {
       "pickup": "Retiro",
@@ -43586,7 +43746,9 @@
       "last7": "los 7 días anteriores",
       "last30": "los 30 días anteriores",
       "custom": "el periodo anterior",
-      "all": "el periodo anterior"
+      "all": "el periodo anterior",
+      "week": "la semana pasada",
+      "month": "el mes pasado"
     },
     "buscar": {
       "placeholder": "Buscar por N.º de pedido, cliente, teléfono, correo, dirección o producto…",
@@ -43610,7 +43772,9 @@
       "last7": "Últimos 7 días",
       "last30": "Últimos 30 días",
       "custom": "Personalizado",
-      "all": "Todo"
+      "all": "Todo",
+      "week": "Esta semana",
+      "month": "Este mes"
     },
     "chips": {
       "periodo": "Periodo: {valor}",
@@ -68329,7 +68493,10 @@
         "PEDIDO_DE_PASARELA": "El pedido se pagó en línea: no se cobra en caja.",
         "PEDIDO_SIN_CONFIRMAR": "El pedido aún no está confirmado.",
         "ORIGEN_NO_SOPORTADO": "Este envío no viene de una venta ni de un pedido web.",
-        "RECIBOS_INVALIDOS": "Los montos del cuadre no son válidos. Actualiza la pantalla y vuelve a contar."
+        "RECIBOS_INVALIDOS": "Los montos del cuadre no son válidos. Actualiza la pantalla y vuelve a contar.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "El total del pedido no coincide con sus productos. Revísalo antes de cobrar.",
+        "FACTURA_NO_COINCIDE": "La factura no coincide con el total del pedido. Vuelve a cargar la pantalla e intenta de nuevo.",
+        "MONTO_NO_COINCIDE": "El monto no coincide con el saldo del pedido."
       },
       "elegir": {
         "titulo": "¿De quién recibes?",
@@ -69306,7 +69473,10 @@
         "PEDIDO_DE_PASARELA": "El pedido se pagó en línea: no se cobra en la caja.",
         "PEDIDO_SIN_CONFIRMAR": "Confirma el pedido antes de cobrarlo.",
         "FACTURA_REQUERIDA": "No se pudo armar la factura del pedido. Intenta de nuevo.",
-        "SESION_REQUERIDA": "Tu sesión venció. Vuelve a entrar."
+        "SESION_REQUERIDA": "Tu sesión venció. Vuelve a entrar.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "El total del pedido no coincide con sus productos. Revísalo antes de cobrar.",
+        "FACTURA_NO_COINCIDE": "La factura no coincide con el total del pedido. Vuelve a cargar la pantalla e intenta de nuevo.",
+        "MONTO_NO_COINCIDE": "El monto no coincide con el saldo del pedido."
       },
       "chips": {
         "intento": "{n}.º intento",
@@ -72721,6 +72891,121 @@
       }
     }
   },
+  "formularioCheckout": {
+    "titulo": "Formulario del checkout",
+    "nuevo": "Nuevo",
+    "descripcion": "Qué datos pide tu tienda, en qué orden y cuáles son obligatorios. Arrastra para ordenar dentro de cada bloque.",
+    "descripcionMovil": "Qué datos pide tu tienda, en qué orden y cuáles son obligatorios. Mantén presionada el asa para ordenar.",
+    "restablecer": "Restablecer recomendado",
+    "secciones": {
+      "contacto": "Contacto",
+      "entrega": "Entrega"
+    },
+    "conteo": "{campos} campos · {visibles} visibles",
+    "notaSeccion": {
+      "contacto": "El correo siempre se pide",
+      "entrega": "Solo con domicilio o transportadora: al recoger no se pide"
+    },
+    "campos": {
+      "email": {
+        "nombre": "Correo electrónico",
+        "detalle": "Aquí llega la confirmación del pedido"
+      },
+      "celular": {
+        "nombre": "Celular con indicativo",
+        "detalle": "Bandera y +57 · para coordinar la entrega"
+      },
+      "nombre": {
+        "nombre": "Nombre y apellido",
+        "detalle": "Un solo campo: se parte en nombre y apellido"
+      },
+      "factura": {
+        "nombre": "Factura a nombre de empresa (NIT)",
+        "detalle": "Casilla: NIT con DV, razón social y correo de factura"
+      },
+      "direccion": {
+        "nombre": "Dirección",
+        "detalle": "Calle, carrera o avenida y número"
+      },
+      "complemento": {
+        "nombre": "Apto, casa u oficina",
+        "detalle": "Complemento de la dirección"
+      },
+      "ciudad": {
+        "nombre": "Ciudad o municipio",
+        "detalle": "Lista de municipios con buscador · calcula el envío"
+      },
+      "barrio": {
+        "nombre": "Barrio",
+        "detalle": "Ubica la zona de envío"
+      },
+      "notas": {
+        "nombre": "Indicaciones para el repartidor",
+        "detalle": "Se abre con «Agregar indicaciones»"
+      }
+    },
+    "motivos": {
+      "correo": "Siempre obligatorio: confirmación, ficha del cliente y pasarelas",
+      "nombre": "Lo piden la entrega y la factura",
+      "direccion": "Obligatoria con domicilio · no aplica al recoger",
+      "ciudad": "Calcula el envío · obligatoria con domicilio",
+      "barrio": "Con zonas de domicilio siempre se muestra",
+      "factura": "Casilla siempre opcional; marcada, pide el documento",
+      "notas": "Va siempre al final"
+    },
+    "oculto": "Oculto en la tienda",
+    "obligatorio": "Obligatorio",
+    "opcional": "Opcional",
+    "requisito": "Requisito",
+    "requisitoDe": "Requisito de «{nombre}»",
+    "mostrar": "Mostrar «{nombre}» en la tienda",
+    "mostrarEnTienda": "Mostrar en la tienda",
+    "editar": "Editar «{nombre}»",
+    "asa": "Mover «{nombre}», posición {n} de {total}. Espacio para tomar y flechas para mover.",
+    "fijoOrden": "«{nombre}» va siempre al final",
+    "bloqueado": "No se puede cambiar: {motivo}",
+    "errorContactoTitulo": "Muestra el correo o el celular",
+    "errorContacto": "Sin ninguno de los dos no podemos confirmarle el pedido al cliente ni avisarle del envío. Enciende al menos uno.",
+    "errorFila": "Deja visible el correo o el celular",
+    "verVistaPrevia": "Ver vista previa",
+    "volverLista": "Volver a la lista",
+    "pie": {
+      "sinCambios": "Sin cambios",
+      "cambios": "{n, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
+      "error": "No se puede guardar: revisa el bloque {seccion}",
+      "descartar": "Descartar"
+    },
+    "vistaPrevia": {
+      "titulo": "Vista previa",
+      "subtitulo": "Así lo ve tu cliente · en vivo",
+      "dispositivo": "Dispositivo de la vista previa",
+      "computador": "Computador",
+      "celular": "Celular",
+      "nota": "Lo oculto no aparece; «(opcional)» se agrega solo. Un bloque sin campos visibles no se muestra."
+    },
+    "dialogo": {
+      "titulo": "Editar «{nombre}»",
+      "descripcion": "Cambia cómo se llama en tu tienda. El dato que se guarda no cambia.",
+      "etiqueta": "Etiqueta",
+      "etiquetaAyuda": "Así lo ve el cliente en la tienda.",
+      "ayuda": "Texto de ayuda",
+      "ayudaAyuda": "Déjalo vacío para no mostrar ayuda.",
+      "ejemplo": "Texto de ejemplo",
+      "ejemploAyuda": "Se ve en gris dentro del campo vacío.",
+      "ejemploTienda": "El ejemplo de la tienda",
+      "volver": "Volver al texto recomendado",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar",
+      "listo": "Listo"
+    },
+    "restablecerDialogo": {
+      "titulo": "¿Volver al formulario recomendado?",
+      "descripcion": "Se restablecen el orden, qué se muestra y qué es obligatorio, y vuelven las etiquetas originales.",
+      "contacto": "Contacto: correo, celular, nombre y factura con NIT (opcional).",
+      "entrega": "Entrega: dirección, apto, ciudad o municipio, barrio e indicaciones.",
+      "confirmar": "Restablecer"
+    }
+  },
   "pagosIntentos": {
     "insignias": {
       "A": "Esperando pago",
@@ -73635,5 +73920,207 @@
       "transportadora": "Transportadora",
       "logistica": "Logística"
     }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Buscar medio…",
+      "sinOpciones": "Nada coincide con la búsqueda",
+      "limpiar": "Limpiar",
+      "aplicar": "Aplicar",
+      "medio": "Medio de pago",
+      "medioResumen": "Medio de pago: {valor}",
+      "estadoPago": "Estado del pago",
+      "estadoResumen": "Estado del pago: {valor}",
+      "todos": "Todos",
+      "grupoPasarelas": "Pasarelas (en línea)",
+      "grupoOtros": "Al entregar o en tienda",
+      "notaMedio": "Salen de Finanzas › Métodos de pago. Un pedido con anticipo por una pasarela y saldo en efectivo aparece en los dos medios; cada uno suma solo lo que entró por él.",
+      "notaEstado": "Conteos con la fecha y el medio elegidos. «Anticipo pagado» y «Por cobrar en puerta» se cruzan: un pedido con anticipo que aún no se entrega está en los dos."
+    },
+    "medios": {
+      "efectivo": "Efectivo",
+      "datafono": "Datáfono",
+      "transferencia": "Transferencia",
+      "noConectada": "No conectada"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Pagado completo",
+      "anticipoPagado": "Anticipo pagado",
+      "porCobrarPuerta": "Por cobrar en puerta",
+      "cobradoPuerta": "Cobrado en puerta",
+      "pendiente": "Pendiente",
+      "vencido": "Vencido"
+    },
+    "chips": {
+      "medio": "Medio de pago: {valor}",
+      "estadoPago": "Estado del pago: {valor}",
+      "fecha": "Fecha: {valor}"
+    },
+    "errorLectura": "No se pudo leer el recaudo",
+    "incluyeAnticipos": "Incluye {monto} en anticipos de contraentrega",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, mismo filtro",
+      "kpis": {
+        "etiqueta": "Recaudo del periodo",
+        "recaudado": "Recaudado",
+        "recaudadoPor": "Recaudado por {medio}",
+        "pagos": "{n, plural, one {# pago aprobado} other {# pagos aprobados}}",
+        "completos": "Pagos completos",
+        "anticipos": "Anticipos contraentrega",
+        "anticiposDetalle": "{n, plural, one {# anticipo} other {# anticipos}} · cuenta 2805",
+        "puerta": "Cobrado en puerta",
+        "puertaDetalle": "{n, plural, one {# pago} other {# pagos}} · entra por caja"
+      }
+    },
+    "ventas": {
+      "recaudado": "Recaudado",
+      "recaudadoPor": "Recaudado por {medio}",
+      "incluyeAnticipos": "Incluye {monto} en anticipos (no son venta)",
+      "recaudadoDetalle": "{count, plural, one {{n} pago aprobado} other {{n} pagos aprobados}}",
+      "netasHoy": "Ventas netas de hoy",
+      "netasPeriodo": "Ventas netas del periodo",
+      "notaMedio": "Filtra las ventas pagadas con estos métodos. «Recaudado» suma los pagos aprobados del periodo por su medio."
+    },
+    "movimientos": {
+      "conceptoPedido": "Pedido online · {numero}",
+      "conceptoVenta": "Venta · {numero}",
+      "conceptoCobro": "Cobro con pasarela",
+      "anticipo2805": "anticipo, a la 2805 hasta facturar",
+      "cuentaProcesador": "{procesador} · por abonar",
+      "conceptoAbono": "Abono de {procesador}",
+      "noSuma": "No suma a Recaudado",
+      "recaudadoHoy": "Recaudado hoy",
+      "recaudadoPeriodo": "Recaudado del periodo",
+      "recaudadoHoyPor": "Recaudado hoy por {medio}",
+      "recaudadoPeriodoPor": "Recaudado por {medio}",
+      "pagosAprobados": "{n, plural, one {# pago aprobado} other {# pagos aprobados}}",
+      "salidasHoy": "Salidas de hoy",
+      "salidasPeriodo": "Salidas del periodo",
+      "netoHoy": "Neto de hoy",
+      "netoPeriodo": "Neto del periodo",
+      "netoDetalle": "Recaudado menos salidas",
+      "porAbonarTitulo": "Cobrado por pasarelas, por abonar",
+      "porAbonarNada": "Sin cobros de pasarela en el periodo",
+      "totalPeriodo": "Total del periodo",
+      "notaMedio": "La caja cuenta como efectivo y el banco como transferencia. Los traslados y los abonos de las pasarelas no son de ningún medio.",
+      "porMedio": "Por medio de pago:",
+      "noSumanNota": "Abonos y traslados no suman.",
+      "porAbonar": "Por abonar"
+    },
+    "cobros": {
+      "pestana": "Cobros",
+      "procesador": "Procesador",
+      "procesadorResumen": "Procesador: {valor}",
+      "todos": "Todos",
+      "configurarTarifa": "Tarifa",
+      "kpis": "Cobros del periodo",
+      "cobradoHoy": "Cobrado hoy (bruto)",
+      "cobradoPeriodo": "Cobrado en el periodo (bruto)",
+      "cobradoHoyPor": "Cobrado hoy por {procesador} (bruto)",
+      "cobradoPeriodoPor": "Cobrado por {procesador} (bruto)",
+      "cobradoDetalle": "{n, plural, one {# pago} other {# pagos}} · {completos} completos y {anticipos} anticipos",
+      "comisionIva": "Comisión + IVA",
+      "sinTarifa": "Sin tarifa: configúrala para estimar",
+      "tarifaTexto": "{pct} % + {fijo} por pago, más IVA {iva} %",
+      "algunosSinTarifa": "Algún procesador sin tarifa: no se estima",
+      "segunTarifa": "Según la tarifa de cada procesador",
+      "retenciones": "Retenciones",
+      "configuraRetenciones": "Configura tus retenciones (las ves en la app de {procesador})",
+      "retencionesTexto": "ReteFuente {fuente} % · ReteICA {ica} % · ReteIVA {iva} %",
+      "neto": "Neto a consignar",
+      "netoDetalle": "Estimado · lo confirma el abono",
+      "faltaPorLiquidar": "Falta por liquidar",
+      "faltaPorLiquidarDe": "Falta por liquidar ({procesador})",
+      "desde": "Desde {fecha} · {dias, plural, one {# día hábil} other {# días hábiles}}",
+      "faltaDetalle": "Saldo de las cuentas 138020xx",
+      "avisoRetencionesTitulo": "Retenciones sin configurar",
+      "avisoRetenciones": "Las retenciones están en 0. Revísalas en la app de {procesador} y escríbelas en la tarifa para que el neto estimado se acerque al abono.",
+      "tuProcesador": "tu procesador",
+      "titulo": "Cobros",
+      "etiquetaFila": "Pago {pago} por {bruto}",
+      "verPago": "Ver pago",
+      "vacioTitulo": "Sin cobros en el periodo",
+      "vacioDescripcion": "Aquí aparecen los pagos aprobados por pasarela o datáfono el día en que se cobran.",
+      "totalHoy": "Total de hoy · {n, plural, one {# pago} other {# pagos}}",
+      "totalPeriodo": "Total del periodo · {n, plural, one {# pago} other {# pagos}}",
+      "pie": "Hoy es el día calendario en la zona horaria de la organización. Comisión y retenciones son estimadas con la tarifa configurada para cada procesador; al registrar el abono se toman las reales y la diferencia queda en el asiento. Los cobros van a la CxC del procesador (138020xx), no a la cartera 1305. Los anticipos de contraentrega quedan en 2805 hasta facturar.",
+      "origenPedido": "Pedido online",
+      "origenVenta": "Venta",
+      "estimado": "Estimado",
+      "columnas": {
+        "pago": "Pago",
+        "tipo": "Tipo",
+        "bruto": "Bruto",
+        "comision": "Comisión + IVA",
+        "retenciones": "Retenciones",
+        "neto": "Neto estimado",
+        "estado": "Estado"
+      },
+      "tipos": {
+        "completo": "Completo",
+        "anticipo": "Anticipo",
+        "puerta": "En puerta",
+        "tienda": "En tienda"
+      },
+      "submetodos": {
+        "card": "Tarjeta",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "transfer": "Transferencia",
+        "cash": "Efectivo",
+        "botonBancolombia": "Botón Bancolombia",
+        "corresponsalBancolombia": "Corresponsal Bancolombia",
+        "cuotasBancolombia": "Cuotas Bancolombia",
+        "dineroEnCuenta": "Dinero en cuenta",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tarifa": {
+      "titulo": "Tarifa de {procesador}",
+      "descripcion": "Con esta tarifa se ESTIMAN comisión, IVA y retenciones de cada cobro. Lo real sale del abono que registras.",
+      "guardar": "Guardar tarifa",
+      "guardada": "Tarifa de {procesador} guardada.",
+      "errorPermiso": "No tienes permiso para cambiar la tarifa.",
+      "errorGuardar": "No se pudo guardar la tarifa.",
+      "soloLectura": "Solo lectura: pide el permiso de crear en finanzas.",
+      "plan": "Plan",
+      "planes": {
+        "abonoInmediato": "Abono inmediato u otro banco",
+        "diaSiguiente": "Día siguiente a Cuenta Bold",
+        "personalizado": "Personalizada"
+      },
+      "medio": "Medio",
+      "porcentaje": "Porcentaje",
+      "fijo": "Fijo por pago",
+      "tramos": {
+        "base": "Todas las tarjetas y PSE/billeteras",
+        "tarjeta": "Visa y Mastercard",
+        "tarjetaOtras": "Otras tarjetas",
+        "pseBilleteras": "PSE, Bancolombia y billeteras"
+      },
+      "porcentajeDe": "Porcentaje de {tramo}",
+      "fijoDe": "Valor fijo de {tramo}",
+      "internacional": "Adicional tarjeta internacional",
+      "ivaComision": "IVA de la comisión",
+      "retenciones": "Retenciones",
+      "configuraRetenciones": "Configura tus retenciones (las ves en la app de {procesador})",
+      "reteFuente": "ReteFuente",
+      "reteIca": "ReteICA",
+      "reteIva": "ReteIVA",
+      "retencionesRevisadas": "Ya revisé mis retenciones",
+      "pseSinRetenciones": "PSE sin retenciones",
+      "nota": "Los planes de Bold son los de pagos en línea de bold.co/tarifas (antes de IVA y retenciones). Retenciones: el porcentaje que ves descontado en la app, sobre el valor cobrado."
+    }
+  },
+  "documentoCredito": {
+    "aviso": {
+      "titulo": "Para vender a crédito necesitamos el documento del cliente",
+      "descripcion": "Esta venta deja saldo por cobrar. Un fiado a consumidor final no se puede cobrar ni reportar: registra el NIT o la cédula del cliente."
+    },
+    "guardado": "Documento guardado. Vuelve a guardar la venta.",
+    "errorCarga": "No se pudieron cargar los datos del cliente.",
+    "cambiarFacturarA": "Una venta con saldo no puede ir a consumidor final. En «Facturar a», escoge la persona o una empresa.",
+    "elegirCliente": "Una venta con saldo necesita un cliente con documento. Escoge el cliente de la venta."
   }
 }

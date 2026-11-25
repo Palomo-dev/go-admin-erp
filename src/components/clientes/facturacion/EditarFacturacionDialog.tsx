@@ -20,6 +20,7 @@ import { Building2, ExternalLink, Link2, Loader2, User, Users } from 'lucide-rea
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { PanelAdaptable } from '@/components/kit/PanelAdaptable';
+import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { FormField } from '@/components/kit/FormField';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
 import { MultiSelect } from '@/components/kit/MultiSelect';
@@ -80,6 +81,11 @@ export interface EditarFacturacionDialogProps {
   nuevaEmpresaDe?: { personaId: string; personaNombre: string } | null;
   /** Empresa creada o ligada en el modo `nuevaEmpresaDe` (el selector la deja escogida). */
   onEmpresaLista?: (empresaId: string) => void;
+  /**
+   * Por qué se abrió desde otra pantalla (p. ej. una venta a crédito que exige el documento,
+   * `PedirDocumentoCreditoDialog`): se muestra arriba del formulario.
+   */
+  aviso?: { titulo: string; descripcion?: string } | null;
 }
 
 /** Ficha en blanco de una empresa nueva (modo «Agregar empresa con NIT»). */
@@ -114,7 +120,7 @@ function formularioDe(datos: DatosFacturacionCliente): DatosFacturacionFormulari
   };
 }
 
-export function EditarFacturacionDialog({ abierto, onAbiertoChange, organizationId, datos, onGuardado, nuevaEmpresaDe = null, onEmpresaLista }: EditarFacturacionDialogProps) {
+export function EditarFacturacionDialog({ abierto, onAbiertoChange, organizationId, datos, onGuardado, nuevaEmpresaDe = null, onEmpresaLista, aviso = null }: EditarFacturacionDialogProps) {
   const t = useTranslations('clientesFacturacion');
   const tf = useTranslations('clientesFacturarA');
   const nueva = nuevaEmpresaDe !== null;
@@ -307,6 +313,7 @@ export function EditarFacturacionDialog({ abierto, onAbiertoChange, organization
         </>
       }
     >
+      {aviso && <AvisoTonal tono="advertencia" rol="status" titulo={aviso.titulo} descripcion={aviso.descripcion} />}
       {!nueva && (
       <FormField etiqueta={t('editar.tipoPersona')}>
         {(campo) => (

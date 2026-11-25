@@ -32,6 +32,10 @@ export class CuadreError extends Error {
 
 /** Códigos que lanzan las RPC (y las que llaman) y que la pantalla traduce. */
 export const ERRORES_CUADRE = [
+  // Cobro en caja con el total de la base (migración 20261125195945).
+  'TOTAL_PEDIDO_INCONSISTENTE',
+  'FACTURA_NO_COINCIDE',
+  'MONTO_NO_COINCIDE',
   'NO_OPEN_CASH_SESSION',
   'SEDE_INVALIDA',
   'DOMICILIARIO_INVALIDO',

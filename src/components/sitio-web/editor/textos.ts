@@ -964,6 +964,45 @@ export const TEXTOS_EDITOR = {
       abrirAyuda: 'Abre las opciones del segundo botón',
       nota: 'Sin forma ni tamaño elegidos, el segundo botón usa el redondeo y el relleno del principal. No tiene ancho, alto, sombra ni colores propios: toma el color del texto del encabezado.',
     },
+    // Menú del celular — categorías con color e imagen y «Contenido del botón» (Figma 3290:101848).
+    categoriasCabecera: {
+      editarInventario: 'Editar imagen, color e ícono en Inventario › Categorías',
+      estilo: {
+        titulo: 'Categorías en el menú',
+        ayuda: 'Cómo se ve cada categoría en el cajón, la pantalla completa, el panel y la hoja de categorías.',
+        porDefecto: 'Por defecto',
+        opcion: {
+          icono: { titulo: 'Lista con ícono', ayuda: 'Como hoy: el ícono de la categoría, sin color ni imagen.' },
+          redonda: { titulo: 'Lista con imagen redonda', ayuda: 'Imagen de la categoría; si no tiene, su ícono sobre su color; si no, la inicial.' },
+          tarjetas: { titulo: 'Tarjetas con imagen', ayuda: 'Cuadrícula de 2 columnas en la hoja de categorías y en la pantalla completa. En el cajón y el panel: lista redonda.' },
+        },
+        avisoTarjetas: 'Tu menú del celular es «{menu}»: ahí se verá como lista redonda. Las tarjetas salen en la hoja de «Categorías» (pestañas y menú inferior) y en la pantalla completa.',
+      },
+      contenido: {
+        titulo: 'Contenido del botón',
+        ayuda: 'Qué lista el botón en computador y «Todas las categorías» en el celular. Vale en todas las composiciones.',
+        comoHoy: 'Como hoy',
+        opcion: {
+          auto: {
+            titulo: 'Automático',
+            ahora: {
+              menu: 'Con la composición Mega: el menú armado en el editor (si tiene enlaces).',
+              inventory: 'Con esta composición: las categorías del inventario.',
+            },
+          },
+          inventory: { titulo: 'Categorías del inventario', ayuda: 'El árbol de Inventario › Categorías, con subcategorías, imagen, color e ícono.' },
+          menu: { titulo: 'Menú armado en el editor', ayuda: 'Un menú de Páginas › Menús: puedes mezclar categorías, páginas y enlaces.' },
+        },
+        menu: 'Menú del botón',
+        elegirMenu: 'Elige un menú',
+        sinMenu: 'Sin menú',
+        sinMenuAyuda: 'Sin menú, el botón lista las categorías del inventario.',
+        editarMenus: 'Armar o editar en Páginas › Menús',
+        celularTambien: 'También cambia el celular: cajón, pantalla completa y hoja de categorías listan este menú.',
+        aviso: 'Tienes el menú «{menu}» guardado para el botón, pero con la composición {composicion} hoy no se ve en ninguna parte.',
+        usarlo: 'Usarlo en el botón',
+      },
+    },
     movilEncabezado: {
       titulo: 'Celular',
       menu: 'Menú en el celular',
@@ -1557,6 +1596,34 @@ export const TEXTOS_EDITOR = {
   controles: {
     degradado1: 'Color inicial del degradado',
     degradado2: 'Color final del degradado',
+  },
+  /** «Planes de membresía» › Planes que se muestran (Figma «16 Sitio web» E1/E2, 3286-101346). */
+  planesMembresia: {
+    ayuda: 'Usa las flechas para ordenar · la estrella marca «Popular» (uno solo).',
+    cargando: 'Cargando tus planes…',
+    error: 'No pudimos leer tus planes. Revisa la conexión e inténtalo de nuevo.',
+    reintentar: 'Reintentar',
+    vacioTitulo: 'Aún no tienes planes activos',
+    vacioTexto: 'Los planes se crean en Membresías › Planes con su precio, duración y beneficios. Mientras no haya ninguno, tus clientes no ven esta página.',
+    crearPlan: 'Crear plan en Membresías',
+    abrirPlanes: 'Abrir Membresías › Planes',
+    notaTitulo: 'Los datos del plan viven en Membresías',
+    nota: 'Precio, duración, beneficios y si el plan está activo se cambian en Membresías › Planes. Aquí solo: orden, cuáles se ven y cuál es «Popular».',
+    enLinea: 'En línea · {precio}',
+    enLineaSinPrecio: 'En línea',
+    consulta: 'Sin precio · botón «Consultar»',
+    pausado: 'Producto pausado · «No disponible por ahora»',
+    inactivo: 'Inactivo en Membresías · no se publica',
+    inactivosEtiqueta: 'Planes inactivos',
+    oculto: 'Oculto en la tienda',
+    subir: 'Subir {nombre}',
+    bajar: 'Bajar {nombre}',
+    marcarPopular: 'Marcar {nombre} como «Popular»',
+    quitarPopular: 'Quitar «Popular» de {nombre}',
+    ocultar: 'Ocultar {nombre} en la tienda',
+    mostrar: 'Mostrar {nombre} en la tienda',
+    paginaNoVisibleTitulo: 'Esta página no se ve en la tienda',
+    paginaNoVisible: 'No tienes planes activos: tus clientes ven «Esta página no está disponible» y la página sale del menú y del sitemap. En el lienzo ves planes de ejemplo.',
   },
 } as const;
 

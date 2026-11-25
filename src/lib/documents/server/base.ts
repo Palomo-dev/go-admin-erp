@@ -34,6 +34,7 @@ import type {
 import { colorHexSeguro } from '../escape';
 import { logoComoDataUri } from './logo';
 import { nombreVisibleMetodo } from '@/lib/finanzas/metodosPagoOrganizacion';
+import { valorAplicadoPago } from '@/lib/finanzas/pagos/vueltas';
 import { COLUMNAS_CANTIDAD_PRODUCTO, cantidadLineaDeProducto } from '@/lib/services/documentos/cantidadLinea';
 
 /** Lo que el motor necesita de la sesión (subconjunto de `ServerOrgContext`). */
@@ -496,14 +497,19 @@ export interface FilaPago {
   method?: string | null;
   amount?: number | string | null;
   change_amount?: number | string | null;
+  cash_received?: number | string | null;
+  change_given?: number | string | null;
   reference?: string | null;
   payment_date?: string | null;
   created_at?: string | null;
 }
 
-/** Valor aplicado de un pago: `amount - change_amount` (en el POS `amount` es lo recibido). */
+/**
+ * Valor aplicado de un pago: `amount - change_amount`. En los pagos del POS anteriores a
+ * 2026-11-26 `amount` era lo recibido; desde entonces ya es lo cobrado (ver `vueltas.ts`).
+ */
 export function valorAplicado(p: FilaPago): number {
-  return num(p.amount) - num(p.change_amount);
+  return valorAplicadoPago(p);
 }
 
 export function seccionPagos(pagos: FilaPago[], t: Traductor, nombres: NombresMetodos = SIN_NOMBRES_METODOS): SeccionTabla {

@@ -5532,7 +5532,11 @@
       "esteMes": "Ce mois-ci",
       "mesPasado": "Le mois dernier",
       "dias7": "7 jours",
-      "dias30": "30 jours"
+      "dias30": "30 jours",
+      "semana": "Cette semaine",
+      "estaSemana": "Cette semaine (lundi à aujourd'hui)",
+      "fecha": "Date",
+      "rangoCorto": "Période…"
     },
     "calendario": {
       "etiqueta": "Calendrier",
@@ -14864,7 +14868,8 @@
       "peso_inestable": "La lecture de la balance n’était pas stable. {detalle}",
       "pesaje_no_coincide": "La quantité ne correspond pas au poids lu sur la balance. {detalle}",
       "etiqueta_invalida": "L’étiquette de poids ne contient pas le code lu. {detalle}",
-      "sin_permiso_quitar_promocion": "Retirer la promotion d’une ligne exige l’autorisation « Retirer la promotion ». {detalle}"
+      "sin_permiso_quitar_promocion": "Retirer la promotion d’une ligne exige l’autorisation « Retirer la promotion ». {detalle}",
+      "documento_requerido_credito": "Cette vente laisse un solde à payer et le client n’a pas de numéro d’identification. Enregistrez son NIT ou sa pièce d’identité, ou encaissez la vente en totalité."
     },
     "ventaAnulada": "Vente annulée : paiements, stock et facture ont été annulés.",
     "anulacionFallida": "La vente n’a pas pu être annulée",
@@ -17141,7 +17146,8 @@
       "linea_invalida": "Vérifiez les lignes : description, quantité et prix.",
       "producto_invalido": "Un produit de la facture n’appartient pas à l’organisation.",
       "producto_eliminado": "Un produit de la facture a été supprimé de l’inventaire : retirez-le ou restaurez-le dans Inventaire.",
-      "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation."
+      "vendedor_invalido": "Le vendeur n’est pas membre de l’organisation.",
+      "documento_requerido_credito": "La facture laisse un solde à payer et le client n’a pas de numéro d’identification (NIT ou pièce d’identité). Enregistrez-le avant de l’émettre."
     },
     "listado": {
       "sustantivo": {
@@ -37723,6 +37729,59 @@
             "showLabel": "Afficher le texte"
           }
         },
+        "categoriasCabecera": {
+          "editarInventario": "Modifier l’image, la couleur et l’icône dans Inventaire › Catégories",
+          "estilo": {
+            "titulo": "Catégories dans le menu",
+            "ayuda": "L’apparence de chaque catégorie dans le tiroir, le plein écran, le panneau et la feuille des catégories.",
+            "porDefecto": "Par défaut",
+            "opcion": {
+              "icono": {
+                "titulo": "Liste avec icône",
+                "ayuda": "Comme aujourd’hui : l’icône de la catégorie, sans couleur ni image."
+              },
+              "redonda": {
+                "titulo": "Liste avec image ronde",
+                "ayuda": "L’image de la catégorie ; sinon, son icône sur sa couleur ; sinon, son initiale."
+              },
+              "tarjetas": {
+                "titulo": "Cartes avec image",
+                "ayuda": "Grille de 2 colonnes dans la feuille des catégories et le plein écran. Dans le tiroir et le panneau : liste ronde."
+              }
+            },
+            "avisoTarjetas": "Votre menu mobile est « {menu} » : il s’y affiche en liste ronde. Les cartes apparaissent dans la feuille « Catégories » (onglets et menu du bas) et en plein écran."
+          },
+          "contenido": {
+            "titulo": "Contenu du bouton",
+            "ayuda": "Ce que liste le bouton sur ordinateur et « Toutes les catégories » sur mobile. Valable pour toutes les compositions.",
+            "comoHoy": "Comme aujourd’hui",
+            "opcion": {
+              "auto": {
+                "titulo": "Automatique",
+                "ahora": {
+                  "menu": "Avec la composition Mega : le menu créé dans l’éditeur (s’il a des liens).",
+                  "inventory": "Avec cette composition : les catégories de l’inventaire."
+                }
+              },
+              "inventory": {
+                "titulo": "Catégories de l’inventaire",
+                "ayuda": "L’arbre Inventaire › Catégories, avec sous-catégories, image, couleur et icône."
+              },
+              "menu": {
+                "titulo": "Menu créé dans l’éditeur",
+                "ayuda": "Un menu de Pages › Menus : vous pouvez mélanger catégories, pages et liens."
+              }
+            },
+            "menu": "Menu du bouton",
+            "elegirMenu": "Choisissez un menu",
+            "sinMenu": "Aucun menu",
+            "sinMenuAyuda": "Sans menu, le bouton liste les catégories de l’inventaire.",
+            "editarMenus": "Créer ou modifier dans Pages › Menus",
+            "celularTambien": "Le mobile change aussi : le tiroir, le plein écran et la feuille des catégories listent ce menu.",
+            "aviso": "Le menu « {menu} » est enregistré pour le bouton, mais avec la composition {composicion} il n’apparaît nulle part aujourd’hui.",
+            "usarlo": "L’utiliser dans le bouton"
+          }
+        },
         "movilEncabezado": {
           "mi": {
             "accion": {
@@ -38991,6 +39050,76 @@
           "beneficiosEditables": "Chaque texte est modifiable (vide = texte par défaut).",
           "beneficiosTitulo": "Titre des avantages",
           "beneficioLinea": "Ligne {n}"
+        },
+        "orden": {
+          "titulo": "Ordre dans l'en-tête",
+          "ayuda": "Voici l’ordre des icônes de gauche à droite. Faites glisser la poignée ou utilisez les flèches ↑ ↓.",
+          "editando": "Modification",
+          "computador": "Ordinateur",
+          "celular": "Mobile",
+          "igualComputador": "Comme sur ordinateur",
+          "igualAyudaSi": "Activé : le mobile utilise le même ordre que l’ordinateur.",
+          "igualAyudaNo": "Désactivé : le mobile a son propre ordre.",
+          "vistaPreviaComputador": "Aperçu en direct · ordinateur",
+          "vistaPreviaCelular": "Aperçu en direct · mobile",
+          "logo": "Votre boutique",
+          "barraMuestra": "Rechercher…",
+          "lista": "Ordre des icônes",
+          "nombre": {
+            "search": "Rechercher",
+            "currency": "Devise",
+            "favorites": "Favoris",
+            "cart": "Panier",
+            "auth": "Compte"
+          },
+          "detalle": {
+            "search": "Icône · ouvre la recherche",
+            "currency": "Sélecteur de devise",
+            "favorites": "Cœur",
+            "cart": "Sac · compteur",
+            "auth": "Personne · mène à Se connecter"
+          },
+          "barra": "Rechercher · barre",
+          "barraAyuda": "Non ordonnée : sa place dépend de la composition.",
+          "barraIr": "Recherche",
+          "ocultos": "Masquées · absentes de l’en-tête",
+          "ocultoAyuda": "Réactivée, elle reprend sa place.",
+          "buscadorApagado": "Désactivée dans Design › Recherche.",
+          "mostrar": "Afficher {nombre}",
+          "fuera": "Absentes de la barre mobile",
+          "motivo": {
+            "menuInferior": "Elle est dans le menu inférieur : pas de doublon en haut.",
+            "monedaMenu": "Elle va dans le menu (feuille inférieure). Pour l’afficher ici : Devise › Dans la barre.",
+            "favoritosCelular": "Sur mobile, elle est dans le menu et le menu inférieur.",
+            "apagadoCelular": "Désactivée pour le mobile dans Mobile › Icônes."
+          },
+          "monedaIr": "Devise",
+          "asa": "Déplacer {nombre}, position {n} sur {total}",
+          "subir": "Monter {nombre}",
+          "bajar": "Descendre {nombre}",
+          "botonesSede": "Boutons et sélecteur d’établissement",
+          "botonesSedeAyuda": "Ils viennent toujours après les icônes (« Réserver », deuxième bouton, établissement). Ils ne font pas partie de cet ordre.",
+          "menuLogo": "Menu ≡ et logo",
+          "menuLogoAyuda": "Leur place dépend de « Disposition mobile ». Ils ne font pas partie de cet ordre.",
+          "restablecer": "Réinitialiser l’ordre",
+          "restablecerCelular": "Réinitialiser l’ordre mobile",
+          "igualSiempre": "Identique à l’ordre par défaut",
+          "restablecerAyuda": "Réinitialiser : Rechercher · Devise · Panier · Compte (Favoris, si activé, avant le Panier). Les interrupteurs ne changent pas.",
+          "restablecerAyudaCelular": "Sur Mobile, « Réinitialiser » revient à « Comme sur ordinateur ».",
+          "confirmarTitulo": "Réinitialiser l’ordre ?",
+          "confirmarComputador": "Les icônes reprennent l’ordre par défaut sur ordinateur : Rechercher · Devise · Panier · Compte. Le mobile revient à « Comme sur ordinateur ». Les icônes visibles, leur forme et leur dessin ne changent pas.",
+          "confirmarCelular": "Le mobile revient à « Comme sur ordinateur ». Les icônes visibles, leur forme et leur dessin ne changent pas.",
+          "confirmarDeshacer": "Vous pouvez annuler avec « Annuler » dans la barre de l’éditeur.",
+          "confirmar": "Réinitialiser",
+          "constructor": "L’ordre vient du Constructeur",
+          "constructorAyuda": "Ce site construit son en-tête avec les zones du Constructeur : les icônes suivent l’ordre de leurs zones. Ce bloc ne modifie rien.",
+          "arrastre": {
+            "instrucciones": "Pour déplacer une icône, placez le focus sur sa poignée et appuyez sur Espace ou Entrée. Déplacez-la avec les flèches ↑ ↓, déposez-la avec Espace ou annulez avec Échap.",
+            "tomado": "Vous avez saisi {nombre}, position {n} sur {total}.",
+            "movido": "{nombre}, maintenant en position {n} sur {total}.",
+            "soltado": "{nombre} a été déposé en position {n} sur {total}.",
+            "cancelado": "Annulé. {nombre} reprend sa place."
+          }
         }
       },
       "accionesFicha": {
@@ -39201,6 +39330,7 @@
           "circle": "Cercle",
           "square": "Carré"
         },
+        "fondoAyudaCabecera": "Ne modifie pas la loupe à l'intérieur de la barre de recherche : seulement les icônes seules (panier, compte, favoris, devise et la loupe en forme « Icône »).",
         "colorFondo": "Couleur du fond",
         "colorFondoNulo": "Teinte de l’icône",
         "colorFondoNuloMenu": "Teinte de l’icône (active : la marque)",
@@ -39843,6 +39973,33 @@
           "texto": "Revient à l’apparence actuelle sur ordinateur et mobile. La forme, l’interrupteur et les recherches populaires ne changent pas.",
           "confirmar": "Réinitialiser"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Utilisez les flèches pour réordonner · l'étoile marque « Populaire » (un seul).",
+        "cargando": "Chargement de vos formules…",
+        "error": "Impossible de lire vos formules. Vérifiez la connexion et réessayez.",
+        "reintentar": "Réessayer",
+        "vacioTitulo": "Vous n'avez pas encore de formules actives",
+        "vacioTexto": "Les formules se créent dans Abonnements › Formules avec leur prix, leur durée et leurs avantages. Tant qu'il n'y en a aucune, vos clients ne voient pas cette page.",
+        "crearPlan": "Créer une formule dans Abonnements",
+        "abrirPlanes": "Ouvrir Abonnements › Formules",
+        "notaTitulo": "Les données de la formule sont dans Abonnements",
+        "nota": "Le prix, la durée, les avantages et l'état actif se modifient dans Abonnements › Formules. Ici seulement : l'ordre, celles qui s'affichent et laquelle est « Populaire ».",
+        "enLinea": "En ligne · {precio}",
+        "enLineaSinPrecio": "En ligne",
+        "consulta": "Sans prix · bouton « Demander »",
+        "pausado": "Produit en pause · « Indisponible pour le moment »",
+        "inactivo": "Inactive dans Abonnements · non publiée",
+        "inactivosEtiqueta": "Formules inactives",
+        "oculto": "Masquée dans la boutique",
+        "subir": "Monter {nombre}",
+        "bajar": "Descendre {nombre}",
+        "marcarPopular": "Marquer {nombre} comme « Populaire »",
+        "quitarPopular": "Retirer « Populaire » de {nombre}",
+        "ocultar": "Masquer {nombre} dans la boutique",
+        "mostrar": "Afficher {nombre} dans la boutique",
+        "paginaNoVisibleTitulo": "Cette page n'est pas visible dans la boutique",
+        "paginaNoVisible": "Vous n'avez pas de formules actives : vos clients voient « Cette page n'est pas disponible » et la page sort du menu et du sitemap. Le canevas montre des formules d'exemple."
       }
     },
     "paginas": {
@@ -41970,7 +42127,10 @@
       "errorMarcarPagado": "Impossible de marquer comme payée",
       "pendienteMarcarPagado": "Commande confirmée mais non marquée comme payée",
       "sinStockReactivar": "Stock insuffisant pour réactiver la commande. Ajustez l'inventaire des produits manquants et réessayez ; la commande n'a pas été modifiée.",
-      "confirmarCanceladoAntiguo": "La commande {numero} a été annulée il y a {dias} jours. La marquer comme payée quand même ?"
+      "confirmarCanceladoAntiguo": "La commande {numero} a été annulée il y a {dias} jours. La marquer comme payée quand même ?",
+      "contraentregaEnEnvio": "L’envoi comporte un paiement à la livraison que le livreur encaisse : la caisse ne l’encaisse pas à part. Si le colis est encore au point de vente, utilisez « Encaisser et remettre ».",
+      "contraentregaEnCuadre": "Le livreur a déjà encaissé le paiement à la livraison : cet argent entre en caisse avec son arrêté de compte.",
+      "totalNoCoincide": "Le total de la commande ne correspond pas à ses produits ni à sa facture. Rechargez la commande et vérifiez-la avant d’encaisser."
     },
     "tipoCorto": {
       "pickup": "Retrait",
@@ -43588,7 +43748,9 @@
       "last7": "les 7 jours précédents",
       "last30": "les 30 jours précédents",
       "custom": "la période précédente",
-      "all": "la période précédente"
+      "all": "la période précédente",
+      "week": "la semaine dernière",
+      "month": "le mois dernier"
     },
     "buscar": {
       "placeholder": "Rechercher par n° de commande, client, téléphone, e-mail, adresse ou produit…",
@@ -43612,7 +43774,9 @@
       "last7": "7 derniers jours",
       "last30": "30 derniers jours",
       "custom": "Personnalisée",
-      "all": "Tout"
+      "all": "Tout",
+      "week": "Cette semaine",
+      "month": "Ce mois-ci"
     },
     "chips": {
       "periodo": "Période : {valor}",
@@ -68331,7 +68495,10 @@
         "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s'encaisse pas en caisse.",
         "PEDIDO_SIN_CONFIRMAR": "La commande n'est pas encore confirmée.",
         "ORIGEN_NO_SOPORTADO": "Cette livraison ne vient ni d'une vente ni d'une commande en ligne.",
-        "RECIBOS_INVALIDOS": "Les montants du rapprochement ne sont pas valides. Actualisez l'écran et recomptez."
+        "RECIBOS_INVALIDOS": "Les montants du rapprochement ne sont pas valides. Actualisez l'écran et recomptez.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "Le total de la commande ne correspond pas à ses produits. Vérifiez-la avant d’encaisser.",
+        "FACTURA_NO_COINCIDE": "La facture ne correspond pas au total de la commande. Rechargez l’écran et réessayez.",
+        "MONTO_NO_COINCIDE": "Le montant ne correspond pas au solde de la commande."
       },
       "elegir": {
         "titulo": "De qui reçois-tu ?",
@@ -69308,7 +69475,10 @@
         "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s’encaisse pas en caisse.",
         "PEDIDO_SIN_CONFIRMAR": "Confirmez la commande avant de l’encaisser.",
         "FACTURA_REQUERIDA": "Impossible de préparer la facture de la commande. Réessayez.",
-        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous."
+        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "Le total de la commande ne correspond pas à ses produits. Vérifiez-la avant d’encaisser.",
+        "FACTURA_NO_COINCIDE": "La facture ne correspond pas au total de la commande. Rechargez l’écran et réessayez.",
+        "MONTO_NO_COINCIDE": "Le montant ne correspond pas au solde de la commande."
       },
       "chips": {
         "intento": "Tentative {n}",
@@ -72723,6 +72893,121 @@
       }
     }
   },
+  "formularioCheckout": {
+    "titulo": "Formulaire de paiement",
+    "nuevo": "Nouveau",
+    "descripcion": "Les informations demandées par votre boutique, dans quel ordre et lesquelles sont obligatoires. Faites glisser pour réordonner dans chaque bloc.",
+    "descripcionMovil": "Les informations demandées par votre boutique, dans quel ordre et lesquelles sont obligatoires. Maintenez la poignée pour réordonner.",
+    "restablecer": "Rétablir la recommandation",
+    "secciones": {
+      "contacto": "Contact",
+      "entrega": "Livraison"
+    },
+    "conteo": "{campos} champs · {visibles} visibles",
+    "notaSeccion": {
+      "contacto": "L’e-mail est toujours demandé",
+      "entrega": "Seulement en livraison ou transporteur : pas demandé au retrait"
+    },
+    "campos": {
+      "email": {
+        "nombre": "E-mail",
+        "detalle": "La confirmation de commande arrive ici"
+      },
+      "celular": {
+        "nombre": "Mobile avec indicatif",
+        "detalle": "Drapeau et +57 · pour organiser la livraison"
+      },
+      "nombre": {
+        "nombre": "Nom et prénom",
+        "detalle": "Un seul champ : séparé en prénom et nom"
+      },
+      "factura": {
+        "nombre": "Facture au nom d’une entreprise (NIT)",
+        "detalle": "Case : NIT avec clé, raison sociale et e-mail de facturation"
+      },
+      "direccion": {
+        "nombre": "Adresse",
+        "detalle": "Rue, avenue et numéro"
+      },
+      "complemento": {
+        "nombre": "Appartement, maison ou bureau",
+        "detalle": "Complément d’adresse"
+      },
+      "ciudad": {
+        "nombre": "Ville ou commune",
+        "detalle": "Liste des communes avec recherche · calcule la livraison"
+      },
+      "barrio": {
+        "nombre": "Quartier",
+        "detalle": "Situe la zone de livraison"
+      },
+      "notas": {
+        "nombre": "Instructions pour le livreur",
+        "detalle": "S’ouvre avec « Ajouter des instructions »"
+      }
+    },
+    "motivos": {
+      "correo": "Toujours obligatoire : confirmation, fiche client et passerelles",
+      "nombre": "Nécessaire pour la livraison et la facture",
+      "direccion": "Obligatoire en livraison · pas au retrait",
+      "ciudad": "Calcule la livraison · obligatoire en livraison",
+      "barrio": "Toujours affiché quand les zones de livraison le demandent",
+      "factura": "Case toujours facultative ; cochée, elle demande le document",
+      "notas": "Toujours à la fin"
+    },
+    "oculto": "Masqué dans la boutique",
+    "obligatorio": "Obligatoire",
+    "opcional": "Facultatif",
+    "requisito": "Exigence",
+    "requisitoDe": "Exigence de « {nombre} »",
+    "mostrar": "Afficher « {nombre} » dans la boutique",
+    "mostrarEnTienda": "Afficher dans la boutique",
+    "editar": "Modifier « {nombre} »",
+    "asa": "Déplacer « {nombre} », position {n} sur {total}. Espace pour saisir, flèches pour déplacer.",
+    "fijoOrden": "« {nombre} » est toujours à la fin",
+    "bloqueado": "Non modifiable : {motivo}",
+    "errorContactoTitulo": "Affichez l’e-mail ou le mobile",
+    "errorContacto": "Sans l’un des deux, nous ne pouvons ni confirmer la commande au client ni le prévenir de l’envoi. Activez-en au moins un.",
+    "errorFila": "Laissez l’e-mail ou le mobile visible",
+    "verVistaPrevia": "Voir l’aperçu",
+    "volverLista": "Retour à la liste",
+    "pie": {
+      "sinCambios": "Aucune modification",
+      "cambios": "{n, plural, one {# modification non enregistrée} other {# modifications non enregistrées}}",
+      "error": "Impossible d’enregistrer : vérifiez le bloc {seccion}",
+      "descartar": "Abandonner"
+    },
+    "vistaPrevia": {
+      "titulo": "Aperçu",
+      "subtitulo": "Ce que voit votre client · en direct",
+      "dispositivo": "Appareil de l’aperçu",
+      "computador": "Ordinateur",
+      "celular": "Mobile",
+      "nota": "Ce qui est masqué n’apparaît pas ; « (opcional) » s’ajoute tout seul. Un bloc sans champ visible n’est pas affiché."
+    },
+    "dialogo": {
+      "titulo": "Modifier « {nombre} »",
+      "descripcion": "Changez son nom dans votre boutique. La donnée enregistrée ne change pas.",
+      "etiqueta": "Libellé",
+      "etiquetaAyuda": "C’est ce que voit le client dans la boutique.",
+      "ayuda": "Texte d’aide",
+      "ayudaAyuda": "Laissez vide pour ne pas afficher d’aide.",
+      "ejemplo": "Texte d’exemple",
+      "ejemploAyuda": "Affiché en gris dans le champ vide.",
+      "ejemploTienda": "L’exemple de la boutique",
+      "volver": "Revenir au texte recommandé",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "listo": "Terminé"
+    },
+    "restablecerDialogo": {
+      "titulo": "Revenir au formulaire recommandé ?",
+      "descripcion": "L’ordre, ce qui s’affiche et ce qui est obligatoire sont rétablis, et les libellés d’origine reviennent.",
+      "contacto": "Contact : e-mail, mobile, nom et facture entreprise (facultative).",
+      "entrega": "Livraison : adresse, appartement, ville ou commune, quartier et instructions.",
+      "confirmar": "Rétablir"
+    }
+  },
   "pagosIntentos": {
     "insignias": {
       "A": "En attente de paiement",
@@ -73637,5 +73922,207 @@
       "transportadora": "Transporteur",
       "logistica": "Logistique"
     }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Rechercher un moyen…",
+      "sinOpciones": "Aucun résultat",
+      "limpiar": "Effacer",
+      "aplicar": "Appliquer",
+      "medio": "Moyen de paiement",
+      "medioResumen": "Moyen de paiement : {valor}",
+      "estadoPago": "État du paiement",
+      "estadoResumen": "État du paiement : {valor}",
+      "todos": "Tous",
+      "grupoPasarelas": "Passerelles (en ligne)",
+      "grupoOtros": "À la livraison ou en boutique",
+      "notaMedio": "Ils viennent de Finances › Moyens de paiement. Une commande avec un acompte par passerelle et le solde en espèces apparaît dans les deux moyens ; chacun n'additionne que ce qui est entré par lui.",
+      "notaEstado": "Décomptes avec la date et le moyen choisis. « Acompte payé » et « À encaisser à la livraison » se recoupent : une commande avec acompte pas encore livrée est dans les deux."
+    },
+    "medios": {
+      "efectivo": "Espèces",
+      "datafono": "Terminal de paiement",
+      "transferencia": "Virement",
+      "noConectada": "Non connectée"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Payé en totalité",
+      "anticipoPagado": "Acompte payé",
+      "porCobrarPuerta": "À encaisser à la livraison",
+      "cobradoPuerta": "Encaissé à la livraison",
+      "pendiente": "En attente",
+      "vencido": "Expiré"
+    },
+    "chips": {
+      "medio": "Moyen de paiement : {valor}",
+      "estadoPago": "État du paiement : {valor}",
+      "fecha": "Date : {valor}"
+    },
+    "errorLectura": "Impossible de lire l'encaissement",
+    "incluyeAnticipos": "Dont {monto} en acomptes de paiement à la livraison",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, même filtre",
+      "kpis": {
+        "etiqueta": "Encaissement de la période",
+        "recaudado": "Encaissé",
+        "recaudadoPor": "Encaissé par {medio}",
+        "pagos": "{n, plural, one {# paiement approuvé} other {# paiements approuvés}}",
+        "completos": "Paiements complets",
+        "anticipos": "Acomptes paiement à la livraison",
+        "anticiposDetalle": "{n, plural, one {# acompte} other {# acomptes}} · compte 2805",
+        "puerta": "Encaissé à la livraison",
+        "puertaDetalle": "{n, plural, one {# paiement} other {# paiements}} · entre en caisse"
+      }
+    },
+    "ventas": {
+      "recaudado": "Encaissé",
+      "recaudadoPor": "Encaissé par {medio}",
+      "incluyeAnticipos": "Dont {monto} en acomptes (pas des ventes)",
+      "recaudadoDetalle": "{count, plural, one {{n} paiement approuvé} other {{n} paiements approuvés}}",
+      "netasHoy": "Ventes nettes d'aujourd'hui",
+      "netasPeriodo": "Ventes nettes de la période",
+      "notaMedio": "Filtre les ventes payées avec ces moyens. « Encaissé » additionne les paiements approuvés de la période par moyen."
+    },
+    "movimientos": {
+      "conceptoPedido": "Commande en ligne · {numero}",
+      "conceptoVenta": "Vente · {numero}",
+      "conceptoCobro": "Encaissement par passerelle",
+      "anticipo2805": "acompte, en 2805 jusqu'à la facture",
+      "cuentaProcesador": "{procesador} · à reverser",
+      "conceptoAbono": "Versement de {procesador}",
+      "noSuma": "Ne s'ajoute pas à l'encaissé",
+      "recaudadoHoy": "Encaissé aujourd'hui",
+      "recaudadoPeriodo": "Encaissé sur la période",
+      "recaudadoHoyPor": "Encaissé aujourd'hui par {medio}",
+      "recaudadoPeriodoPor": "Encaissé par {medio}",
+      "pagosAprobados": "{n, plural, one {# paiement approuvé} other {# paiements approuvés}}",
+      "salidasHoy": "Sorties d'aujourd'hui",
+      "salidasPeriodo": "Sorties de la période",
+      "netoHoy": "Net d'aujourd'hui",
+      "netoPeriodo": "Net de la période",
+      "netoDetalle": "Encaissé moins les sorties",
+      "porAbonarTitulo": "Encaissé par passerelles, à reverser",
+      "porAbonarNada": "Aucun encaissement par passerelle sur la période",
+      "totalPeriodo": "Total de la période",
+      "notaMedio": "La caisse compte comme espèces et la banque comme virement. Les transferts et les versements des passerelles n'ont pas de moyen.",
+      "porMedio": "Par moyen de paiement :",
+      "noSumanNota": "Versements et transferts ne s'ajoutent pas.",
+      "porAbonar": "À reverser"
+    },
+    "cobros": {
+      "pestana": "Encaissements",
+      "procesador": "Prestataire",
+      "procesadorResumen": "Prestataire : {valor}",
+      "todos": "Tous",
+      "configurarTarifa": "Tarif",
+      "kpis": "Encaissements de la période",
+      "cobradoHoy": "Encaissé aujourd'hui (brut)",
+      "cobradoPeriodo": "Encaissé sur la période (brut)",
+      "cobradoHoyPor": "Encaissé aujourd'hui par {procesador} (brut)",
+      "cobradoPeriodoPor": "Encaissé par {procesador} (brut)",
+      "cobradoDetalle": "{n, plural, one {# paiement} other {# paiements}} · {completos} complets et {anticipos} acomptes",
+      "comisionIva": "Commission + TVA",
+      "sinTarifa": "Sans tarif : configurez-le pour estimer",
+      "tarifaTexto": "{pct} % + {fijo} par paiement, plus TVA {iva} %",
+      "algunosSinTarifa": "Un prestataire n'a pas de tarif : non estimé",
+      "segunTarifa": "Selon le tarif de chaque prestataire",
+      "retenciones": "Retenues",
+      "configuraRetenciones": "Configurez vos retenues (visibles dans l'app de {procesador})",
+      "retencionesTexto": "Retenue à la source {fuente} % · ICA {ica} % · TVA {iva} %",
+      "neto": "Net à verser",
+      "netoDetalle": "Estimé · confirmé par le versement",
+      "faltaPorLiquidar": "Reste à liquider",
+      "faltaPorLiquidarDe": "Reste à liquider ({procesador})",
+      "desde": "Depuis le {fecha} · {dias, plural, one {# jour ouvré} other {# jours ouvrés}}",
+      "faltaDetalle": "Solde des comptes 138020xx",
+      "avisoRetencionesTitulo": "Retenues non configurées",
+      "avisoRetenciones": "Les retenues sont à 0. Vérifiez-les dans l'app de {procesador} et saisissez-les dans le tarif pour que le net estimé se rapproche du versement.",
+      "tuProcesador": "votre prestataire",
+      "titulo": "Encaissements",
+      "etiquetaFila": "Paiement {pago} de {bruto}",
+      "verPago": "Voir le paiement",
+      "vacioTitulo": "Aucun encaissement sur la période",
+      "vacioDescripcion": "Les paiements approuvés par passerelle ou terminal apparaissent ici le jour de l'encaissement.",
+      "totalHoy": "Total d'aujourd'hui · {n, plural, one {# paiement} other {# paiements}}",
+      "totalPeriodo": "Total de la période · {n, plural, one {# paiement} other {# paiements}}",
+      "pie": "Aujourd'hui = jour calendaire dans le fuseau de l'organisation. Commission et retenues sont estimées avec le tarif configuré pour chaque prestataire ; au versement, les montants réels sont pris et l'écart reste dans l'écriture. Les encaissements vont à la créance du prestataire (138020xx), pas au portefeuille 1305. Les acomptes de paiement à la livraison restent en 2805 jusqu'à la facture.",
+      "origenPedido": "Commande en ligne",
+      "origenVenta": "Vente",
+      "estimado": "Estimé",
+      "columnas": {
+        "pago": "Paiement",
+        "tipo": "Type",
+        "bruto": "Brut",
+        "comision": "Commission + TVA",
+        "retenciones": "Retenues",
+        "neto": "Net estimé",
+        "estado": "État"
+      },
+      "tipos": {
+        "completo": "Complet",
+        "anticipo": "Acompte",
+        "puerta": "À la livraison",
+        "tienda": "En boutique"
+      },
+      "submetodos": {
+        "card": "Carte",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "transfer": "Virement",
+        "cash": "Espèces",
+        "botonBancolombia": "Botón Bancolombia",
+        "corresponsalBancolombia": "Correspondant Bancolombia",
+        "cuotasBancolombia": "Paiement échelonné Bancolombia",
+        "dineroEnCuenta": "Solde du compte",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tarifa": {
+      "titulo": "Tarif de {procesador}",
+      "descripcion": "Ce tarif sert à ESTIMER commission, TVA et retenues de chaque encaissement. Les montants réels viennent du versement que vous enregistrez.",
+      "guardar": "Enregistrer le tarif",
+      "guardada": "Tarif de {procesador} enregistré.",
+      "errorPermiso": "Vous n'avez pas le droit de modifier le tarif.",
+      "errorGuardar": "Impossible d'enregistrer le tarif.",
+      "soloLectura": "Lecture seule : demandez le droit de création en finances.",
+      "plan": "Formule",
+      "planes": {
+        "abonoInmediato": "Versement immédiat ou autre banque",
+        "diaSiguiente": "Lendemain sur compte Bold",
+        "personalizado": "Personnalisé"
+      },
+      "medio": "Moyen",
+      "porcentaje": "Pourcentage",
+      "fijo": "Fixe par paiement",
+      "tramos": {
+        "base": "Toutes les cartes et PSE/portefeuilles",
+        "tarjeta": "Visa et Mastercard",
+        "tarjetaOtras": "Autres cartes",
+        "pseBilleteras": "PSE, Bancolombia et portefeuilles"
+      },
+      "porcentajeDe": "Pourcentage de {tramo}",
+      "fijoDe": "Montant fixe de {tramo}",
+      "internacional": "Supplément carte internationale",
+      "ivaComision": "TVA sur la commission",
+      "retenciones": "Retenues",
+      "configuraRetenciones": "Configurez vos retenues (visibles dans l'app de {procesador})",
+      "reteFuente": "Retenue à la source",
+      "reteIca": "Retenue ICA",
+      "reteIva": "Retenue TVA",
+      "retencionesRevisadas": "J'ai vérifié mes retenues",
+      "pseSinRetenciones": "PSE sans retenues",
+      "nota": "Les formules de Bold sont celles des paiements en ligne de bold.co/tarifas (avant TVA et retenues). Retenues : le pourcentage déduit visible dans l'app, sur le montant encaissé."
+    }
+  },
+  "documentoCredito": {
+    "aviso": {
+      "titulo": "Pour vendre à crédit, il faut le numéro d’identification du client",
+      "descripcion": "Cette vente laisse un solde à payer. Un crédit à un consommateur final anonyme ne peut être ni recouvré ni déclaré : enregistrez le NIT ou la pièce d’identité du client."
+    },
+    "guardado": "Identifiant enregistré. Enregistrez de nouveau la vente.",
+    "errorCarga": "Impossible de charger les données du client.",
+    "cambiarFacturarA": "Une vente avec solde ne peut pas être facturée au consommateur final. Dans « Facturer à », choisissez la personne ou une entreprise.",
+    "elegirCliente": "Une vente avec solde nécessite un client identifié. Choisissez le client de la vente."
   }
 }

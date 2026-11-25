@@ -12869,7 +12869,11 @@
       "esteMes": "This month",
       "mesPasado": "Last month",
       "dias7": "7 days",
-      "dias30": "30 days"
+      "dias30": "30 days",
+      "semana": "This week",
+      "estaSemana": "This week (Monday to today)",
+      "fecha": "Date",
+      "rangoCorto": "Range…"
     },
     "calendario": {
       "etiqueta": "Calendar",
@@ -22201,7 +22205,8 @@
       "peso_inestable": "The scale reading was not stable. {detalle}",
       "pesaje_no_coincide": "The quantity doesn't match the weight read from the scale. {detalle}",
       "etiqueta_invalida": "The weight label doesn't include the scanned code. {detalle}",
-      "sin_permiso_quitar_promocion": "Removing a line's promotion requires the “Remove promotion” permission. {detalle}"
+      "sin_permiso_quitar_promocion": "Removing a line's promotion requires the “Remove promotion” permission. {detalle}",
+      "documento_requerido_credito": "This sale leaves a balance due and the customer has no ID number. Add their tax ID or national ID, or charge the full amount."
     },
     "ventaAnulada": "Sale voided: payments, stock and invoice were reversed.",
     "anulacionFallida": "The sale could not be voided",
@@ -24478,7 +24483,8 @@
       "linea_invalida": "Check the lines: description, quantity and price.",
       "producto_invalido": "A product on the invoice does not belong to the organization.",
       "producto_eliminado": "A product on the invoice was deleted from inventory: remove it or restore it in Inventory.",
-      "vendedor_invalido": "The salesperson is not a member of the organization."
+      "vendedor_invalido": "The salesperson is not a member of the organization.",
+      "documento_requerido_credito": "The invoice leaves a balance due and the customer has no ID number (tax ID or national ID). Add it before issuing."
     },
     "listado": {
       "sustantivo": {
@@ -37723,6 +37729,59 @@
             "showLabel": "Show label"
           }
         },
+        "categoriasCabecera": {
+          "editarInventario": "Edit image, color and icon in Inventory › Categories",
+          "estilo": {
+            "titulo": "Categories in the menu",
+            "ayuda": "How each category looks in the drawer, the full screen, the panel and the categories sheet.",
+            "porDefecto": "Default",
+            "opcion": {
+              "icono": {
+                "titulo": "List with icon",
+                "ayuda": "As today: the category icon, no color or image."
+              },
+              "redonda": {
+                "titulo": "List with round image",
+                "ayuda": "The category image; if it has none, its icon on its color; otherwise, its initial."
+              },
+              "tarjetas": {
+                "titulo": "Cards with image",
+                "ayuda": "2-column grid in the categories sheet and the full screen. In the drawer and the panel: round list."
+              }
+            },
+            "avisoTarjetas": "Your mobile menu is “{menu}”: there it shows as a round list. Cards appear in the “Categories” sheet (tabs and bottom menu) and in the full screen."
+          },
+          "contenido": {
+            "titulo": "Button content",
+            "ayuda": "What the button lists on desktop and “All categories” lists on mobile. Applies to every layout.",
+            "comoHoy": "As today",
+            "opcion": {
+              "auto": {
+                "titulo": "Automatic",
+                "ahora": {
+                  "menu": "With the Mega layout: the menu built in the editor (if it has links).",
+                  "inventory": "With this layout: the inventory categories."
+                }
+              },
+              "inventory": {
+                "titulo": "Inventory categories",
+                "ayuda": "The Inventory › Categories tree, with subcategories, image, color and icon."
+              },
+              "menu": {
+                "titulo": "Menu built in the editor",
+                "ayuda": "A menu from Pages › Menus: you can mix categories, pages and links."
+              }
+            },
+            "menu": "Button menu",
+            "elegirMenu": "Choose a menu",
+            "sinMenu": "No menu",
+            "sinMenuAyuda": "Without a menu, the button lists the inventory categories.",
+            "editarMenus": "Build or edit in Pages › Menus",
+            "celularTambien": "Mobile changes too: the drawer, full screen and categories sheet list this menu.",
+            "aviso": "The menu “{menu}” is saved for the button, but with the {composicion} layout it isn't shown anywhere today.",
+            "usarlo": "Use it in the button"
+          }
+        },
         "movilEncabezado": {
           "mi": {
             "accion": {
@@ -38991,6 +39050,76 @@
           "beneficiosEditables": "Each text is editable (empty = default text).",
           "beneficiosTitulo": "Benefits title",
           "beneficioLinea": "Line {n}"
+        },
+        "orden": {
+          "titulo": "Order in the header",
+          "ayuda": "This is how the icons appear from left to right. Drag the handle or use the ↑ ↓ arrows.",
+          "editando": "Editing",
+          "computador": "Desktop",
+          "celular": "Mobile",
+          "igualComputador": "Same as on desktop",
+          "igualAyudaSi": "On: mobile uses the same order as desktop.",
+          "igualAyudaNo": "Off: mobile has its own order.",
+          "vistaPreviaComputador": "Live preview · desktop",
+          "vistaPreviaCelular": "Live preview · mobile",
+          "logo": "Your store",
+          "barraMuestra": "Search…",
+          "lista": "Icon order",
+          "nombre": {
+            "search": "Search",
+            "currency": "Currency",
+            "favorites": "Favorites",
+            "cart": "Cart",
+            "auth": "Account"
+          },
+          "detalle": {
+            "search": "Icon · opens search",
+            "currency": "Currency selector",
+            "favorites": "Heart",
+            "cart": "Bag · counter",
+            "auth": "Person · goes to Sign in"
+          },
+          "barra": "Search · bar",
+          "barraAyuda": "Not ordered: the layout sets its place.",
+          "barraIr": "Search",
+          "ocultos": "Hidden · not shown in the header",
+          "ocultoAyuda": "Turn it on and it goes back to its place.",
+          "buscadorApagado": "Turned off in Design › Search.",
+          "mostrar": "Show {nombre}",
+          "fuera": "Not shown in the mobile bar",
+          "motivo": {
+            "menuInferior": "It is in the bottom menu: not repeated at the top.",
+            "monedaMenu": "It goes in the menu (bottom sheet). To bring it here: Currency › In the bar.",
+            "favoritosCelular": "On mobile it lives in the menu and the bottom menu.",
+            "apagadoCelular": "Turned off for mobile in Mobile › Icons."
+          },
+          "monedaIr": "Currency",
+          "asa": "Move {nombre}, position {n} of {total}",
+          "subir": "Move {nombre} up",
+          "bajar": "Move {nombre} down",
+          "botonesSede": "Buttons and location selector",
+          "botonesSedeAyuda": "They always go after the icons («Book», second button, location). They are not part of this order.",
+          "menuLogo": "Menu ≡ and logo",
+          "menuLogoAyuda": "Their place is set by «Mobile layout». They are not part of this order.",
+          "restablecer": "Reset order",
+          "restablecerCelular": "Reset mobile order",
+          "igualSiempre": "Same as the default",
+          "restablecerAyuda": "Reset: Search · Currency · Cart · Account (Favorites, if on, before Cart). Switches do not change.",
+          "restablecerAyudaCelular": "On Mobile, «Reset» goes back to «Same as on desktop».",
+          "confirmarTitulo": "Reset the order?",
+          "confirmarComputador": "Icons go back to the default order on desktop: Search · Currency · Cart · Account. Mobile goes back to «Same as on desktop». Which icons show, their shape and their drawing do not change.",
+          "confirmarCelular": "Mobile goes back to «Same as on desktop». Which icons show, their shape and their drawing do not change.",
+          "confirmarDeshacer": "You can undo it with «Undo» in the editor bar.",
+          "confirmar": "Reset",
+          "constructor": "The Builder sets the order",
+          "constructorAyuda": "This site builds its header with Builder zones: icons follow the order of their zones. This block changes nothing.",
+          "arrastre": {
+            "instrucciones": "To move an icon, focus its handle and press Space or Enter. Move it with the ↑ ↓ arrows, drop it with Space or cancel with Esc.",
+            "tomado": "You picked up {nombre}, position {n} of {total}.",
+            "movido": "{nombre}, now in position {n} of {total}.",
+            "soltado": "{nombre} was dropped in position {n} of {total}.",
+            "cancelado": "Cancelled. {nombre} goes back to its place."
+          }
         }
       },
       "accionesFicha": {
@@ -39201,6 +39330,7 @@
           "circle": "Circle",
           "square": "Square"
         },
+        "fondoAyudaCabecera": "It doesn't change the magnifier inside the search bar: only standalone icons (cart, account, favorites, currency and the magnifier with the «Icon» shape).",
         "colorFondo": "Background color",
         "colorFondoNulo": "Icon tint",
         "colorFondoNuloMenu": "Icon tint (active: brand)",
@@ -39843,6 +39973,33 @@
           "texto": "Goes back to today’s appearance on desktop and mobile. The style, the switch and the popular searches don’t change.",
           "confirmar": "Reset"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Use the arrows to reorder · the star marks “Popular” (only one).",
+        "cargando": "Loading your plans…",
+        "error": "We couldn't read your plans. Check your connection and try again.",
+        "reintentar": "Try again",
+        "vacioTitulo": "You don't have active plans yet",
+        "vacioTexto": "Plans are created in Memberships › Plans with their price, duration and benefits. Until there is one, your customers don't see this page.",
+        "crearPlan": "Create plan in Memberships",
+        "abrirPlanes": "Open Memberships › Plans",
+        "notaTitulo": "Plan details live in Memberships",
+        "nota": "Price, duration, benefits and whether the plan is active are changed in Memberships › Plans. Here only: order, which ones show and which one is “Popular”.",
+        "enLinea": "Online · {precio}",
+        "enLineaSinPrecio": "Online",
+        "consulta": "No price · “Ask” button",
+        "pausado": "Product paused · “Not available for now”",
+        "inactivo": "Inactive in Memberships · not published",
+        "inactivosEtiqueta": "Inactive plans",
+        "oculto": "Hidden in the store",
+        "subir": "Move {nombre} up",
+        "bajar": "Move {nombre} down",
+        "marcarPopular": "Mark {nombre} as “Popular”",
+        "quitarPopular": "Remove “Popular” from {nombre}",
+        "ocultar": "Hide {nombre} in the store",
+        "mostrar": "Show {nombre} in the store",
+        "paginaNoVisibleTitulo": "This page isn't visible in the store",
+        "paginaNoVisible": "You don't have active plans: your customers see “This page is not available” and the page leaves the menu and the sitemap. The canvas shows sample plans."
       }
     },
     "paginas": {
@@ -41970,7 +42127,10 @@
       "errorMarcarPagado": "Couldn't mark as paid",
       "pendienteMarcarPagado": "Order confirmed but not marked as paid",
       "sinStockReactivar": "There is not enough stock to reactivate the order. Adjust the inventory of the missing products and try again; the order was not changed.",
-      "confirmarCanceladoAntiguo": "Order {numero} was cancelled {dias} days ago. Mark it as paid anyway?"
+      "confirmarCanceladoAntiguo": "Order {numero} was cancelled {dias} days ago. Mark it as paid anyway?",
+      "contraentregaEnEnvio": "The shipment carries a cash-on-delivery amount that the courier collects: the register does not charge it separately. If the package is still at the branch, use “Charge and hand over”.",
+      "contraentregaEnCuadre": "The courier already collected the cash on delivery: that money enters the register with their settlement.",
+      "totalNoCoincide": "The order total does not match its products or its invoice. Reload the order and review it before charging."
     },
     "tipoCorto": {
       "pickup": "Pickup",
@@ -43588,7 +43748,9 @@
       "last7": "the previous 7 days",
       "last30": "the previous 30 days",
       "custom": "the previous period",
-      "all": "the previous period"
+      "all": "the previous period",
+      "week": "last week",
+      "month": "last month"
     },
     "buscar": {
       "placeholder": "Search by order no., customer, phone, email, address or product…",
@@ -43612,7 +43774,9 @@
       "last7": "Last 7 days",
       "last30": "Last 30 days",
       "custom": "Custom",
-      "all": "All time"
+      "all": "All time",
+      "week": "This week",
+      "month": "This month"
     },
     "chips": {
       "periodo": "Period: {valor}",
@@ -68331,7 +68495,10 @@
         "PEDIDO_DE_PASARELA": "The order was paid online: it isn't collected at the register.",
         "PEDIDO_SIN_CONFIRMAR": "The order isn't confirmed yet.",
         "ORIGEN_NO_SOPORTADO": "This delivery doesn't come from a sale or an online order.",
-        "RECIBOS_INVALIDOS": "The settlement amounts are not valid. Refresh the screen and count again."
+        "RECIBOS_INVALIDOS": "The settlement amounts are not valid. Refresh the screen and count again.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "The order total does not match its products. Review it before charging.",
+        "FACTURA_NO_COINCIDE": "The invoice does not match the order total. Reload the screen and try again.",
+        "MONTO_NO_COINCIDE": "The amount does not match the order balance."
       },
       "elegir": {
         "titulo": "Who are you receiving from?",
@@ -69308,7 +69475,10 @@
         "PEDIDO_DE_PASARELA": "The order was paid online: it isn't charged at the register.",
         "PEDIDO_SIN_CONFIRMAR": "Confirm the order before charging it.",
         "FACTURA_REQUERIDA": "The order's invoice couldn't be prepared. Try again.",
-        "SESION_REQUERIDA": "Your session expired. Sign in again."
+        "SESION_REQUERIDA": "Your session expired. Sign in again.",
+        "TOTAL_PEDIDO_INCONSISTENTE": "The order total does not match its products. Review it before charging.",
+        "FACTURA_NO_COINCIDE": "The invoice does not match the order total. Reload the screen and try again.",
+        "MONTO_NO_COINCIDE": "The amount does not match the order balance."
       },
       "chips": {
         "intento": "Attempt {n}",
@@ -72723,6 +72893,121 @@
       }
     }
   },
+  "formularioCheckout": {
+    "titulo": "Checkout form",
+    "nuevo": "New",
+    "descripcion": "Which details your store asks for, in what order and which are required. Drag to reorder within each block.",
+    "descripcionMovil": "Which details your store asks for, in what order and which are required. Press and hold the handle to reorder.",
+    "restablecer": "Restore recommended",
+    "secciones": {
+      "contacto": "Contact",
+      "entrega": "Delivery"
+    },
+    "conteo": "{campos} fields · {visibles} visible",
+    "notaSeccion": {
+      "contacto": "Email is always required",
+      "entrega": "Only for home delivery or carrier: not asked for pickup"
+    },
+    "campos": {
+      "email": {
+        "nombre": "Email",
+        "detalle": "The order confirmation is sent here"
+      },
+      "celular": {
+        "nombre": "Mobile with country code",
+        "detalle": "Flag and +57 · to arrange delivery"
+      },
+      "nombre": {
+        "nombre": "Full name",
+        "detalle": "One field: split into first and last name"
+      },
+      "factura": {
+        "nombre": "Invoice to a company (tax ID)",
+        "detalle": "Checkbox: tax ID with check digit, company name and invoice email"
+      },
+      "direccion": {
+        "nombre": "Address",
+        "detalle": "Street, avenue and number"
+      },
+      "complemento": {
+        "nombre": "Apartment, house or office",
+        "detalle": "Address line 2"
+      },
+      "ciudad": {
+        "nombre": "City or municipality",
+        "detalle": "Searchable list of municipalities · calculates shipping"
+      },
+      "barrio": {
+        "nombre": "Neighborhood",
+        "detalle": "Finds the delivery zone"
+      },
+      "notas": {
+        "nombre": "Delivery instructions",
+        "detalle": "Opens with «Add instructions»"
+      }
+    },
+    "motivos": {
+      "correo": "Always required: confirmation, customer record and payment gateways",
+      "nombre": "Needed for delivery and invoicing",
+      "direccion": "Required for home delivery · not for pickup",
+      "ciudad": "Calculates shipping · required for home delivery",
+      "barrio": "Always shown when delivery zones need it",
+      "factura": "Checkbox is always optional; when ticked, it asks for the ID",
+      "notas": "Always goes last"
+    },
+    "oculto": "Hidden in the store",
+    "obligatorio": "Required",
+    "opcional": "Optional",
+    "requisito": "Requirement",
+    "requisitoDe": "Requirement for «{nombre}»",
+    "mostrar": "Show «{nombre}» in the store",
+    "mostrarEnTienda": "Show in the store",
+    "editar": "Edit «{nombre}»",
+    "asa": "Move «{nombre}», position {n} of {total}. Space to pick up, arrows to move.",
+    "fijoOrden": "«{nombre}» always goes last",
+    "bloqueado": "Cannot be changed: {motivo}",
+    "errorContactoTitulo": "Show the email or the mobile",
+    "errorContacto": "Without either one we cannot confirm the order to the customer or notify them about shipping. Turn on at least one.",
+    "errorFila": "Keep the email or the mobile visible",
+    "verVistaPrevia": "See preview",
+    "volverLista": "Back to the list",
+    "pie": {
+      "sinCambios": "No changes",
+      "cambios": "{n, plural, one {# unsaved change} other {# unsaved changes}}",
+      "error": "Cannot save: check the {seccion} block",
+      "descartar": "Discard"
+    },
+    "vistaPrevia": {
+      "titulo": "Preview",
+      "subtitulo": "What your customer sees · live",
+      "dispositivo": "Preview device",
+      "computador": "Computer",
+      "celular": "Mobile",
+      "nota": "Hidden fields do not appear; «(opcional)» is added automatically. A block with no visible fields is not shown."
+    },
+    "dialogo": {
+      "titulo": "Edit «{nombre}»",
+      "descripcion": "Change what it is called in your store. The stored data does not change.",
+      "etiqueta": "Label",
+      "etiquetaAyuda": "This is what the customer sees in the store.",
+      "ayuda": "Help text",
+      "ayudaAyuda": "Leave it empty to show no help.",
+      "ejemplo": "Placeholder text",
+      "ejemploAyuda": "Shown in gray inside the empty field.",
+      "ejemploTienda": "The store’s example",
+      "volver": "Back to the recommended text",
+      "cancelar": "Cancel",
+      "guardar": "Save",
+      "listo": "Done"
+    },
+    "restablecerDialogo": {
+      "titulo": "Go back to the recommended form?",
+      "descripcion": "Order, what is shown and what is required are restored, and the original labels come back.",
+      "contacto": "Contact: email, mobile, name and company invoice (optional).",
+      "entrega": "Delivery: address, apartment, city or municipality, neighborhood and instructions.",
+      "confirmar": "Restore"
+    }
+  },
   "pagosIntentos": {
     "insignias": {
       "A": "Awaiting payment",
@@ -73637,5 +73922,207 @@
       "transportadora": "Carrier",
       "logistica": "Logistics"
     }
+  },
+  "recaudoMedio": {
+    "filtro": {
+      "buscar": "Search method…",
+      "sinOpciones": "Nothing matches the search",
+      "limpiar": "Clear",
+      "aplicar": "Apply",
+      "medio": "Payment method",
+      "medioResumen": "Payment method: {valor}",
+      "estadoPago": "Payment status",
+      "estadoResumen": "Payment status: {valor}",
+      "todos": "All",
+      "grupoPasarelas": "Gateways (online)",
+      "grupoOtros": "On delivery or in store",
+      "notaMedio": "They come from Finance › Payment methods. An order with a deposit through a gateway and the balance in cash shows up under both methods; each one adds only what came in through it.",
+      "notaEstado": "Counts use the selected date and method. \"Deposit paid\" and \"To collect at the door\" overlap: an order with a deposit that has not been delivered yet is in both."
+    },
+    "medios": {
+      "efectivo": "Cash",
+      "datafono": "Card terminal",
+      "transferencia": "Bank transfer",
+      "noConectada": "Not connected"
+    },
+    "estadosPago": {
+      "pagadoCompleto": "Paid in full",
+      "anticipoPagado": "Deposit paid",
+      "porCobrarPuerta": "To collect at the door",
+      "cobradoPuerta": "Collected at the door",
+      "pendiente": "Pending",
+      "vencido": "Expired"
+    },
+    "chips": {
+      "medio": "Payment method: {valor}",
+      "estadoPago": "Payment status: {valor}",
+      "fecha": "Date: {valor}"
+    },
+    "errorLectura": "Collections could not be loaded",
+    "incluyeAnticipos": "Includes {monto} in cash-on-delivery deposits",
+    "pedidos": {
+      "mismoFiltro": "{comparacion}, same filter",
+      "kpis": {
+        "etiqueta": "Collections in the period",
+        "recaudado": "Collected",
+        "recaudadoPor": "Collected via {medio}",
+        "pagos": "{n, plural, one {# approved payment} other {# approved payments}}",
+        "completos": "Payments in full",
+        "anticipos": "Cash-on-delivery deposits",
+        "anticiposDetalle": "{n, plural, one {# deposit} other {# deposits}} · account 2805",
+        "puerta": "Collected at the door",
+        "puertaDetalle": "{n, plural, one {# payment} other {# payments}} · goes into the till"
+      }
+    },
+    "ventas": {
+      "recaudado": "Collected",
+      "recaudadoPor": "Collected via {medio}",
+      "incluyeAnticipos": "Includes {monto} in deposits (not sales)",
+      "recaudadoDetalle": "{count, plural, one {{n} approved payment} other {{n} approved payments}}",
+      "netasHoy": "Today's net sales",
+      "netasPeriodo": "Net sales in the period",
+      "notaMedio": "Filters sales paid with these methods. \"Collected\" adds the approved payments of the period by their method."
+    },
+    "movimientos": {
+      "conceptoPedido": "Online order · {numero}",
+      "conceptoVenta": "Sale · {numero}",
+      "conceptoCobro": "Gateway collection",
+      "anticipo2805": "deposit, in 2805 until invoiced",
+      "cuentaProcesador": "{procesador} · to be paid out",
+      "conceptoAbono": "Payout from {procesador}",
+      "noSuma": "Not added to Collected",
+      "recaudadoHoy": "Collected today",
+      "recaudadoPeriodo": "Collected in the period",
+      "recaudadoHoyPor": "Collected today via {medio}",
+      "recaudadoPeriodoPor": "Collected via {medio}",
+      "pagosAprobados": "{n, plural, one {# approved payment} other {# approved payments}}",
+      "salidasHoy": "Outflows today",
+      "salidasPeriodo": "Outflows in the period",
+      "netoHoy": "Net today",
+      "netoPeriodo": "Net for the period",
+      "netoDetalle": "Collected minus outflows",
+      "porAbonarTitulo": "Collected by gateways, to be paid out",
+      "porAbonarNada": "No gateway collections in the period",
+      "totalPeriodo": "Total for the period",
+      "notaMedio": "The till counts as cash and the bank as bank transfer. Transfers and gateway payouts belong to no method.",
+      "porMedio": "By payment method:",
+      "noSumanNota": "Payouts and transfers are not added.",
+      "porAbonar": "To be paid out"
+    },
+    "cobros": {
+      "pestana": "Collections",
+      "procesador": "Processor",
+      "procesadorResumen": "Processor: {valor}",
+      "todos": "All",
+      "configurarTarifa": "Fees",
+      "kpis": "Collections in the period",
+      "cobradoHoy": "Collected today (gross)",
+      "cobradoPeriodo": "Collected in the period (gross)",
+      "cobradoHoyPor": "Collected today via {procesador} (gross)",
+      "cobradoPeriodoPor": "Collected via {procesador} (gross)",
+      "cobradoDetalle": "{n, plural, one {# payment} other {# payments}} · {completos} in full and {anticipos} deposits",
+      "comisionIva": "Fee + VAT",
+      "sinTarifa": "No fees set: set them to estimate",
+      "tarifaTexto": "{pct} % + {fijo} per payment, plus {iva} % VAT",
+      "algunosSinTarifa": "Some processor has no fees: not estimated",
+      "segunTarifa": "According to each processor's fees",
+      "retenciones": "Withholdings",
+      "configuraRetenciones": "Set up your withholdings (you can see them in the {procesador} app)",
+      "retencionesTexto": "Income tax {fuente} % · ICA {ica} % · VAT {iva} %",
+      "neto": "Net to be deposited",
+      "netoDetalle": "Estimated · confirmed by the payout",
+      "faltaPorLiquidar": "Still to be settled",
+      "faltaPorLiquidarDe": "Still to be settled ({procesador})",
+      "desde": "Since {fecha} · {dias, plural, one {# business day} other {# business days}}",
+      "faltaDetalle": "Balance of accounts 138020xx",
+      "avisoRetencionesTitulo": "Withholdings not set up",
+      "avisoRetenciones": "Withholdings are at 0. Check them in the {procesador} app and enter them in the fees so the estimated net gets close to the payout.",
+      "tuProcesador": "your processor",
+      "titulo": "Collections",
+      "etiquetaFila": "Payment {pago} for {bruto}",
+      "verPago": "View payment",
+      "vacioTitulo": "No collections in the period",
+      "vacioDescripcion": "Payments approved by gateway or card terminal show up here on the day they are collected.",
+      "totalHoy": "Today's total · {n, plural, one {# payment} other {# payments}}",
+      "totalPeriodo": "Period total · {n, plural, one {# payment} other {# payments}}",
+      "pie": "Today is the calendar day in the organization's time zone. Fees and withholdings are estimated with the fees set for each processor; when the payout is recorded the real ones are used and the difference stays in the journal entry. Collections go to the processor's receivable (138020xx), not to receivables 1305. Cash-on-delivery deposits stay in 2805 until invoiced.",
+      "origenPedido": "Online order",
+      "origenVenta": "Sale",
+      "estimado": "Estimated",
+      "columnas": {
+        "pago": "Payment",
+        "tipo": "Type",
+        "bruto": "Gross",
+        "comision": "Fee + VAT",
+        "retenciones": "Withholdings",
+        "neto": "Estimated net",
+        "estado": "Status"
+      },
+      "tipos": {
+        "completo": "In full",
+        "anticipo": "Deposit",
+        "puerta": "At the door",
+        "tienda": "In store"
+      },
+      "submetodos": {
+        "card": "Card",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "transfer": "Bank transfer",
+        "cash": "Cash",
+        "botonBancolombia": "Botón Bancolombia",
+        "corresponsalBancolombia": "Bancolombia agent",
+        "cuotasBancolombia": "Bancolombia installments",
+        "dineroEnCuenta": "Account balance",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tarifa": {
+      "titulo": "{procesador} fees",
+      "descripcion": "These fees are used to ESTIMATE the fee, VAT and withholdings of each collection. The real amounts come from the payout you record.",
+      "guardar": "Save fees",
+      "guardada": "{procesador} fees saved.",
+      "errorPermiso": "You are not allowed to change the fees.",
+      "errorGuardar": "The fees could not be saved.",
+      "soloLectura": "Read only: ask for the finance create permission.",
+      "plan": "Plan",
+      "planes": {
+        "abonoInmediato": "Instant payout or another bank",
+        "diaSiguiente": "Next day to Bold account",
+        "personalizado": "Custom"
+      },
+      "medio": "Method",
+      "porcentaje": "Percentage",
+      "fijo": "Fixed per payment",
+      "tramos": {
+        "base": "All cards and PSE/wallets",
+        "tarjeta": "Visa and Mastercard",
+        "tarjetaOtras": "Other cards",
+        "pseBilleteras": "PSE, Bancolombia and wallets"
+      },
+      "porcentajeDe": "{tramo} percentage",
+      "fijoDe": "{tramo} fixed amount",
+      "internacional": "International card surcharge",
+      "ivaComision": "VAT on the fee",
+      "retenciones": "Withholdings",
+      "configuraRetenciones": "Set up your withholdings (you can see them in the {procesador} app)",
+      "reteFuente": "Income tax withholding",
+      "reteIca": "ICA withholding",
+      "reteIva": "VAT withholding",
+      "retencionesRevisadas": "I have checked my withholdings",
+      "pseSinRetenciones": "PSE without withholdings",
+      "nota": "Bold's plans are the online payment ones from bold.co/tarifas (before VAT and withholdings). Withholdings: the percentage you see deducted in the app, over the collected amount."
+    }
+  },
+  "documentoCredito": {
+    "aviso": {
+      "titulo": "Selling on credit requires the customer’s ID",
+      "descripcion": "This sale leaves a balance due. Credit to an anonymous final consumer cannot be collected or reported: add the customer’s tax ID or national ID."
+    },
+    "guardado": "ID saved. Save the sale again.",
+    "errorCarga": "The customer’s details could not be loaded.",
+    "cambiarFacturarA": "A sale with a balance due cannot be billed to the final consumer. Under “Bill to”, choose the person or a company.",
+    "elegirCliente": "A sale with a balance due needs a customer with an ID. Choose the customer for this sale."
   }
 }

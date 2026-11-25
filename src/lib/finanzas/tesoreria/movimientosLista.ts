@@ -46,7 +46,13 @@ export interface TransferenciaOrigen {
 export interface FilaMovimiento {
   /** Única en la lista: los ids de caja, banco y traslado son secuencias distintas. */
   clave: string;
-  fuente: 'caja' | 'banco' | 'traslado';
+  /**
+   * `pasarela`: cobro de una pasarela o del datáfono el día que se cobró (está en la CxC del
+   * procesador, 138020xx, hasta el abono). `abono`: el procesador abonó al banco, un TRASLADO que
+   * no suma a Recaudado. Las dos vienen del recaudo (`movimientosRecaudo.ts`), no se anulan ni se
+   * duplican aquí.
+   */
+  fuente: 'caja' | 'banco' | 'traslado' | 'pasarela' | 'abono';
   tipo: TipoFila;
   /** Id del registro en su tabla (número para caja y banco, uuid para traslado). */
   id: string;
@@ -63,8 +69,11 @@ export interface FilaMovimiento {
   /** Reverso de una anulación (no se anula ni se duplica) o traslado anulado. */
   anulado: boolean;
   esReverso: boolean;
-  /** Banco: pendiente o conciliado; caja y traslado: no aplica (`null`). */
-  conciliacion: 'pendiente' | 'conciliado' | null;
+  /**
+   * Banco: pendiente o conciliado; caja y traslado: no aplica (`null`). Cobro de pasarela:
+   * `porAbonar` (aún en 138020xx); abono registrado: `conciliado`.
+   */
+  conciliacion: 'pendiente' | 'conciliado' | 'porAbonar' | null;
   /** Detalle propio de la fila. */
   href: string;
 }
@@ -251,6 +260,8 @@ export function signoFila(fila: Pick<FilaMovimiento, 'tipo'>): '+' | '-' | '' {
 /** Acciones que admite la fila (las de las listas viejas: duplicar y anular solo caja/banco vigentes). */
 export function accionesFila(fila: FilaMovimiento): { duplicar: boolean; anular: boolean } {
   if (fila.fuente === 'traslado') return { duplicar: false, anular: !fila.anulado };
+  // Cobros de pasarela y abonos: se anulan en su origen (el pago o «Procesadores de pago»).
+  if (fila.fuente === 'pasarela' || fila.fuente === 'abono') return { duplicar: false, anular: false };
   const vigente = !fila.esReverso && !fila.anulado;
   return { duplicar: vigente, anular: vigente };
 }

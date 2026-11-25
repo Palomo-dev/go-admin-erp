@@ -49,7 +49,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AvisoTonal,
+  BarraFecha,
   BranchBadgeActiva,
+  ChipsOpcion,
   BulkActionBar,
   CampoFecha,
   FilterChips,
@@ -88,7 +90,14 @@ import {
 } from '@/lib/services/webOrdersService';
 import { claveAvisoCobro, claveAvisoPendiente, webOrderConfirmationService, type ErrorCobroEnCaja } from '@/lib/services/webOrderConfirmationService';
 import { esDomicilio, mesaDelPedido, tipoEntregaEfectivo } from '@/lib/pos/pedidosWeb/tipoEntrega';
-import { PERIODOS_LISTADO, rangosDelPeriodo, variacionPct, type PeriodoListado } from '@/lib/pos/pedidosWeb/listadoPedidos';
+import { PERIODOS_LISTADO, esPeriodoListado, rangosDelPeriodo, variacionPct, type PeriodoListado } from '@/lib/pos/pedidosWeb/listadoPedidos';
+import { ESTADOS_PAGO_PEDIDO, contarEstadosPago, esEstadoPagoPedido, type EstadoPagoPedido } from '@/lib/pos/pedidosWeb/estadoPagoPedido';
+import { filtrarPedidosPorRecaudo, pagosDeLasTarjetas, pagosDePedidos } from '@/lib/pos/pedidosWeb/recaudoPedidos';
+import { resumenRecaudo, totalesPorMedio, type PagoRecaudo } from '@/lib/finanzas/recaudo/recaudoPorMedio';
+import { leerPagosRecaudo } from '@/lib/services/recaudoService';
+import { FiltroConteo } from '@/components/finanzas/recaudo/FiltroConteo';
+import { useMediosRecaudo } from '@/components/finanzas/recaudo/useMediosRecaudo';
+import { useFiltroDelDia } from '@/components/finanzas/recaudo/useFiltroDelDia';
 import { type EstimatedTime, type TimeUnit, timeToMs, formatEstimatedTime } from './[id]/components';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
@@ -129,8 +138,36 @@ interface Estadisticas {
   on_time_pct: number | null;
 }
 
+/**
+ * Fecha, medio y estado del pago: se recuerdan por persona SOLO durante el día (decisión 2 de la
+ * lámina 3314-209324); al día siguiente vuelve «Hoy» sin medio ni estado.
+ */
+interface FiltroRecordado {
+  periodo: PeriodoListado;
+  desde: string;
+  hasta: string;
+  medios: string[];
+  estadosPago: EstadoPagoPedido[];
+}
+const FILTRO_POR_DEFECTO: FiltroRecordado = { periodo: 'today', desde: '', hasta: '', medios: [], estadosPago: [] };
+
+/** Chip de la barra de fecha ↔ periodo del listado. */
+const CHIP_DE_PERIODO: Partial<Record<PeriodoListado, 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'>> = {
+  today: 'hoy',
+  yesterday: 'ayer',
+  week: 'semana',
+  month: 'mes',
+  custom: 'rango',
+};
+const PERIODO_DE_CHIP: Record<string, PeriodoListado> = { hoy: 'today', ayer: 'yesterday', semana: 'week', mes: 'month', rango: 'custom' };
+
 /** Cada cuánto se relee el periodo anterior de las tarjetas (la comparación «vs. ayer»). */
 const VIGENCIA_PERIODO_ANTERIOR_MS = 5 * 60_000;
+
+/** Las tarjetas cargan mientras no hay cifras ni error. */
+function kpiCargandoBase(stats: unknown, error: boolean): boolean {
+  return !stats && !error;
+}
 
 /** Escapa texto del cliente antes de escribirlo en la ventana de impresión. */
 function esc(valor: unknown): string {
@@ -180,9 +217,25 @@ export default function PedidosOnlinePage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
-  const [periodo, setPeriodo] = useState<PeriodoListado>('today');
-  const [customDateFrom, setCustomDateFrom] = useState('');
-  const [customDateTo, setCustomDateTo] = useState('');
+  const recordado = useFiltroDelDia<FiltroRecordado>('pos-pedidos-online', FILTRO_POR_DEFECTO);
+  const periodo: PeriodoListado = esPeriodoListado(recordado.valor.periodo) ? recordado.valor.periodo : 'today';
+  const customDateFrom = recordado.valor.desde ?? '';
+  const customDateTo = recordado.valor.hasta ?? '';
+  const medios = useMemo(() => (Array.isArray(recordado.valor.medios) ? recordado.valor.medios.filter((m) => typeof m === 'string') : []), [recordado.valor.medios]);
+  const estadosPago = useMemo(() => (Array.isArray(recordado.valor.estadosPago) ? recordado.valor.estadosPago.filter(esEstadoPagoPedido) : []), [recordado.valor.estadosPago]);
+  const { setValor: setRecordado } = recordado;
+  const setPeriodo = useCallback((p: PeriodoListado) => setRecordado((v) => ({ ...v, periodo: p })), [setRecordado]);
+  const setCustomDateFrom = useCallback((d: string) => setRecordado((v) => ({ ...v, desde: d })), [setRecordado]);
+  const setCustomDateTo = useCallback((d: string) => setRecordado((v) => ({ ...v, hasta: d })), [setRecordado]);
+  const setMedios = useCallback((m: string[]) => setRecordado((v) => ({ ...v, medios: m })), [setRecordado]);
+  const setEstadosPago = useCallback((e: string[]) => setRecordado((v) => ({ ...v, estadosPago: e.filter(esEstadoPagoPedido) })), [setRecordado]);
+  // Pagos aprobados del periodo de los pedidos web (StatCards de recaudo y filtro por medio).
+  const [pagos, setPagos] = useState<PagoRecaudo[]>([]);
+  const [errorRecaudo, setErrorRecaudo] = useState(false);
+  /** Pedidos con el filtro de medio y SIN el de estado del pago: los conteos de «Estado del pago». */
+  const [baseEstados, setBaseEstados] = useState<WebOrder[]>([]);
+  const mediosRecaudo = useMediosRecaudo();
+  const tRec = useTranslations('recaudoMedio');
   const [currentPage, setCurrentPage] = useState(1);
   const [tamanoPagina, setTamanoPagina] = useState(20);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -275,6 +328,8 @@ export default function PedidosOnlinePage() {
   );
 
   const loadOrders = useCallback(async () => {
+    // Hasta saber si hay un filtro recordado de hoy no se consulta (no se pide dos veces).
+    if (!recordado.listo) return;
     try {
       const { actual, anterior } = rangos();
       const consulta = {
@@ -287,36 +342,67 @@ export default function PedidosOnlinePage() {
         date_to: actual.to,
         branch_id: branchFilter ?? undefined,
       };
-      // Sin filtros ni búsqueda, el listado YA trae todos los pedidos del periodo: las tarjetas
-      // salen de esas mismas filas y no se piden otra vez. Con algún filtro, el listado es un
-      // subconjunto y las tarjetas (que no se filtran) sí necesitan su consulta.
-      const sinFiltros = !consulta.status && !consulta.delivery_type && !consulta.source && !consulta.payment_status && !consulta.search;
-      // El periodo anterior solo alimenta la comparación («vs. ayer a esta hora»): se relee cada
-      // 5 minutos o cuando cambia lo que se compara, no en cada ciclo de 30 s.
-      const claveAnterior = anterior ? `${periodo}|${customDateFrom}|${customDateTo}|${branchFilter ?? ''}|${anterior.from}` : '';
+      const sinFiltros =
+        !consulta.status && !consulta.delivery_type && !consulta.source && !consulta.payment_status && !consulta.search &&
+        !filtros.contraentrega && !filtros.anticipoVencido && medios.length === 0 && estadosPago.length === 0;
+      /** Los filtros que se aplican sobre lo cargado, iguales para el periodo y para el anterior. */
+      const aplicarFiltros = (lista: WebOrder[], pagosLista: PagoRecaudo[]) => {
+        // «Pago: contraentrega» y «Pago: pagado · vencido» (2026-11-25): sobre lo cargado.
+        let r = filtros.contraentrega ? lista.filter(esPedidoContraentrega) : lista;
+        if (filtros.anticipoVencido) r = r.filter(anticipoPagadoVencido);
+        const conMedio = filtrarPedidosPorRecaudo(r, pagosLista, { medios, estadosPago: [] });
+        return { conMedio, final: filtrarPedidosPorRecaudo(conMedio, pagosLista, { medios: [], estadosPago }) };
+      };
+      const leerPagos = (desde?: string, hasta?: string) =>
+        organization?.id
+          ? leerPagosRecaudo(organization.id, { desde, hasta }, branchFilter ?? null).then(pagosDePedidos)
+          : Promise.resolve([] as PagoRecaudo[]);
+      // El periodo anterior solo alimenta la comparación («vs. ayer a esta hora», con el MISMO
+      // filtro): se relee cada 5 minutos o cuando cambia lo que se compara, no en cada ciclo de 30 s.
+      const claveAnterior = anterior
+        ? JSON.stringify([
+            periodo,
+            customDateFrom,
+            customDateTo,
+            branchFilter ?? '',
+            anterior.from,
+            sinFiltros ? null : [consulta.status, consulta.delivery_type, consulta.source, consulta.payment_status, consulta.search, filtros.contraentrega, filtros.anticipoVencido, medios, estadosPago],
+          ])
+        : '';
       const guardado = anteriorRef.current;
       const anteriorVigente = !!anterior && !!guardado && guardado.clave === claveAnterior && Date.now() - guardado.leidoEn < VIGENCIA_PERIODO_ANTERIOR_MS;
-      const [ordersData, statsConsultadas, prevStatsData] = await Promise.all([
+      const leerAnterior = async (): Promise<EstadisticasPedidos | null> => {
+        if (!anterior) return null;
+        if (anteriorVigente && guardado) return guardado.datos;
+        if (sinFiltros) return webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined);
+        const [listaAnterior, pagosAnteriores] = await Promise.all([
+          webOrdersService.getOrders({ ...consulta, date_from: anterior.from, date_to: anterior.to }),
+          leerPagos(anterior.from, anterior.to).catch(() => [] as PagoRecaudo[]),
+        ]);
+        return estadisticasDePedidos(aplicarFiltros(listaAnterior, pagosAnteriores).final);
+      };
+      const [ordersData, pagosLeidos, prevStatsData] = await Promise.all([
         webOrdersService.getOrders(consulta),
-        sinFiltros ? Promise.resolve(null) : webOrdersService.getOrderStats(actual.from, actual.to, branchFilter ?? undefined),
-        !anterior
-          ? Promise.resolve(null)
-          : anteriorVigente
-            ? Promise.resolve(guardado.datos)
-            : webOrdersService.getOrderStats(anterior.from, anterior.to, branchFilter ?? undefined),
+        // Sin el recaudo la lista sigue funcionando: las tarjetas de recaudo avisan el error.
+        leerPagos(actual.from, actual.to).then(
+          (p) => ({ ok: true as const, p }),
+          () => ({ ok: false as const, p: [] as PagoRecaudo[] }),
+        ),
+        leerAnterior(),
       ]);
       if (anterior && !anteriorVigente && prevStatsData) anteriorRef.current = { clave: claveAnterior, leidoEn: Date.now(), datos: prevStatsData };
-      // «Pago: contraentrega»: filtro sobre lo cargado. Sin él, la lista de siempre.
-      const cargados = filtros.contraentrega ? ordersData.filter(esPedidoContraentrega) : ordersData;
-      // «Pago: pagado · vencido» (2026-11-25): igual, sobre lo cargado.
-      setOrders(filtros.anticipoVencido ? cargados.filter(anticipoPagadoVencido) : cargados);
+      const { conMedio, final } = aplicarFiltros(ordersData, pagosLeidos.p);
+      setOrders(final);
+      setBaseEstados(conMedio);
+      setPagos(pagosLeidos.p);
+      setErrorRecaudo(!pagosLeidos.ok);
       if (organization?.id) {
         setVencidos(await listarAnticiposVencidos(organization.id, branchFilter ?? null));
       } else {
         setVencidos([]);
       }
-      // Las tarjetas salen de TODOS los pedidos cargados (los filtros de pago son solo de la lista).
-      setStats(statsConsultadas ?? estadisticasDePedidos(ordersData));
+      // Las tarjetas respetan TODOS los filtros (Figma 3300-420478): salen de la lista filtrada.
+      setStats(estadisticasDePedidos(final));
       setPreviousStats(prevStatsData);
       setErrorCarga(false);
       setAhora(new Date());
@@ -326,7 +412,7 @@ export default function PedidosOnlinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filtros, busqueda, rangos, branchFilter, organization?.id, periodo, customDateFrom, customDateTo]);
+  }, [filtros, busqueda, rangos, branchFilter, organization?.id, periodo, customDateFrom, customDateTo, medios, estadosPago, recordado.listo]);
 
   useEffect(() => {
     setLoading(true);
@@ -336,7 +422,7 @@ export default function PedidosOnlinePage() {
   // Volver a la primera página cuando cambia lo que se pide.
   useEffect(() => {
     setCurrentPage(1);
-  }, [filtros, busqueda, periodo, customDateFrom, customDateTo, branchFilter]);
+  }, [filtros, busqueda, periodo, customDateFrom, customDateTo, branchFilter, medios, estadosPago]);
 
   // Actualización automática cada 30 s.
   useEffect(() => {
@@ -682,7 +768,7 @@ export default function PedidosOnlinePage() {
   const pendientesIds = useMemo(() => orders.filter((o) => o.status === 'pending').map((o) => o.id), [orders]);
   const sinConfirmar = stats?.unconfirmed_orders ?? 0;
   const pagina = orders.slice((currentPage - 1) * tamanoPagina, currentPage * tamanoPagina);
-  const hayFiltros = Object.values(filtros).some(Boolean) || busqueda.trim() !== '';
+  const hayFiltros = Object.values(filtros).some(Boolean) || busqueda.trim() !== '' || medios.length > 0 || estadosPago.length > 0;
 
   const estadoTabla: EstadoTabla = loading && orders.length === 0
     ? 'cargando'
@@ -695,7 +781,8 @@ export default function PedidosOnlinePage() {
         : 'listo';
 
   const nombrePeriodo = t(`periodos.${periodo}`);
-  const comparacion = t(`comparacion.${periodo}`);
+  // Cada comparación dice contra qué: con filtros, «ayer, mismo filtro».
+  const comparacion = hayFiltros ? tRec('pedidos.mismoFiltro', { comparacion: t(`comparacion.${periodo}`) }) : t(`comparacion.${periodo}`);
   const detalleVariacion = (actual: number, anterior: number | null | undefined) => {
     const v = variacionPct(actual, anterior);
     if (v === null) return { detalle: undefined, tendencia: undefined };
@@ -705,6 +792,23 @@ export default function PedidosOnlinePage() {
   const vEntregados = detalleVariacion(stats?.completed_orders ?? 0, previousStats?.completed_orders);
   const vCancelados = detalleVariacion(stats?.cancelled_orders ?? 0, previousStats?.cancelled_orders);
 
+  // ── Recaudo (Figma 3300-420478): pagos aprobados del periodo, por medio y por tipo ──
+  // Con filtros del pedido, solo los pagos de los pedidos que quedan en la tabla.
+  const hayFiltrosPedido = !!(
+    filtros.status || filtros.delivery_type || filtros.source || filtros.payment_status || filtros.contraentrega || filtros.anticipoVencido || busqueda.trim() || estadosPago.length > 0
+  );
+  const idsVisibles = useMemo(() => (hayFiltrosPedido ? new Set(orders.map((o) => o.id)) : null), [hayFiltrosPedido, orders]);
+  const recaudo = useMemo(() => resumenRecaudo(pagosDeLasTarjetas(pagos, medios, idsVisibles)), [pagos, medios, idsVisibles]);
+  const totalesMedio = useMemo(() => totalesPorMedio(pagos), [pagos]);
+  const conteosEstado = useMemo(() => contarEstadosPago(baseEstados), [baseEstados]);
+  const nombreMedios = medios.map(mediosRecaudo.nombre).join(', ');
+  const nombreEstados = estadosPago.map((e) => tRec(`estadosPago.${e}`)).join(', ');
+  const opcionesMedio = mediosRecaudo.opcionesMedio(totalesMedio, moneda.formatear, medios);
+  const hoyOrg = todayInTz(timezone);
+  const rangoBarra = periodo === 'custom' && customDateFrom && customDateTo ? { desde: customDateFrom, hasta: customDateTo } : { desde: hoyOrg, hasta: hoyOrg };
+  const kpiRecaudoCargando = kpiCargandoBase(stats, errorCarga);
+  const textoRecaudo = (monto: number) => (errorRecaudo ? '—' : moneda.formatear(monto));
+
   const chips: ChipFiltro[] = [
     { clave: 'periodo', etiqueta: t('chips.periodo', { valor: nombrePeriodo }) },
     filtros.status ? { clave: 'status', etiqueta: t('chips.estado', { valor: etiquetaEstadoFiltro(filtros.status) }) } : null,
@@ -713,16 +817,20 @@ export default function PedidosOnlinePage() {
     filtros.payment_status ? { clave: 'payment_status', etiqueta: t('chips.pago', { valor: t(`pagos.${filtros.payment_status}`) }) } : null,
     filtros.contraentrega ? { clave: 'contraentrega', etiqueta: tCod('filtro.chip') } : null,
     filtros.anticipoVencido ? { clave: 'anticipoVencido', etiqueta: tVen('lista.filtroChip') } : null,
+    medios.length > 0 ? { clave: 'medios', etiqueta: tRec('chips.medio', { valor: nombreMedios }) } : null,
+    estadosPago.length > 0 ? { clave: 'estadosPago', etiqueta: tRec('chips.estadoPago', { valor: nombreEstados }) } : null,
   ].filter((c): c is ChipFiltro => c !== null && (c.clave !== 'periodo' || periodo !== 'all'));
 
   const quitarChip = (clave: string) => {
     if (clave === 'periodo') setPeriodo('all');
+    else if (clave === 'medios') setMedios([]);
+    else if (clave === 'estadosPago') setEstadosPago([]);
     else setFiltros((f) => ({ ...f, [clave]: undefined }));
   };
   const limpiarFiltros = () => {
     setFiltros({});
     setBusqueda('');
-    setPeriodo('today');
+    setRecordado(FILTRO_POR_DEFECTO);
   };
 
   const filtrarPendientes = () => setFiltros((f) => ({ ...f, status: f.status === 'pending' ? undefined : 'pending' }));
@@ -796,7 +904,7 @@ export default function PedidosOnlinePage() {
     { id: 'exportar', etiqueta: t('masivo.exportar'), icono: Download, separadorAntes: true, onSelect: () => exportarCsv(seleccion) },
   ];
 
-  const kpiCargando = !stats && !errorCarga;
+  const kpiCargando = kpiCargandoBase(stats, errorCarga);
   const subtitulo = stats
     ? t('subtitulo', { total: stats.total_orders, pendientes: sinConfirmar })
     : errorCarga
@@ -989,7 +1097,94 @@ export default function PedidosOnlinePage() {
         )}
       </KpiStrip>
 
+      {/* Recaudo del periodo (Figma 3300-420478): respeta fecha, medio y los demás filtros. */}
+      <KpiStrip etiqueta={tRec('pedidos.kpis.etiqueta')} columnas={4}>
+        <StatCard
+          tamano="sm"
+          etiqueta={medios.length === 1 ? tRec('pedidos.kpis.recaudadoPor', { medio: nombreMedios }) : tRec('pedidos.kpis.recaudado')}
+          cargando={kpiRecaudoCargando}
+          valor={textoRecaudo(recaudo.total.monto)}
+          tono={errorRecaudo ? 'advertencia' : 'neutro'}
+          iconoDetalle={errorRecaudo ? TriangleAlert : undefined}
+          detalle={
+            errorRecaudo
+              ? tRec('errorLectura')
+              : recaudo.porTipo.anticipo.monto > 0
+                ? tRec('incluyeAnticipos', { monto: moneda.formatear(recaudo.porTipo.anticipo.monto) })
+                : tRec('pedidos.kpis.pagos', { n: recaudo.total.pagos })
+          }
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={tRec('pedidos.kpis.completos')}
+          cargando={kpiRecaudoCargando}
+          valor={textoRecaudo(recaudo.porTipo.completo.monto)}
+          detalle={tRec('pedidos.kpis.pagos', { n: recaudo.porTipo.completo.pagos })}
+          resaltada={estadosPago.length === 1 && estadosPago[0] === 'pagadoCompleto'}
+          onClick={() => setEstadosPago(estadosPago.length === 1 && estadosPago[0] === 'pagadoCompleto' ? [] : ['pagadoCompleto'])}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={tRec('pedidos.kpis.anticipos')}
+          cargando={kpiRecaudoCargando}
+          valor={textoRecaudo(recaudo.porTipo.anticipo.monto)}
+          detalle={tRec('pedidos.kpis.anticiposDetalle', { n: recaudo.porTipo.anticipo.pagos })}
+          resaltada={estadosPago.length === 1 && estadosPago[0] === 'anticipoPagado'}
+          onClick={() => setEstadosPago(estadosPago.length === 1 && estadosPago[0] === 'anticipoPagado' ? [] : ['anticipoPagado'])}
+        />
+        <StatCard
+          tamano="sm"
+          etiqueta={tRec('pedidos.kpis.puerta')}
+          cargando={kpiRecaudoCargando}
+          valor={textoRecaudo(recaudo.porTipo.puerta.monto)}
+          detalle={tRec('pedidos.kpis.puertaDetalle', { n: recaudo.porTipo.puerta.pagos })}
+          resaltada={estadosPago.length === 1 && estadosPago[0] === 'cobradoPuerta'}
+          onClick={() => setEstadosPago(estadosPago.length === 1 && estadosPago[0] === 'cobradoPuerta' ? [] : ['cobradoPuerta'])}
+        />
+      </KpiStrip>
+
       <AvisoAnticiposVencidos pedidos={vencidos} formatear={moneda.formatear} onVer={handleViewDetails} />
+
+      {/* Barra a la vista (Figma 3300-420478): fecha, medio de pago y estado del pago. En el
+          celular la fecha queda arriba y el medio y el estado van en la hoja de filtros. */}
+      <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+        <BarraFecha
+          activo={CHIP_DE_PERIODO[periodo] ?? null}
+          rango={rangoBarra}
+          hoy={hoyOrg}
+          onElegir={(id, r) =>
+            setRecordado((v) => ({
+              ...v,
+              periodo: PERIODO_DE_CHIP[id] ?? 'custom',
+              desde: id === 'rango' ? r.desde : v.desde,
+              hasta: id === 'rango' ? r.hasta : v.hasta,
+            }))
+          }
+        />
+        <div className="hidden flex-wrap items-center gap-2 sm:flex">
+          <FiltroConteo
+            titulo={tRec('filtro.medio')}
+            resumen={tRec('filtro.medioResumen', { valor: medios.length > 0 ? nombreMedios : tRec('filtro.todos') })}
+            opciones={opcionesMedio}
+            grupos={[
+              { id: 'pasarelas', titulo: tRec('filtro.grupoPasarelas') },
+              { id: 'otros', titulo: tRec('filtro.grupoOtros') },
+            ]}
+            valores={medios}
+            onAplicar={setMedios}
+            buscador
+            nota={tRec('filtro.notaMedio')}
+          />
+          <FiltroConteo
+            titulo={tRec('filtro.estadoPago')}
+            resumen={tRec('filtro.estadoResumen', { valor: estadosPago.length > 0 ? nombreEstados : tRec('filtro.todos') })}
+            opciones={ESTADOS_PAGO_PEDIDO.map((e) => ({ valor: e, etiqueta: tRec(`estadosPago.${e}`), detalle: conteosEstado[e].toLocaleString('es-CO') }))}
+            valores={estadosPago}
+            onAplicar={setEstadosPago}
+            nota={tRec('filtro.notaEstado')}
+          />
+        </div>
+      </div>
 
       <ListToolbar
         busqueda={
@@ -1008,6 +1203,34 @@ export default function PedidosOnlinePage() {
             titulo={t('filtros.titulo')}
             textoVerResultados={t('filtros.verN', { count: orders.length })}
           >
+            <div className="space-y-4 sm:hidden">
+              <FormField etiqueta={tRec('filtro.medio')}>
+                {() => (
+                  <ChipsOpcion
+                    multiple
+                    etiqueta={tRec('filtro.medio')}
+                    opciones={opcionesMedio.map((o) => ({
+                      valor: o.valor,
+                      etiqueta: o.deshabilitada ? o.etiqueta : `${o.etiqueta} · ${(o.detalle ?? '').split(' · ')[0]}`,
+                      deshabilitada: o.deshabilitada,
+                    }))}
+                    valor={medios}
+                    onValorChange={setMedios}
+                  />
+                )}
+              </FormField>
+              <FormField etiqueta={tRec('filtro.estadoPago')}>
+                {() => (
+                  <ChipsOpcion
+                    multiple
+                    etiqueta={tRec('filtro.estadoPago')}
+                    opciones={ESTADOS_PAGO_PEDIDO.map((e) => ({ valor: e, etiqueta: `${tRec(`estadosPago.${e}`)} · ${conteosEstado[e]}` }))}
+                    valor={estadosPago}
+                    onValorChange={setEstadosPago}
+                  />
+                )}
+              </FormField>
+            </div>
             <FormField etiqueta={t('filtros.periodo')}>
               {(c) => (
                 <Select value={periodo} onValueChange={(v) => setPeriodo(v as PeriodoListado)}>

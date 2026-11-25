@@ -7,6 +7,7 @@
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import type { ConsultaCartera, FilaCartera, RespuestaListadoCartera } from '@/lib/finanzas/cartera/listadoCartera';
 import type { DetalleCuentaPorCobrar } from '@/lib/finanzas/cartera/contratoCartera';
+import { valorAplicadoPago, vueltasPago } from '@/lib/finanzas/pagos/vueltas';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 
@@ -123,7 +124,7 @@ export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuenta
       .order('installment_number', { ascending: true }),
     db
       .from('payments')
-      .select('id, payment_date, created_at, method, amount, change_amount, reference, status, source, voided_at, void_reason, installment_id, receipt_number, payment_groups:payment_group_id (receipt_number), payment_methods:method (name)')
+      .select('id, payment_date, created_at, method, amount, change_amount, cash_received, change_given, reference, status, source, voided_at, void_reason, installment_id, receipt_number, payment_groups:payment_group_id (receipt_number), payment_methods:method (name)')
       .eq('organization_id', org)
       .or(fuentes.join(','))
       .order('payment_date', { ascending: true }),
@@ -153,6 +154,8 @@ export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuenta
     method: string | null;
     amount: number | string | null;
     change_amount: number | string | null;
+    cash_received?: number | string | null;
+    change_given?: number | string | null;
     reference: string | null;
     status: string | null;
     source: string | null;
@@ -210,8 +213,9 @@ export async function detalleCuenta(ctx: Ctx, id: string): Promise<DetalleCuenta
       fecha: p.payment_date ?? p.created_at,
       metodo: p.method,
       metodoNombre: p.payment_methods?.name ?? null,
-      monto: num(p.amount),
-      cambio: num(p.change_amount),
+      // Lo cobrado; las vueltas aparte e informativas (20261126010000).
+      monto: valorAplicadoPago(p),
+      cambio: vueltasPago(p),
       referencia: p.reference,
       estado: p.status ?? 'completed',
       recibo: p.payment_groups?.receipt_number ?? p.receipt_number ?? null,

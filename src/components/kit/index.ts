@@ -20,6 +20,7 @@ export { FilterChip, type FilterChipProps } from './FilterChip';
 export { FilterChips, type FilterChipsProps, type ChipFiltro } from './FilterChips';
 export { ListToolbar, type ListToolbarProps } from './ListToolbar';
 export { DateRangeButton, type DateRangeButtonProps } from './DateRangeButton';
+export { BarraFecha, ATAJOS_BARRA, type BarraFechaProps } from './BarraFecha';
 export { CampoFecha, type CampoFechaProps } from './CampoFecha';
 export { CalendarioMes, type CalendarioMesProps } from './CalendarioMes';
 export { SelectorFranja, cruzaMedianoche, type SelectorFranjaProps, type FranjaHoraria } from './SelectorFranja';
@@ -32,6 +33,7 @@ export {
   normalizarRango,
   esFechaPlana,
   inicioDeMes,
+  inicioDeSemana,
   type RangoFechas,
   type PresetRango,
   type IdPresetRango,

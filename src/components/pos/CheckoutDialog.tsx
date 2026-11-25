@@ -38,6 +38,8 @@ import { isDesktop } from '@/lib/utils/desktop';
 import { newSaleId, ticketSaleNumber } from '@/lib/offline/salesOutbox';
 import { useTranslations } from 'next-intl';
 import { codigoErrorCobro, detalleErrorCobro } from '@/lib/pos/erroresCobro';
+import { accionAnteRechazoCredito, accionDocumentoCredito, esErrorDocumentoCredito, type AccionDocumentoCredito } from '@/lib/cartera/documentoCredito';
+import { PedirDocumentoCreditoDialog } from '@/components/clientes/facturacion/PedirDocumentoCreditoDialog';
 import { FacturarASelector } from '@/components/clientes/facturacion/FacturarASelector';
 import { AvisoRutNoResponsable } from '@/components/clientes/facturacion/AvisoRutNoResponsable';
 import type { SeleccionFacturarA } from '@/lib/clientes/facturarA';
@@ -200,6 +202,11 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
   // «Facturar a» (Figma «06 Clientes» 3201-21438, con el cambio del dueño: nunca bloquea el cobro).
   const tFacturarA = useTranslations('clientesFacturarA');
   const [facturarA, setFacturarA] = useState<SeleccionFacturarA | null>(null);
+  // Venta con saldo a alguien sin documento (Contador 2026-11-25): «Editar datos de facturación» de la
+  // persona sin salir del cobro; al guardar, «Facturar a» se vuelve a cargar con el documento nuevo.
+  const [pedirDocumentoCredito, setPedirDocumentoCredito] = useState(false);
+  const [versionDocumento, setVersionDocumento] = useState(0);
+  const tDocumentoCredito = useTranslations('documentoCredito');
   const [calculatedTotals, setCalculatedTotals] = useState({
     subtotal: 0,
     totalTaxAmount: 0,
@@ -1212,8 +1219,31 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     }
   };
 
+  const avisarDocumentoCredito = (accion: Exclude<AccionDocumentoCredito, 'ninguna'>) => {
+    if (accion === 'pedir_documento') {
+      setPedirDocumentoCredito(true);
+      return;
+    }
+    toast.error(tPos('errores.titulo'), { description: tDocumentoCredito(accion === 'cambiar_facturar_a' ? 'cambiarFacturarA' : 'elegirCliente') });
+  };
+
   const handleCheckout = async (seleccionesExplicitas?: Record<number, number[]>) => {
     if (!canComplete) return;
+
+    // «Paga al recibir» deja saldo: la venta necesita el documento del adquiriente (lo exige la base).
+    // Con «Facturar a» ya cargado se sabe si lo tiene; si no, decide la base y se reacciona al rechazo.
+    if (ventaContraentrega && facturarA) {
+      const accion = accionDocumentoCredito({
+        saldo: remaining,
+        personaId: cart.customer_id,
+        facturarA: facturarA.valor,
+        personaTieneDocumento: facturarA.personaTieneDocumento,
+      });
+      if (accion !== 'ninguna') {
+        avisarDocumentoCredito(accion);
+        return;
+      }
+    }
 
     if (!cart.branch_id) {
       toast.error(tPos('errores.sinSucursal'));
@@ -1676,6 +1706,15 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
       // Rechazos del servidor con código estable (precio, descuento, línea…)
       // se muestran traducidos; el resto, como llegan.
       // «Facturar a»: la empresa ya no está ligada a la persona (o es de otra organización).
+      // Venta con saldo a consumidor final o a un cliente sin documento (documento_requerido_credito).
+      if (esErrorDocumentoCredito(error)) {
+        avisarDocumentoCredito(accionAnteRechazoCredito({
+          personaId: cart.customer_id,
+          facturarA: facturarA?.valor ?? null,
+          personaTieneDocumento: facturarA?.personaTieneDocumento ?? !!cart.customer?.doc_number,
+        }));
+        return;
+      }
       if (String(error?.message ?? '').startsWith('empresa_no_ligada')) {
         toast.error(tPos('errores.titulo'), { description: tFacturarA('errores.empresaNoLigada') });
         return;
@@ -2278,6 +2317,7 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
                 No bloquea: arranca en la persona; con empresas ligadas, aviso y lista para escoger. */}
             {facturarAVisible && cart.customer_id && (
               <FacturarASelector
+                key={`${cart.customer_id}:${versionDocumento}`}
                 organizationId={cart.organization_id}
                 personaId={cart.customer_id}
                 valor={facturarA?.valor ?? null}
@@ -2666,6 +2706,16 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
           {tPos('stock.pregunta')}
         </p>
       </Dialogo>
+      <PedirDocumentoCreditoDialog
+        abierto={pedirDocumentoCredito}
+        onAbiertoChange={setPedirDocumentoCredito}
+        organizationId={cart.organization_id}
+        clienteId={cart.customer_id ?? null}
+        onGuardado={() => {
+          setFacturarA(null);
+          setVersionDocumento((v) => v + 1);
+        }}
+      />
     </>
   );
 }

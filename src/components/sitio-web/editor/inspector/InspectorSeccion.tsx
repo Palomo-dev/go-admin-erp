@@ -387,6 +387,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
               <PanelSeccionFicha tipo={s.section_type} pestana="diseno" contenido={contenido} onCambiar={onCambiarContenido} />
             )}
             {pintarConBloques(campos('diseno'))}
+            {/* Aviso de contraentrega debajo del precio, junto a «Mostrar countdown» (Figma 3099:83909). */}
+            {s.section_type === 'product_info' && p.onCambiarAjustes && (
+              <InterruptorAvisoFicha ajustes={ajustesSitio ?? {}} cambiar={p.onCambiarAjustes} enBorrador={p.enBorrador} />
+            )}
             {(TIPOS_PAGINACION as readonly string[]).includes(s.section_type) && (
               <PanelPaginacion
                 valor={sanitizarPaginacion(contenido.paginacion)}
@@ -431,11 +435,6 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         {/* Acciones de compra de la ficha: distribución y botones (Figma 2779:65038). */}
         {pestana === 'contenido' && s.section_type === 'product_actions' && (
           <EditorAccionesFicha contenido={contenido} onCambiar={onCambiarContenido} numeroWhatsapp={ajustesSitio?.whatsapp_number} />
-        )}
-        {/* Aviso de contraentrega junto al precio y el botón de compra (Figma 3073:83567): el mismo
-            dato que Encabezado › Carrito › «En la ficha del producto». */}
-        {pestana === 'contenido' && s.section_type === 'product_actions' && p.onCambiarAjustes && (
-          <InterruptorAvisoFicha ajustes={ajustesSitio ?? {}} cambiar={p.onCambiarAjustes} enBorrador={p.enBorrador} />
         )}
         {pestana === 'contenido' && esSeccionFichaConPanel(s.section_type) && (
           <PanelSeccionFicha tipo={s.section_type} pestana="contenido" contenido={contenido} onCambiar={onCambiarContenido} />

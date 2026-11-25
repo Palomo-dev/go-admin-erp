@@ -6,11 +6,10 @@
  * 3073:83426, ficha 3073:83567 y variantes 3073:83624; aprobado el 2026-11-24).
  *
  * Un solo dato, `header_carrito.avisoContraentrega` ({ carrito, ficha }, apagado por defecto), con
- * dos puntos de acceso:
- * - Encabezado › Carrito: grupo «Aviso de contraentrega» con las dos casillas
- *   ({@link GrupoAvisoContraentrega}).
- * - Ficha del producto › Acciones de compra: interruptor de la ficha
- *   ({@link InterruptorAvisoFicha}), junto al botón de compra.
+ * un interruptor por lugar (opción A con switches, Figma 3098:83528, aprobada el 2026-11-24):
+ * - Encabezado › Carrito: «Aviso de contraentrega en el carrito» ({@link GrupoAvisoContraentrega}).
+ * - Ficha › Información del producto › Diseño: «Mostrar aviso de contraentrega», junto a «Mostrar
+ *   countdown» ({@link InterruptorAvisoFicha}).
  *
  * No guarda: cada cambio va a `cambiar` (el `cambiarAjustes` del editor) y el lienzo lo pinta en
  * vivo (`goadmin:settings`). En la tienda solo sale si la sede ofrece contraentrega con condiciones
@@ -19,10 +18,11 @@
 import { useId } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowRight, Banknote } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { SettingRow } from '@/components/kit';
 import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { opcionesCarrito } from '@/lib/website/v2/cabeceraTienda';
-import { FilaInterruptor, InsigniaNuevo, TituloBloque } from './PartesZonaGlobal';
+import { FilaInterruptor } from './PartesZonaGlobal';
 import { cambioAvisoContraentrega, type LugarAvisoContraentrega } from './cabeceraTiendaLogica';
 
 type Ajustes = Record<string, unknown>;
@@ -81,43 +81,24 @@ function VistaPreviaAviso({ lugares }: { lugares: readonly LugarAvisoContraentre
   );
 }
 
-function Casilla({ lugar, valor, onCambiar }: { lugar: LugarAvisoContraentrega; valor: boolean; onCambiar: (v: boolean) => void }) {
-  const t = useT();
-  const id = useId();
-  return (
-    <div className="flex items-start gap-2">
-      <Checkbox id={id} checked={valor} onCheckedChange={(v) => onCambiar(v === true)} className="mt-0.5" data-casilla-aviso={lugar} />
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <label htmlFor={id} className="text-[13px] leading-[18px] text-fg">
-          {t(`casilla.${lugar}.titulo`)}
-        </label>
-        <Ayuda>{t(`casilla.${lugar}.ayuda`)}</Ayuda>
-      </div>
-    </div>
-  );
-}
-
 /**
- * Encabezado › Carrito, debajo de «Envío gratis» (Figma E1/E2): «Mostrar el aviso» con las
- * casillas «En el carrito» y «En la ficha del producto», apagadas por defecto.
+ * Encabezado › Carrito, debajo de «Envío gratis» (Figma 3098:83737, opción A aprobada el
+ * 2026-11-24): un solo interruptor «Aviso de contraentrega en el carrito», apagado por defecto.
+ * El de la ficha vive en Ficha › Información del producto ({@link InterruptorAvisoFicha}).
  */
 export function GrupoAvisoContraentrega({ ajustes, cambiar, enBorrador }: { ajustes: Ajustes; cambiar: Cambiar; enBorrador: boolean }) {
   const t = useT();
-  const aviso = opcionesCarrito(ajustes).avisoContraentrega;
-  const lugares = (['carrito', 'ficha'] as const).filter((l) => aviso[l]);
+  const encendido = opcionesCarrito(ajustes).avisoContraentrega.carrito;
   return (
     <section className="flex flex-col gap-3 border-t border-line pt-3" data-grupo-aviso-contraentrega="">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1.5">
-          <TituloBloque>{t('titulo')}</TituloBloque>
-          <InsigniaNuevo />
-        </div>
-        <Ayuda>{t('ayuda')}</Ayuda>
-      </div>
-      <p className="text-[13px] font-medium leading-[18px] text-fg">{t('mostrar')}</p>
-      <Casilla lugar="carrito" valor={aviso.carrito} onCambiar={(v) => cambiar(cambioAvisoContraentrega(ajustes, 'carrito', v))} />
-      <Casilla lugar="ficha" valor={aviso.ficha} onCambiar={(v) => cambiar(cambioAvisoContraentrega(ajustes, 'ficha', v))} />
-      <VistaPreviaAviso lugares={lugares} />
+      <FilaInterruptor
+        titulo={t('carrito.titulo')}
+        ayuda={t('carrito.ayuda')}
+        valor={encendido}
+        nuevo
+        onCambiar={(v) => cambiar(cambioAvisoContraentrega(ajustes, 'carrito', v))}
+      />
+      <VistaPreviaAviso lugares={encendido ? ['carrito'] : []} />
       <EnlaceCondiciones />
       {!enBorrador && <Ayuda>{t('soloBorrador')}</Ayuda>}
     </section>
@@ -125,25 +106,22 @@ export function GrupoAvisoContraentrega({ ajustes, cambiar, enBorrador }: { ajus
 }
 
 /**
- * Ficha del producto › Acciones de compra: el mismo dato que la casilla «En la ficha del
- * producto» de Encabezado › Carrito. Encenderlo aquí lo enciende allá (y al revés).
+ * Ficha › Información del producto, pestaña Diseño, debajo de «Mostrar countdown» y con su mismo
+ * aspecto (Figma 3099:83909, opción A aprobada el 2026-11-24). Escribe
+ * `header_carrito.avisoContraentrega.ficha`.
  */
 export function InterruptorAvisoFicha({ ajustes, cambiar, enBorrador }: { ajustes: Ajustes; cambiar: Cambiar; enBorrador: boolean }) {
   const t = useT();
+  const id = useId();
   const encendido = opcionesCarrito(ajustes).avisoContraentrega.ficha;
   return (
-    <section className="flex flex-col gap-3 border-t border-line pt-3" data-interruptor-aviso-ficha="">
-      <FilaInterruptor
-        titulo={t('ficha.titulo')}
-        ayuda={t('ficha.ayuda')}
-        valor={encendido}
-        nuevo
-        onCambiar={(v) => cambiar(cambioAvisoContraentrega(ajustes, 'ficha', v))}
-      />
+    <div className="flex flex-col gap-3" data-interruptor-aviso-ficha="">
+      <SettingRow titulo={t('ficha.titulo')} htmlFor={id}>
+        <Switch id={id} checked={encendido} onCheckedChange={(v) => cambiar(cambioAvisoContraentrega(ajustes, 'ficha', v))} />
+      </SettingRow>
       <VistaPreviaAviso lugares={encendido ? ['ficha'] : []} />
-      <Ayuda>{t('ficha.mismoDato')}</Ayuda>
       <EnlaceCondiciones />
       {!enBorrador && <Ayuda>{t('soloBorrador')}</Ayuda>}
-    </section>
+    </div>
   );
 }

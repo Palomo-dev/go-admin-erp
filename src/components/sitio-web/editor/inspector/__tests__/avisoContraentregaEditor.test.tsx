@@ -28,23 +28,24 @@ describe('Encabezado › Carrito › Aviso de contraentrega', () => {
     const cambiar = jest.fn();
     render(<GrupoAvisoContraentrega ajustes={{}} cambiar={cambiar} enBorrador />);
     expect(cambiar).not.toHaveBeenCalled();
-    expect(screen.getByRole('checkbox', { name: 'casilla.carrito.titulo' }).getAttribute('aria-checked')).toBe('false');
-    expect(screen.getByRole('checkbox', { name: 'casilla.ficha.titulo' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByRole('switch', { name: /carrito\.titulo/ }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.queryByRole('checkbox')).toBeNull();
     expect(document.querySelector('[data-vista-previa-aviso]')).toBeNull();
     expect(screen.getByRole('link', { name: /enlaceCondiciones/ }).getAttribute('href')).toBe(RUTA_CONDICIONES_CONTRAENTREGA);
   });
 
-  test('marcar «En el carrito» escribe solo esa casilla', () => {
+  test('encenderlo escribe solo el carrito y conserva la ficha', () => {
     const cambiar = jest.fn();
     render(<GrupoAvisoContraentrega ajustes={{ header_carrito: { avisoContraentrega: { ficha: true } } }} cambiar={cambiar} enBorrador />);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'casilla.carrito.titulo' }));
+    expect(screen.getByRole('switch', { name: /carrito\.titulo/ }).getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(screen.getByRole('switch', { name: /carrito\.titulo/ }));
     expect(cambiar).toHaveBeenLastCalledWith({ header_carrito: { avisoContraentrega: { ficha: true, carrito: true } } });
   });
 
-  test('encendido muestra la vista previa de cada lugar marcado', () => {
+  test('encendido muestra solo la vista previa del carrito', () => {
     render(<GrupoAvisoContraentrega ajustes={{ header_carrito: { avisoContraentrega: { carrito: true, ficha: true } } }} cambiar={jest.fn()} enBorrador />);
     expect(screen.getByText('vistaPrevia.linea.carrito')).toBeTruthy();
-    expect(screen.getByText('vistaPrevia.linea.ficha')).toBeTruthy();
+    expect(screen.queryByText('vistaPrevia.linea.ficha')).toBeNull();
   });
 
   test('sin borrador avisa que se guarda al pasar al borrador nuevo', () => {
@@ -53,8 +54,8 @@ describe('Encabezado › Carrito › Aviso de contraentrega', () => {
   });
 });
 
-describe('Ficha del producto › Aviso de contraentrega', () => {
-  test('es el mismo dato que «En la ficha del producto» de Encabezado › Carrito', () => {
+describe('Ficha › Información del producto › Aviso de contraentrega', () => {
+  test('encenderlo escribe la ficha y conserva el carrito', () => {
     const cambiar = jest.fn();
     const ajustes = { header_carrito: { avisoContraentrega: { carrito: true } } };
     render(<InterruptorAvisoFicha ajustes={ajustes} cambiar={cambiar} enBorrador />);

@@ -39551,18 +39551,9 @@
         "ayudaRestablecer": "Retire les options d'étiquettes de ce bloc : la fiche s'affiche comme avant."
       },
       "avisoContraentrega": {
-        "titulo": "Avis de paiement à la livraison",
-        "ayuda": "Rappelle au client qu’il peut payer à la réception. Il n’apparaît que si le point de vente propose le paiement à la livraison ; sinon il reste masqué même coché.",
-        "mostrar": "Afficher l’avis",
-        "casilla": {
-          "carrito": {
-            "titulo": "Dans le panier",
-            "ayuda": "Une petite ligne sous le total, sans encadré."
-          },
-          "ficha": {
-            "titulo": "Sur la fiche produit",
-            "ayuda": "Une petite ligne sous le prix."
-          }
+        "carrito": {
+          "titulo": "Avis de paiement à la livraison dans le panier",
+          "ayuda": "Une ligne sous le total. Seulement si le point de vente propose le paiement à la livraison."
         },
         "vistaPrevia": {
           "etiqueta": "Aperçu",
@@ -39578,9 +39569,7 @@
         "enlaceCondiciones": "Conditions dans Ventes en ligne › Paiement à la livraison",
         "soloBorrador": "Enregistré lorsque le site passe au nouveau brouillon ; en attendant, visible dans l’aperçu.",
         "ficha": {
-          "titulo": "Avis de paiement à la livraison",
-          "ayuda": "Une petite ligne sous le prix. N’apparaît que si le point de vente propose le paiement à la livraison.",
-          "mismoDato": "Même option que En-tête › Panier › « Sur la fiche produit »."
+          "titulo": "Afficher l’avis de paiement à la livraison"
         }
       }
     },

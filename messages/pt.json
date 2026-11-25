@@ -39561,18 +39561,9 @@
         "ayudaRestablecer": "Remove as opções de etiquetas deste bloco: a página do produto aparece como antes."
       },
       "avisoContraentrega": {
-        "titulo": "Aviso de pagamento na entrega",
-        "ayuda": "Lembra ao cliente que pode pagar ao receber. Só aparece se a filial oferece pagamento na entrega; caso contrário, não aparece mesmo marcado.",
-        "mostrar": "Mostrar o aviso",
-        "casilla": {
-          "carrito": {
-            "titulo": "No carrinho",
-            "ayuda": "Uma linha pequena abaixo do total, sem caixa."
-          },
-          "ficha": {
-            "titulo": "Na página do produto",
-            "ayuda": "Uma linha pequena abaixo do preço."
-          }
+        "carrito": {
+          "titulo": "Aviso de pagamento na entrega no carrinho",
+          "ayuda": "Uma linha abaixo do total. Só se a filial oferece pagamento na entrega."
         },
         "vistaPrevia": {
           "etiqueta": "Pré-visualização",
@@ -39588,9 +39579,7 @@
         "enlaceCondiciones": "Condições em Vendas online › Pagamento na entrega",
         "soloBorrador": "É salvo quando o site passa para o novo rascunho; enquanto isso, aparece na pré-visualização.",
         "ficha": {
-          "titulo": "Aviso de pagamento na entrega",
-          "ayuda": "Uma linha pequena abaixo do preço. Só aparece se a filial oferece pagamento na entrega.",
-          "mismoDato": "É a mesma opção de Cabeçalho › Carrinho › «Na página do produto»."
+          "titulo": "Mostrar aviso de pagamento na entrega"
         }
       }
     },

@@ -39549,18 +39549,9 @@
         "ayudaRestablecer": "Quita las opciones de etiquetas de este bloque: la ficha se pinta como antes."
       },
       "avisoContraentrega": {
-        "titulo": "Aviso de contraentrega",
-        "ayuda": "Recuerda al cliente que puede pagar al recibir. Solo sale si la sede ofrece contraentrega; si no la ofrece, no se ve aunque esté marcado.",
-        "mostrar": "Mostrar el aviso",
-        "casilla": {
-          "carrito": {
-            "titulo": "En el carrito",
-            "ayuda": "Una línea pequeña debajo del total, sin recuadro."
-          },
-          "ficha": {
-            "titulo": "En la ficha del producto",
-            "ayuda": "Una línea pequeña debajo del precio."
-          }
+        "carrito": {
+          "titulo": "Aviso de contraentrega en el carrito",
+          "ayuda": "Una línea debajo del total. Solo si la sede ofrece contraentrega."
         },
         "vistaPrevia": {
           "etiqueta": "Vista previa",
@@ -39576,9 +39567,7 @@
         "enlaceCondiciones": "Condiciones en Ventas en línea › Pago contra entrega",
         "soloBorrador": "Se guarda cuando el sitio pasa al borrador nuevo; mientras tanto se ve en la vista previa.",
         "ficha": {
-          "titulo": "Aviso de contraentrega",
-          "ayuda": "Una línea pequeña debajo del precio. Solo sale si la sede ofrece contraentrega.",
-          "mismoDato": "Es la misma opción de Encabezado › Carrito › «En la ficha del producto»."
+          "titulo": "Mostrar aviso de contraentrega"
         }
       }
     },

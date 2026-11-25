@@ -55,10 +55,11 @@ describe('catálogo: alcance coherente con el uso de branchId', () => {
   // «Ítems vendidos» y «Despacho de mercancías» (reportes de ventas ampliados,
   // 2026-11-22). 99 = + «Ventas por canal y por sede» (2026-11-24). 104 = + los
   // cinco de ingresos comerciales del CRM, que eran el tablero «Pronóstico ›
-  // Análisis» (`crmIngresosReports.ts`, 2026-11-24). Si agregas o quitas un
-  // reporte, actualízalo aquí.
-  test('el catálogo trae las 104 definiciones y todas declaran alcance', () => {
-    expect(definiciones.length).toBe(104);
+  // Análisis» (`crmIngresosReports.ts`, 2026-11-24). 105 = + «Recaudo por medio de
+  // pago» (`recaudoReports.ts`, 2026-11-25). Si agregas o quitas un reporte,
+  // actualízalo aquí.
+  test('el catálogo trae las 105 definiciones y todas declaran alcance', () => {
+    expect(definiciones.length).toBe(105);
     const sinAlcance = definiciones.filter((d) => d.alcance !== 'sucursal' && d.alcance !== 'organizacion');
     expect(sinAlcance.map((d) => d.id)).toEqual([]);
   });

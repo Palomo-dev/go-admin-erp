@@ -38,6 +38,7 @@ import { serialTrackingReports } from './modulos/serialTrackingReports';
 import { comprasFinanzasReports, comprasInventarioReports } from './modulos/comprasReports';
 import { estadosFinancierosReports } from './modulos/estadosFinancierosReports';
 import { tesoreriaReports } from './modulos/tesoreriaReports';
+import { recaudoReports } from './modulos/recaudoReports';
 import { reportePermitido } from './alcanceSucursal';
 
 // ============================================================
@@ -167,6 +168,8 @@ const META: Record<string, MetaReporte> = {
   'bancos-conciliacion': { grupo: 'finanzas', filtros: 'c s f', nuevo: true },
   'caja-bancos-diario': { grupo: 'finanzas', filtros: 'c s', nuevo: true },
   'categorias-tesoreria': { grupo: 'finanzas', filtros: 'c s f' },
+  // Recaudo por medio de pago (Figma 3300-421294, 2026-11-25): Recaudado, no Ventas netas.
+  'recaudo-medio-pago': { grupo: 'finanzas', filtros: 'c s f', nuevo: true },
   // Ventas y POS
   'cierre-caja': { grupo: 'ventas', filtros: 'c s f' },
   'ventas-periodo': { grupo: 'ventas', filtros: 'c s f p m x' },
@@ -301,7 +304,7 @@ function enriquecer(def: DefinicionModulo): ReportDefinition {
 const CATALOGO: Record<string, ReportDefinition[]> = Object.fromEntries(
   Object.entries({
     pos: ventasReports,
-    finance: [...finanzasReports, ...tesoreriaReports, ...contabilidadReports, ...estadosFinancierosReports, ...comprasFinanzasReports],
+    finance: [...finanzasReports, ...tesoreriaReports, ...recaudoReports, ...contabilidadReports, ...estadosFinancierosReports, ...comprasFinanzasReports],
     inventory: [...inventarioReports, ...serialTrackingReports, ...comprasInventarioReports],
     crm: [...crmReports, ...crmIngresosReports],
     hrm: hrmReports,

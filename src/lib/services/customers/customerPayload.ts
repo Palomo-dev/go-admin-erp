@@ -13,6 +13,8 @@
  * sin nada más.
  */
 
+import { correoFacturaParaGuardar } from '@/lib/clientes/facturacionElectronica';
+
 export type CustomerType = 'person' | 'company';
 
 /** Los valores del formulario, con los mismos nombres que usa `ClientForm`. */
@@ -39,6 +41,8 @@ export interface CustomerFormValues {
   fiscalResponsibilities: string[];
   parentCustomerId: string;
   currentSoftware: string;
+  /** Correo de la factura electrónica si es distinto del de contacto (opcional; validado con `validarCorreoFactura`). */
+  billingEmail?: string;
 }
 
 export const DEFAULT_ROLES = ['cliente', 'huesped'];
@@ -173,6 +177,8 @@ export interface CustomerInsertRow {
   tags: string[];
   customer_type: CustomerType;
   parent_customer_id: string | null;
+  /** Solo si se escribió un correo de factura. */
+  billing_email?: string | null;
   created_at: string;
 }
 
@@ -217,6 +223,7 @@ export function buildCustomerInsert(
       : [],
     customer_type: values.customerType,
     parent_customer_id: !esEmpresa && values.parentCustomerId ? values.parentCustomerId : null,
+    ...(correoFacturaParaGuardar(values.billingEmail) ? { billing_email: correoFacturaParaGuardar(values.billingEmail) } : {}),
     created_at: new Date().toISOString(),
   };
 }

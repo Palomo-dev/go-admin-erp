@@ -16,6 +16,7 @@ import {
 } from './webOrderConfirmacionCompleta';
 import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { confirmacionPorAnticipo } from '@/lib/pos/pedidosWeb/contraentregaPedido';
+import { clienteFacturaPedidoWebId } from '@/lib/pos/pedidosWeb/adquirientePedido';
 import { getOrganizationTimezone } from './organizationTimezoneService';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { tiemposAutoConfirmacion } from './webOrders/tiemposPedidosServer';
@@ -858,6 +859,9 @@ export const webOrderServerConfirmation = {
     }
 
     // ── 5. Crear factura de venta (invoice_sales + invoice_items) ──
+    // Adquiriente (20261125170000): con NIT, la empresa del checkout; si no, el cliente resuelto
+    // arriba. La venta y el envío conservan a la persona (customerId) como contacto.
+    const clienteFactura = await clienteFacturaPedidoWebId(supabase, order.id, customerId);
     let invoiceId: string | undefined;
     let invoiceNumber: string | undefined;
     let invoiceCurrency: string | null = null;
@@ -891,7 +895,7 @@ export const webOrderServerConfirmation = {
         .insert({
           organization_id: order.organization_id,
           branch_id: order.branch_id,
-          customer_id: customerId,
+          customer_id: clienteFactura,
           sale_id: saleId,
           number: invoiceNumber,
           issue_date: saleDate,
@@ -1081,7 +1085,7 @@ export const webOrderServerConfirmation = {
     // ── 7. Crear cuenta por cobrar (si hay customer_id) ──
     let accountReceivableId: string | undefined;
 
-    if (customerId && invoiceId) {
+    if (clienteFactura && invoiceId) {
       try {
         // Verificar si ya existe
         const { data: existingAR } = await supabase
@@ -1097,7 +1101,7 @@ export const webOrderServerConfirmation = {
             .from('accounts_receivable')
             .insert({
               organization_id: order.organization_id,
-              customer_id: customerId,
+              customer_id: clienteFactura,
               sale_id: saleId,
               amount: Number(order.total) || 0,
               balance: 0,

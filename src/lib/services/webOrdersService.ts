@@ -102,6 +102,8 @@ export interface WebOrder {
   advance_due_at?: string | null;
   advance_reference?: string | null;
   advance_gateway?: string | null;
+  /** Factura electrónica pedida en el checkout (20261125061424) y su revisión (20261125150000). */
+  billing_data?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   // Relaciones

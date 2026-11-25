@@ -25,6 +25,7 @@ import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvat
 import { HabeasDataCheckbox } from '@/components/shared/DianLookupButton';
 import type { DianNormalizedData } from '@/lib/services/dianLookupService';
 import { buildCustomerInsert, type CustomerFormValues } from '@/lib/services/customers/customerPayload';
+import { correoFacturaParaGuardar, dvAutomatico, esTipoNit, validarCorreoFactura } from '@/lib/clientes/facturacionElectronica';
 
 interface ClientFormProps {
   organizationId: number;
@@ -100,6 +101,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
   const { toast } = useToast();
   const router = useRouter();
   const t = useTranslations('clientes.formulario');
+  const tFact = useTranslations('clientesFacturacion');
   const tk = useKitT();
   const etiquetas = useEtiquetasCatalogo();
   const isEditMode = mode === 'edit' && !!clientId;
@@ -119,6 +121,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     municipalityId: (initialValues?.municipalityId ?? '') as string,
     notes: initialValues?.notes ?? '',
     tags: initialValues?.tags ?? '',
+    billingEmail: initialValues?.billingEmail ?? '',
   });
   const [locationData, setLocationData] = useState<LocationData>({
     country: '',
@@ -295,6 +298,7 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           municipalityId: clientData.fiscal_municipality_id || '',
           notes: clientData.notes || '',
           tags: clientData.tags ? clientData.tags.join(', ') : '',
+          billingEmail: clientData.billing_email || '',
         });
         setCustomerType((clientData.customer_type as CustomerType) || 'person');
         setParentCustomerId(clientData.parent_customer_id || '');
@@ -344,6 +348,18 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
     loadClientData();
   }, [clientId, isEditMode]);
   
+  // DV automático (módulo 11 DIAN, `dvAutomatico`): con NIT se calcula del número; nunca a mano.
+  const nitSeleccionado = esTipoNit(formData.documentType);
+  useEffect(() => {
+    if (!nitSeleccionado) return;
+    const dv = dvAutomatico(formData.documentType, formData.documentNumber);
+    const texto = dv === null ? '' : String(dv);
+    setFormData(prev => (prev.dv === texto ? prev : { ...prev, dv: texto }));
+  }, [nitSeleccionado, formData.documentType, formData.documentNumber]);
+
+  // Correo de factura: la misma validación que el diálogo «Editar datos de facturación».
+  const correoFacturaInvalido = validarCorreoFactura(formData.billingEmail) === 'invalido';
+
   // Funciones de manejo de cambios en los campos
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -522,6 +538,10 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
       setError(t('avisos.telefonoInvalido', { error: errorTelefono }));
       return;
     }
+    if (correoFacturaInvalido) {
+      setError(tFact('editar.errores.correo'));
+      return;
+    }
     setLoading(true);
     setError('');
     
@@ -535,7 +555,8 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
           phone: formData.phone || null,
           identification_type: formData.documentType,
           identification_number: formData.documentNumber || null,
-          dv: formData.dv ? parseInt(formData.dv, 10) : null,
+          dv: nitSeleccionado ? dvAutomatico(formData.documentType, formData.documentNumber) : formData.dv ? parseInt(formData.dv, 10) : null,
+          billing_email: correoFacturaParaGuardar(formData.billingEmail),
           company_name: formData.companyName || null,
           trade_name: formData.tradeName || null,
           address: formData.address || null,
@@ -1072,8 +1093,14 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       onChange={handleChange}
                       placeholder={t('campos.dvPlaceholder')}
                       maxLength={1}
+                      readOnly={nitSeleccionado}
+                      aria-readonly={nitSeleccionado || undefined}
+                      aria-describedby={nitSeleccionado ? 'dv-automatico' : undefined}
                       className="h-10 w-20 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500"
                     />
+                    {nitSeleccionado && (
+                      <p id="dv-automatico" className="text-xs text-fg-muted">{tFact('editar.automatico')}</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1231,6 +1258,33 @@ export function ClientForm({ organizationId, branchId, clientId, mode = 'create'
                       tamano="md"
                     />
                   </div>
+                </div>
+
+                {/* Correo de la factura electrónica (Figma 06 Clientes 3194-21046): vacío = correo de contacto. */}
+                <div className="space-y-2">
+                  <Label htmlFor="billingEmail" className="text-sm font-medium flex flex-wrap items-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                    {tFact('editar.correoFactura')}
+                  </Label>
+                  <Input
+                    id="billingEmail"
+                    name="billingEmail"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="off"
+                    value={formData.billingEmail}
+                    onChange={handleChange}
+                    aria-invalid={correoFacturaInvalido || undefined}
+                    aria-describedby="billingEmail-ayuda"
+                    className={cn('h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500', correoFacturaInvalido && 'border-danger')}
+                  />
+                  <p id="billingEmail-ayuda" role={correoFacturaInvalido ? 'alert' : undefined} className={cn('text-xs', correoFacturaInvalido ? 'text-danger-text' : 'text-fg-muted')}>
+                    {correoFacturaInvalido
+                      ? tFact('editar.errores.correo')
+                      : formData.email
+                        ? tFact('editar.correoAyuda', { correo: formData.email })
+                        : tFact('editar.correoAyudaSinContacto')}
+                  </p>
                 </div>
                 
                 {/* Dirección */}

@@ -4163,3 +4163,41 @@ describe('45. Logística 1b: el vehículo del envío lo decide la base', () => {
     }
   });
 });
+
+/**
+ * 46. Pedido web con NIT: la factura, su cartera y su nota crédito van a nombre del adquiriente
+ * (la empresa del NIT), que resuelve UNA función de la base: `fn_web_order_cliente_factura`
+ * (migración 20261125170000). El ERP la llama por `clienteFacturaPedidoWebId`; ninguna vía que
+ * cree invoice_sales o accounts_receivable desde un pedido web vuelve a usar el cliente del pedido
+ * (la persona) a secas, ni reimplementa la regla leyendo billing_data en Node.
+ */
+describe('46. Pedido web con NIT: factura y cartera a nombre de la empresa', () => {
+  const leer = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), 'utf8');
+
+  test('las confirmaciones facturan y crean la cartera con el adquiriente, no con la persona', () => {
+    const servidor = leer('lib/services/webOrderServerConfirmation.ts');
+    expect(servidor).toMatch(/clienteFacturaPedidoWebId\(supabase, order\.id, customerId\)/);
+    expect(servidor).toMatch(/customer_id: clienteFactura,\s*\n\s*sale_id: saleId,\s*\n\s*number: invoiceNumber/);
+    expect(servidor).not.toMatch(/customer_id: customerId,\s*\n\s*sale_id: saleId/);
+
+    const navegador = leer('lib/services/webOrderConfirmationService.ts');
+    expect(navegador.match(/clienteFacturaPedidoWebId\(supabase, order\.id/g) ?? []).toHaveLength(2);
+    expect(navegador).not.toMatch(/customer_id: order\.customer_id \|\| null,\s*\n\s*sale_id: saleId/);
+    expect(navegador).not.toMatch(/customer_id: order\.customer_id!,/);
+  });
+
+  test('la nota crédito del pedido usa el cliente de la factura que revierte', () => {
+    const nota = leer('lib/services/webOrderCreditNote.ts');
+    expect(nota).toMatch(/customer_id: originalInvoice\?\.customer_id \|\| order\.customer_id \|\| null/);
+  });
+
+  test('la regla vive en la base: solo el helper llama a la RPC y nadie lee billing_data.customer_id para facturar', () => {
+    const helper = leer('lib/pos/pedidosWeb/adquirientePedido.ts');
+    expect(helper).toMatch(/rpc\('fn_web_order_cliente_factura'/);
+    for (const rel of ['lib/services/webOrderServerConfirmation.ts', 'lib/services/webOrderConfirmationService.ts', 'lib/services/webOrderCreditNote.ts']) {
+      const fuente = leer(rel);
+      expect(fuente).not.toMatch(/fn_web_order_cliente_factura/);
+      expect(fuente).not.toMatch(/billing_data/);
+    }
+  });
+});

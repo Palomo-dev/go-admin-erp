@@ -9,7 +9,8 @@
  *   segunda consulta ni una segunda regla de «agotado».
  */
 import { useCallback, useEffect, useState } from 'react';
-import type { AccionResena, RespuestaResenas, RespuestaTienda } from '@/lib/website/tiendaSitio.server';
+import type { AccionResena, AjustesResenasTienda, RespuestaResenas, RespuestaTienda } from '@/lib/website/tiendaSitio.server';
+import type { CambiosAjustesResenas } from '@/lib/website/ajustesResenas';
 import type { EstadoResena } from '@/lib/services/website/resenasProducto';
 import type { CambioProducto, FiltroCartaSede, RespuestaListadoCartaSede } from '@/lib/services/website/cartaSede';
 import { ErrorApiVentas, pedirJson, type FalloVentas } from './useVentasSitio';
@@ -179,8 +180,11 @@ export function useResenasTienda(filtro: FiltroResenas, pagina: number, alCambia
   }, [recargar]);
 
   const moderar = useCallback(
-    async (id: string, accion: AccionResena, respuesta?: string) => {
-      await pedirJson(RUTA_API_RESENAS, { method: 'PATCH', cuerpo: { id, accion, ...(respuesta !== undefined ? { respuesta } : {}) } });
+    async (id: string, accion: AccionResena, respuesta?: string, foto?: string) => {
+      await pedirJson(RUTA_API_RESENAS, {
+        method: 'PATCH',
+        cuerpo: { id, accion, ...(respuesta !== undefined ? { respuesta } : {}), ...(foto !== undefined ? { foto } : {}) },
+      });
       await recargar();
       alCambiar?.();
     },
@@ -188,4 +192,42 @@ export function useResenasTienda(filtro: FiltroResenas, pagina: number, alCambia
   );
 
   return { datos, cargando, fallo, recargar, moderar };
+}
+
+// ─── Ajustes de reseñas (Figma 3C) ───────────────────────────────────────────
+
+export const RUTA_API_AJUSTES_RESENAS = '/api/sitio-web/tienda/ajustes-resenas';
+
+/**
+ * «Ajustes de reseñas» con `/api/sitio-web/tienda/ajustes-resenas` (permiso `website.sites.edit`).
+ * Se lee al abrir la hoja (`activo`); `guardar` devuelve los ajustes ya guardados.
+ */
+export function useAjustesResenas(activo: boolean) {
+  const [datos, setDatos] = useState<AjustesResenasTienda | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [fallo, setFallo] = useState<FalloVentas | null>(null);
+
+  const recargar = useCallback(async () => {
+    setCargando(true);
+    setFallo(null);
+    try {
+      setDatos(await pedirJson<AjustesResenasTienda>(RUTA_API_AJUSTES_RESENAS));
+    } catch (error) {
+      setFallo(error instanceof ErrorApiVentas ? error.fallo : 'error');
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activo) void recargar();
+  }, [activo, recargar]);
+
+  const guardar = useCallback(async (cambios: CambiosAjustesResenas) => {
+    const r = await pedirJson<AjustesResenasTienda>(RUTA_API_AJUSTES_RESENAS, { method: 'PUT', cuerpo: cambios });
+    setDatos(r);
+    return r;
+  }, []);
+
+  return { datos, cargando, fallo, recargar, guardar };
 }

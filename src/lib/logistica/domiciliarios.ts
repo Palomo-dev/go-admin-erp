@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { toPlainDate } from '@/lib/utils/dateCore';
 import { ESTADOS_CON_PAQUETE, ESTADOS_EN_RUTA } from './misEnvios';
+import { DUENOS, TIPOS_FLOTA_LOGISTICA, USOS, placaObligatoria } from './vehiculoAsignacion';
 
 /** CHECK de `driver_credentials.vehicle_type`. */
 export const TIPOS_VEHICULO = ['motorcycle', 'bicycle', 'car', 'van', 'on_foot', 'other'] as const;
@@ -19,6 +20,26 @@ export const TIPOS_DOCUMENTO = ['CC', 'CE', 'PPT', 'PA', 'TI'] as const;
 export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number];
 
 const texto = (max: number) => z.string().trim().max(max);
+const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const CATEGORIAS = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'] as const;
+
+/**
+ * Logística 1b: el vehículo que se crea en el mismo paso del alta (Figma 3152-10674). Placa
+ * obligatoria salvo bici o vehículo de un tercero; queda como el vehículo por defecto de la persona.
+ */
+export const vehiculoNuevoSchema = z
+  .object({
+    placa: texto(20),
+    tipo: z.enum(TIPOS_FLOTA_LOGISTICA),
+    dueno: z.enum(DUENOS),
+    soat: fecha.nullable().optional(),
+    tecnomecanica: fecha.nullable().optional(),
+    kg: z.number().nonnegative().max(100000).nullable().optional(),
+    m3: z.number().nonnegative().max(1000).nullable().optional(),
+  })
+  .strict()
+  .refine((v) => !placaObligatoria(v.tipo, v.dueno) || v.placa.trim().length >= 3, { path: ['placa'], message: 'placa' });
+export type VehiculoNuevo = z.infer<typeof vehiculoNuevoSchema>;
 
 export const altaDomiciliarioSchema = z
   .object({
@@ -34,9 +55,19 @@ export const altaDomiciliarioSchema = z
     employmentId: z.string().uuid().nullable().optional(),
     /** Externo con cuenta en GO Admin (para «Mis envíos»): un miembro activo de la organización. */
     userId: z.string().uuid().nullable().optional(),
+    /** Logística 1b: uso (nace en Logística; con «Usar también en Transporte», Ambos). */
+    uso: z.enum(USOS).optional(),
+    /** Licencia de conducción (opcional en el alta; si vence, la asignación avisa o bloquea). */
+    licenciaCategoria: z.enum(CATEGORIAS).nullable().optional(),
+    licenciaVence: fecha.nullable().optional(),
+    /** Vehículo por defecto: uno de la flota o uno nuevo creado en el mismo paso. */
+    vehiculoId: z.string().uuid().nullable().optional(),
+    vehiculoNuevo: vehiculoNuevoSchema.nullable().optional(),
   })
   .strict()
-  .refine((a) => !!a.employmentId || a.documento.replace(/[.\s-]/g, '').length >= 4, { path: ['documento'], message: 'documento' });
+  .refine((a) => !!a.employmentId || a.documento.replace(/[.\s-]/g, '').length >= 4, { path: ['documento'], message: 'documento' })
+  .refine((a) => !(a.vehiculoId && a.vehiculoNuevo), { path: ['vehiculoId'], message: 'vehiculo' })
+  .refine((a) => !a.licenciaCategoria === !a.licenciaVence, { path: ['licenciaVence'], message: 'licencia' });
 export type AltaDomiciliario = z.infer<typeof altaDomiciliarioSchema>;
 
 /** Documento sin puntos ni espacios: 1.020.456.789 → 1020456789. */
@@ -54,6 +85,10 @@ export function filaAlta(a: AltaDomiciliario, organizationId: number) {
     document_type: normalizarDocumento(a.documento) ? a.tipoDocumento : null,
     document_number: normalizarDocumento(a.documento) || null,
     vehicle_type: a.tipoVehiculo ?? null,
+    license_category: a.licenciaCategoria ?? null,
+    license_expiry: a.licenciaVence ?? null,
+    // Decisión 9.6: nace en el módulo de alta (aquí Logística) salvo que pidan «Ambos».
+    usage: a.uso ?? 'logistics',
     employment_id: a.employmentId ?? null,
     // Con empleo el disparador pone el usuario del empleado; sin empleo, el elegido (o ninguno).
     user_id: a.employmentId ? null : a.userId ?? null,

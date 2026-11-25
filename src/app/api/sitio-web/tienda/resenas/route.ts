@@ -3,7 +3,8 @@
  *
  * GET ?estado=pending|approved|rejected|all&pagina=N → reseñas de la
  *     organización de la sesión, paginadas.
- * PATCH { id, accion: 'aprobar' | 'rechazar' | 'responder', respuesta? }
+ * PATCH { id, accion, respuesta?, foto? }: aprobar | rechazar | responder | publicar (publica y
+ *       responde) | destacar | quitarDestacada | ocultarFoto | mostrarFoto (con `foto`).
  *
  * Organización de la sesión (`withOrg` + `readOrgBody`) y permiso
  * `website.sites.edit` (`permisosSitio`) en lectura y escritura: quien en
@@ -14,13 +15,13 @@
 import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { esEstadoResena } from '@/lib/services/website/resenasProducto';
-import { ErrorTienda, leerResenasTienda, moderarResenaTienda, respuestaErrorTienda, type AccionResena } from '@/lib/website/tiendaSitio.server';
+import { ACCIONES_RESENA, ErrorTienda, leerResenasTienda, moderarResenaTienda, respuestaErrorTienda, type AccionResena } from '@/lib/website/tiendaSitio.server';
 
 export const dynamic = 'force-dynamic';
 
 const SIN_CACHE = { 'Cache-Control': 'private, no-store' } as const;
 const RUTA = 'sitio-web/tienda/resenas';
-const ACCIONES: readonly AccionResena[] = ['aprobar', 'rechazar', 'responder'];
+const ACCIONES: readonly AccionResena[] = ACCIONES_RESENA;
 const PATRON_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const GET = withOrg(async (ctx, request) => {
@@ -40,13 +41,14 @@ export const GET = withOrg(async (ctx, request) => {
 
 export const PATCH = withOrg(async (ctx, request) => {
   try {
-    const body = (await readOrgBody(ctx, request, { route: RUTA })) as { id?: unknown; accion?: unknown; respuesta?: unknown } | null;
+    const body = (await readOrgBody(ctx, request, { route: RUTA })) as { id?: unknown; accion?: unknown; respuesta?: unknown; foto?: unknown } | null;
     if (!body || typeof body.id !== 'string' || !PATRON_UUID.test(body.id)) throw new ErrorTienda('peticion_invalida', 400, 'Falta la reseña.');
     if (!ACCIONES.includes(body.accion as AccionResena)) throw new ErrorTienda('peticion_invalida', 400, 'Acción no válida.');
     if (body.respuesta !== undefined && body.respuesta !== null && typeof body.respuesta !== 'string') {
       throw new ErrorTienda('peticion_invalida', 400, 'La respuesta debe ser texto.');
     }
-    await moderarResenaTienda(ctx, body.id, body.accion as AccionResena, body.respuesta as string | null | undefined);
+    if (body.foto !== undefined && body.foto !== null && typeof body.foto !== 'string') throw new ErrorTienda('peticion_invalida', 400, 'La foto no es válida.');
+    await moderarResenaTienda(ctx, body.id, body.accion as AccionResena, body.respuesta as string | null | undefined, body.foto as string | null | undefined);
     return NextResponse.json({ ok: true }, { headers: SIN_CACHE });
   } catch (error) {
     if (error instanceof OrgContextError) throw error;

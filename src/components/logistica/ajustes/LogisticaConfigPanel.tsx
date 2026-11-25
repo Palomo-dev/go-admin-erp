@@ -48,6 +48,7 @@ async function pedir(init: RequestInit = {}): Promise<{ ajustes: AjustesLogistic
 
 export function LogisticaConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: string) => void }) {
   const t = useTranslations('logistica.zonas.ajustes');
+  const tv = useTranslations('logisticaVehiculo.ajustes');
   const tz = useTranslations('logistica.zonas');
   const { toast } = useToast();
   const enDialogo = useDentroDelDialogo();
@@ -141,6 +142,26 @@ export function LogisticaConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href:
               id="logistica-codigo-entrega"
               checked={editado.ajustes.codigoEntregaContraentrega}
               onCheckedChange={(v) => cambiarAjuste('codigoEntregaContraentrega', v === true)}
+              disabled={!puedeEditar}
+            />
+          </SettingRow>
+          {/* Logística 1b (decisión 6): apagado por defecto = solo avisos. */}
+          <SettingRow
+            titulo={<span id="bloqueo-documentos">{tv('bloqueo.titulo')}</span>}
+            descripcion={
+              <>
+                {tv('bloqueo.descripcion')}{' '}
+                <a href="/app/hrm/marcacion?vista=metodos&credenciales=1" className="font-medium text-brand underline-offset-2 hover:underline">
+                  {tv('bloqueo.asignarPin')}
+                </a>
+              </>
+            }
+            htmlFor="logistica-bloqueo-documentos"
+          >
+            <Switch
+              id="logistica-bloqueo-documentos"
+              checked={editado.ajustes.bloqueoDocumentosAsignacion}
+              onCheckedChange={(v) => cambiarAjuste('bloqueoDocumentosAsignacion', v === true)}
               disabled={!puedeEditar}
             />
           </SettingRow>

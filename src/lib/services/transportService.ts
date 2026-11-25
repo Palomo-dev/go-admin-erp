@@ -57,6 +57,13 @@ export interface Vehicle {
   current_driver_id?: string;
   status: 'available' | 'in_use' | 'maintenance' | 'inactive';
   is_active: boolean;
+  /**
+   * Logística 1b (migración 20261125044314): dueño, persona dueña y uso. La placa puede venir NULL
+   * en una bici o en un vehículo de un tercero (las pantallas la leen con `?? ''`).
+   */
+  ownership?: 'company' | 'driver' | 'third_party';
+  owner_driver_id?: string | null;
+  usage?: 'logistics' | 'transport' | 'both';
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
@@ -75,6 +82,9 @@ export interface DriverCredential {
   hazmat_certified?: boolean;
   passenger_certified?: boolean;
   is_active: boolean;
+  /** Logística 1b: vehículo por defecto y uso de la persona. */
+  default_vehicle_id?: string | null;
+  usage?: 'logistics' | 'transport' | 'both';
   metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;

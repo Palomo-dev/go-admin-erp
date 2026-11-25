@@ -472,6 +472,8 @@ export async function crearEnvio(
   }
   let asignacionFallida = false;
   if (d.domiciliarioId && d.modo !== 'national_carrier') {
+    // Logística 1b: sin vehículo la base usa el del envío o el por defecto del domiciliario (4.5) y
+    // revisa documentos. Si queda bloqueado, el envío se guarda igual «Por despachar» sin asignar.
     try {
       await deliveryIntegrationService.assignVehicleAndDriver(id, null, d.domiciliarioId);
     } catch {
@@ -550,6 +552,7 @@ export async function actualizarEnvio(
 
   let asignacionFallida = false;
   if (puede('domiciliario') && d.domiciliarioId && d.domiciliarioId !== original.datos.domiciliarioId && d.modo !== 'national_carrier') {
+    // Logística 1b: misma regla que el alta (vehículo sugerido por la base; bloqueo = sin asignar).
     try {
       await deliveryIntegrationService.assignVehicleAndDriver(original.id, null, d.domiciliarioId);
     } catch {

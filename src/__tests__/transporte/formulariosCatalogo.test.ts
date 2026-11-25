@@ -62,6 +62,8 @@ describe('formulario de vehículo', () => {
       [
         'branch_id', 'brand', 'capacity_kg', 'capacity_m3', 'carrier_id', 'color', 'current_driver_id', 'insurance_expiry', 'is_active', 'model', 'operating_card_expiry',
         'passenger_capacity', 'plate', 'seat_map_id', 'soat_expiry', 'status', 'techno_expiry', 'vehicle_type', 'vin', 'year',
+        // Logística 1b (migración 20261125044314): dueño, persona dueña y uso.
+        'ownership', 'owner_driver_id', 'usage',
       ].sort(),
     );
     expect(d).toMatchObject({ plate: 'WNP 103', brand: null, capacity_kg: 3.5, vin: 'ABC', techno_expiry: null, soat_expiry: '2027-03-14', year: 2021 });
@@ -111,7 +113,7 @@ describe('formulario de persona', () => {
     const ok = { ...f, full_name: 'Karen Díaz', phone: '310 555 2140', document_number: '1.020.334', branch_id: 3 };
     expect(validarPersona(ok)).toEqual({});
     expect(validarPersona({ ...ok, license_number: '123' })).toMatchObject({ license_category: 'incompleta', license_expiry: 'incompleta' });
-    expect(altaExterno(ok)).toEqual({ nombre: 'Karen Díaz', celular: '310 555 2140', tipoDocumento: 'CC', documento: '1.020.334', branchId: 3, tipoVehiculo: null, cobraContraentrega: true, userId: null });
+    expect(altaExterno(ok)).toEqual({ nombre: 'Karen Díaz', celular: '310 555 2140', tipoDocumento: 'CC', documento: '1.020.334', branchId: 3, tipoVehiculo: null, cobraContraentrega: true, userId: null, uso: 'both' });
   });
 
   test('escribe columnas de driver_credentials; la identidad solo para el externo; conserva metadata', () => {

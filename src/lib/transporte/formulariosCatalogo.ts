@@ -18,6 +18,7 @@ import type { Vehicle } from '@/lib/services/transportService';
 import { TIPOS_DOCUMENTO as TIPOS_DOCUMENTO_PERSONA, TIPOS_VEHICULO as TIPOS_VEHICULO_PERSONA, normalizarDocumento } from '@/lib/logistica/domiciliarios';
 import { CATEGORIAS_LICENCIA, ESTADOS_VEHICULO, TIPOS_VEHICULO } from './catalogoComun';
 import { diasEntre, estadoDocumento } from './documentosFlota';
+import { leerDueno, leerUso, placaObligatoria, type Dueno, type Uso } from '@/lib/logistica/vehiculoAsignacion';
 
 export { TIPOS_DOCUMENTO_PERSONA, TIPOS_VEHICULO_PERSONA };
 export const TIPOS_SANGRE = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
@@ -80,17 +81,23 @@ export interface FormVehiculo {
   techno_expiry: string;
   insurance_expiry: string;
   operating_card_expiry: string;
+  /** Logística 1b: dueño, persona dueña (driver_credentials) y uso. */
+  ownership: Dueno;
+  owner_driver_id: string | null;
+  usage: Uso;
 }
 
 type VehiculoBase = Vehicle & { seat_map_id?: string | null; vin?: string | null };
 
-export function vehiculoAFormulario(v: VehiculoBase | null, opciones: { sede: number | null; duplicar?: boolean } = { sede: null }): FormVehiculo {
+export function vehiculoAFormulario(v: VehiculoBase | null, opciones: { sede: number | null; duplicar?: boolean; uso?: Uso } = { sede: null }): FormVehiculo {
   const txt = (x: unknown) => (x === null || x === undefined ? '' : String(x));
   if (!v) {
     return {
       plate: '', vehicle_type: 'car', brand: '', model: '', year: '', color: '', vin: '', capacity_kg: '', capacity_m3: '', passenger_capacity: '',
       seat_map_id: null, branch_id: opciones.sede, carrier_id: null, current_driver_id: null, status: 'available', is_active: true,
       soat_expiry: '', techno_expiry: '', insurance_expiry: '', operating_card_expiry: '',
+      // El uso nace en el módulo de alta (decisión 9.6); quien llama lo manda.
+      ownership: 'company', owner_driver_id: null, usage: opciones.uso ?? 'both',
     };
   }
   const dup = !!opciones.duplicar;
@@ -116,6 +123,10 @@ export function vehiculoAFormulario(v: VehiculoBase | null, opciones: { sede: nu
     techno_expiry: dup ? '' : txt(v.techno_expiry),
     insurance_expiry: dup ? '' : txt(v.insurance_expiry),
     operating_card_expiry: dup ? '' : txt(v.operating_card_expiry),
+    ownership: leerDueno(v.ownership),
+    owner_driver_id: dup ? null : v.owner_driver_id ?? null,
+    // Duplicar crea un vehículo nuevo: nace en el módulo desde el que se duplica.
+    usage: dup && opciones.uso ? opciones.uso : leerUso(v.usage),
   };
 }
 
@@ -125,8 +136,11 @@ export type ErroresVehiculo = Partial<Record<keyof FormVehiculo, ErrorCampo>>;
 /** `placas`: claves (`clavePlaca`) de las OTRAS placas de la organización. */
 export function validarVehiculo(f: FormVehiculo, placas: ReadonlySet<string>, anioMaximo: number): ErroresVehiculo {
   const e: ErroresVehiculo = {};
-  if (!normalizarPlaca(f.plate)) e.plate = 'requerido';
-  else if (placas.has(clavePlaca(f.plate))) e.plate = 'duplicada';
+  // Placa obligatoria salvo en bici y en vehículo de un tercero (Logística 1b).
+  if (!normalizarPlaca(f.plate)) {
+    if (placaObligatoria(f.vehicle_type, f.ownership)) e.plate = 'requerido';
+  } else if (placas.has(clavePlaca(f.plate))) e.plate = 'duplicada';
+  if (f.ownership === 'driver' && !f.owner_driver_id) e.owner_driver_id = 'requerido';
   if (!(TIPOS_VEHICULO as readonly string[]).includes(f.vehicle_type)) e.vehicle_type = 'requerido';
   if (f.year.trim()) {
     const a = numero(f.year);
@@ -150,7 +164,7 @@ export function formularioAVehiculo(f: FormVehiculo): Record<string, unknown> {
     return v === null || !Number.isFinite(v) ? null : v;
   };
   return {
-    plate: normalizarPlaca(f.plate),
+    plate: normalizarPlaca(f.plate) || null,
     vehicle_type: f.vehicle_type,
     brand: limpio(f.brand),
     model: limpio(f.model),
@@ -170,6 +184,9 @@ export function formularioAVehiculo(f: FormVehiculo): Record<string, unknown> {
     techno_expiry: f.techno_expiry || null,
     insurance_expiry: f.insurance_expiry || null,
     operating_card_expiry: f.operating_card_expiry || null,
+    ownership: f.ownership,
+    owner_driver_id: f.ownership === 'driver' ? f.owner_driver_id : null,
+    usage: f.usage,
   };
 }
 
@@ -191,6 +208,8 @@ export const CATEGORIAS_POR_TIPO: Record<string, readonly string[] | null> = {
   boat: null,
   yacht: null,
   other: null,
+  // Logística 1b: la bici no pide licencia ni SOAT ni tecnomecánica.
+  bicycle: null,
 };
 
 export type MotivoNoApto = 'sinUsuario' | 'inactivo' | 'sinLicencia' | 'vencida' | 'categoria';
@@ -277,7 +296,10 @@ export interface FormPersona {
   emergency_contact_name: string;
   emergency_contact_phone: string;
   vehicle_type: string | null;
+  /** Vehículo por defecto: se escribe en `driver_credentials.default_vehicle_id` (Logística 1b). */
   vehiculo_id: string | null;
+  /** Uso de la persona (logistics, transport, both). */
+  usage: Uso;
   is_active: boolean;
   /** `metadata.certifications` del formulario viejo (texto separado por comas). */
   certificaciones: string;
@@ -310,7 +332,7 @@ interface CredencialBase {
 
 export function personaAFormulario(
   c: CredencialBase | null,
-  extra: { positionId?: string | null; vehiculoId?: string | null; sede: number | null; duplicar?: boolean } = { sede: null },
+  extra: { positionId?: string | null; vehiculoId?: string | null; sede: number | null; duplicar?: boolean; uso?: Uso } = { sede: null },
 ): FormPersona {
   const t = (x: unknown) => (x === null || x === undefined ? '' : String(x));
   const certs = c?.metadata && Array.isArray((c.metadata as { certifications?: unknown }).certifications) ? ((c.metadata as { certifications: unknown[] }).certifications.map(String).join(', ')) : '';
@@ -321,7 +343,7 @@ export function personaAFormulario(
       modo: 'empleado', employment_id: null, position_id: null, branch_id: extra.sede, user_id: null, full_name: '', document_type: 'CC', document_number: '', phone: '',
       license_number: '', license_category: null, license_expiry: '', license_restrictions: '', medical_certificate_expiry: '', blood_type: null,
       passenger_certified: false, hazmat_certified: false, emergency_contact_name: '', emergency_contact_phone: '', vehicle_type: null, vehiculo_id: null,
-      is_active: true, certificaciones: '', cobra_contraentrega: true,
+      usage: extra.uso ?? 'both', is_active: true, certificaciones: '', cobra_contraentrega: true,
     };
   }
   const externo = !c.employment_id;
@@ -348,6 +370,7 @@ export function personaAFormulario(
     emergency_contact_phone: dup ? '' : t(c.emergency_contact_phone),
     vehicle_type: c.vehicle_type || null,
     vehiculo_id: dup ? null : extra.vehiculoId ?? null,
+    usage: dup && extra.uso ? extra.uso : leerUso((c as { usage?: unknown }).usage),
     is_active: dup ? true : c.is_active !== false,
     certificaciones: certs,
     cobra_contraentrega: cobra === undefined ? true : cobra === true,
@@ -409,6 +432,9 @@ export function formularioAPersona(f: FormPersona, metadataActual: Record<string
     emergency_contact_name: limpio(f.emergency_contact_name),
     emergency_contact_phone: limpio(f.emergency_contact_phone),
     is_active: f.is_active,
+    // Logística 1b: el vehículo por defecto vive en la persona (también para el externo sin cuenta).
+    default_vehicle_id: f.vehiculo_id || null,
+    usage: f.usage,
     metadata,
   };
   if (f.modo === 'empleado') return { ...base, employment_id: f.employment_id };
@@ -436,5 +462,6 @@ export function altaExterno(f: FormPersona) {
     tipoVehiculo: f.vehicle_type && (TIPOS_VEHICULO_PERSONA as readonly string[]).includes(f.vehicle_type) ? f.vehicle_type : null,
     cobraContraentrega: f.cobra_contraentrega,
     userId: f.user_id || null,
+    uso: f.usage,
   };
 }

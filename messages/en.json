@@ -41172,6 +41172,151 @@
       "noDisponible": "Applying a template to a location turns on once its migration is applied.",
       "avisoFormulario": "Your location site is created with the {tipo} template. It stays as a draft until you publish it.",
       "avisoCambioTipo": "When you save, the location site switches to the {tipo} template. If it already has its own changes they are kept: we will ask before applying it."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Review source",
+        "recomendado": "Recommended",
+        "real": {
+          "titulo": "Real only",
+          "ayuda": "Only reviews from your customers. If a product has none, it shows «Be the first to review»."
+        },
+        "hastaN": {
+          "titulo": "Real + samples until N",
+          "ayuda": "Fills in with sample reviews while the product doesn't have the real ones you ask for. Once they arrive, the samples go away on their own.",
+          "quitar": "Remove samples at",
+          "reales": "real",
+          "menos": "One less",
+          "mas": "One more"
+        },
+        "generated": {
+          "titulo": "Samples only",
+          "ayuda": "Many random sample reviews, as today. They count in the average and in the stars on product cards."
+        },
+        "nota": "New stores start on «Real only»; existing stores stay as they are. Applies to every product in the store.",
+        "deLaTienda": "This is the store's source: this section hasn't changed it.",
+        "nombres": {
+          "real": "Real only",
+          "hastaN": "Real + samples",
+          "generated": "Samples only"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Show «Verified purchase» on samples",
+        "ayuda": "Sample reviews don't come from real customers. Showing them as verified purchases is the store's decision; Colombia's Superintendence of Industry and Commerce may consider it misleading advertising."
+      },
+      "aviso": {
+        "titulo": "Your customers see sample reviews",
+        "texto": "Source: «{origen}». They look like normal reviews and count in the average and in the stars. Real reviews that arrive aren't shown until you change the source.",
+        "textoHastaN": "Source: «{origen}». They look like normal reviews and count in the average and in the stars, until the product has {n} real reviews.",
+        "cambiar": "Switch to Real only",
+        "nota": "This notice shows while the source is «Samples only» or «Real + samples». With «Real only» it doesn't."
+      },
+      "ajustes": {
+        "boton": "Review settings",
+        "titulo": "Review settings",
+        "descripcion": "Apply to the whole store",
+        "origen": "Review source: {origen}",
+        "origenAyuda": "Chosen in the editor, in the Product Reviews section.",
+        "abrirEditor": "Open editor",
+        "publicacion": "Publishing",
+        "moderar": "Moderate before publishing",
+        "moderarAyuda": "Off, each review goes live as soon as it arrives. Same setting as «Approve reviews automatically», reversed.",
+        "quien": "Who can write",
+        "cualquiera": "Any customer",
+        "compradores": "Buyers only",
+        "quienAyuda": "With «Buyers only» the store asks customers to sign in to My account or for their email and order number, and checks it before saving. Those reviews show «Verified purchase».",
+        "fotos": "Allow photos",
+        "fotosAyuda": "Up to 3 per review, 5 MB each.",
+        "correo": "Ask for reviews by email",
+        "enviar": "Send «How was your purchase?»",
+        "enviarAyuda": "With your store's brand and sender.",
+        "dias": "Days after delivery",
+        "diasAyuda": "Counted from when the order becomes «Delivered». 1 to 30 days.",
+        "menos": "One day less",
+        "mas": "One day more",
+        "recordatorio": "Send a reminder",
+        "recordatorioAyuda": "If they haven't reviewed, just one, 5 days later. Never more than 2 emails per order.",
+        "remitente": "Sender",
+        "dominioVerificado": "Verified domain",
+        "sinDominio": "Without a verified domain, it's sent with your store's name from the fallback address. Never with the GO Admin brand.",
+        "cancelar": "Cancel",
+        "guardar": "Save",
+        "guardado": "Review settings saved.",
+        "error": "We couldn't save: {mensaje}",
+        "errorCarga": "We couldn't load the review settings.",
+        "reintentar": "Retry",
+        "soloLectura": "Read only: ask for the «Edit website» permission to change these settings."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "Pending",
+          "approved": "Published",
+          "rejected": "Hidden",
+          "all": "All"
+        },
+        "estados": {
+          "pending": "Pending",
+          "approved": "Published",
+          "rejected": "Hidden"
+        },
+        "vacio": {
+          "pending": "You have no pending reviews.",
+          "approved": "You haven't published any reviews yet.",
+          "rejected": "You have no hidden reviews.",
+          "all": "You don't have reviews yet. They arrive when a customer rates a product on your site."
+        },
+        "detalle": "Review by {autor}",
+        "publicar": "Publish",
+        "ocultar": "Hide",
+        "responder": "Reply",
+        "editarRespuesta": "Edit reply",
+        "publicarYResponder": "Publish and reply",
+        "guardarRespuesta": "Save reply",
+        "responderComo": "Reply as {tienda}",
+        "responderComoTienda": "Reply as the store",
+        "respuestaAyuda": "Published below the review with your store's name.",
+        "respuestaPlaceholder": "Say thanks and reply kindly.",
+        "destacar": "Feature this review",
+        "destacarAyuda": "Shown first on the product page and in the Carousel style. Up to 3 per product.",
+        "destacada": "Featured",
+        "quitarDestacada": "Remove from featured",
+        "ocultarFoto": "Hide photo",
+        "mostrarFoto": "Show photo",
+        "fotoOculta": "Hidden photo: not shown in the store",
+        "foto": "Photo {n} by {autor}",
+        "llegoPor": "Came from: {canal}",
+        "canales": {
+          "ficha": "product page",
+          "correo": "email after delivery",
+          "pedido": "Order lookup",
+          "cuenta": "My account"
+        },
+        "correo": "Email: {correo} (not published)",
+        "pedido": "Order {numero}",
+        "entregado": "delivered on {fecha}",
+        "sinTexto": "No text: star rating only.",
+        "publicada": "You published the review.",
+        "oculta": "You hid the review.",
+        "respondida": "Your reply was saved.",
+        "destacadaOk": "You featured the review.",
+        "quitadaDestacada": "You removed the review from featured.",
+        "fotoOcultada": "You hid the photo.",
+        "fotoMostrada": "The photo is visible in the store again.",
+        "publicarTodas": "Publish all {n}",
+        "pieTodas": "{n} to review · they appear on the product page once you approve them",
+        "kpis": {
+          "etiqueta": "Reviews summary",
+          "porRevisar": "To review",
+          "masVieja": "Oldest, {fecha}",
+          "publicadas": "Published",
+          "mes": "+{n} in 30 days",
+          "promedio": "Published average",
+          "soloClientes": "Customer reviews only",
+          "verificadas": "Verified purchase",
+          "deTotal": "{n} of {total}"
+        }
+      }
     }
   },
   "roles": {
@@ -69444,7 +69589,8 @@
       "trailer": "Tractor-trailer",
       "boat": "Boat",
       "yacht": "Yacht",
-      "other": "Other"
+      "other": "Other",
+      "bicycle": "Bicycle"
     },
     "motivos": {
       "retraso": "Delay",
@@ -72102,6 +72248,314 @@
       "vence": "{pasarela} · expires {hora}",
       "sinIntentos": "{pasarela} · no attempts",
       "nIntentos": "{pasarela} · {n, plural, one {# attempt} other {# attempts}}"
+    }
+  },
+  "logisticaVehiculo": {
+    "tipos": {
+      "motorcycle": "Motorcycle",
+      "car": "Car",
+      "van": "Van",
+      "bicycle": "Bicycle",
+      "truck": "Truck",
+      "minibus": "Minibus",
+      "bus": "Bus",
+      "trailer": "Trailer",
+      "boat": "Boat",
+      "yacht": "Yacht",
+      "other": "Other",
+      "on_foot": "On foot"
+    },
+    "tiposCorto": {
+      "motorcycle": "motorcycle",
+      "car": "car",
+      "van": "van",
+      "bicycle": "bicycle",
+      "truck": "truck",
+      "minibus": "minibus",
+      "bus": "bus",
+      "trailer": "trailer",
+      "boat": "boat",
+      "yacht": "yacht",
+      "other": "other",
+      "on_foot": "on foot"
+    },
+    "sinPlaca": "no plate",
+    "duenos": {
+      "company": "Company-owned",
+      "driver": "Owned by the courier or driver",
+      "third_party": "Third party (partner or aggregator)"
+    },
+    "duenoCorto": {
+      "company": "company-owned",
+      "driver": "courier's own",
+      "third_party": "third party"
+    },
+    "usos": {
+      "logistics": "Logistics",
+      "transport": "Transport",
+      "both": "Both"
+    },
+    "sinVehiculo": {
+      "on_foot": "On foot",
+      "bicycle": "Bike, no registered vehicle"
+    },
+    "sinVehiculoCorto": {
+      "on_foot": "on foot",
+      "bicycle": "by bike"
+    },
+    "asignar": {
+      "vehiculo": "Vehicle",
+      "obligatorio": "Required for {tipo}",
+      "recomendado": "Recommended for {tipo}",
+      "opcionalEn": "Optional for {tipo}",
+      "opcional": "Optional",
+      "elige": "Choose a vehicle",
+      "porDefecto": "default",
+      "porDefectoDe": "{nombre}'s default",
+      "ayudaDefecto": "Preselected: {nombre}'s default vehicle. You can pick another available Logistics vehicle; the one chosen here is saved on each shipment and does not change if the vehicle record is edited later.",
+      "ayudaEnvio": "This is the vehicle the shipment already had. You can change it; the one chosen here is saved on the shipment.",
+      "ayudaSinVehiculo": "Goes without a registered vehicle: saved that way on the shipment, explicitly.",
+      "ayudaGeneral": "The vehicle chosen here is saved on each shipment and does not change if the vehicle record is edited later.",
+      "soloLogistica": "Only Logistics or Both vehicles. A Transport bus does not show up here.",
+      "revisando": "Checking documents…",
+      "errorRevision": "Documents could not be checked. Try again.",
+      "ocupado": "That vehicle already has open shipments of another person. Choose another one.",
+      "alDia": "Documents and license up to date.",
+      "revision": "Check · {vehiculo} and {nombre}",
+      "causas": {
+        "soat": "SOAT insurance",
+        "tecnomecanica": "Technical inspection",
+        "licencia": "License {categoria}",
+        "sin_licencia": "Driver's license",
+        "categoria_licencia": "License {categoria}",
+        "vehiculo_requerido": "Vehicle",
+        "capacidad_kg": "Weight capacity",
+        "capacidad_m3": "Volume capacity"
+      },
+      "estadoItem": {
+        "vencio": "expired on {fecha}",
+        "venceEn": "{count, plural, one {expires in # day ({fecha})} other {expires in # days ({fecha})}}",
+        "sinLicencia": "no license on file (requires {requeridas})",
+        "categoria": "not valid for {tipo}: requires {requeridas}",
+        "requerido": "choose one to assign"
+      },
+      "bloqueado": {
+        "titulo": "Cannot assign with {vehiculo}",
+        "descripcion": "{causas}. Switch to another vehicle with valid documents or ask a supervisor to authorize the exception. It is logged.",
+        "inline": "{causa} expired: cannot assign with this vehicle"
+      },
+      "requerido": {
+        "titulo": "{nombre} delivers by {tipo}: choose the vehicle",
+        "descripcion": "For motorcycle, car or van the vehicle is required. Choose one from the fleet or register it on the courier record."
+      },
+      "soloAviso": {
+        "titulo": "Expired documents: only a warning for now",
+        "descripcion": "{causas}. The block is off in Settings › Logistics or no supervisor has a PIN; the assignment is logged with the warning."
+      },
+      "capacidad": {
+        "titulo": "The load exceeds the vehicle capacity ({tipo})",
+        "kg": "{count, plural, one {The shipment weighs} other {The # shipments weigh}} {valor} kg and {vehiculo} carries up to {capacidad} kg. It is only a warning: you can assign anyway or split between two couriers.",
+        "m3": "{count, plural, one {The shipment takes} other {The # shipments take}} {valor} m³ and {vehiculo} carries up to {capacidad} m³. It is only a warning: you can assign anyway or split between two couriers."
+      },
+      "bici": {
+        "titulo": "No SOAT, inspection or license",
+        "descripcion": "By bike, on foot or with a third-party vehicle, documents are not checked and nothing is blocked. The “No vehicle (the courier’s)” option no longer exists."
+      },
+      "excepcion": {
+        "o": "or, if there is no other vehicle",
+        "titulo": "Assign with an authorized exception",
+        "descripcion": "Authorized by someone with the “Authorize assignment exception” permission using their HR PIN. {count, plural, one {Valid only for this shipment.} other {Valid only for these # shipments.}}",
+        "boton": "Ask the supervisor for authorization"
+      },
+      "pie": {
+        "habilita": "“Assign” is enabled when everything is up to date",
+        "habilitaExcepcion": "or with the authorized exception",
+        "llevaraEn": "{nombre} will take {count, plural, one {# shipment} other {# shipments}} in {vehiculo}",
+        "llevaraSin": "{nombre} will take {count, plural, one {# shipment} other {# shipments}} {modo}"
+      },
+      "noAsignar": {
+        "vehiculo_requerido": "Choose a vehicle: required for motorcycle, car or van",
+        "bloqueado": "Expired documents: change the vehicle or request the exception",
+        "sin_excepcion": "This assignment does not allow an exception",
+        "ocupado": "The vehicle has open shipments of another person"
+      },
+      "persona": {
+        "licencia": "license {categoria}",
+        "porDefecto": "(default)",
+        "sinRegistrar": "no registered vehicle"
+      },
+      "toast": {
+        "conExcepcion": "{count, plural, one {Shipment assigned} other {# shipments assigned}} to {nombre} with an authorized exception",
+        "conAvisos": "{count, plural, one {One has} other {# have}} document warnings."
+      },
+      "errores": {
+        "VEHICULO_OCUPADO": "The vehicle has open shipments of another person.",
+        "SIN_VEHICULO_INVALIDO": "Choose “On foot” or “Bike, no registered vehicle”.",
+        "NO_ADMITE_EXCEPCION": "The vehicle is missing: choose one to assign.",
+        "BLOQUEADO": "Expired documents: ask the supervisor for the exception."
+      }
+    },
+    "excepcion": {
+      "titulo": "Authorization required",
+      "subtitulo": "Expired document: only a supervisor can authorize it.",
+      "accion": "Action",
+      "detalle": "Detail",
+      "envios": "Shipments",
+      "accionTexto": "Assign with expired {causas}",
+      "supervisor": "Supervisor",
+      "cargando": "Loading…",
+      "eligeSupervisor": "Choose who authorizes",
+      "sinAutorizadores": "Nobody has the “Authorize assignment exception” permission",
+      "sinPinOpcion": "{nombre} (no PIN)",
+      "sinPin": "{nombre} has no PIN assigned",
+      "irAsignarPin": "Assign PIN in Human resources",
+      "pin": "Supervisor PIN",
+      "pinAyuda": "{nombre} types their HR PIN (the kiosk one). It is verified on the server; GO Admin does not store it in the browser. 5 failed attempts in 15 minutes lock it.",
+      "elSupervisor": "The supervisor",
+      "motivo": "Reason",
+      "motivos": {
+        "soat_renovado": "SOAT renewed, not uploaded yet",
+        "urgente": "Urgent delivery",
+        "reemplazo": "Replacement on its way",
+        "otro": "Other"
+      },
+      "detalleMotivo": "Reason detail",
+      "motivoMin": "Reason and detail together: at least {n} characters.",
+      "faltaCompletar": "Choose the supervisor, type their 6-digit PIN and a reason of at least {n} characters",
+      "registro": "It is saved on each shipment and in its log: the expired document, the reason, who asked, who authorized and the time (organization time zone).",
+      "autorizar": "Authorize and assign",
+      "errores": {
+        "pin_rechazado": "Wrong PIN. {n, plural, =0 {No attempts left.} one {# attempt left.} other {# attempts left.}}",
+        "pin_bloqueado": "Locked for 15 minutes after 5 failed attempts (until {hora}). Choose another supervisor or ask Human resources to unlock {nombre}’s PIN.",
+        "motivo_invalido": "The reason must be between 10 and 500 characters.",
+        "falta_supervisor": "Choose the supervisor who authorizes.",
+        "sin_permiso_excepcion": "That person does not have the “Authorize assignment exception” permission.",
+        "supervisor_sin_pin": "That person has no PIN assigned in Human resources.",
+        "no_admite_excepcion": "This assignment does not allow an exception: the vehicle is missing.",
+        "bloqueado": "The assignment is still blocked. Check the reason and the PIN.",
+        "ERROR": "Could not authorize. Try again."
+      }
+    },
+    "alta": {
+      "reparte": "How does this courier deliver?",
+      "elegir": "Choose a fleet vehicle",
+      "deOtro": "{nombre}'s (their default vehicle)",
+      "crearNuevo": "Create new vehicle (plate, owner, SOAT, inspection)",
+      "ayudaFlota": "Only active Logistics or Both vehicles that are not in maintenance. It will be their default vehicle: preselected when assigning a shipment, and it can be changed.",
+      "vehiculoNuevo": "New vehicle",
+      "seCreaConElla": "Created with the person",
+      "placa": "Plate",
+      "placaAyuda": "Unique in the organization",
+      "placaOpcional": "Optional for a bike or a third-party vehicle",
+      "dueno": "Owner",
+      "laPersona": "the person",
+      "duenoAyuda": {
+        "company": "Company-owned: fuel and maintenance are on the company. Plate and documents are required.",
+        "driver": "Courier-owned: the vehicle belongs to {nombre}. Plate and documents are still required because it is on public roads; the company does not cover fuel unless there is an explicit policy.",
+        "third_party": "Third party: the plate is optional and GO Admin does not require its documents (the partner covers them)."
+      },
+      "soat": "SOAT expires",
+      "tecnomecanica": "Inspection expires",
+      "kg": "Capacity (kg)",
+      "m3": "Capacity (m³)",
+      "capacidadAyuda": "Optional. If a shipment exceeds it, only a warning is shown.",
+      "quedaPorDefecto": {
+        "titulo": "It becomes their default vehicle",
+        "descripcion": "It is created in Vehicles with Logistics use. SOAT and inspection photos are uploaded later on the vehicle record."
+      },
+      "mejorFlota": "Better choose one from the fleet",
+      "aPie": "On foot: no vehicle or license is required.",
+      "licencia": "Driver's license",
+      "categoria": "Category",
+      "sinLicencia": "No license on file",
+      "categoriaAyuda": "{tipo}: {categorias}",
+      "categoriaPide": "{tipo} requires {categorias}",
+      "vence": "Expires",
+      "venceAyuda": "If it expires, the assignment warns or blocks depending on the organization",
+      "categoriaIncorrecta": {
+        "titulo": "It can be saved, but that {tipo} cannot be assigned to them",
+        "descripcion": "The same category rule is checked again on the server when assigning."
+      },
+      "uso": "Use",
+      "usoAyuda": "Starts as Logistics because it is registered here. A motorcycle or a bus only shows up as an option in the module of its use.",
+      "usoAmbos": "Also use in Transport (becomes “Both”)",
+      "registrarConVehiculo": "Register courier and vehicle",
+      "guardarIgual": "Save anyway",
+      "avisoVehiculo": "The courier was registered, but the vehicle was not",
+      "errores": {
+        "vehiculo": "For motorcycle, car or van choose a vehicle or create a new one",
+        "placa": "Type the plate",
+        "licencia": "Fill in the expiry date"
+      },
+      "erroresVehiculo": {
+        "PLACA_DUPLICADA": "There is already a vehicle with that plate in the organization. Choose it from the fleet.",
+        "PLACA_REQUERIDA": "The plate is missing (only optional for a bike or third-party vehicle).",
+        "VEHICULO_DE_OTRO": "That vehicle is already the default vehicle of another person.",
+        "VEHICULO_INVALIDO": "That vehicle is not active or is not for Logistics use.",
+        "TIPO_INVALIDO": "That vehicle type cannot be created from here.",
+        "ERROR": "Complete it from the courier record."
+      }
+    },
+    "ficha": {
+      "placaOpcional": "Required except for a bicycle or a third-party vehicle",
+      "dueno": "Owner",
+      "duenoDescripcion": "Who owns the vehicle. It changes what is required and who bears the costs.",
+      "duenoPersona": "Owner courier",
+      "duenoPersonaAyuda": "Required when the owner is the courier. They may not have a GO Admin user.",
+      "errores": {
+        "owner_driver_id": "Choose the person who owns the vehicle"
+      },
+      "avisoDueno": {
+        "company": {
+          "titulo": "Company-owned: plate and documents are required",
+          "descripcion": "Fuel and maintenance are on the company (fleet cost)."
+        },
+        "driver": {
+          "titulo": "Courier-owned: plate and documents are still required",
+          "descripcion": "It is on public roads. The company does not cover fuel unless there is an explicit policy."
+        },
+        "third_party": {
+          "titulo": "Third party: plate is optional",
+          "descripcion": "GO Admin does not require its documents; the partner or aggregator covers them."
+        }
+      },
+      "uso": "Use",
+      "usoDescripcion": "Defines in which module it shows up as an option.",
+      "usoNota": {
+        "logistica": "Starts as Logistics. With “Both” it also shows up for Transport trips; a bus with Transport use never shows up in the delivery assignment sheet.",
+        "transporte": "Starts as Transport. With “Both” it also shows up as a delivery option in Logistics."
+      },
+      "conductorDefecto": "Default driver",
+      "sinConductor": "No default driver",
+      "conductorAyuda": "Saved on the person (default vehicle). Preselected when assigning a shipment; closing the last shipment no longer removes it.",
+      "conductorNoGuardado": "The vehicle was saved, but the default driver was not",
+      "erroresConductor": {
+        "VEHICULO_DE_OTRO": "That vehicle is already the default of another person.",
+        "VEHICULO_INVALIDO": "The vehicle must be active and for Logistics or Both use.",
+        "SIN_PERMISO": "The “Dispatch shipments” permission (logistica.manage) is required.",
+        "ERROR": "Try again from the person record."
+      },
+      "biciSinDocumentos": "A bike does not require SOAT or technical inspection.",
+      "documentosBloquean": "When the organization turns it on, expired documents block delivery assignments (unless a supervisor authorizes with a PIN).",
+      "vehiculoPersonaAyuda": "Their default vehicle: preselected when assigning a shipment. It also works for an external courier without an account."
+    },
+    "listas": {
+      "uso": "Use",
+      "chipUso": "Use: {uso}",
+      "aPie": "On foot",
+      "biciSinRegistrar": "Unregistered bike",
+      "sinVehiculo": "no vehicle"
+    },
+    "detalle": {
+      "guardado": "Saved at assignment: it does not change if the vehicle record is edited.",
+      "excepcion": "Authorized exception"
+    },
+    "ajustes": {
+      "bloqueo": {
+        "titulo": "Block assignment with expired documents",
+        "descripcion": "Expired SOAT, technical inspection or license (or a license of another category) on a motorcycle, car or van block own-delivery assignments, unless a supervisor authorizes an exception with their PIN. Off: only a warning. While no supervisor has a PIN, it is also only a warning.",
+        "asignarPin": "Assign PIN in Human resources"
+      }
     }
   }
 }

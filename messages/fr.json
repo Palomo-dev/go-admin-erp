@@ -41172,6 +41172,151 @@
       "noDisponible": "Appliquer un modèle à un site s’active une fois sa migration appliquée.",
       "avisoFormulario": "Le site de cet établissement est créé avec le modèle {tipo}. Il reste en brouillon jusqu’à sa publication.",
       "avisoCambioTipo": "À l’enregistrement, le site de l’établissement passe au modèle {tipo}. S’il contient déjà vos modifications, elles sont conservées : nous vous demanderons avant de l’appliquer."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Origine des avis",
+        "recomendado": "Recommandé",
+        "real": {
+          "titulo": "Réels uniquement",
+          "ayuda": "Uniquement les avis de vos clients. Si un produit n'en a pas, on voit «Soyez le premier à donner votre avis»."
+        },
+        "hastaN": {
+          "titulo": "Réels + exemples jusqu'à N",
+          "ayuda": "Complète avec des avis d'exemple tant que le produit n'a pas les avis réels demandés. Ensuite, les exemples disparaissent d'eux-mêmes.",
+          "quitar": "Retirer les exemples à",
+          "reales": "réels",
+          "menos": "Un de moins",
+          "mas": "Un de plus"
+        },
+        "generated": {
+          "titulo": "Exemples uniquement",
+          "ayuda": "Beaucoup d'avis d'exemple, aléatoires, comme aujourd'hui. Ils comptent dans la moyenne et dans les étoiles des fiches."
+        },
+        "nota": "Les nouvelles boutiques commencent en «Réels uniquement» ; celles qui existent restent comme elles sont. Vaut pour tous les produits de la boutique.",
+        "deLaTienda": "C'est l'origine de la boutique : cette section ne l'a pas modifiée.",
+        "nombres": {
+          "real": "Réels uniquement",
+          "hastaN": "Réels + exemples",
+          "generated": "Exemples uniquement"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Afficher «Achat vérifié» sur les exemples",
+        "ayuda": "Les avis d'exemple ne viennent pas de vrais clients. Les afficher comme achats vérifiés est la décision de la boutique ; la Superintendance de l'industrie et du commerce (Colombie) peut le considérer comme de la publicité trompeuse."
+      },
+      "aviso": {
+        "titulo": "Vos clients voient des avis d'exemple",
+        "texto": "Origine : «{origen}». Ils apparaissent comme des avis normaux et comptent dans la moyenne et les étoiles. Les vrais avis qui arrivent ne s'affichent pas tant que vous ne changez pas l'origine.",
+        "textoHastaN": "Origine : «{origen}». Ils apparaissent comme des avis normaux et comptent dans la moyenne et les étoiles, jusqu'à ce que le produit ait {n} avis réels.",
+        "cambiar": "Passer à Réels uniquement",
+        "nota": "Cet avertissement s'affiche tant que l'origine est «Exemples uniquement» ou «Réels + exemples». Avec «Réels uniquement», il ne s'affiche pas."
+      },
+      "ajustes": {
+        "boton": "Réglages des avis",
+        "titulo": "Réglages des avis",
+        "descripcion": "Valables pour toute la boutique",
+        "origen": "Origine des avis : {origen}",
+        "origenAyuda": "Se choisit dans l'éditeur, dans la section Avis produit.",
+        "abrirEditor": "Ouvrir l'éditeur",
+        "publicacion": "Publication",
+        "moderar": "Modérer avant de publier",
+        "moderarAyuda": "Désactivé, chaque avis est publié dès son arrivée. C'est le même réglage que «Approuver les avis automatiquement», inversé.",
+        "quien": "Qui peut écrire",
+        "cualquiera": "Tout client",
+        "compradores": "Acheteurs uniquement",
+        "quienAyuda": "Avec «Acheteurs uniquement», la boutique demande de se connecter à Mon compte ou l'e-mail et le numéro de commande, et le vérifie avant d'enregistrer. Ces avis portent «Achat vérifié».",
+        "fotos": "Autoriser les photos",
+        "fotosAyuda": "Jusqu'à 3 par avis, 5 Mo chacune.",
+        "correo": "Demander un avis par e-mail",
+        "enviar": "Envoyer «Qu'avez-vous pensé de votre achat ?»",
+        "enviarAyuda": "Avec la marque et l'expéditeur de votre boutique.",
+        "dias": "Jours après la livraison",
+        "diasAyuda": "Compté à partir du passage de la commande à «Livrée». De 1 à 30 jours.",
+        "menos": "Un jour de moins",
+        "mas": "Un jour de plus",
+        "recordatorio": "Envoyer un rappel",
+        "recordatorioAyuda": "S'il n'a pas donné son avis, un seul, 5 jours plus tard. Jamais plus de 2 e-mails par commande.",
+        "remitente": "Expéditeur",
+        "dominioVerificado": "Domaine vérifié",
+        "sinDominio": "Sans domaine vérifié, l'e-mail part avec le nom de votre boutique depuis l'adresse de secours. Jamais avec la marque GO Admin.",
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer",
+        "guardado": "Réglages des avis enregistrés.",
+        "error": "Impossible d'enregistrer : {mensaje}",
+        "errorCarga": "Impossible de charger les réglages des avis.",
+        "reintentar": "Réessayer",
+        "soloLectura": "Lecture seule : demandez l'autorisation «Modifier le site web» pour changer ces réglages."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "En attente",
+          "approved": "Publiés",
+          "rejected": "Masqués",
+          "all": "Tous"
+        },
+        "estados": {
+          "pending": "En attente",
+          "approved": "Publié",
+          "rejected": "Masqué"
+        },
+        "vacio": {
+          "pending": "Vous n'avez aucun avis en attente.",
+          "approved": "Vous n'avez encore publié aucun avis.",
+          "rejected": "Vous n'avez aucun avis masqué.",
+          "all": "Vous n'avez pas encore d'avis. Ils arrivent quand un client note un produit sur votre site."
+        },
+        "detalle": "Avis de {autor}",
+        "publicar": "Publier",
+        "ocultar": "Masquer",
+        "responder": "Répondre",
+        "editarRespuesta": "Modifier la réponse",
+        "publicarYResponder": "Publier et répondre",
+        "guardarRespuesta": "Enregistrer la réponse",
+        "responderComo": "Répondre en tant que {tienda}",
+        "responderComoTienda": "Répondre en tant que boutique",
+        "respuestaAyuda": "Publiée sous l'avis avec le nom de votre boutique.",
+        "respuestaPlaceholder": "Remerciez et répondez avec amabilité.",
+        "destacar": "Mettre en avant cet avis",
+        "destacarAyuda": "Apparaît en premier sur la fiche et dans le style Carrousel. Jusqu'à 3 par produit.",
+        "destacada": "En avant",
+        "quitarDestacada": "Retirer de la mise en avant",
+        "ocultarFoto": "Masquer la photo",
+        "mostrarFoto": "Afficher la photo",
+        "fotoOculta": "Photo masquée : elle ne s'affiche pas dans la boutique",
+        "foto": "Photo {n} de {autor}",
+        "llegoPor": "Arrivé par : {canal}",
+        "canales": {
+          "ficha": "fiche produit",
+          "correo": "e-mail après la livraison",
+          "pedido": "Suivi de commande",
+          "cuenta": "Mon compte"
+        },
+        "correo": "E-mail : {correo} (non publié)",
+        "pedido": "Commande {numero}",
+        "entregado": "livrée le {fecha}",
+        "sinTexto": "Sans texte : note en étoiles uniquement.",
+        "publicada": "Vous avez publié l'avis.",
+        "oculta": "Vous avez masqué l'avis.",
+        "respondida": "Votre réponse est enregistrée.",
+        "destacadaOk": "Vous avez mis l'avis en avant.",
+        "quitadaDestacada": "Vous avez retiré l'avis de la mise en avant.",
+        "fotoOcultada": "Vous avez masqué la photo.",
+        "fotoMostrada": "La photo est de nouveau visible dans la boutique.",
+        "publicarTodas": "Publier les {n}",
+        "pieTodas": "{n} à vérifier · ils apparaissent sur la fiche une fois approuvés",
+        "kpis": {
+          "etiqueta": "Résumé des avis",
+          "porRevisar": "À vérifier",
+          "masVieja": "Le plus ancien, {fecha}",
+          "publicadas": "Publiés",
+          "mes": "+{n} en 30 jours",
+          "promedio": "Moyenne publiée",
+          "soloClientes": "Avis clients uniquement",
+          "verificadas": "Achat vérifié",
+          "deTotal": "{n} sur {total}"
+        }
+      }
     }
   },
   "roles": {
@@ -69444,7 +69589,8 @@
       "trailer": "Semi-remorque",
       "boat": "Bateau",
       "yacht": "Yacht",
-      "other": "Autre"
+      "other": "Autre",
+      "bicycle": "Vélo"
     },
     "motivos": {
       "retraso": "Retard",
@@ -72102,6 +72248,314 @@
       "vence": "{pasarela} · expire à {hora}",
       "sinIntentos": "{pasarela} · aucune tentative",
       "nIntentos": "{pasarela} · {n, plural, one {# tentative} other {# tentatives}}"
+    }
+  },
+  "logisticaVehiculo": {
+    "tipos": {
+      "motorcycle": "Moto",
+      "car": "Voiture",
+      "van": "Camionnette",
+      "bicycle": "Vélo",
+      "truck": "Camion",
+      "minibus": "Minibus",
+      "bus": "Bus",
+      "trailer": "Remorque",
+      "boat": "Bateau",
+      "yacht": "Yacht",
+      "other": "Autre",
+      "on_foot": "À pied"
+    },
+    "tiposCorto": {
+      "motorcycle": "moto",
+      "car": "voiture",
+      "van": "camionnette",
+      "bicycle": "vélo",
+      "truck": "camion",
+      "minibus": "minibus",
+      "bus": "bus",
+      "trailer": "remorque",
+      "boat": "bateau",
+      "yacht": "yacht",
+      "other": "autre",
+      "on_foot": "à pied"
+    },
+    "sinPlaca": "sans plaque",
+    "duenos": {
+      "company": "De l'entreprise",
+      "driver": "Du livreur ou conducteur",
+      "third_party": "D'un tiers (partenaire ou agrégateur)"
+    },
+    "duenoCorto": {
+      "company": "de l'entreprise",
+      "driver": "du livreur",
+      "third_party": "d'un tiers"
+    },
+    "usos": {
+      "logistics": "Logistique",
+      "transport": "Transport",
+      "both": "Les deux"
+    },
+    "sinVehiculo": {
+      "on_foot": "À pied",
+      "bicycle": "Vélo sans véhicule enregistré"
+    },
+    "sinVehiculoCorto": {
+      "on_foot": "à pied",
+      "bicycle": "à vélo"
+    },
+    "asignar": {
+      "vehiculo": "Véhicule",
+      "obligatorio": "Obligatoire en {tipo}",
+      "recomendado": "Recommandé en {tipo}",
+      "opcionalEn": "Facultatif en {tipo}",
+      "opcional": "Facultatif",
+      "elige": "Choisissez un véhicule",
+      "porDefecto": "par défaut",
+      "porDefectoDe": "par défaut de {nombre}",
+      "ayudaDefecto": "Présélectionné : le véhicule par défaut de {nombre}. Vous pouvez en choisir un autre de Logistique disponible ; celui choisi ici est enregistré sur chaque envoi et ne change pas si la fiche est modifiée ensuite.",
+      "ayudaEnvio": "C'est le véhicule que l'envoi avait déjà. Vous pouvez le changer ; celui choisi ici est enregistré sur l'envoi.",
+      "ayudaSinVehiculo": "Part sans véhicule enregistré : c'est enregistré ainsi sur l'envoi, explicitement.",
+      "ayudaGeneral": "Le véhicule choisi ici est enregistré sur chaque envoi et ne change pas si la fiche est modifiée ensuite.",
+      "soloLogistica": "Seulement les véhicules Logistique ou Les deux. Un bus de Transport n'apparaît pas ici.",
+      "revisando": "Vérification des documents…",
+      "errorRevision": "Les documents n'ont pas pu être vérifiés. Réessayez.",
+      "ocupado": "Ce véhicule a déjà des envois ouverts d'une autre personne. Choisissez-en un autre.",
+      "alDia": "Documents et permis à jour.",
+      "revision": "Vérification · {vehiculo} et {nombre}",
+      "causas": {
+        "soat": "Assurance SOAT",
+        "tecnomecanica": "Contrôle technique",
+        "licencia": "Permis {categoria}",
+        "sin_licencia": "Permis de conduire",
+        "categoria_licencia": "Permis {categoria}",
+        "vehiculo_requerido": "Véhicule",
+        "capacidad_kg": "Capacité en poids",
+        "capacidad_m3": "Capacité en volume"
+      },
+      "estadoItem": {
+        "vencio": "expiré le {fecha}",
+        "venceEn": "{count, plural, one {expire dans # jour ({fecha})} other {expire dans # jours ({fecha})}}",
+        "sinLicencia": "aucun permis enregistré (exige {requeridas})",
+        "categoria": "non valable pour {tipo} : exige {requeridas}",
+        "requerido": "choisissez-en un pour assigner"
+      },
+      "bloqueado": {
+        "titulo": "Impossible d'assigner avec {vehiculo}",
+        "descripcion": "{causas}. Changez pour un autre véhicule aux documents à jour ou demandez à un superviseur d'autoriser l'exception. C'est enregistré.",
+        "inline": "{causa} expiré : impossible d’assigner avec ce véhicule"
+      },
+      "requerido": {
+        "titulo": "{nombre} livre en {tipo} : choisissez le véhicule",
+        "descripcion": "En moto, voiture ou camionnette, le véhicule est obligatoire. Choisissez-en un dans la flotte ou enregistrez-le sur la fiche du livreur."
+      },
+      "soloAviso": {
+        "titulo": "Documents expirés : simple avertissement pour le moment",
+        "descripcion": "{causas}. Le blocage est désactivé dans Paramètres › Logistique ou aucun superviseur n'a de PIN ; l'assignation est enregistrée avec l'avertissement."
+      },
+      "capacidad": {
+        "titulo": "La charge dépasse la capacité du véhicule ({tipo})",
+        "kg": "{count, plural, one {L'envoi pèse} other {Les # envois pèsent}} {valor} kg et {vehiculo} transporte jusqu'à {capacidad} kg. Ce n'est qu'un avertissement : vous pouvez assigner quand même ou répartir entre deux livreurs.",
+        "m3": "{count, plural, one {L'envoi occupe} other {Les # envois occupent}} {valor} m³ et {vehiculo} transporte jusqu'à {capacidad} m³. Ce n'est qu'un avertissement : vous pouvez assigner quand même ou répartir entre deux livreurs."
+      },
+      "bici": {
+        "titulo": "Sans SOAT, contrôle technique ni permis",
+        "descripcion": "À vélo, à pied ou avec le véhicule d'un tiers, les documents ne sont pas vérifiés et rien n'est bloqué. L'option « Sans véhicule (celui du livreur) » n'existe plus."
+      },
+      "excepcion": {
+        "o": "ou, s'il n'y a pas d'autre véhicule",
+        "titulo": "Assigner avec une exception autorisée",
+        "descripcion": "Autorisée par une personne ayant la permission « Autoriser une exception d'assignation » avec son PIN RH. {count, plural, one {Valable seulement pour cet envoi.} other {Valable seulement pour ces # envois.}}",
+        "boton": "Demander l'autorisation au superviseur"
+      },
+      "pie": {
+        "habilita": "« Assigner » s’active quand tout est à jour",
+        "habilitaExcepcion": "ou avec l'exception autorisée",
+        "llevaraEn": "{nombre} transportera {count, plural, one {# envoi} other {# envois}} en {vehiculo}",
+        "llevaraSin": "{nombre} transportera {count, plural, one {# envoi} other {# envois}} {modo}"
+      },
+      "noAsignar": {
+        "vehiculo_requerido": "Choisissez un véhicule : obligatoire en moto, voiture ou camionnette",
+        "bloqueado": "Documents expirés : changez de véhicule ou demandez l'exception",
+        "sin_excepcion": "Cette assignation n'admet pas d'exception",
+        "ocupado": "Le véhicule a des envois ouverts d'une autre personne"
+      },
+      "persona": {
+        "licencia": "permis {categoria}",
+        "porDefecto": "(par défaut)",
+        "sinRegistrar": "sans véhicule enregistré"
+      },
+      "toast": {
+        "conExcepcion": "{count, plural, one {Envoi assigné} other {# envois assignés}} à {nombre} avec une exception autorisée",
+        "conAvisos": "{count, plural, one {Un a} other {# ont}} des avertissements de documents."
+      },
+      "errores": {
+        "VEHICULO_OCUPADO": "Le véhicule a des envois ouverts d'une autre personne.",
+        "SIN_VEHICULO_INVALIDO": "Choisissez « À pied » ou « Vélo sans véhicule enregistré ».",
+        "NO_ADMITE_EXCEPCION": "Le véhicule manque : choisissez-en un pour assigner.",
+        "BLOQUEADO": "Documents expirés : demandez l'exception au superviseur."
+      }
+    },
+    "excepcion": {
+      "titulo": "Autorisation requise",
+      "subtitulo": "Document expiré : seul un superviseur peut l'autoriser.",
+      "accion": "Action",
+      "detalle": "Détail",
+      "envios": "Envois",
+      "accionTexto": "Assigner avec {causas} expiré",
+      "supervisor": "Superviseur",
+      "cargando": "Chargement…",
+      "eligeSupervisor": "Choisissez qui autorise",
+      "sinAutorizadores": "Personne n'a la permission « Autoriser une exception d'assignation »",
+      "sinPinOpcion": "{nombre} (sans PIN)",
+      "sinPin": "{nombre} n'a pas de PIN attribué",
+      "irAsignarPin": "Attribuer un PIN dans Ressources humaines",
+      "pin": "PIN du superviseur",
+      "pinAyuda": "{nombre} saisit son PIN RH (celui de la borne). Il est vérifié sur le serveur ; GO Admin ne l'enregistre pas dans le navigateur. 5 essais échoués en 15 minutes le bloquent.",
+      "elSupervisor": "Le superviseur",
+      "motivo": "Motif",
+      "motivos": {
+        "soat_renovado": "SOAT renouvelé, pas encore téléversé",
+        "urgente": "Livraison urgente",
+        "reemplazo": "Remplacement en route",
+        "otro": "Autre"
+      },
+      "detalleMotivo": "Détail du motif",
+      "motivoMin": "Motif et détail ensemble : au moins {n} caractères.",
+      "faltaCompletar": "Choisissez le superviseur, saisissez son PIN à 6 chiffres et un motif d’au moins {n} caractères",
+      "registro": "C'est enregistré sur chaque envoi et dans son journal : le document expiré, le motif, qui a demandé, qui a autorisé et l'heure (fuseau horaire de l'organisation).",
+      "autorizar": "Autoriser et assigner",
+      "errores": {
+        "pin_rechazado": "PIN incorrect. {n, plural, =0 {Plus aucun essai.} one {Il reste # essai.} other {Il reste # essais.}}",
+        "pin_bloqueado": "Bloqué pendant 15 minutes après 5 essais échoués (jusqu'à {hora}). Choisissez un autre superviseur ou demandez aux Ressources humaines de débloquer le PIN de {nombre}.",
+        "motivo_invalido": "Le motif doit comporter entre 10 et 500 caractères.",
+        "falta_supervisor": "Choisissez le superviseur qui autorise.",
+        "sin_permiso_excepcion": "Cette personne n'a pas la permission « Autoriser une exception d'assignation ».",
+        "supervisor_sin_pin": "Cette personne n'a pas de PIN attribué dans Ressources humaines.",
+        "no_admite_excepcion": "Cette assignation n'admet pas d'exception : le véhicule manque.",
+        "bloqueado": "L'assignation reste bloquée. Vérifiez le motif et le PIN.",
+        "ERROR": "Impossible d'autoriser. Réessayez."
+      }
+    },
+    "alta": {
+      "reparte": "Comment livre-t-il ?",
+      "elegir": "Choisissez un véhicule de la flotte",
+      "deOtro": "de {nombre} (son véhicule par défaut)",
+      "crearNuevo": "Créer un nouveau véhicule (plaque, propriétaire, SOAT, contrôle technique)",
+      "ayudaFlota": "Seuls les véhicules Logistique ou Les deux, actifs et hors maintenance. Ce sera son véhicule par défaut : présélectionné lors de l'assignation d'un envoi, et modifiable.",
+      "vehiculoNuevo": "Nouveau véhicule",
+      "seCreaConElla": "Créé avec la personne",
+      "placa": "Plaque",
+      "placaAyuda": "Unique dans l'organisation",
+      "placaOpcional": "Facultative pour un vélo ou le véhicule d'un tiers",
+      "dueno": "Propriétaire",
+      "laPersona": "la personne",
+      "duenoAyuda": {
+        "company": "De l'entreprise : carburant et entretien sont à la charge de l'entreprise. Plaque et documents sont exigés.",
+        "driver": "Du livreur : le véhicule appartient à {nombre}. Plaque et documents sont quand même exigés car il circule sur la voie publique ; l'entreprise ne prend pas en charge le carburant sauf politique expresse.",
+        "third_party": "D'un tiers : la plaque est facultative et GO Admin n'exige pas ses documents (le partenaire les couvre)."
+      },
+      "soat": "SOAT expire",
+      "tecnomecanica": "Contrôle technique expire",
+      "kg": "Capacité (kg)",
+      "m3": "Capacité (m³)",
+      "capacidadAyuda": "Facultatif. Si un envoi la dépasse, seul un avertissement est affiché.",
+      "quedaPorDefecto": {
+        "titulo": "Il devient son véhicule par défaut",
+        "descripcion": "Il est créé dans Véhicules avec l’usage Logistique. Les photos du SOAT et du contrôle technique se téléversent ensuite sur la fiche du véhicule."
+      },
+      "mejorFlota": "Plutôt choisir un véhicule de la flotte",
+      "aPie": "À pied : ni véhicule ni permis exigés.",
+      "licencia": "Permis de conduire",
+      "categoria": "Catégorie",
+      "sinLicencia": "Aucun permis enregistré",
+      "categoriaAyuda": "{tipo} : {categorias}",
+      "categoriaPide": "{tipo} exige {categorias}",
+      "vence": "Expire",
+      "venceAyuda": "S'il expire, l'assignation avertit ou bloque selon l'organisation",
+      "categoriaIncorrecta": {
+        "titulo": "On peut enregistrer, mais ce/cette {tipo} ne pourra pas lui être assigné(e)",
+        "descripcion": "La même règle de catégories est vérifiée à nouveau sur le serveur lors de l'assignation."
+      },
+      "uso": "Usage",
+      "usoAyuda": "Naît en Logistique car il est enregistré ici. Une moto ou un bus n'apparaît comme option que dans le module de son usage.",
+      "usoAmbos": "Utiliser aussi en Transport (devient « Les deux »)",
+      "registrarConVehiculo": "Enregistrer le livreur et le véhicule",
+      "guardarIgual": "Enregistrer quand même",
+      "avisoVehiculo": "Le livreur a été enregistré, mais pas le véhicule",
+      "errores": {
+        "vehiculo": "En moto, voiture ou camionnette, choisissez un véhicule ou créez-en un",
+        "placa": "Saisissez la plaque",
+        "licencia": "Indiquez la date d'expiration"
+      },
+      "erroresVehiculo": {
+        "PLACA_DUPLICADA": "Il existe déjà un véhicule avec cette plaque dans l'organisation. Choisissez-le dans la flotte.",
+        "PLACA_REQUERIDA": "La plaque manque (facultative seulement pour un vélo ou le véhicule d'un tiers).",
+        "VEHICULO_DE_OTRO": "Ce véhicule est déjà le véhicule par défaut d'une autre personne.",
+        "VEHICULO_INVALIDO": "Ce véhicule n'est pas actif ou n'est pas d'usage Logistique.",
+        "TIPO_INVALIDO": "Ce type de véhicule ne peut pas être créé ici.",
+        "ERROR": "Complétez-le depuis la fiche du livreur."
+      }
+    },
+    "ficha": {
+      "placaOpcional": "Obligatoire sauf pour un vélo ou le véhicule d'un tiers",
+      "dueno": "Propriétaire",
+      "duenoDescripcion": "Qui possède le véhicule. Cela change ce qui est exigé et à qui sont imputés les coûts.",
+      "duenoPersona": "Livreur propriétaire",
+      "duenoPersonaAyuda": "Obligatoire quand le propriétaire est le livreur. Il peut ne pas avoir d'utilisateur GO Admin.",
+      "errores": {
+        "owner_driver_id": "Choisissez la personne propriétaire du véhicule"
+      },
+      "avisoDueno": {
+        "company": {
+          "titulo": "De l'entreprise : plaque et documents exigés",
+          "descripcion": "Carburant et entretien à la charge de l'entreprise (coût de flotte)."
+        },
+        "driver": {
+          "titulo": "Du livreur : plaque et documents exigés quand même",
+          "descripcion": "Il circule sur la voie publique. L'entreprise ne prend pas en charge le carburant sauf politique expresse."
+        },
+        "third_party": {
+          "titulo": "D'un tiers : plaque facultative",
+          "descripcion": "GO Admin n'exige pas ses documents ; le partenaire ou l'agrégateur les couvre."
+        }
+      },
+      "uso": "Usage",
+      "usoDescripcion": "Définit dans quel module il apparaît comme option.",
+      "usoNota": {
+        "logistica": "Naît en Logistique. Avec « Les deux » il apparaît aussi pour les trajets de Transport ; un bus d'usage Transport n'apparaît jamais dans la feuille d'assignation de livraison.",
+        "transporte": "Naît en Transport. Avec « Les deux » il apparaît aussi comme option de livraison en Logistique."
+      },
+      "conductorDefecto": "Conducteur par défaut",
+      "sinConductor": "Aucun conducteur par défaut",
+      "conductorAyuda": "Enregistré sur la personne (véhicule par défaut). Présélectionné lors de l'assignation d'un envoi ; clore le dernier envoi ne le retire plus.",
+      "conductorNoGuardado": "Le véhicule a été enregistré, mais pas le conducteur par défaut",
+      "erroresConductor": {
+        "VEHICULO_DE_OTRO": "Ce véhicule est déjà celui par défaut d'une autre personne.",
+        "VEHICULO_INVALIDO": "Le véhicule doit être actif et d'usage Logistique ou Les deux.",
+        "SIN_PERMISO": "La permission « Expédier les envois » (logistica.manage) est requise.",
+        "ERROR": "Réessayez depuis la fiche de la personne."
+      },
+      "biciSinDocumentos": "Un vélo n'exige ni SOAT ni contrôle technique.",
+      "documentosBloquean": "Quand l'organisation l'active, les documents expirés bloquent l'assignation des livraisons (sauf exception d'un superviseur avec PIN).",
+      "vehiculoPersonaAyuda": "Son véhicule par défaut : présélectionné lors de l'assignation d'un envoi. Fonctionne aussi pour un livreur externe sans compte."
+    },
+    "listas": {
+      "uso": "Usage",
+      "chipUso": "Usage : {uso}",
+      "aPie": "À pied",
+      "biciSinRegistrar": "Vélo non enregistré",
+      "sinVehiculo": "sans véhicule"
+    },
+    "detalle": {
+      "guardado": "Enregistré lors de l'assignation : ne change pas si la fiche du véhicule est modifiée.",
+      "excepcion": "Exception autorisée"
+    },
+    "ajustes": {
+      "bloqueo": {
+        "titulo": "Bloquer l'assignation avec des documents expirés",
+        "descripcion": "SOAT, contrôle technique ou permis expirés (ou permis d'une autre catégorie) en moto, voiture ou camionnette bloquent l'assignation des livraisons propres, sauf exception d'un superviseur avec son PIN. Désactivé : simple avertissement. Tant qu'aucun superviseur n'a de PIN, c'est aussi un simple avertissement.",
+        "asignarPin": "Attribuer un PIN dans Ressources humaines"
+      }
     }
   }
 }

@@ -73,6 +73,8 @@ import {
   type FilaConductor,
   type ResumenDocs,
 } from '@/lib/transporte/catalogoComun';
+import { FILTROS_USO } from '@/lib/transporte/catalogoComun';
+import { textoVehiculoPersona } from '@/components/logistica/domiciliarios/textoVehiculo';
 import { RUTAS_LOGISTICA } from '@/lib/logistica/rutas';
 import { DialogoDocumento, type InicialDocumento } from '@/components/transporte/flota/DialogoDocumento';
 import { DriverStatusDialog } from './DriverStatusDialog';
@@ -84,6 +86,7 @@ const TAMANOS = [10, 25, 50] as const;
 
 export function ConductoresPage() {
   const t = useTranslations('catalogoComun.conductores');
+  const tl = useTranslations('logisticaVehiculo');
   const tc = useTranslations('catalogoComun.comun');
   const tTipos = useTranslations('transporte.tiposVehiculo');
   const tFlota = useTranslations('transporte.flota');
@@ -96,7 +99,7 @@ export function ConductoresPage() {
   const organizationId = Number(getOrganizationId()) || null;
   const hoy = getToday();
 
-  const l = useListadoServidor({ filtros: ['cargo', 'estado', 'categoria', 'documentos', 'vehiculo'], tamanoPorDefecto: 10, tamanosPermitidos: TAMANOS });
+  const l = useListadoServidor({ filtros: ['cargo', 'estado', 'categoria', 'documentos', 'vehiculo', 'uso'], tamanoPorDefecto: 10, tamanosPermitidos: TAMANOS });
 
   const [personas, setPersonas] = useState<PersonaCatalogo[]>([]);
   const [vehiculos, setVehiculos] = useState<Vehicle[]>([]);
@@ -161,6 +164,8 @@ export function ConductoresPage() {
     categoria: (CATEGORIAS_LICENCIA as readonly string[]).includes(l.filtros.categoria ?? '') ? l.filtros.categoria ?? null : null,
     documentos: (FILTROS_DOCS as readonly string[]).includes(l.filtros.documentos ?? '') ? l.filtros.documentos ?? null : null,
     vehiculo: (FILTROS_VEHICULO_PERSONA as readonly string[]).includes(l.filtros.vehiculo ?? '') ? l.filtros.vehiculo ?? null : null,
+    // Logística 1b: «Uso» (Logística, Transporte, Ambos).
+    uso: (FILTROS_USO as readonly string[]).includes(l.filtros.uso ?? '') ? l.filtros.uso ?? null : null,
   };
   const claveFiltros = JSON.stringify(filtros);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -309,8 +314,17 @@ export function ConductoresPage() {
       id: 'vehiculo',
       encabezado: t('columnas.vehiculo'),
       ocultarDebajo: 'md',
-      celda: (f) => (f.vehiculo ? dosLineas(f.vehiculo.placa, tipoTexto(f.vehiculo.tipo)) : <span className="text-fg-muted">{t('sinVehiculo')}</span>),
+      // Logística 1b: placa del vehículo por defecto; «a pie» y «bici sin registrar» no son falta.
+      celda: (f) =>
+        f.vehiculo ? (
+          dosLineas(f.vehiculo.placa || tl('sinPlaca'), tipoTexto(f.vehiculo.tipo))
+        ) : f.persona.tipoVehiculo === 'on_foot' || f.persona.tipoVehiculo === 'bicycle' ? (
+          <span className="text-fg-secondary">{textoVehiculoPersona({ vehicle_type: f.persona.tipoVehiculo }, tl)}</span>
+        ) : (
+          <span className="text-fg-muted">{t('sinVehiculo')}</span>
+        ),
     },
+    { id: 'uso', encabezado: tl('listas.uso'), ocultarDebajo: 'xl', celda: (f) => <span className="text-fg">{tl(`usos.${f.uso}`)}</span> },
     { id: 'estado', encabezado: t('columnas.estado'), celda: estadoBadge },
   ];
 
@@ -321,11 +335,12 @@ export function ConductoresPage() {
     ...(filtros.categoria ? [{ clave: 'categoria', etiqueta: t('filtros.chipCategoria', { categoria: filtros.categoria }) }] : []),
     ...(filtros.documentos ? [{ clave: 'documentos', etiqueta: t('filtros.chipDocumentos', { estado: tc(`docs.${filtros.documentos}`) }) }] : []),
     ...(filtros.vehiculo ? [{ clave: 'vehiculo', etiqueta: t(`filtros.vehiculo_${filtros.vehiculo}`) }] : []),
+    ...(filtros.uso ? [{ clave: 'uso', etiqueta: tl('listas.chipUso', { uso: tl(`usos.${filtros.uso}`) }) }] : []),
   ];
   const hayCriterios = !!(l.busqueda || chips.length);
 
-  const selectFiltro = (clave: 'cargo' | 'estado' | 'categoria' | 'documentos' | 'vehiculo', opciones: readonly { valor: string; etiqueta: string }[]) => (
-    <FormField etiqueta={t(`filtros.${clave}`)}>
+  const selectFiltro = (clave: 'cargo' | 'estado' | 'categoria' | 'documentos' | 'vehiculo' | 'uso', opciones: readonly { valor: string; etiqueta: string }[]) => (
+    <FormField etiqueta={clave === 'uso' ? tl('listas.uso') : t(`filtros.${clave}`)}>
       {(cp) => (
         <Select value={l.filtros[clave] ?? 'todos'} onValueChange={(v) => l.setFiltro(clave, v === 'todos' ? null : v)}>
           <SelectTrigger id={cp.id} aria-labelledby={cp.idEtiqueta} className="h-10 border-line-strong bg-surface">
@@ -457,6 +472,7 @@ export function ConductoresPage() {
                 {selectFiltro('categoria', CATEGORIAS_LICENCIA.map((v) => ({ valor: v, etiqueta: `${v} · ${categoriaTexto(v) ?? ''}` })))}
                 {selectFiltro('documentos', FILTROS_DOCS.map((v) => ({ valor: v, etiqueta: tc(`docs.${v}`) })))}
                 {selectFiltro('vehiculo', FILTROS_VEHICULO_PERSONA.map((v) => ({ valor: v, etiqueta: t(`filtros.vehiculo_${v}`) })))}
+                {selectFiltro('uso', FILTROS_USO.map((v) => ({ valor: v, etiqueta: tl(`usos.${v}`) })))}
               </FilterPanel>
             }
             chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} textoLimpiarTodo={tc('limpiarTodo')} />}

@@ -6,10 +6,13 @@
  * bloqueo de despacho): por cada dueño se toma el peor documento, que es el primero porque
  * `documentosFlota` ordena por días.
  *
- * Lo que el diseño pide y la base no tiene (verificado con el MCP, 2026-11-24): la columna y el
- * filtro «Uso» (Logística, Transporte, Ambos) no existen en `vehicles` ni en `driver_credentials`.
+ * Logística 1b (migración 20261125044314): «Uso» (Logística, Transporte, Ambos) ya existe en
+ * `vehicles.usage` y `driver_credentials.usage`, y el vehículo de una persona es su
+ * `default_vehicle_id` (también para un externo sin cuenta); `vehicles.current_driver_id` queda
+ * como espejo y solo se lee si la persona no tiene vehículo por defecto.
  */
 import type { Vehicle } from '@/lib/services/transportService';
+import { faltaVehiculo, leerDueno, leerUso, type Dueno, type Uso } from '@/lib/logistica/vehiculoAsignacion';
 import type { PersonaCatalogo } from '@/lib/services/transporte/catalogoComunService';
 import type { DocumentoFlota, EstadoDocumento } from './documentosFlota';
 
@@ -62,7 +65,9 @@ export const TONO_DOCS = { vencido: 'peligro', por_vencer: 'advertencia', vigent
 
 // ── Vehículos ──────────────────────────────────────────────────────────────
 
-export const TIPOS_VEHICULO = ['motorcycle', 'car', 'van', 'truck', 'minibus', 'bus', 'trailer', 'boat', 'yacht', 'other'] as const;
+export const TIPOS_VEHICULO = ['motorcycle', 'car', 'van', 'bicycle', 'truck', 'minibus', 'bus', 'trailer', 'boat', 'yacht', 'other'] as const;
+/** Filtro «Uso» de las dos listas (Figma 21 › 1b, 3161-11986). */
+export const FILTROS_USO = ['logistics', 'transport', 'both'] as const;
 export const ESTADOS_VEHICULO = ['available', 'in_use', 'maintenance', 'inactive'] as const;
 export type EstadoVehiculo = (typeof ESTADOS_VEHICULO)[number];
 export const FILTROS_DOCS = ['vencido', 'por_vencer', 'vigente', 'sin_fecha'] as const;
@@ -92,17 +97,22 @@ export interface FilaVehiculo {
   transportadora: string | null;
   sede: string | null;
   docs: ResumenDocs;
+  /** Logística 1b. */
+  uso: Uso;
+  dueno: Dueno;
   vehiculo: Vehicle;
 }
 
 export function filasVehiculos(vehiculos: readonly Vehicle[], personas: readonly PersonaCatalogo[], docs: Map<string, ResumenDocs>): FilaVehiculo[] {
   const porUsuario = new Map(personas.filter((p) => p.userId).map((p) => [p.userId as string, p]));
+  // El conductor por defecto sale de la persona (default_vehicle_id); el espejo solo si falta.
+  const porDefecto = new Map(personas.filter((p) => p.vehiculoDefectoId).map((p) => [p.vehiculoDefectoId as string, p]));
   return vehiculos.map((v) => {
-    const p = v.current_driver_id ? porUsuario.get(v.current_driver_id) : undefined;
+    const p = porDefecto.get(v.id) ?? (v.current_driver_id ? porUsuario.get(v.current_driver_id) : undefined);
     const estado = (ESTADOS_VEHICULO as readonly string[]).includes(v.status) ? v.status : 'inactive';
     return {
       id: v.id,
-      placa: v.plate,
+      placa: v.plate ?? '',
       tipo: v.vehicle_type,
       marcaModelo: [v.brand, v.model].filter(Boolean).join(' '),
       anio: v.year ?? null,
@@ -117,6 +127,8 @@ export function filasVehiculos(vehiculos: readonly Vehicle[], personas: readonly
       transportadora: v.transport_carriers?.name ?? null,
       sede: v.branches?.name ?? null,
       docs: docs.get(`vehiculo:${v.id}`) ?? SIN_DOCS,
+      uso: leerUso(v.usage),
+      dueno: leerDueno(v.ownership),
       vehiculo: v,
     };
   });
@@ -128,6 +140,8 @@ export interface FiltrosVehiculos {
   estado: string | null;
   transportadora: string | null;
   documentos: string | null;
+  /** «Uso» (Logística 1b). Opcional para las pantallas que aún no lo muestran. */
+  uso?: string | null;
 }
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -140,6 +154,7 @@ export function filtrarVehiculos(filas: readonly FilaVehiculo[], f: FiltrosVehic
       (!f.estado || v.estado === f.estado) &&
       (!f.transportadora || v.transportadoraId === f.transportadora) &&
       (!f.documentos || v.docs.estado === f.documentos) &&
+      (!f.uso || v.uso === f.uso) &&
       (!q || [v.placa, v.marcaModelo, v.conductor?.nombre ?? '', v.vehiculo.vin ?? '', v.transportadora ?? ''].some((x) => normalizar(x).includes(q))),
   );
 }
@@ -197,6 +212,8 @@ export interface FilaConductor {
   /** Peor de licencia y examen. */
   docs: ResumenDocs;
   vehiculo: { id: string; placa: string; tipo: string } | null;
+  /** Logística 1b. */
+  uso: Uso;
   activo: boolean;
   persona: PersonaCatalogo;
 }
@@ -204,8 +221,10 @@ export interface FilaConductor {
 export function filasConductores(personas: readonly PersonaCatalogo[], vehiculos: readonly Vehicle[], docs: Map<string, ResumenDocs>): FilaConductor[] {
   const porUsuario = new Map<string, Vehicle>();
   for (const v of vehiculos) if (v.current_driver_id && v.is_active !== false && !porUsuario.has(v.current_driver_id)) porUsuario.set(v.current_driver_id, v);
+  const porId = new Map(vehiculos.map((v) => [v.id, v]));
   return personas.map((p) => {
-    const v = p.userId ? porUsuario.get(p.userId) : undefined;
+    // Vehículo por defecto (sirve también para el externo sin cuenta); el espejo, si no hay.
+    const v = (p.vehiculoDefectoId ? porId.get(p.vehiculoDefectoId) : undefined) ?? (p.userId ? porUsuario.get(p.userId) : undefined);
     return {
       id: p.id,
       nombre: p.nombre,
@@ -218,7 +237,8 @@ export function filasConductores(personas: readonly PersonaCatalogo[], vehiculos
       licencia: docs.get(`conductor:${p.id}:licencia`) ?? SIN_DOCS,
       examen: docs.get(`conductor:${p.id}:examen_medico`) ?? SIN_DOCS,
       docs: docs.get(`conductor:${p.id}`) ?? SIN_DOCS,
-      vehiculo: v ? { id: v.id, placa: v.plate, tipo: v.vehicle_type } : null,
+      vehiculo: v ? { id: v.id, placa: v.plate ?? '', tipo: v.vehicle_type } : null,
+      uso: leerUso(p.uso),
       activo: p.activo,
       persona: p,
     };
@@ -244,6 +264,8 @@ export interface FiltrosConductores {
   categoria: string | null;
   documentos: string | null;
   vehiculo: string | null;
+  /** «Uso» (Logística 1b). Opcional para las pantallas que aún no lo muestran. */
+  uso?: string | null;
 }
 
 export function filtrarConductores(filas: readonly FilaConductor[], f: FiltrosConductores): FilaConductor[] {
@@ -255,6 +277,7 @@ export function filtrarConductores(filas: readonly FilaConductor[], f: FiltrosCo
       (!f.categoria || c.licenciaCategoria === f.categoria) &&
       (!f.documentos || c.docs.estado === f.documentos) &&
       (!f.vehiculo || (f.vehiculo === 'con') === !!c.vehiculo) &&
+      (!f.uso || c.uso === f.uso) &&
       (!q || [c.nombre, c.documento ?? '', c.telefono ?? '', c.vehiculo?.placa ?? '', c.cargo ?? '', c.persona.licenciaNumero ?? ''].some((x) => normalizar(x).includes(q))),
   );
 }
@@ -281,7 +304,8 @@ export function kpisConductores(filas: readonly FilaConductor[]): KpisConductore
     docsVencidos: filas.filter((c) => c.docs.estado === 'vencido').length,
     docsPorVencer: filas.filter((c) => c.docs.estado === 'por_vencer').length,
     conVehiculo: activos.filter((c) => !!c.vehiculo).length,
-    sinVehiculo: activos.filter((c) => !c.vehiculo).length,
+    // A pie y bici sin registrar no cuentan como falta (Logística 1b).
+    sinVehiculo: activos.filter((c) => faltaVehiculo({ tipoVehiculo: c.persona.tipoVehiculo, vehiculoId: c.vehiculo?.id ?? null })).length,
     sinLicencia: activos.filter((c) => c.licencia.estado === 'sin_fecha').length,
   };
 }

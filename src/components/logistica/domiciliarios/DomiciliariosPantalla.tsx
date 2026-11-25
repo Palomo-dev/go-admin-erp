@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { textoVehiculoPersona } from './textoVehiculo';
 import { Bike, Eye, HandCoins, Phone, Plus, Power, RefreshCw, Users } from 'lucide-react';
 import {
   BranchBadgeActiva,
@@ -60,6 +61,7 @@ const RUTA_CUADRES = RUTAS_LOGISTICA.cuadres;
 
 export function DomiciliariosPantalla() {
   const t = useTranslations('logistica.domiciliario');
+  const tv = useTranslations('logisticaVehiculo');
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -202,7 +204,8 @@ export function DomiciliariosPantalla() {
       ),
     },
     { id: 'celular', encabezado: t('columnas.celular'), celda: (f) => f.d.phone ?? f.d.employee?.phone ?? '—', ocultarDebajo: 'md' },
-    { id: 'vehiculo', encabezado: t('columnas.vehiculo'), celda: (f) => (f.d.vehicle_type ? t(`alta.vehiculos.${f.d.vehicle_type}`) : '—'), ocultarDebajo: 'lg' },
+    // Logística 1b: placa del vehículo por defecto (o «a pie» / «bici sin registrar»), no solo el tipo.
+    { id: 'vehiculo', encabezado: t('columnas.vehiculo'), celda: (f) => textoVehiculoPersona(f.d, tv), ocultarDebajo: 'lg' },
     { id: 'sede', encabezado: t('columnas.sede'), celda: (f) => nombreSede(f.d.branch_id), ocultarDebajo: 'lg' },
     { id: 'estado', encabezado: t('columnas.estado'), celda: badge },
     { id: 'carga', encabezado: t('columnas.carga'), celda: (f) => textoCarga(f.carga) },

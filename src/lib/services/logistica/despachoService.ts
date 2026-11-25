@@ -448,7 +448,7 @@ export interface DetalleEnvio {
   intentos: IntentoEnvio[];
   prueba: PruebaEnvio | null;
   cuadre: LineaCuadreEnvio | null;
-  vehiculo: { id: string; plate: string; vehicle_type: string } | null;
+  vehiculo: { id: string; plate: string | null; vehicle_type: string; ownership?: string | null } | null;
   domiciliario: { id: string; full_name: string | null; phone: string | null; vehicle_type: string | null; is_external: boolean } | null;
 }
 
@@ -490,7 +490,7 @@ export async function obtenerDetalleEnvio(db: SupabaseClient, organizationId: nu
       .eq('shipment_id', shipmentId)
       .neq('status', 'cancelled')
       .limit(1),
-    envio.vehicle_id ? db.from('vehicles').select('id, plate, vehicle_type').eq('id', envio.vehicle_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    envio.vehicle_id ? db.from('vehicles').select('id, plate, vehicle_type, ownership').eq('id', envio.vehicle_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     envio.driver_id
       ? db.from('driver_credentials').select('id, full_name, phone, vehicle_type, is_external').eq('id', envio.driver_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),

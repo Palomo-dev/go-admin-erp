@@ -41182,6 +41182,151 @@
       "noDisponible": "Aplicar um modelo à unidade é ativado quando a migração for aplicada.",
       "avisoFormulario": "O site da unidade é criado com o modelo de {tipo}. Fica em rascunho até você publicá-lo.",
       "avisoCambioTipo": "Ao salvar, o site da unidade passa para o modelo de {tipo}. Se já tiver alterações próprias, elas são mantidas: perguntaremos antes de aplicá-lo."
+    },
+    "resenas": {
+      "origen": {
+        "titulo": "Origem das avaliações",
+        "recomendado": "Recomendado",
+        "real": {
+          "titulo": "Somente reais",
+          "ayuda": "Somente avaliações dos seus clientes. Se um produto não tiver, aparece «Seja o primeiro a avaliar»."
+        },
+        "hastaN": {
+          "titulo": "Reais + exemplos até ter N",
+          "ayuda": "Completa com avaliações de exemplo enquanto o produto não tiver as reais pedidas. Quando chegam, os exemplos saem sozinhos.",
+          "quitar": "Tirar exemplos ao ter",
+          "reales": "reais",
+          "menos": "Uma a menos",
+          "mas": "Uma a mais"
+        },
+        "generated": {
+          "titulo": "Somente exemplos",
+          "ayuda": "Muitas avaliações de exemplo, aleatórias, como hoje. Contam na média e nas estrelas dos cartões."
+        },
+        "nota": "As lojas novas começam em «Somente reais»; as que já existem continuam como estão. Vale para todos os produtos da loja.",
+        "deLaTienda": "É a origem da loja: esta seção não a mudou.",
+        "nombres": {
+          "real": "Somente reais",
+          "hastaN": "Reais + exemplos",
+          "generated": "Somente exemplos"
+        }
+      },
+      "verificadaEjemplos": {
+        "titulo": "Mostrar «Compra verificada» nas de exemplo",
+        "ayuda": "As avaliações de exemplo não são de clientes reais. Mostrá-las como compra verificada é decisão da loja; a Superintendência de Indústria e Comércio (Colômbia) pode considerá-lo publicidade enganosa."
+      },
+      "aviso": {
+        "titulo": "Seus clientes veem avaliações de exemplo",
+        "texto": "Origem: «{origen}». Aparecem como avaliações normais e contam na média e nas estrelas. As avaliações reais que chegarem não aparecem enquanto você não mudar a origem.",
+        "textoHastaN": "Origem: «{origen}». Aparecem como avaliações normais e contam na média e nas estrelas, até o produto ter {n} avaliações reais.",
+        "cambiar": "Mudar para Somente reais",
+        "nota": "Este aviso aparece enquanto a origem for «Somente exemplos» ou «Reais + exemplos». Com «Somente reais» não aparece."
+      },
+      "ajustes": {
+        "boton": "Ajustes de avaliações",
+        "titulo": "Ajustes de avaliações",
+        "descripcion": "Valem para toda a loja",
+        "origen": "Origem das avaliações: {origen}",
+        "origenAyuda": "É escolhida no editor, na seção Avaliações do produto.",
+        "abrirEditor": "Abrir editor",
+        "publicacion": "Publicação",
+        "moderar": "Moderar antes de publicar",
+        "moderarAyuda": "Desligado, cada avaliação é publicada assim que chega. É o mesmo ajuste que «Aprovar avaliações automaticamente», ao contrário.",
+        "quien": "Quem pode escrever",
+        "cualquiera": "Qualquer cliente",
+        "compradores": "Somente compradores",
+        "quienAyuda": "Com «Somente compradores» a loja pede para entrar em Minha conta ou o e-mail e o número do pedido, e confere antes de salvar. Essas avaliações saem com «Compra verificada».",
+        "fotos": "Permitir fotos",
+        "fotosAyuda": "Até 3 por avaliação, 5 MB cada uma.",
+        "correo": "Pedir avaliação por e-mail",
+        "enviar": "Enviar «O que achou da sua compra?»",
+        "enviarAyuda": "Com a marca e o remetente da sua loja.",
+        "dias": "Dias depois da entrega",
+        "diasAyuda": "Conta a partir de quando o pedido passa a «Entregue». De 1 a 30 dias.",
+        "menos": "Um dia a menos",
+        "mas": "Um dia a mais",
+        "recordatorio": "Enviar um lembrete",
+        "recordatorioAyuda": "Se não avaliou, um só, 5 dias depois. Nunca mais de 2 e-mails por pedido.",
+        "remitente": "Remetente",
+        "dominioVerificado": "Domínio verificado",
+        "sinDominio": "Sem domínio verificado, sai com o nome da sua loja pelo endereço de reserva. Nunca com a marca GO Admin.",
+        "cancelar": "Cancelar",
+        "guardar": "Salvar",
+        "guardado": "Salvamos os ajustes de avaliações.",
+        "error": "Não foi possível salvar: {mensaje}",
+        "errorCarga": "Não foi possível carregar os ajustes de avaliações.",
+        "reintentar": "Tentar de novo",
+        "soloLectura": "Somente leitura: peça a permissão «Editar site» para mudar estes ajustes."
+      },
+      "moderacion": {
+        "filtros": {
+          "pending": "Pendentes",
+          "approved": "Publicadas",
+          "rejected": "Ocultas",
+          "all": "Todas"
+        },
+        "estados": {
+          "pending": "Pendente",
+          "approved": "Publicada",
+          "rejected": "Oculta"
+        },
+        "vacio": {
+          "pending": "Você não tem avaliações pendentes.",
+          "approved": "Você ainda não publicou avaliações.",
+          "rejected": "Você não tem avaliações ocultas.",
+          "all": "Você ainda não tem avaliações. Elas chegam quando um cliente avalia um produto no seu site."
+        },
+        "detalle": "Avaliação de {autor}",
+        "publicar": "Publicar",
+        "ocultar": "Ocultar",
+        "responder": "Responder",
+        "editarRespuesta": "Editar resposta",
+        "publicarYResponder": "Publicar e responder",
+        "guardarRespuesta": "Salvar resposta",
+        "responderComo": "Responder como {tienda}",
+        "responderComoTienda": "Responder como a loja",
+        "respuestaAyuda": "Publicada abaixo da avaliação com o nome da sua loja.",
+        "respuestaPlaceholder": "Agradeça e responda com gentileza.",
+        "destacar": "Destacar esta avaliação",
+        "destacarAyuda": "Aparece primeiro na página do produto e no estilo Carrossel. Até 3 por produto.",
+        "destacada": "Destacada",
+        "quitarDestacada": "Tirar dos destaques",
+        "ocultarFoto": "Ocultar foto",
+        "mostrarFoto": "Mostrar foto",
+        "fotoOculta": "Foto oculta: não aparece na loja",
+        "foto": "Foto {n} de {autor}",
+        "llegoPor": "Chegou por: {canal}",
+        "canales": {
+          "ficha": "página do produto",
+          "correo": "e-mail depois da entrega",
+          "pedido": "Consultar pedido",
+          "cuenta": "Minha conta"
+        },
+        "correo": "E-mail: {correo} (não é publicado)",
+        "pedido": "Pedido {numero}",
+        "entregado": "entregue em {fecha}",
+        "sinTexto": "Sem texto: só deu estrelas.",
+        "publicada": "Você publicou a avaliação.",
+        "oculta": "Você ocultou a avaliação.",
+        "respondida": "Salvamos sua resposta.",
+        "destacadaOk": "Você destacou a avaliação.",
+        "quitadaDestacada": "Você tirou a avaliação dos destaques.",
+        "fotoOcultada": "Você ocultou a foto.",
+        "fotoMostrada": "A foto voltou a aparecer na loja.",
+        "publicarTodas": "Publicar as {n}",
+        "pieTodas": "{n} para revisar · aparecem na página do produto quando você as aprova",
+        "kpis": {
+          "etiqueta": "Resumo de avaliações",
+          "porRevisar": "Para revisar",
+          "masVieja": "A mais antiga, {fecha}",
+          "publicadas": "Publicadas",
+          "mes": "+{n} em 30 dias",
+          "promedio": "Média publicada",
+          "soloClientes": "Somente avaliações de clientes",
+          "verificadas": "Com compra verificada",
+          "deTotal": "{n} de {total}"
+        }
+      }
     }
   },
   "roles": {
@@ -69454,7 +69599,8 @@
       "trailer": "Carreta",
       "boat": "Lancha",
       "yacht": "Iate",
-      "other": "Outro"
+      "other": "Outro",
+      "bicycle": "Bicicleta"
     },
     "motivos": {
       "retraso": "Atraso",
@@ -72112,6 +72258,314 @@
       "vence": "{pasarela} · vence às {hora}",
       "sinIntentos": "{pasarela} · sem tentativas",
       "nIntentos": "{pasarela} · {n, plural, one {# tentativa} other {# tentativas}}"
+    }
+  },
+  "logisticaVehiculo": {
+    "tipos": {
+      "motorcycle": "Moto",
+      "car": "Carro",
+      "van": "Van",
+      "bicycle": "Bicicleta",
+      "truck": "Caminhão",
+      "minibus": "Micro-ônibus",
+      "bus": "Ônibus",
+      "trailer": "Reboque",
+      "boat": "Lancha",
+      "yacht": "Iate",
+      "other": "Outro",
+      "on_foot": "A pé"
+    },
+    "tiposCorto": {
+      "motorcycle": "moto",
+      "car": "carro",
+      "van": "van",
+      "bicycle": "bicicleta",
+      "truck": "caminhão",
+      "minibus": "micro-ônibus",
+      "bus": "ônibus",
+      "trailer": "reboque",
+      "boat": "lancha",
+      "yacht": "iate",
+      "other": "outro",
+      "on_foot": "a pé"
+    },
+    "sinPlaca": "sem placa",
+    "duenos": {
+      "company": "Da empresa",
+      "driver": "Do entregador ou motorista",
+      "third_party": "De terceiro (parceiro ou agregador)"
+    },
+    "duenoCorto": {
+      "company": "da empresa",
+      "driver": "do entregador",
+      "third_party": "de terceiro"
+    },
+    "usos": {
+      "logistics": "Logística",
+      "transport": "Transporte",
+      "both": "Ambos"
+    },
+    "sinVehiculo": {
+      "on_foot": "A pé",
+      "bicycle": "Bicicleta sem veículo cadastrado"
+    },
+    "sinVehiculoCorto": {
+      "on_foot": "a pé",
+      "bicycle": "de bicicleta"
+    },
+    "asignar": {
+      "vehiculo": "Veículo",
+      "obligatorio": "Obrigatório em {tipo}",
+      "recomendado": "Recomendado em {tipo}",
+      "opcionalEn": "Opcional em {tipo}",
+      "opcional": "Opcional",
+      "elige": "Escolha um veículo",
+      "porDefecto": "padrão",
+      "porDefectoDe": "padrão de {nombre}",
+      "ayudaDefecto": "Pré-selecionado: o veículo padrão de {nombre}. Você pode escolher outro de Logística disponível; o escolhido aqui fica salvo em cada envio e não muda mesmo que a ficha seja editada depois.",
+      "ayudaEnvio": "É o veículo que o envio já tinha. Você pode trocá-lo; o escolhido aqui fica salvo no envio.",
+      "ayudaSinVehiculo": "Vai sem veículo cadastrado: fica salvo assim no envio, de forma explícita.",
+      "ayudaGeneral": "O veículo escolhido aqui fica salvo em cada envio e não muda mesmo que a ficha seja editada depois.",
+      "soloLogistica": "Somente veículos de Logística ou Ambos. Um ônibus de Transporte não aparece aqui.",
+      "revisando": "Verificando documentos…",
+      "errorRevision": "Não foi possível verificar os documentos. Tente novamente.",
+      "ocupado": "Esse veículo já tem envios abertos de outra pessoa. Escolha outro.",
+      "alDia": "Documentos e habilitação em dia.",
+      "revision": "Verificação · {vehiculo} e {nombre}",
+      "causas": {
+        "soat": "Seguro SOAT",
+        "tecnomecanica": "Vistoria técnica",
+        "licencia": "Habilitação {categoria}",
+        "sin_licencia": "Habilitação",
+        "categoria_licencia": "Habilitação {categoria}",
+        "vehiculo_requerido": "Veículo",
+        "capacidad_kg": "Capacidade de peso",
+        "capacidad_m3": "Capacidade de volume"
+      },
+      "estadoItem": {
+        "vencio": "venceu em {fecha}",
+        "venceEn": "{count, plural, one {vence em # dia ({fecha})} other {vence em # dias ({fecha})}}",
+        "sinLicencia": "sem habilitação cadastrada (exige {requeridas})",
+        "categoria": "não serve para {tipo}: exige {requeridas}",
+        "requerido": "escolha um para atribuir"
+      },
+      "bloqueado": {
+        "titulo": "Não é possível atribuir com {vehiculo}",
+        "descripcion": "{causas}. Troque por outro veículo com documentos em dia ou peça a um supervisor que autorize a exceção. Fica registrado.",
+        "inline": "{causa} vencido: não é possível atribuir com este veículo"
+      },
+      "requerido": {
+        "titulo": "{nombre} entrega de {tipo}: escolha o veículo",
+        "descripcion": "Em moto, carro ou van o veículo é obrigatório. Escolha um da frota ou cadastre-o na ficha do entregador."
+      },
+      "soloAviso": {
+        "titulo": "Documentos vencidos: por enquanto só um aviso",
+        "descripcion": "{causas}. O bloqueio está desligado em Configurações › Logística ou nenhum supervisor tem PIN; a atribuição fica registrada com o aviso."
+      },
+      "capacidad": {
+        "titulo": "A carga supera a capacidade do veículo ({tipo})",
+        "kg": "{count, plural, one {O envio pesa} other {Os # envios pesam}} {valor} kg e {vehiculo} leva até {capacidad} kg. É só um aviso: você pode atribuir mesmo assim ou dividir entre dois entregadores.",
+        "m3": "{count, plural, one {O envio ocupa} other {Os # envios ocupam}} {valor} m³ e {vehiculo} leva até {capacidad} m³. É só um aviso: você pode atribuir mesmo assim ou dividir entre dois entregadores."
+      },
+      "bici": {
+        "titulo": "Sem SOAT, vistoria nem habilitação",
+        "descripcion": "De bicicleta, a pé ou em veículo de terceiro não se verificam documentos nem há bloqueio. A opção «Sem veículo (o do entregador)» não existe mais."
+      },
+      "excepcion": {
+        "o": "ou, se não houver outro veículo",
+        "titulo": "Atribuir com exceção autorizada",
+        "descripcion": "Quem a autoriza é quem tem a permissão «Autorizar exceção de atribuição», com seu PIN de Recursos humanos. {count, plural, one {Vale só para este envio.} other {Vale só para estes # envios.}}",
+        "boton": "Pedir autorização ao supervisor"
+      },
+      "pie": {
+        "habilita": "«Atribuir» é habilitado com tudo em dia",
+        "habilitaExcepcion": "ou com a exceção autorizada",
+        "llevaraEn": "{nombre} levará {count, plural, one {# envio} other {# envios}} em {vehiculo}",
+        "llevaraSin": "{nombre} levará {count, plural, one {# envio} other {# envios}} {modo}"
+      },
+      "noAsignar": {
+        "vehiculo_requerido": "Escolha um veículo: obrigatório em moto, carro ou van",
+        "bloqueado": "Documentos vencidos: troque o veículo ou peça a exceção",
+        "sin_excepcion": "Esta atribuição não admite exceção",
+        "ocupado": "O veículo tem envios abertos de outra pessoa"
+      },
+      "persona": {
+        "licencia": "habilitação {categoria}",
+        "porDefecto": "(padrão)",
+        "sinRegistrar": "sem veículo cadastrado"
+      },
+      "toast": {
+        "conExcepcion": "{count, plural, one {Envio atribuído} other {# envios atribuídos}} a {nombre} com exceção autorizada",
+        "conAvisos": "{count, plural, one {Um ficou} other {# ficaram}} com avisos de documentos."
+      },
+      "errores": {
+        "VEHICULO_OCUPADO": "O veículo tem envios abertos de outra pessoa.",
+        "SIN_VEHICULO_INVALIDO": "Escolha «A pé» ou «Bicicleta sem veículo cadastrado».",
+        "NO_ADMITE_EXCEPCION": "Falta o veículo: escolha um para atribuir.",
+        "BLOQUEADO": "Documentos vencidos: peça a exceção ao supervisor."
+      }
+    },
+    "excepcion": {
+      "titulo": "Autorização necessária",
+      "subtitulo": "Documento vencido: só um supervisor pode autorizar.",
+      "accion": "Ação",
+      "detalle": "Detalhe",
+      "envios": "Envios",
+      "accionTexto": "Atribuir com {causas} vencido",
+      "supervisor": "Supervisor",
+      "cargando": "Carregando…",
+      "eligeSupervisor": "Escolha quem autoriza",
+      "sinAutorizadores": "Ninguém tem a permissão «Autorizar exceção de atribuição»",
+      "sinPinOpcion": "{nombre} (sem PIN)",
+      "sinPin": "{nombre} não tem PIN atribuído",
+      "irAsignarPin": "Atribuir PIN em Recursos humanos",
+      "pin": "PIN do supervisor",
+      "pinAyuda": "{nombre} digita seu PIN de Recursos humanos (o do quiosque). É verificado no servidor; o GO Admin não o guarda no navegador. 5 tentativas erradas em 15 minutos o bloqueiam.",
+      "elSupervisor": "O supervisor",
+      "motivo": "Motivo",
+      "motivos": {
+        "soat_renovado": "SOAT renovado, falta enviar",
+        "urgente": "Entrega urgente",
+        "reemplazo": "Substituto a caminho",
+        "otro": "Outro"
+      },
+      "detalleMotivo": "Detalhe do motivo",
+      "motivoMin": "Entre o motivo e o detalhe, no mínimo {n} caracteres.",
+      "faltaCompletar": "Escolha o supervisor, digite o PIN de 6 dígitos e um motivo de pelo menos {n} caracteres",
+      "registro": "Fica em cada envio e no seu histórico: o documento vencido, o motivo, quem pediu, quem autorizou e a hora (fuso horário da organização).",
+      "autorizar": "Autorizar e atribuir",
+      "errores": {
+        "pin_rechazado": "PIN incorreto. {n, plural, =0 {Não restam tentativas.} one {Resta # tentativa.} other {Restam # tentativas.}}",
+        "pin_bloqueado": "Bloqueado por 15 minutos após 5 tentativas erradas (até {hora}). Escolha outro supervisor ou peça a Recursos humanos que desbloqueie o PIN de {nombre}.",
+        "motivo_invalido": "O motivo deve ter entre 10 e 500 caracteres.",
+        "falta_supervisor": "Escolha o supervisor que autoriza.",
+        "sin_permiso_excepcion": "Essa pessoa não tem a permissão «Autorizar exceção de atribuição».",
+        "supervisor_sin_pin": "Essa pessoa não tem PIN atribuído em Recursos humanos.",
+        "no_admite_excepcion": "Esta atribuição não admite exceção: falta o veículo.",
+        "bloqueado": "A atribuição continua bloqueada. Revise o motivo e o PIN.",
+        "ERROR": "Não foi possível autorizar. Tente novamente."
+      }
+    },
+    "alta": {
+      "reparte": "Como entrega?",
+      "elegir": "Escolha um veículo da frota",
+      "deOtro": "de {nombre} (é o veículo padrão dele)",
+      "crearNuevo": "Criar veículo novo (placa, dono, SOAT, vistoria)",
+      "ayudaFlota": "Só aparecem veículos com uso Logística ou Ambos, ativos e fora de manutenção. Será o veículo padrão: ao atribuir um envio é pré-selecionado e pode ser trocado.",
+      "vehiculoNuevo": "Veículo novo",
+      "seCreaConElla": "Criado com a pessoa",
+      "placa": "Placa",
+      "placaAyuda": "Única na organização",
+      "placaOpcional": "Opcional em bicicleta ou veículo de terceiro",
+      "dueno": "Dono",
+      "laPersona": "a pessoa",
+      "duenoAyuda": {
+        "company": "Da empresa: combustível e manutenção são da empresa. Placa e documentos são exigidos.",
+        "driver": "Do entregador: o veículo é de {nombre}. Placa e documentos são exigidos igual porque circula em via pública; a empresa não assume combustível salvo política expressa.",
+        "third_party": "De terceiro: a placa é opcional e o GO Admin não exige seus documentos (o parceiro os cobre)."
+      },
+      "soat": "SOAT vence",
+      "tecnomecanica": "Vistoria vence",
+      "kg": "Capacidade (kg)",
+      "m3": "Capacidade (m³)",
+      "capacidadAyuda": "Opcional. Se um envio passar, só se avisa.",
+      "quedaPorDefecto": {
+        "titulo": "Fica como o veículo padrão",
+        "descripcion": "É criado em Veículos com uso Logística. As fotos do SOAT e da vistoria são enviadas depois na ficha do veículo."
+      },
+      "mejorFlota": "Melhor escolher um da frota",
+      "aPie": "A pé não se pede veículo nem habilitação.",
+      "licencia": "Habilitação",
+      "categoria": "Categoria",
+      "sinLicencia": "Sem habilitação cadastrada",
+      "categoriaAyuda": "{tipo}: {categorias}",
+      "categoriaPide": "Para {tipo} se exige {categorias}",
+      "vence": "Vence",
+      "venceAyuda": "Se vencer, a atribuição avisa ou bloqueia conforme a organização",
+      "categoriaIncorrecta": {
+        "titulo": "Pode salvar, mas não poderá ser atribuído(a) esse(a) {tipo}",
+        "descripcion": "A mesma regra de categorias é validada de novo no servidor ao atribuir."
+      },
+      "uso": "Uso",
+      "usoAyuda": "Nasce em Logística porque é cadastrado aqui. Uma moto ou um ônibus só aparecem como opção no módulo do seu uso.",
+      "usoAmbos": "Usar também em Transporte (fica «Ambos»)",
+      "registrarConVehiculo": "Cadastrar entregador e veículo",
+      "guardarIgual": "Salvar mesmo assim",
+      "avisoVehiculo": "O entregador foi cadastrado, mas o veículo não",
+      "errores": {
+        "vehiculo": "Em moto, carro ou van escolha um veículo ou crie um novo",
+        "placa": "Digite a placa",
+        "licencia": "Preencha a data de vencimento"
+      },
+      "erroresVehiculo": {
+        "PLACA_DUPLICADA": "Já existe um veículo com essa placa na organização. Escolha-o na frota.",
+        "PLACA_REQUERIDA": "Falta a placa (só é opcional em bicicleta ou veículo de terceiro).",
+        "VEHICULO_DE_OTRO": "Esse veículo já é o veículo padrão de outra pessoa.",
+        "VEHICULO_INVALIDO": "Esse veículo não está ativo ou não é de uso Logística.",
+        "TIPO_INVALIDO": "Esse tipo de veículo não pode ser criado aqui.",
+        "ERROR": "Complete pela ficha do entregador."
+      }
+    },
+    "ficha": {
+      "placaOpcional": "Obrigatória salvo em bicicleta ou veículo de terceiro",
+      "dueno": "Dono",
+      "duenoDescripcion": "Quem é dono do veículo. Muda o que se exige e a quem se atribuem os custos.",
+      "duenoPersona": "Entregador dono",
+      "duenoPersonaAyuda": "Obrigatório quando o dono é o entregador. Pode não ter usuário no GO Admin.",
+      "errores": {
+        "owner_driver_id": "Escolha a pessoa dona do veículo"
+      },
+      "avisoDueno": {
+        "company": {
+          "titulo": "Da empresa: placa e documentos são exigidos",
+          "descripcion": "Combustível e manutenção são da empresa (custo da frota)."
+        },
+        "driver": {
+          "titulo": "Do entregador: placa e documentos são exigidos igual",
+          "descripcion": "Circula em via pública. A empresa não assume combustível salvo política expressa."
+        },
+        "third_party": {
+          "titulo": "De terceiro: placa opcional",
+          "descripcion": "O GO Admin não exige seus documentos; o parceiro ou agregador os cobre."
+        }
+      },
+      "uso": "Uso",
+      "usoDescripcion": "Define em que módulo aparece como opção.",
+      "usoNota": {
+        "logistica": "Nasce em Logística. Com «Ambos» também aparece para viagens de Transporte; um ônibus com uso Transporte nunca aparece na folha de atribuir entrega.",
+        "transporte": "Nasce em Transporte. Com «Ambos» também aparece como opção de entrega em Logística."
+      },
+      "conductorDefecto": "Motorista padrão",
+      "sinConductor": "Sem motorista padrão",
+      "conductorAyuda": "Fica salvo na pessoa (veículo padrão). Ao atribuir um envio é pré-selecionado; fechar o último envio não o tira mais.",
+      "conductorNoGuardado": "O veículo foi salvo, mas o motorista padrão não",
+      "erroresConductor": {
+        "VEHICULO_DE_OTRO": "Esse veículo já é o padrão de outra pessoa.",
+        "VEHICULO_INVALIDO": "O veículo deve estar ativo e com uso Logística ou Ambos.",
+        "SIN_PERMISO": "É necessária a permissão «Despachar envios» (logistica.manage).",
+        "ERROR": "Tente novamente pela ficha da pessoa."
+      },
+      "biciSinDocumentos": "Em bicicleta não se exigem SOAT nem vistoria.",
+      "documentosBloquean": "Quando a organização ativa, documentos vencidos bloqueiam a atribuição de entregas (salvo exceção do supervisor com PIN).",
+      "vehiculoPersonaAyuda": "O veículo padrão: ao atribuir um envio é pré-selecionado. Serve também para um entregador externo sem conta."
+    },
+    "listas": {
+      "uso": "Uso",
+      "chipUso": "Uso: {uso}",
+      "aPie": "A pé",
+      "biciSinRegistrar": "Bicicleta sem cadastro",
+      "sinVehiculo": "sem veículo"
+    },
+    "detalle": {
+      "guardado": "Salvo ao atribuir: não muda mesmo que a ficha do veículo seja editada.",
+      "excepcion": "Exceção autorizada"
+    },
+    "ajustes": {
+      "bloqueo": {
+        "titulo": "Bloquear atribuição com documentos vencidos",
+        "descripcion": "SOAT, vistoria ou habilitação vencidos (ou habilitação de outra categoria) em moto, carro ou van bloqueiam a atribuição da entrega própria, salvo exceção do supervisor com seu PIN. Desligado: só se avisa. Enquanto nenhum supervisor tiver PIN, também só se avisa.",
+        "asignarPin": "Atribuir PIN em Recursos humanos"
+      }
     }
   }
 }

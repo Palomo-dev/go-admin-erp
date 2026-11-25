@@ -5,7 +5,7 @@
  * pestaña Reseñas usa la moderación del área (kit + ruta con permiso), no el
  * panel heredado. Organización ficticia; sin datos reales.
  */
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import type { RespuestaResenas, RespuestaTienda } from '@/lib/website/tiendaSitio.server';
 
@@ -58,6 +58,16 @@ const resenas: RespuestaResenas = {
 };
 
 const moderar = jest.fn().mockResolvedValue(undefined);
+const mockGuardarAjustes = jest.fn(async (..._a: unknown[]) => undefined);
+const ajustesResenas = {
+  origenTienda: null,
+  moderar: true,
+  quienEscribe: 'any' as const,
+  fotos: true,
+  correo: { activo: false, dias: 7, recordatorio: true },
+  remitente: { nombre: 'Tienda de ejemplo', correo: null, dominioVerificado: false },
+  puedeEditar: true,
+};
 jest.mock('../useTiendaSitio', () => ({
   ...jest.requireActual('../useTiendaSitio'),
   useTiendaSitio: () => ({ datos: tienda, cargando: false, fallo: null, recargar: jest.fn(), refrescar: jest.fn(), alternarAutoAprobar: jest.fn(), crearDetalle: (...a: unknown[]) => mockCrearDetalle(...a) }),
@@ -75,6 +85,7 @@ jest.mock('../useTiendaSitio', () => ({
     cambiar: jest.fn(),
   }),
   useResenasTienda: () => ({ datos: resenas, cargando: false, fallo: null, recargar: jest.fn(), moderar }),
+  useAjustesResenas: () => ({ datos: ajustesResenas, cargando: false, fallo: null, recargar: jest.fn(), guardar: (...a: unknown[]) => mockGuardarAjustes(...a) }),
 }));
 
 import { PantallaTienda } from '../PantallaTienda';
@@ -89,13 +100,15 @@ describe('Tienda', () => {
     expect(screen.getAllByText('Agotado').length).toBeGreaterThan(0);
   });
 
-  test('Reseñas: moderación del área, sin el panel heredado, con aprobar a un clic', () => {
+  test('Reseñas: moderación del área (Pendientes / Publicadas / Ocultas), con publicar a un clic', () => {
     tab = 'resenas';
     renderConIdioma(<PantallaTienda />);
     expect(screen.getAllByText('Cliente de ejemplo').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('img', { name: '4 de 5 estrellas' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Por revisar').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getAllByRole('button', { name: /^Aprobar$/ })[0]);
+    expect(screen.getAllByText('Pendientes').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Publicadas').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Ocultas').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getAllByRole('button', { name: /^Publicar$/ })[0]);
     expect(moderar).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001', 'aprobar', undefined);
   });
 
@@ -110,14 +123,30 @@ describe('Tienda', () => {
     expect(mockCrearDetalle).toHaveBeenCalledWith('product_detail');
   });
 
-  test('Reseñas: la hoja de detalle publica la respuesta', () => {
+  test('Reseñas: la hoja de la opinión publica y responde como la tienda', () => {
     tab = 'resenas';
     moderar.mockClear();
     renderConIdioma(<PantallaTienda />);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cliente de ejemplo' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /^Cliente de ejemplo/ })[0]);
     const hoja = screen.getByRole('dialog');
+    expect(within(hoja).getByText('Responder como la tienda')).toBeTruthy();
+    expect(within(hoja).getByText('Destacar esta opinión')).toBeTruthy();
     fireEvent.change(within(hoja).getByRole('textbox'), { target: { value: 'Gracias por tu compra.' } });
-    fireEvent.click(within(hoja).getByRole('button', { name: /Publicar respuesta/ }));
-    expect(moderar).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001', 'responder', 'Gracias por tu compra.');
+    fireEvent.click(within(hoja).getByRole('button', { name: /Publicar y responder/ }));
+    expect(moderar).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001', 'publicar', 'Gracias por tu compra.');
+  });
+
+  test('Reseñas: «Ajustes de reseñas» guarda quién puede escribir', async () => {
+    tab = 'resenas';
+    mockGuardarAjustes.mockClear();
+    renderConIdioma(<PantallaTienda />);
+    fireEvent.click(screen.getByRole('button', { name: /Ajustes de reseñas/ }));
+    const hoja = screen.getByRole('dialog');
+    expect(within(hoja).getByText('Origen de las reseñas: Solo ejemplos')).toBeTruthy();
+    fireEvent.click(within(hoja).getByRole('radio', { name: 'Solo compradores' }));
+    fireEvent.click(within(hoja).getByRole('button', { name: 'Guardar' }));
+    await waitFor(() =>
+      expect(mockGuardarAjustes).toHaveBeenCalledWith({ moderar: true, quienEscribe: 'buyers', fotos: true, correo: { activo: false, dias: 7, recordatorio: true } }),
+    );
   });
 });

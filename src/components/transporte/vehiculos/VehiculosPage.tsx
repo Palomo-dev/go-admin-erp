@@ -85,6 +85,7 @@ import {
   rutaFicha,
   type FilaVehiculo,
 } from '@/lib/transporte/catalogoComun';
+import { FILTROS_USO } from '@/lib/transporte/catalogoComun';
 import { clavePlaca } from '@/lib/transporte/formulariosCatalogo';
 import type { FilaImportacion } from '@/lib/transporte/importarCatalogo';
 import { DialogoDocumento, type InicialDocumento } from '@/components/transporte/flota/DialogoDocumento';
@@ -98,6 +99,7 @@ const TAMANOS = [10, 25, 50] as const;
 export function VehiculosPage() {
   const t = useTranslations('catalogoComun.vehiculos');
   const tc = useTranslations('catalogoComun.comun');
+  const tl = useTranslations('logisticaVehiculo');
   const tTipos = useTranslations('transporte.tiposVehiculo');
   const tCausas = useTranslations('transporte.despachos.causas');
   const tFlota = useTranslations('transporte.flota');
@@ -110,7 +112,7 @@ export function VehiculosPage() {
   const organizationId = Number(getOrganizationId()) || null;
   const hoy = getToday();
 
-  const l = useListadoServidor({ filtros: ['tipo', 'estado', 'transportadora', 'documentos'], tamanoPorDefecto: 10, tamanosPermitidos: TAMANOS });
+  const l = useListadoServidor({ filtros: ['tipo', 'estado', 'transportadora', 'documentos', 'uso'], tamanoPorDefecto: 10, tamanosPermitidos: TAMANOS });
 
   const [vehiculos, setVehiculos] = useState<Vehicle[]>([]);
   const [personas, setPersonas] = useState<PersonaCatalogo[]>([]);
@@ -184,6 +186,8 @@ export function VehiculosPage() {
     estado: (ESTADOS_VEHICULO as readonly string[]).includes(l.filtros.estado ?? '') ? l.filtros.estado ?? null : null,
     transportadora: l.filtros.transportadora || null,
     documentos: (FILTROS_DOCS as readonly string[]).includes(l.filtros.documentos ?? '') ? l.filtros.documentos ?? null : null,
+    // Logística 1b: «Uso» (Logística, Transporte, Ambos).
+    uso: (FILTROS_USO as readonly string[]).includes(l.filtros.uso ?? '') ? l.filtros.uso ?? null : null,
   };
   const claveFiltros = JSON.stringify(filtros);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -334,8 +338,9 @@ export function VehiculosPage() {
   const estadoBadge = (f: FilaVehiculo) => <StatusBadge estado={f.estado} tono={TONO_ESTADO_VEHICULO[f.estado]} etiqueta={t(`estados.${f.estado}`)} />;
 
   const columnas: ColumnaTabla<FilaVehiculo>[] = [
-    { id: 'vehiculo', encabezado: t('columnas.vehiculo'), celda: (f) => dosLineas(f.placa, [f.marcaModelo, f.anio].filter(Boolean).join(' · ') || null, 'font-medium text-fg') },
+    { id: 'vehiculo', encabezado: t('columnas.vehiculo'), celda: (f) => dosLineas(f.placa || tl('sinPlaca'), [f.marcaModelo, f.anio].filter(Boolean).join(' · ') || null, 'font-medium text-fg') },
     { id: 'tipo', encabezado: t('columnas.tipo'), celda: tipoBadge },
+    { id: 'uso', encabezado: tl('listas.uso'), ocultarDebajo: 'lg', celda: (f) => dosLineas(tl(`usos.${f.uso}`), tl(`duenos.${f.dueno}`)) },
     {
       id: 'capacidad',
       encabezado: t('columnas.capacidad'),
@@ -364,11 +369,12 @@ export function VehiculosPage() {
       ? [{ clave: 'transportadora', etiqueta: t('filtros.chipTransportadora', { nombre: carriers.find((c) => c.id === filtros.transportadora)?.name ?? '—' }) }]
       : []),
     ...(filtros.documentos ? [{ clave: 'documentos', etiqueta: t('filtros.chipDocumentos', { estado: tc(`docs.${filtros.documentos}`) }) }] : []),
+    ...(filtros.uso ? [{ clave: 'uso', etiqueta: tl('listas.chipUso', { uso: tl(`usos.${filtros.uso}`) }) }] : []),
   ];
   const hayCriterios = !!(l.busqueda || chips.length);
 
-  const selectFiltro = (clave: 'tipo' | 'estado' | 'transportadora' | 'documentos', opciones: readonly { valor: string; etiqueta: string }[]) => (
-    <FormField etiqueta={t(`filtros.${clave}`)}>
+  const selectFiltro = (clave: 'tipo' | 'estado' | 'transportadora' | 'documentos' | 'uso', opciones: readonly { valor: string; etiqueta: string }[]) => (
+    <FormField etiqueta={clave === 'uso' ? tl('listas.uso') : t(`filtros.${clave}`)}>
       {(cp) => (
         <Select value={l.filtros[clave] ?? 'todos'} onValueChange={(v) => l.setFiltro(clave, v === 'todos' ? null : v)}>
           <SelectTrigger id={cp.id} aria-labelledby={cp.idEtiqueta} className="h-10 border-line-strong bg-surface">
@@ -473,6 +479,7 @@ export function VehiculosPage() {
                 {selectFiltro('tipo', TIPOS_VEHICULO.map((v) => ({ valor: v, etiqueta: tipoTexto(v) })))}
                 {selectFiltro('estado', ESTADOS_VEHICULO.map((v) => ({ valor: v, etiqueta: t(`estados.${v}`) })))}
                 {selectFiltro('documentos', FILTROS_DOCS.map((v) => ({ valor: v, etiqueta: tc(`docs.${v}`) })))}
+                {selectFiltro('uso', FILTROS_USO.map((v) => ({ valor: v, etiqueta: tl(`usos.${v}`) })))}
                 {carriers.length > 0 && selectFiltro('transportadora', carriers.map((c) => ({ valor: c.id, etiqueta: c.name })))}
               </FilterPanel>
             }

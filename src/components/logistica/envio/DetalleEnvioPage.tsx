@@ -81,6 +81,7 @@ import { avisarCliente } from '../logisticaApi';
 import { leerAvisosPedido, reenviarAviso, type AvisoDePedido } from '@/components/pos/pedidos-online/avisos/avisosClienteApi';
 import { EstadoEnvioBadge } from '../EstadoEnvioBadge';
 import { HojaAsignarDomiciliario } from '../asignar/HojaAsignarDomiciliario';
+import { excepcionDelEnvio, vehiculoDelEnvio } from '@/lib/logistica/vehiculoAsignacion';
 import { useImpresionLogistica } from '../useImpresionLogistica';
 import { useEvidenciasEnvio, type EvidenciasEnvio } from '../useEvidenciasEnvio';
 import { DialogoDireccion, DialogoEntregar, DialogoNovedad } from './DialogosEnvio';
@@ -90,6 +91,7 @@ type Confirmacion = 'devolver' | 'cancelar' | null;
 
 export function DetalleEnvioPage({ id }: { id: string }) {
   const t = useTranslations('logistica.envio');
+  const tv = useTranslations('logisticaVehiculo');
   const tEnvios = useTranslations('logistica.envios.acciones');
   const router = useRouter();
   const moneda = useMonedaOrganizacion();
@@ -453,10 +455,28 @@ export function DetalleEnvioPage({ id }: { id: string }) {
                   </div>
                   <ListaDatos>
                     <FilaDato etiqueta={t('domiciliario.telefono')} valor={detalle.domiciliario.phone ?? '—'} href={enlaceLlamar(detalle.domiciliario.phone) ?? undefined} tono={detalle.domiciliario.phone ? 'enlace' : 'neutro'} />
-                    <FilaDato
-                      etiqueta={t('domiciliario.vehiculo')}
-                      valor={detalle.vehiculo ? `${detalle.vehiculo.plate}` : detalle.domiciliario.vehicle_type ? t(`vehiculos.${detalle.domiciliario.vehicle_type}`) : t('domiciliario.sinVehiculo')}
-                    />
+                    {(() => {
+                      // Logística 1b (Figma 3162-12940): la placa GUARDADA al asignar (espejo en metadata),
+                      // no la ficha de hoy; «a pie» o «bici sin vehículo» si salió así.
+                      const vg = vehiculoDelEnvio(detalle.envio.metadata, detalle.vehiculo);
+                      const exc = excepcionDelEnvio(detalle.envio.metadata);
+                      const tipoV = (x: string | null) => (x && tv.has(`tiposCorto.${x}`) ? tv(`tiposCorto.${x}`) : x);
+                      const valor =
+                        vg?.tipo === 'vehiculo'
+                          ? [vg.placa ?? tv('sinPlaca'), tipoV(vg.tipoVehiculo), vg.dueno ? tv(`duenoCorto.${vg.dueno}`) : null].filter(Boolean).join(' · ')
+                          : vg?.tipo === 'sin'
+                            ? tv(`sinVehiculo.${vg.motivo}`)
+                            : detalle.domiciliario?.vehicle_type
+                              ? t(`vehiculos.${detalle.domiciliario.vehicle_type}`)
+                              : t('domiciliario.sinVehiculo');
+                      return (
+                        <>
+                          <FilaDato etiqueta={t('domiciliario.vehiculo')} valor={valor} />
+                          {vg && <div role="note" className="text-xs text-fg-muted">{tv('detalle.guardado')}</div>}
+                          {exc && <FilaDato etiqueta={tv('detalle.excepcion')} valor={exc.motivo} />}
+                        </>
+                      );
+                    })()}
                     {f.asignado && <FilaDato etiqueta={t('domiciliario.asignado')} valor={formatDateTime(f.asignado)} />}
                   </ListaDatos>
                 </div>

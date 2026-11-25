@@ -26,11 +26,26 @@ beforeEach(() => {
 });
 
 describe('asignar sin vehículo y sin pisar metadata', () => {
-  it('llama logistica_asignar_domiciliario con vehículo null', async () => {
+  it('llama logistica_asignar_domiciliario con vehículo null (Logística 1b: la base sugiere el por defecto)', async () => {
     await deliveryIntegrationService.assignVehicleAndDriver('s-1', null, 'dom-1');
     expect(mockRpc).toHaveBeenCalledWith('logistica_asignar_domiciliario', {
       p_shipment_id: 's-1', p_driver_id: 'dom-1', p_vehicle_id: null, p_fecha_estimada: null,
+      p_sin_vehiculo: null, p_motivo: null, p_pin: null, p_supervisor: null,
     });
+  });
+
+  it('Logística 1b: un bloqueo de la base (ok=false) se lanza como AsignacionNoPasoError con la revisión', async () => {
+    mockRpc.mockResolvedValueOnce({ data: { ok: false, estado: 'bloqueado', cumplimiento: { bloqueos: [{ causa: 'soat', grupo: 'vehiculo', excepcion: true }], bloquea: true } }, error: null });
+    await expect(deliveryIntegrationService.assignVehicleAndDriver('s-1', 'veh-1', 'dom-1')).rejects.toMatchObject({
+      name: 'AsignacionNoPasoError',
+      codigo: 'BLOQUEADO',
+      resultado: { estado: 'bloqueado', cumplimiento: { bloquea: true } },
+    });
+  });
+
+  it('Logística 1b: la excepción viaja a la RPC (motivo, supervisor y PIN); nada se valida aquí', async () => {
+    await deliveryIntegrationService.assignVehicleAndDriver('s-1', 'veh-1', 'dom-1', undefined, { excepcion: { motivo: ' Entrega urgente ', supervisorId: 'u-2', pin: '123456' } });
+    expect(mockRpc.mock.calls[0][1]).toMatchObject({ p_motivo: 'Entrega urgente', p_supervisor: 'u-2', p_pin: '123456', p_sin_vehiculo: null });
   });
 
   it('la fecha estimada se guarda como día de la zona de la organización', async () => {

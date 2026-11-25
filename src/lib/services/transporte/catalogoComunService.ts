@@ -32,6 +32,8 @@ interface FilaCruda {
   document_number: string | null;
   is_external: boolean | null;
   vehicle_type: string | null;
+  default_vehicle_id?: string | null;
+  usage?: string | null;
   license_number: string | null;
   license_category: string | null;
   license_expiry: string | null;
@@ -76,6 +78,10 @@ export interface PersonaCatalogo {
   /** Cargo de Recursos humanos (`job_positions.name`); null si no tiene empleo o cargo. */
   cargo: string | null;
   tipoVehiculo: string | null;
+  /** Logística 1b: vehículo por defecto (`default_vehicle_id`), también para externos sin cuenta. */
+  vehiculoDefectoId: string | null;
+  /** Uso: logistics, transport o both (nace en el módulo de alta). */
+  uso: 'logistics' | 'transport' | 'both';
   licenciaNumero: string | null;
   licenciaCategoria: string | null;
   licenciaVence: string | null;
@@ -94,7 +100,7 @@ export interface PersonaCatalogo {
 }
 
 const COLUMNAS =
-  'id, organization_id, branch_id, user_id, employment_id, full_name, phone, document_type, document_number, is_external, vehicle_type, ' +
+  'id, organization_id, branch_id, user_id, employment_id, full_name, phone, document_type, document_number, is_external, vehicle_type, default_vehicle_id, usage, ' +
   'license_number, license_category, license_expiry, license_restrictions, medical_certificate_expiry, hazmat_certified, passenger_certified, ' +
   'is_active, metadata, created_at, updated_at, blood_type, emergency_contact_name, emergency_contact_phone, ' +
   'employment:employments!driver_credentials_employment_id_fkey(id, hire_date, position:job_positions!employments_position_id_fkey(name), ' +
@@ -121,6 +127,8 @@ export function aPersona(f: FilaCruda): PersonaCatalogo {
     hazmat_certified: f.hazmat_certified ?? false,
     passenger_certified: f.passenger_certified ?? false,
     is_active: f.is_active ?? true,
+    default_vehicle_id: f.default_vehicle_id ?? null,
+    usage: f.usage === 'logistics' || f.usage === 'transport' ? f.usage : 'both',
     metadata: f.metadata ?? {},
     created_at: f.created_at,
     updated_at: f.updated_at,
@@ -157,6 +165,8 @@ export function aPersona(f: FilaCruda): PersonaCatalogo {
     externo: f.is_external === true || !f.employment_id,
     cargo: uno(empleo?.position)?.name?.trim() || null,
     tipoVehiculo: f.vehicle_type,
+    vehiculoDefectoId: f.default_vehicle_id ?? null,
+    uso: f.usage === 'logistics' || f.usage === 'transport' ? f.usage : 'both',
     licenciaNumero: f.license_number,
     licenciaCategoria: f.license_category,
     licenciaVence: f.license_expiry,

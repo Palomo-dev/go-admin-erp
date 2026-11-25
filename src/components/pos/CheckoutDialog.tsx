@@ -841,8 +841,9 @@ export function CheckoutDialog({ cart, open, onOpenChange, onCheckoutComplete, o
     try {
       const { transportService } = await import('@/lib/services/transportService');
       const driversData = await transportService.getDrivers(cart.organization_id);
+      // Logística 1b: un conductor de Transporte (uso 'transport') no sale como domiciliario.
       const mapped = driversData
-        .filter((d: any) => d.is_active)
+        .filter((d: any) => d.is_active && d.usage !== 'transport')
         .map((d: any) => {
           const emp = d.employments;
           const firstEmp = Array.isArray(emp) ? emp[0] : emp;

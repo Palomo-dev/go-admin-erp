@@ -22,13 +22,25 @@ jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({
 }));
 
 const assignVehicleAndDriver = jest.fn(async () => ({}));
-jest.mock('@/lib/services/deliveryIntegrationService', () => ({
-  EnvioError: class extends Error {
+// Logística 1b: la base sugiere el vehículo y revisa documentos (`logistica_revisar_asignacion`).
+// Luisa reparte en moto sin vehículo registrado y el bloqueo de la organización está apagado.
+const revisarAsignacion = jest.fn(async () => ({
+  fecha: '2026-11-23', tipoPersona: 'motorcycle', requiereVehiculo: true, vehiculo: null, sinVehiculo: null, peso: null, volumen: null,
+  bloqueos: [{ causa: 'vehiculo_requerido', grupo: 'asignacion', vence: null, dias: null, excepcion: false, categoria: null, requeridas: [], valor: null, capacidad: null }],
+  avisos: [], bloqueoActivo: false, hayAutorizadorConPin: false, bloquea: false, admiteExcepcion: false, origen: 'ninguno', vehiculoOcupado: false,
+}));
+jest.mock('@/lib/services/deliveryIntegrationService', () => {
+  class EnvioError extends Error {
     constructor(public codigo: string) {
       super(codigo);
     }
-  },
+  }
+  return {
+  EnvioError,
+  AsignacionNoPasoError: class extends EnvioError {},
   deliveryIntegrationService: {
+    revisarAsignacion: (...a: unknown[]) => revisarAsignacion(...(a as [])),
+    getAutorizadoresAsignacion: jest.fn(async () => []),
     getAvailableDrivers: jest.fn(async () => [
       { id: 'd1', full_name: 'Luisa Martínez', phone: '300', is_active: true, vehicle_type: 'motorcycle', metadata: {} },
       { id: 'd2', full_name: 'Jhon Ramírez', phone: '301', is_active: true, vehicle_type: 'bicycle', metadata: { cobra_contraentrega: false } },
@@ -36,7 +48,8 @@ jest.mock('@/lib/services/deliveryIntegrationService', () => ({
     getAvailableVehicles: jest.fn(async () => []),
     assignVehicleAndDriver: (...a: unknown[]) => assignVehicleAndDriver(...(a as [])),
   },
-}));
+  };
+});
 jest.mock('@/lib/services/logistica/despachoService', () => ({ enviosDeDomiciliarios: jest.fn(async () => []) }));
 
 import { EstadoEnvioBadge } from '../EstadoEnvioBadge';
@@ -117,18 +130,21 @@ describe('Asignar domiciliario (2800:8231)', () => {
     );
     await screen.findByText('Luisa Martínez');
     expect(screen.getAllByText('Asignar 2 envíos').length).toBeGreaterThan(0);
-    expect(screen.getByText('Opcional')).toBeTruthy();
     const boton = screen.getByRole('button', { name: 'Asignar 2 envíos' }) as HTMLButtonElement;
     expect(boton.disabled).toBe(true);
 
     fireEvent.click(screen.getByRole('radio', { name: /Luisa Martínez/ }));
-    expect(boton.disabled).toBe(false);
+    // Moto sin vehículo y bloqueo apagado (decisión 6): se recomienda, no se frena.
+    await screen.findByText('Recomendado en moto');
+    expect(revisarAsignacion).toHaveBeenCalledWith(['a', 'b'], 'd1', {});
+    await waitFor(() => expect(boton.disabled).toBe(false));
     fireEvent.click(boton);
 
     await waitFor(() => expect(onAsignado).toHaveBeenCalled());
+    // Sin vehículo elegido: la base usa el del envío o el por defecto (regla 4.5).
     expect(assignVehicleAndDriver.mock.calls).toEqual([
-      ['a', null, 'd1'],
-      ['b', null, 'd1'],
+      ['a', null, 'd1', undefined, { sinVehiculo: null, excepcion: null }],
+      ['b', null, 'd1', undefined, { sinVehiculo: null, excepcion: null }],
     ]);
     expect(errores).toEqual([]);
   });

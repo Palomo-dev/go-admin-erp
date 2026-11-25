@@ -52,6 +52,7 @@ import { asignarConductorVehiculo } from '@/lib/services/transporte/vehiculoAcci
 import { candidatosAlta, type CandidatosAlta } from '@/lib/services/logistica/domiciliariosService';
 import { listarEmpleosCatalogo, type EmpleoCatalogo } from '@/lib/services/transporte/fichaCatalogoService';
 import { CATEGORIAS_LICENCIA, RUTAS_CATALOGO, TONO_DOCS, moduloDeRuta, rutaFicha } from '@/lib/transporte/catalogoComun';
+import { USOS, usoInicial, type Uso } from '@/lib/logistica/vehiculoAsignacion';
 import { diasEntre, estadoDocumento } from '@/lib/transporte/documentosFlota';
 import {
   SIN_LICENCIA,
@@ -78,6 +79,7 @@ export function PersonaFormulario({ id }: { id?: string }) {
   const tTipos = useTranslations('transporte.tiposVehiculo');
   const tDomi = useTranslations('catalogoComun.formPersona.tiposVehiculo');
   const tFlota = useTranslations('transporte.flota');
+  const tl = useTranslations('logisticaVehiculo');
   const router = useRouter();
   const modulo = moduloDeRuta(usePathname());
   const rutas = RUTAS_CATALOGO[modulo];
@@ -90,7 +92,7 @@ export function PersonaFormulario({ id }: { id?: string }) {
   const origenId = id ?? duplicarDe;
 
   const [original, setOriginal] = useState<PersonaCatalogo | null>(null);
-  const [form, setForm] = useState<FormPersona>(() => personaAFormulario(null, { sede: selectedBranchId ?? null }));
+  const [form, setForm] = useState<FormPersona>(() => personaAFormulario(null, { sede: selectedBranchId ?? null, uso: usoInicial(modulo) }));
   const [inicial, setInicial] = useState<{ positionId: string | null; vehiculoId: string | null }>({ positionId: null, vehiculoId: null });
   const [errores, setErrores] = useState<ErroresPersona>({});
   const [personas, setPersonas] = useState<PersonaCatalogo[]>([]);
@@ -132,10 +134,11 @@ export function PersonaFormulario({ id }: { id?: string }) {
             return;
           }
           const positionId = listaEmpleos.find((x) => x.id === base.employmentId)?.positionId ?? null;
-          const vehiculoId = base.userId ? v.find((x) => x.current_driver_id === base.userId && x.is_active !== false)?.id ?? null : null;
+          // Logística 1b: el vehículo por defecto vive en la persona; el espejo de Transporte, si no hay.
+          const vehiculoId = base.vehiculoDefectoId ?? (base.userId ? v.find((x) => x.current_driver_id === base.userId && x.is_active !== false)?.id ?? null : null);
           setOriginal(editando ? base : null);
           setInicial(editando ? { positionId, vehiculoId } : { positionId: null, vehiculoId: null });
-          setForm(personaAFormulario(credencialDe(base), { positionId, vehiculoId, sede: selectedBranchId ?? null, duplicar: !editando }));
+          setForm(personaAFormulario(credencialDe(base), { positionId, vehiculoId, sede: selectedBranchId ?? null, duplicar: !editando, uso: usoInicial(modulo) }));
         }
         setCarga('listo');
       } catch {
@@ -165,7 +168,6 @@ export function PersonaFormulario({ id }: { id?: string }) {
     if (original?.userId && original.externo && !base.some((m) => m.userId === original.userId)) base.unshift({ userId: original.userId, nombre: original.nombre, telefono: original.telefono });
     return base;
   }, [miembros, original]);
-  const usuario = form.modo === 'empleado' ? original?.userId ?? null : form.user_id;
   const nombre = form.modo === 'empleado' ? empleos.find((e) => e.id === form.employment_id)?.nombre ?? original?.nombre ?? '' : form.full_name.trim();
   const cargoNombre = form.modo === 'empleado' ? cargos.find((c) => c.id === form.position_id)?.name ?? null : tc('externo');
   const vehiculoElegido = vehiculos.find((v) => v.id === form.vehiculo_id) ?? null;
@@ -237,7 +239,7 @@ export function PersonaFormulario({ id }: { id?: string }) {
         toastSuccess(editando ? tp('toast.actualizado') : tp('toast.creado'));
         if (!editando && modo === 'otro') {
           setPersonas(await listarPersonasCatalogo(supabase, organizationId).catch(() => personas));
-          setForm(personaAFormulario(null, { sede: form.branch_id }));
+          setForm(personaAFormulario(null, { sede: form.branch_id, uso: usoInicial(modulo) }));
           setErrores({});
           window.scrollTo({ top: 0 });
         } else {
@@ -489,9 +491,16 @@ export function PersonaFormulario({ id }: { id?: string }) {
               valor={form.vehiculo_id}
               onValor={(v) => poner('vehiculo_id', v)}
               ninguno={tp('sinVehiculo')}
-              opciones={vehiculos.filter((v) => v.is_active !== false).map((v) => ({ valor: v.id, etiqueta: `${v.plate} · ${tTipos.has(v.vehicle_type) ? tTipos(v.vehicle_type) : v.vehicle_type}` }))}
-              ayuda={usuario || form.modo === 'empleado' ? t('ayudas.vehiculo_id') : t('ayudas.vehiculoSinUsuario')}
-              deshabilitado={form.modo === 'externo' && !usuario}
+              opciones={vehiculos.filter((v) => v.is_active !== false).map((v) => ({ valor: v.id, etiqueta: `${v.plate ?? tl('sinPlaca')} · ${tTipos.has(v.vehicle_type) ? tTipos(v.vehicle_type) : v.vehicle_type}` }))}
+              // Logística 1b: se guarda en `default_vehicle_id`, también para un externo sin cuenta.
+              ayuda={tl('ficha.vehiculoPersonaAyuda')}
+            />
+            <CampoSelect
+              etiqueta={tl('ficha.uso')}
+              valor={form.usage}
+              onValor={(v) => poner('usage', (v ?? usoInicial(modulo)) as Uso)}
+              opciones={USOS.map((u) => ({ valor: u, etiqueta: tl(`usos.${u}`) }))}
+              ayuda={tl(`ficha.usoNota.${modulo}`)}
             />
             <div className="sm:col-span-2">
               <CampoInterruptor id="persona-activo" titulo={t('campos.is_active')} descripcion={t('ayudas.is_active')} valor={form.is_active} onValor={(v) => poner('is_active', v)} />
@@ -565,6 +574,7 @@ function credencialDe(p: PersonaCatalogo) {
     emergency_contact_phone: p.emergenciaTelefono,
     is_active: p.activo,
     branch_id: p.sedeId,
+    usage: p.uso,
     metadata: p.credencial.metadata ?? null,
   };
 }

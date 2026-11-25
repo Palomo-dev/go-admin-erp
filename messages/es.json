@@ -69587,7 +69587,8 @@
       "trailer": "Tractomula",
       "boat": "Lancha",
       "yacht": "Yate",
-      "other": "Otro"
+      "other": "Otro",
+      "bicycle": "Bicicleta"
     },
     "motivos": {
       "retraso": "Retraso",
@@ -72245,6 +72246,314 @@
       "vence": "{pasarela} · vence {hora}",
       "sinIntentos": "{pasarela} · sin intentos",
       "nIntentos": "{pasarela} · {n, plural, one {# intento} other {# intentos}}"
+    }
+  },
+  "logisticaVehiculo": {
+    "tipos": {
+      "motorcycle": "Moto",
+      "car": "Carro",
+      "van": "Camioneta",
+      "bicycle": "Bicicleta",
+      "truck": "Camión",
+      "minibus": "Buseta",
+      "bus": "Bus",
+      "trailer": "Tráiler",
+      "boat": "Lancha",
+      "yacht": "Yate",
+      "other": "Otro",
+      "on_foot": "A pie"
+    },
+    "tiposCorto": {
+      "motorcycle": "moto",
+      "car": "carro",
+      "van": "camioneta",
+      "bicycle": "bicicleta",
+      "truck": "camión",
+      "minibus": "buseta",
+      "bus": "bus",
+      "trailer": "tráiler",
+      "boat": "lancha",
+      "yacht": "yate",
+      "other": "otro",
+      "on_foot": "a pie"
+    },
+    "sinPlaca": "sin placa",
+    "duenos": {
+      "company": "De la empresa",
+      "driver": "Del domiciliario o conductor",
+      "third_party": "De un tercero (aliado o agregador)"
+    },
+    "duenoCorto": {
+      "company": "de la empresa",
+      "driver": "del domiciliario",
+      "third_party": "de un tercero"
+    },
+    "usos": {
+      "logistics": "Logística",
+      "transport": "Transporte",
+      "both": "Ambos"
+    },
+    "sinVehiculo": {
+      "on_foot": "A pie",
+      "bicycle": "Bici sin vehículo registrado"
+    },
+    "sinVehiculoCorto": {
+      "on_foot": "a pie",
+      "bicycle": "en bici"
+    },
+    "asignar": {
+      "vehiculo": "Vehículo",
+      "obligatorio": "Obligatorio en {tipo}",
+      "recomendado": "Recomendado en {tipo}",
+      "opcionalEn": "Opcional en {tipo}",
+      "opcional": "Opcional",
+      "elige": "Elige un vehículo",
+      "porDefecto": "por defecto",
+      "porDefectoDe": "por defecto de {nombre}",
+      "ayudaDefecto": "Preseleccionado: el vehículo por defecto de {nombre}. Puedes elegir otro de Logística disponible; el que quede aquí se guarda en cada envío y no cambia aunque después se edite la ficha.",
+      "ayudaEnvio": "Es el vehículo que ya tenía este envío. Puedes cambiarlo; el que quede aquí se guarda en el envío.",
+      "ayudaSinVehiculo": "Va sin vehículo registrado: se guarda así en el envío, de forma explícita.",
+      "ayudaGeneral": "El vehículo que quede aquí se guarda en cada envío y no cambia aunque después se edite la ficha.",
+      "soloLogistica": "Solo vehículos de Logística o Ambos. Un bus de Transporte no aparece aquí.",
+      "revisando": "Revisando documentos…",
+      "errorRevision": "No se pudieron revisar los documentos. Vuelve a intentarlo.",
+      "ocupado": "Ese vehículo ya tiene envíos abiertos de otra persona. Elige otro.",
+      "alDia": "Documentos y licencia al día.",
+      "revision": "Revisión · {vehiculo} y {nombre}",
+      "causas": {
+        "soat": "SOAT",
+        "tecnomecanica": "Revisión técnico-mecánica",
+        "licencia": "Licencia {categoria}",
+        "sin_licencia": "Licencia de conducción",
+        "categoria_licencia": "Licencia {categoria}",
+        "vehiculo_requerido": "Vehículo",
+        "capacidad_kg": "Capacidad en peso",
+        "capacidad_m3": "Capacidad en volumen"
+      },
+      "estadoItem": {
+        "vencio": "venció el {fecha}",
+        "venceEn": "{count, plural, one {vence en # día ({fecha})} other {vence en # días ({fecha})}}",
+        "sinLicencia": "sin licencia registrada (pide {requeridas})",
+        "categoria": "no sirve para {tipo}: pide {requeridas}",
+        "requerido": "elige uno para asignar"
+      },
+      "bloqueado": {
+        "titulo": "No se puede asignar con {vehiculo}",
+        "descripcion": "{causas}. Cámbialo por otro vehículo con documentos al día o pide a un supervisor que autorice la excepción. Queda registrado.",
+        "inline": "{causa} vencido: no se puede asignar con este vehículo"
+      },
+      "requerido": {
+        "titulo": "{nombre} reparte en {tipo}: elige el vehículo",
+        "descripcion": "En moto, carro o camioneta el vehículo es obligatorio. Elige uno de la flota o regístralo en la ficha del domiciliario."
+      },
+      "soloAviso": {
+        "titulo": "Documentos vencidos: por ahora solo se avisa",
+        "descripcion": "{causas}. El bloqueo está apagado en Configuración › Logística o ningún supervisor tiene PIN; la asignación queda registrada con el aviso."
+      },
+      "capacidad": {
+        "titulo": "La carga supera la capacidad del vehículo ({tipo})",
+        "kg": "{count, plural, one {El envío pesa} other {Los # envíos pesan}} {valor} kg y {vehiculo} lleva hasta {capacidad} kg. Es solo un aviso: puedes asignar igual o repartir en dos domiciliarios.",
+        "m3": "{count, plural, one {El envío ocupa} other {Los # envíos ocupan}} {valor} m³ y {vehiculo} lleva hasta {capacidad} m³. Es solo un aviso: puedes asignar igual o repartir en dos domiciliarios."
+      },
+      "bici": {
+        "titulo": "Sin SOAT, tecnomecánica ni licencia",
+        "descripcion": "En bici, a pie o en vehículo de un tercero no se revisan documentos ni hay bloqueo. Ya no existe la opción «Sin vehículo (el del domiciliario)»."
+      },
+      "excepcion": {
+        "o": "o, si no hay otro vehículo",
+        "titulo": "Asignar con excepción autorizada",
+        "descripcion": "La autoriza quien tenga el permiso «Autorizar excepción de asignación» con su PIN de Recursos humanos. {count, plural, one {Vale solo para este envío.} other {Vale solo para estos # envíos.}}",
+        "boton": "Pedir autorización al supervisor"
+      },
+      "pie": {
+        "habilita": "«Asignar» se habilita con todo al día",
+        "habilitaExcepcion": "o con la excepción autorizada",
+        "llevaraEn": "{nombre} llevará {count, plural, one {# envío} other {# envíos}} en {vehiculo}",
+        "llevaraSin": "{nombre} llevará {count, plural, one {# envío} other {# envíos}} {modo}"
+      },
+      "noAsignar": {
+        "vehiculo_requerido": "Elige un vehículo: en moto, carro o camioneta es obligatorio",
+        "bloqueado": "Documentos vencidos: cambia de vehículo o pide la excepción",
+        "sin_excepcion": "Esta asignación no admite excepción",
+        "ocupado": "El vehículo tiene envíos abiertos de otra persona"
+      },
+      "persona": {
+        "licencia": "licencia {categoria}",
+        "porDefecto": "(por defecto)",
+        "sinRegistrar": "sin vehículo registrado"
+      },
+      "toast": {
+        "conExcepcion": "{count, plural, one {Envío asignado} other {# envíos asignados}} a {nombre} con excepción autorizada",
+        "conAvisos": "{count, plural, one {Uno quedó} other {# quedaron}} con avisos de documentos."
+      },
+      "errores": {
+        "VEHICULO_OCUPADO": "El vehículo tiene envíos abiertos de otra persona.",
+        "SIN_VEHICULO_INVALIDO": "Elige «A pie» o «Bici sin vehículo registrado».",
+        "NO_ADMITE_EXCEPCION": "Falta el vehículo: elige uno para asignar.",
+        "BLOQUEADO": "Documentos vencidos: pide la excepción al supervisor."
+      }
+    },
+    "excepcion": {
+      "titulo": "Autorización requerida",
+      "subtitulo": "Documento vencido: solo un supervisor lo autoriza.",
+      "accion": "Acción",
+      "detalle": "Detalle",
+      "envios": "Envíos",
+      "accionTexto": "Asignar con {causas} vencido",
+      "supervisor": "Supervisor",
+      "cargando": "Cargando…",
+      "eligeSupervisor": "Elige quién autoriza",
+      "sinAutorizadores": "Nadie tiene el permiso «Autorizar excepción de asignación»",
+      "sinPinOpcion": "{nombre} (sin PIN)",
+      "sinPin": "{nombre} no tiene PIN asignado",
+      "irAsignarPin": "Asignar PIN en Recursos humanos",
+      "pin": "PIN del supervisor",
+      "pinAyuda": "{nombre} escribe su PIN de Recursos humanos (el del kiosco). Se verifica en el servidor; GO Admin no lo guarda en el navegador. 5 intentos fallidos en 15 minutos lo bloquean.",
+      "elSupervisor": "El supervisor",
+      "motivo": "Motivo",
+      "motivos": {
+        "soat_renovado": "SOAT renovado, falta subirlo",
+        "urgente": "Entrega urgente",
+        "reemplazo": "Reemplazo en camino",
+        "otro": "Otro"
+      },
+      "detalleMotivo": "Detalle del motivo",
+      "motivoMin": "Entre el motivo y el detalle, mínimo {n} caracteres.",
+      "faltaCompletar": "Elige al supervisor, escribe su PIN de 6 dígitos y un motivo de al menos {n} caracteres",
+      "registro": "Queda en cada envío y en su bitácora: el documento vencido, el motivo, quién pidió, quién autorizó y la hora (zona horaria de la organización).",
+      "autorizar": "Autorizar y asignar",
+      "errores": {
+        "pin_rechazado": "PIN incorrecto. {n, plural, =0 {No quedan intentos.} one {Te queda # intento.} other {Te quedan # intentos.}}",
+        "pin_bloqueado": "Se bloqueó por 15 minutos tras 5 intentos fallidos (hasta las {hora}). Elige otro supervisor o pide a Recursos humanos que desbloquee el PIN de {nombre}.",
+        "motivo_invalido": "El motivo debe tener entre 10 y 500 caracteres.",
+        "falta_supervisor": "Elige al supervisor que autoriza.",
+        "sin_permiso_excepcion": "Esa persona no tiene el permiso «Autorizar excepción de asignación».",
+        "supervisor_sin_pin": "Esa persona no tiene PIN asignado en Recursos humanos.",
+        "no_admite_excepcion": "Esta asignación no admite excepción: falta el vehículo.",
+        "bloqueado": "La asignación sigue bloqueada. Revisa el motivo y el PIN.",
+        "ERROR": "No se pudo autorizar. Vuelve a intentarlo."
+      }
+    },
+    "alta": {
+      "reparte": "¿En qué reparte?",
+      "elegir": "Elige un vehículo de la flota",
+      "deOtro": "de {nombre} (es su vehículo por defecto)",
+      "crearNuevo": "Crear vehículo nuevo (placa, dueño, SOAT, tecnomecánica)",
+      "ayudaFlota": "Solo salen vehículos con uso Logística o Ambos, activos y fuera de mantenimiento. Será su vehículo por defecto: al asignar un envío se preselecciona y se puede cambiar.",
+      "vehiculoNuevo": "Vehículo nuevo",
+      "seCreaConElla": "Se crea con la persona",
+      "placa": "Placa",
+      "placaAyuda": "Única en la organización",
+      "placaOpcional": "Opcional en bici o en vehículo de un tercero",
+      "dueno": "Dueño",
+      "laPersona": "la persona",
+      "duenoAyuda": {
+        "company": "De la empresa: combustible y mantenimiento son de la empresa. Placa y documentos se piden.",
+        "driver": "Del domiciliario: el vehículo es de {nombre}. Placa y documentos igual se piden porque circula en vía pública; la empresa no asume combustible salvo política expresa.",
+        "third_party": "De un tercero: la placa es opcional y GO Admin no exige sus documentos (los cubre el aliado)."
+      },
+      "soat": "SOAT vence",
+      "tecnomecanica": "Tecnomecánica vence",
+      "kg": "Capacidad (kg)",
+      "m3": "Capacidad (m³)",
+      "capacidadAyuda": "Opcional. Si un envío se pasa, solo se avisa.",
+      "quedaPorDefecto": {
+        "titulo": "Queda como su vehículo por defecto",
+        "descripcion": "Se crea en Vehículos con uso Logística. Las fotos del SOAT y de la tecnomecánica se suben luego en la ficha del vehículo."
+      },
+      "mejorFlota": "Mejor elegir uno de la flota",
+      "aPie": "A pie no se pide vehículo ni licencia.",
+      "licencia": "Licencia de conducción",
+      "categoria": "Categoría",
+      "sinLicencia": "Sin licencia registrada",
+      "categoriaAyuda": "{tipo}: {categorias}",
+      "categoriaPide": "Para {tipo} se pide {categorias}",
+      "vence": "Vence",
+      "venceAyuda": "Si vence, la asignación avisa o bloquea según la organización",
+      "categoriaIncorrecta": {
+        "titulo": "Se puede guardar, pero no se le podrá asignar ese {tipo}",
+        "descripcion": "La misma regla de categorías se valida otra vez al asignar, en el servidor."
+      },
+      "uso": "Uso",
+      "usoAyuda": "Nace en Logística porque se registra desde aquí. Una moto o un bus solo aparecen como opción en el módulo de su uso.",
+      "usoAmbos": "Usar también en Transporte (queda «Ambos»)",
+      "registrarConVehiculo": "Registrar domiciliario y vehículo",
+      "guardarIgual": "Guardar de todos modos",
+      "avisoVehiculo": "El domiciliario quedó registrado, pero el vehículo no",
+      "errores": {
+        "vehiculo": "En moto, carro o camioneta elige un vehículo o crea uno nuevo",
+        "placa": "Escribe la placa",
+        "licencia": "Completa la fecha de vencimiento"
+      },
+      "erroresVehiculo": {
+        "PLACA_DUPLICADA": "Ya hay un vehículo con esa placa en la organización. Elígelo de la flota.",
+        "PLACA_REQUERIDA": "Falta la placa (solo es opcional en bici o vehículo de un tercero).",
+        "VEHICULO_DE_OTRO": "Ese vehículo ya es el vehículo por defecto de otra persona.",
+        "VEHICULO_INVALIDO": "Ese vehículo no está activo o no es de uso Logística.",
+        "TIPO_INVALIDO": "Ese tipo de vehículo no se puede crear desde aquí.",
+        "ERROR": "Complétalo desde la ficha del domiciliario."
+      }
+    },
+    "ficha": {
+      "placaOpcional": "Obligatoria salvo en bicicleta o en vehículo de un tercero",
+      "dueno": "Dueño",
+      "duenoDescripcion": "Quién es dueño del vehículo. Cambia qué se pide y a quién se le cargan los costos.",
+      "duenoPersona": "Domiciliario dueño",
+      "duenoPersonaAyuda": "Obligatorio cuando el dueño es el domiciliario. Puede no tener usuario en GO Admin.",
+      "errores": {
+        "owner_driver_id": "Elige la persona dueña del vehículo"
+      },
+      "avisoDueno": {
+        "company": {
+          "titulo": "De la empresa: placa y documentos se piden",
+          "descripcion": "Combustible y mantenimiento son de la empresa (costo de la flota)."
+        },
+        "driver": {
+          "titulo": "Del domiciliario: placa y documentos se piden igual",
+          "descripcion": "Circula en vía pública. La empresa no asume combustible salvo política expresa."
+        },
+        "third_party": {
+          "titulo": "De un tercero: placa opcional",
+          "descripcion": "GO Admin no exige sus documentos; los cubre el aliado o agregador."
+        }
+      },
+      "uso": "Uso",
+      "usoDescripcion": "Define en qué módulo aparece como opción.",
+      "usoNota": {
+        "logistica": "Nace en Logística. Con «Ambos» también sale para viajes de Transporte; un bus con uso Transporte nunca sale en la hoja de asignar domicilio.",
+        "transporte": "Nace en Transporte. Con «Ambos» también sale como opción de domicilio en Logística."
+      },
+      "conductorDefecto": "Conductor por defecto",
+      "sinConductor": "Sin conductor por defecto",
+      "conductorAyuda": "Se guarda en la persona (vehículo por defecto). Al asignar un envío se preselecciona; cerrar el último envío ya no se lo quita.",
+      "conductorNoGuardado": "El vehículo se guardó, pero el conductor por defecto no",
+      "erroresConductor": {
+        "VEHICULO_DE_OTRO": "Ese vehículo ya es el por defecto de otra persona.",
+        "VEHICULO_INVALIDO": "El vehículo debe estar activo y con uso Logística o Ambos.",
+        "SIN_PERMISO": "Hace falta el permiso «Despachar envíos» (logistica.manage).",
+        "ERROR": "Vuelve a intentarlo desde la ficha de la persona."
+      },
+      "biciSinDocumentos": "En bici no se piden SOAT ni tecnomecánica.",
+      "documentosBloquean": "Bloquean la asignación de domicilios si están vencidos (salvo excepción del supervisor con PIN), cuando la organización lo activa.",
+      "vehiculoPersonaAyuda": "Su vehículo por defecto: al asignar un envío se preselecciona. Sirve también para un domiciliario externo sin cuenta."
+    },
+    "listas": {
+      "uso": "Uso",
+      "chipUso": "Uso: {uso}",
+      "aPie": "A pie",
+      "biciSinRegistrar": "Bici sin registrar",
+      "sinVehiculo": "sin vehículo"
+    },
+    "detalle": {
+      "guardado": "Guardado al asignar: no cambia aunque se edite la ficha del vehículo.",
+      "excepcion": "Excepción autorizada"
+    },
+    "ajustes": {
+      "bloqueo": {
+        "titulo": "Bloquear asignación con documentos vencidos",
+        "descripcion": "SOAT, tecnomecánica o licencia vencidos (o licencia de otra categoría) en moto, carro o camioneta bloquean la asignación del domicilio propio, salvo excepción del supervisor con su PIN. Apagado: solo se avisa. Mientras ningún supervisor tenga PIN, también solo se avisa.",
+        "asignarPin": "Asignar PIN en Recursos humanos"
+      }
     }
   }
 }

@@ -4,9 +4,13 @@
  * «Asignar N envíos» (Figma «21 Logística», hoja lateral 2800:8231). La usan Por despachar (uno
  * o varios envíos), el detalle del envío y Pedidos online (`AssignDeliveryDialog`): una sola pieza.
  *
- * Asignar NO exige vehículo: llama `assignVehicleAndDriver(id, vehículo | null, domiciliario)`,
- * que es la RPC `logistica_asignar_domiciliario` (docs/logistica/FASE1-CIMIENTOS.md). La base
- * valida el estado, el domiciliario y la sede; aquí solo se elige.
+ * Logística 1b (Figma «21 Logística» 3158-11641…3159-12140): al elegir el domiciliario, la base
+ * (`logistica_revisar_asignacion`) dice qué vehículo preseleccionar (el del envío > el por defecto >
+ * «a pie / bici sin vehículo» explícito) y revisa SOAT, tecnomecánica, licencia y capacidad. El
+ * vehículo elegido queda congelado en cada envío (`logistica_asignar_domiciliario`). Si el bloqueo
+ * de la organización aplica, «Asignar» solo pasa con todo al día o con la excepción del supervisor
+ * (`DialogoExcepcionAsignacion`, PIN validado en la base). Desapareció «Sin vehículo (el del
+ * domiciliario)». Aquí no se decide ninguna regla: se muestra lo que responde la base.
  *
  * La carga y el estado de cada domiciliario salen de `cargaDelDia` y `estadoDomiciliario`
  * (domiciliarios.ts), la misma regla que la pantalla Domiciliarios.
@@ -19,7 +23,6 @@ import { AvatarIniciales, StatusBadge, clasesBoton } from '@/components/kit';
 import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastError, toastSuccess, toastWarning } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -27,11 +30,24 @@ import { supabase } from '@/lib/supabase/config';
 import { startOfDayInstant } from '@/lib/utils/dateCore';
 import { cn } from '@/utils/Utils';
 import {
+  AsignacionNoPasoError,
   deliveryIntegrationService,
   EnvioError,
   type DeliveryDriver,
   type DeliveryVehicle,
 } from '@/lib/services/deliveryIntegrationService';
+import {
+  ESTADOS_DE_EXCEPCION,
+  motivoNoAsignar,
+  seleccionAParametros,
+  seleccionInicial,
+  valorASeleccion,
+  type ResultadoAsignacionRpc,
+  type RevisionAsignacion,
+  type Seleccion,
+} from '@/lib/logistica/vehiculoAsignacion';
+import { RevisionVehiculoAsignacion } from './RevisionVehiculoAsignacion';
+import { DialogoExcepcionAsignacion, type AutorizadorAsignacion } from './DialogoExcepcionAsignacion';
 import { enviosDeDomiciliarios, type EnvioDeCargaConDomiciliario } from '@/lib/services/logistica/despachoService';
 import { ordenSugeridoRuta, resumenSeleccion, type FilaDespacho } from '@/lib/logistica/despacho';
 import {
@@ -84,6 +100,7 @@ export function HojaAsignarDomiciliario({
   onAsignado,
 }: HojaAsignarDomiciliarioProps) {
   const t = useTranslations('logistica.despacho.asignar');
+  const tv = useTranslations('logisticaVehiculo');
   const moneda = useMonedaOrganizacion();
   const { timezone, getToday, formatTime } = useFormatDate();
 
@@ -92,7 +109,12 @@ export function HojaAsignarDomiciliario({
   const [errorCarga, setErrorCarga] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [elegido, setElegido] = useState<string | null>(null);
-  const [vehiculo, setVehiculo] = useState<string>('ninguno');
+  const [seleccion, setSeleccion] = useState<Seleccion>({ tipo: 'ninguno' });
+  const [revision, setRevision] = useState<RevisionAsignacion | null>(null);
+  const [revisando, setRevisando] = useState(false);
+  const [errorRevision, setErrorRevision] = useState(false);
+  const [excepcionAbierta, setExcepcionAbierta] = useState(false);
+  const [autorizadores, setAutorizadores] = useState<AutorizadorAsignacion[] | null>(null);
   const [imprimir, setImprimir] = useState(true);
   const [ocupado, setOcupado] = useState(false);
 
@@ -139,7 +161,9 @@ export function HojaAsignarDomiciliario({
         setVehiculos(vehs);
         const actual = envios.length === 1 ? envios[0].domiciliarioId : null;
         setElegido(actual && opciones.some((o) => o.driver.id === actual) ? actual : null);
-        setVehiculo(envios.length === 1 && envios[0].vehiculoId ? envios[0].vehiculoId : 'ninguno');
+        setRevision(null);
+        setSeleccion({ tipo: 'ninguno' });
+        setAutorizadores(null);
       })
       .catch(() => !cancelado && setErrorCarga(true));
     return () => {
@@ -155,6 +179,57 @@ export function HojaAsignarDomiciliario({
   }, [drivers, busqueda]);
 
   const opcionElegida = drivers?.find((o) => o.driver.id === elegido) ?? null;
+  const idsRuta = useMemo(() => ruta.map((e) => e.id), [ruta]);
+  const claveRuta = idsRuta.join(',');
+
+  // vehicles.id → nombre de quien lo tiene por defecto («por defecto de Luisa»).
+  const defectoDe = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of drivers ?? []) if (o.driver.default_vehicle_id) m.set(o.driver.default_vehicle_id, o.nombre);
+    return m;
+  }, [drivers]);
+
+  // Revisión de la base: al elegir domiciliario, la preselección; al cambiar el vehículo, esa elección.
+  const revisar = async (driverId: string, s: Seleccion | null) => {
+    if (idsRuta.length === 0) return;
+    setRevisando(true);
+    setErrorRevision(false);
+    try {
+      const r = await deliveryIntegrationService.revisarAsignacion(idsRuta, driverId, s ? seleccionAParametros(s) : {});
+      setRevision(r);
+      if (!s) setSeleccion(seleccionInicial(r));
+    } catch {
+      setErrorRevision(true);
+      setRevision(null);
+    } finally {
+      setRevisando(false);
+    }
+  };
+  useEffect(() => {
+    if (!abierto || !elegido) return;
+    setRevision(null);
+    setSeleccion({ tipo: 'ninguno' });
+    void revisar(elegido, null);
+    // La revisión depende del domiciliario y de los envíos de la ruta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, elegido, claveRuta]);
+
+  const elegirVehiculo = (valor: string) => {
+    const s = valorASeleccion(valor);
+    setSeleccion(s);
+    if (elegido) void revisar(elegido, s);
+  };
+
+  const abrirExcepcion = () => {
+    setExcepcionAbierta(true);
+    if (autorizadores === null) {
+      deliveryIntegrationService
+        .getAutorizadoresAsignacion(organizationId)
+        .then(setAutorizadores)
+        .catch(() => setAutorizadores([]));
+    }
+  };
+  const bloqueoAsignar = motivoNoAsignar(revision, seleccion);
 
   const motivoNoElegible = (o: OpcionDomiciliario): string | null => {
     if (o.estado === 'inactivo') return t('motivos.inactivo');
@@ -163,32 +238,54 @@ export function HojaAsignarDomiciliario({
     return null;
   };
 
-  const asignar = async () => {
-    if (!opcionElegida || ruta.length === 0) return;
-    const veh = vehiculo === 'ninguno' ? null : vehiculo;
+  /**
+   * Asigna la ruta con el vehículo elegido (o «a pie / bici»). Con `excepcion`, la base valida el PIN
+   * del supervisor; si el PIN no pasa se detiene en el primer envío y devuelve el resultado al
+   * diálogo (los intentos fallidos cuentan sobre el PIN de ese supervisor).
+   */
+  const asignar = async (excepcion?: { motivo: string; supervisorId: string; pin: string }): Promise<ResultadoAsignacionRpc | null> => {
+    if (!opcionElegida || ruta.length === 0) return null;
+    const { vehiculoId, sinVehiculo } = seleccionAParametros(seleccion);
     // Las guías se abren ANTES de los await para no perder el gesto (el navegador bloquea la
-    // ventana si se abre después); llevan el domiciliario elegido.
-    if (imprimir && onImprimirGuias) onImprimirGuias(ruta, { nombre: opcionElegida.nombre, telefono: opcionElegida.driver.phone });
+    // ventana si se abre después); llevan el domiciliario elegido. Con excepción, después.
+    if (!excepcion && imprimir && onImprimirGuias) onImprimirGuias(ruta, { nombre: opcionElegida.nombre, telefono: opcionElegida.driver.phone });
     setOcupado(true);
     const asignados: string[] = [];
     const fallidos: { id: string; codigo: string }[] = [];
+    let conAvisos = 0;
+    let detenido: ResultadoAsignacionRpc | null = null;
     for (const e of ruta) {
       try {
-        await deliveryIntegrationService.assignVehicleAndDriver(e.id, veh, opcionElegida.driver.id);
+        const r = await deliveryIntegrationService.assignVehicleAndDriver(e.id, vehiculoId, opcionElegida.driver.id, undefined, { sinVehiculo, excepcion: excepcion ?? null });
         asignados.push(e.id);
+        if (r.asignacion?.estado === 'asignado_con_avisos') conAvisos += 1;
       } catch (err) {
+        if (excepcion && err instanceof AsignacionNoPasoError && ESTADOS_DE_EXCEPCION.includes(err.resultado.estado)) {
+          detenido = err.resultado;
+          break;
+        }
         fallidos.push({ id: e.id, codigo: err instanceof EnvioError ? err.codigo : 'ERROR' });
       }
     }
     setOcupado(false);
-    if (asignados.length > 0) toastSuccess(t('toast.asignados', { count: asignados.length, nombre: opcionElegida.nombre }));
+    if (asignados.length > 0) {
+      toastSuccess(
+        excepcion ? tv('asignar.toast.conExcepcion', { count: asignados.length, nombre: opcionElegida.nombre }) : t('toast.asignados', { count: asignados.length, nombre: opcionElegida.nombre }),
+        conAvisos > 0 ? tv('asignar.toast.conAvisos', { count: conAvisos }) : undefined,
+      );
+      if (excepcion && imprimir && onImprimirGuias) onImprimirGuias(ruta.filter((x) => asignados.includes(x.id)), { nombre: opcionElegida.nombre, telefono: opcionElegida.driver.phone });
+    }
     if (fallidos.length > 0) {
       const codigo = fallidos[0].codigo;
-      const motivo = t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.ERROR');
+      const motivo = t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : tv.has(`asignar.errores.${codigo}`) ? tv(`asignar.errores.${codigo}`) : t('errores.ERROR');
       (asignados.length > 0 ? toastWarning : toastError)(t('toast.fallidos', { count: fallidos.length }), motivo);
     }
-    onAsignado?.({ asignados, fallidos, domiciliarioId: opcionElegida.driver.id, imprimir });
+    if (asignados.length > 0 || fallidos.length > 0) onAsignado?.({ asignados, fallidos, domiciliarioId: opcionElegida.driver.id, imprimir });
+    if (detenido) return detenido;
+    setExcepcionAbierta(false);
     if (fallidos.length === 0) onAbiertoChange(false);
+    else if (elegido) void revisar(elegido, seleccion);
+    return null;
   };
 
   const fmt = moneda.formatear;
@@ -209,12 +306,25 @@ export function HojaAsignarDomiciliario({
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 text-sm">
             {opcionElegida ? (
-              <>
-                <p className="truncate font-medium text-fg">{t('pie.llevara', { nombre: opcionElegida.nombre, count: ruta.length })}</p>
-                <p className="truncate text-xs text-fg-muted">
-                  {resumen.contraentrega > 0 ? t('pie.cobrara', { monto: fmt(resumen.contraentrega) }) : t('pie.nadaPorCobrar')}
-                </p>
-              </>
+              bloqueoAsignar === 'bloqueado' ? (
+                <>
+                  <p className="font-medium text-fg">{tv('asignar.pie.habilita')}</p>
+                  <p className="text-xs text-fg-muted">{tv('asignar.pie.habilitaExcepcion')}</p>
+                </>
+              ) : (
+                <>
+                  <p className="truncate font-medium text-fg">
+                    {revision?.vehiculo
+                      ? tv('asignar.pie.llevaraEn', { nombre: opcionElegida.nombre, count: ruta.length, vehiculo: revision.vehiculo.placa ?? tv('sinPlaca') })
+                      : seleccion.tipo === 'sin'
+                        ? tv('asignar.pie.llevaraSin', { nombre: opcionElegida.nombre, count: ruta.length, modo: tv(`sinVehiculoCorto.${seleccion.motivo}`) })
+                        : t('pie.llevara', { nombre: opcionElegida.nombre, count: ruta.length })}
+                  </p>
+                  <p className="truncate text-xs text-fg-muted">
+                    {resumen.contraentrega > 0 ? t('pie.cobrara', { monto: fmt(resumen.contraentrega) }) : t('pie.nadaPorCobrar')}
+                  </p>
+                </>
+              )
             ) : (
               <p className="text-fg-muted">{t('pie.elige')}</p>
             )}
@@ -227,8 +337,8 @@ export function HojaAsignarDomiciliario({
               type="button"
               className={clasesBoton({ variante: 'primario' })}
               onClick={() => void asignar()}
-              disabled={!opcionElegida || ruta.length === 0 || ocupado || !!(opcionElegida && motivoNoElegible(opcionElegida))}
-              title={!opcionElegida ? t('pie.elige') : undefined}
+              disabled={!opcionElegida || ruta.length === 0 || ocupado || revisando || !!bloqueoAsignar || !!(opcionElegida && motivoNoElegible(opcionElegida))}
+              title={!opcionElegida ? t('pie.elige') : bloqueoAsignar ? tv(`asignar.noAsignar.${bloqueoAsignar}`) : undefined}
             >
               {ocupado ? t('asignando') : t('confirmar', { count: ruta.length })}
             </button>
@@ -327,7 +437,15 @@ export function HojaAsignarDomiciliario({
                         <StatusBadge estado={o.estado} tono={TONO_ESTADO_DOMICILIARIO[o.estado]} etiqueta={t(`estados.${o.estado}`)} />
                       </span>
                       <span className="block truncate text-xs text-fg-muted">
-                        {o.driver.vehicle_type ? t(`vehiculos.${o.driver.vehicle_type}`) : t('vehiculos.sin')}
+                        {(() => {
+                          // Logística 1b: tipo + placa del vehículo por defecto (o «sin vehículo registrado»).
+                          const tipoTxt = o.driver.vehicle_type ? t(`vehiculos.${o.driver.vehicle_type}`) : t('vehiculos.sin');
+                          const v = o.driver.default_vehicle_id ? vehiculos.find((x) => x.id === o.driver.default_vehicle_id) : null;
+                          const lic = o.driver.license_category ? tv('asignar.persona.licencia', { categoria: o.driver.license_category }) : null;
+                          if (v) return [`${tipoTxt} ${v.plate ?? tv('sinPlaca')} ${tv('asignar.persona.porDefecto')}`, lic].filter(Boolean).join(' · ');
+                          if (o.driver.vehicle_type === 'on_foot') return tipoTxt;
+                          return [tipoTxt, o.driver.vehicle_type === 'bicycle' ? tv('asignar.persona.sinRegistrar') : null, lic].filter(Boolean).join(' · ');
+                        })()}
                       </span>
                       <span className="block truncate text-xs text-fg-secondary">
                         {o.porCobrar > 0
@@ -348,26 +466,22 @@ export function HojaAsignarDomiciliario({
           </Link>
         </section>
 
-        <section aria-labelledby="asignar-vehiculo" className="flex flex-col gap-2">
-          <h3 id="asignar-vehiculo" className="flex items-center gap-2 text-base font-semibold text-fg">
-            {t('vehiculo.titulo')}
-            <StatusBadge estado="opcional" tono="neutro" etiqueta={t('vehiculo.opcional')} />
-          </h3>
-          <Select value={vehiculo} onValueChange={setVehiculo}>
-            <SelectTrigger aria-labelledby="asignar-vehiculo" className="h-10 border-line-strong bg-surface">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ninguno">{t('vehiculo.ninguno')}</SelectItem>
-              {vehiculos.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {[v.plate, t.has(`vehiculos.${v.vehicle_type}`) ? t(`vehiculos.${v.vehicle_type}`) : v.vehicle_type].join(' · ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-fg-muted">{t('vehiculo.ayuda')}</p>
-        </section>
+        {opcionElegida && (
+          <RevisionVehiculoAsignacion
+            nombre={opcionElegida.nombre}
+            tipoPersona={opcionElegida.driver.vehicle_type ?? null}
+            vehiculos={vehiculos}
+            defectoDe={defectoDe}
+            driverId={opcionElegida.driver.id}
+            seleccion={seleccion}
+            onSeleccion={elegirVehiculo}
+            revision={revision}
+            revisando={revisando}
+            errorRevision={errorRevision}
+            envios={ruta.length}
+            onPedirExcepcion={abrirExcepcion}
+          />
+        )}
 
         <section className="flex flex-col gap-3">
           {onImprimirGuias && (
@@ -382,6 +496,17 @@ export function HojaAsignarDomiciliario({
           </p>
         </section>
       </div>
+      {excepcionAbierta && revision && (
+        <DialogoExcepcionAsignacion
+          abierto={excepcionAbierta}
+          onCerrar={() => setExcepcionAbierta(false)}
+          accion={tv('excepcion.accionTexto', { causas: revision.bloqueos.map((b) => (tv.has(`asignar.causas.${b.causa}`) ? tv(`asignar.causas.${b.causa}`, { categoria: b.categoria ?? '' }) : b.causa)).join(', ') })}
+          detalle={[revision.vehiculo?.placa ?? (revision.vehiculo ? tv('sinPlaca') : null), opcionElegida?.nombre].filter(Boolean).join(' · ')}
+          envios={`${ruta.length} · ${ruta.map((e) => e.pedido ?? e.numero).slice(0, 3).join(', ')}${ruta.length > 3 ? '…' : ''}`}
+          autorizadores={autorizadores}
+          onAutorizar={(x) => asignar(x)}
+        />
+      )}
     </HojaDetalle>
   );
 }

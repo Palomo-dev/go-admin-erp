@@ -7,6 +7,7 @@
  */
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { textoVehiculoPersona } from './textoVehiculo';
 import { Bike, HandCoins, MessageCircle, Phone, Power } from 'lucide-react';
 import { FilaDato, ListaDatos, PanelAdaptable, StatusBadge, clasesBoton } from '@/components/kit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -27,6 +28,7 @@ export interface FichaDomiciliarioProps {
 
 export function FichaDomiciliario({ fila, onCerrar, nombreSede, puedeGestionar, onCambiarActivo }: FichaDomiciliarioProps) {
   const t = useTranslations('logistica.domiciliario');
+  const tv = useTranslations('logisticaVehiculo');
   const moneda = useMonedaOrganizacion();
   if (!fila) return null;
 
@@ -113,7 +115,7 @@ export function FichaDomiciliario({ fila, onCerrar, nombreSede, puedeGestionar, 
           <FilaDato etiqueta={t('columnas.celular')} valor={telefono ?? '—'} />
           <FilaDato etiqueta={t('ficha.documento')} valor={d.document_number ? `${d.document_type ?? ''} ${d.document_number}`.trim() : '—'} />
           <FilaDato etiqueta={t('columnas.sede')} valor={nombreSede(d.branch_id)} />
-          <FilaDato etiqueta={t('columnas.vehiculo')} valor={d.vehicle_type ? t(`alta.vehiculos.${d.vehicle_type}`) : '—'} />
+          <FilaDato etiqueta={t('columnas.vehiculo')} valor={textoVehiculoPersona(d, tv)} />
           <FilaDato etiqueta={t('ficha.contraentrega')} valor={cobraContraentrega(d.metadata) ? t('ficha.si') : t('ficha.no')} />
           <FilaDato etiqueta={t('ficha.misEnvios')} valor={d.user_id ? t('ficha.conCuenta') : t('ficha.sinCuenta')} />
           <FilaDato etiqueta={t('ficha.licencia')} valor={d.license_number ?? t('ficha.sinLicencia')} />

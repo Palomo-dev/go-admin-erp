@@ -1,10 +1,17 @@
 import { supabase } from '@/lib/supabase/config';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WebOrder, WebOrderItem } from './webOrdersService';
-import { toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
+import { toPlainDate } from '@/lib/utils/dateDisplay';
 import { getOrganizationTimezone } from './organizationTimezoneService';
 import { contraentregaDePedidoWeb, type MedioCobroContraentrega } from '@/lib/logistica/contraentrega';
 import type { EstadoEnvio, ModoDespacho, MotivoNovedad } from '@/lib/logistica/estadosEnvio';
+import {
+  leerResultadoAsignacion,
+  leerRevision,
+  type ResultadoAsignacionRpc,
+  type RevisionAsignacion,
+  type SinVehiculo,
+} from '@/lib/logistica/vehiculoAsignacion';
 
 /**
  * Envíos del domicilio propio (logística Fase 1, docs/logistica/FASE1-CIMIENTOS.md).
@@ -100,15 +107,23 @@ export interface DeliveryShipment {
 
 export interface DeliveryVehicle {
   id: string;
-  plate: string;
+  /** Null en bici o vehículo de un tercero (Logística 1b, migración 20261125044314). */
+  plate: string | null;
   vehicle_type: string;
   brand?: string;
   model?: string;
   color?: string;
   capacity_kg?: number;
+  capacity_m3?: number | null;
   status: 'available' | 'in_use' | 'maintenance' | 'inactive';
   current_driver_id?: string;
   current_driver?: DeliveryDriver;
+  /** Logística 1b: dueño (company/driver/third_party), persona dueña y uso (logistics/transport/both). */
+  ownership?: 'company' | 'driver' | 'third_party';
+  owner_driver_id?: string | null;
+  usage?: 'logistics' | 'transport' | 'both';
+  soat_expiry?: string | null;
+  techno_expiry?: string | null;
 }
 
 /**
@@ -128,6 +143,9 @@ export interface DeliveryDriver {
   license_category: string | null;
   license_expiry: string | null;
   is_active: boolean;
+  /** Logística 1b: vehículo por defecto (`vehicles.id`) y uso de la persona. */
+  default_vehicle_id?: string | null;
+  usage?: 'logistics' | 'transport' | 'both';
   employee?: {
     id: string | number;
     first_name: string;
@@ -214,7 +232,34 @@ const CODIGOS_RPC = [
   // Migración 20261123165617: un domiciliario sin permiso sobre un envío que no es suyo, y asignar
   // contraentrega a quien no la cobra.
   'ENVIO_AJENO', 'DOMICILIARIO_NO_COBRA',
+  // Logística 1b (migración 20261125044314): placa con envíos abiertos de otra persona, motivo
+  // «sin vehículo» inválido y altas de vehículo.
+  'VEHICULO_OCUPADO', 'SIN_VEHICULO_INVALIDO', 'PLACA_DUPLICADA', 'PLACA_REQUERIDA', 'VEHICULO_DE_OTRO', 'TIPO_INVALIDO',
 ] as const;
+
+/**
+ * La asignación no pasó la revisión (bloqueo por documentos, excepción pendiente o PIN). La base NO
+ * lanza en esos casos —devuelve `ok: false`— para que la bitácora del intento quede guardada.
+ */
+export class AsignacionNoPasoError extends EnvioError {
+  constructor(public readonly resultado: ResultadoAsignacionRpc) {
+    super(resultado.estado.toUpperCase(), resultado.estado);
+    this.name = 'AsignacionNoPasoError';
+  }
+}
+
+/** Excepción autorizada por el supervisor (Logística 1b): motivo + supervisor + su PIN. */
+export interface ExcepcionAsignacion {
+  motivo: string;
+  supervisorId: string;
+  pin: string;
+}
+
+/** Opciones de `assignVehicleAndDriver` en la 1b. Sin vehículo ni motivo: la base sugiere (4.5). */
+export interface OpcionesAsignacion {
+  sinVehiculo?: SinVehiculo | null;
+  excepcion?: ExcepcionAsignacion | null;
+}
 
 function errorDeRpc(error: { message?: string; code?: string }): EnvioError {
   const m = error.message ?? '';
@@ -452,18 +497,24 @@ class DeliveryIntegrationService {
   }
 
   /**
-   * Asigna el domiciliario (y, si se quiere, el vehículo) a un envío: `logistica_asignar_domiciliario`.
+   * Asigna el domiciliario y el vehículo a un envío: `logistica_asignar_domiciliario` (Logística 1b).
    *
-   * El vehículo ya NO es obligatorio. El conductor queda en `shipments.driver_id` y el espejo en
-   * metadata se FUSIONA (antes se reemplazaba todo `metadata`). `estimatedDeliveryTime` puede
-   * venir como día ('YYYY-MM-DD') o instante ISO: se guarda el día en la zona de la organización.
+   * - Sin vehículo y sin «a pie / bici», la base elige (regla 4.5): el que ya tenía el envío con esa
+   *   persona, el vehículo por defecto o «a pie / bici sin vehículo» según su tipo.
+   * - La base revisa SOAT, tecnomecánica, licencia y categoría. Si el bloqueo de la organización
+   *   aplica y no hay excepción, devuelve `ok: false` (sin lanzar) y aquí se lanza
+   *   `AsignacionNoPasoError` con la revisión para que la pantalla pida la excepción.
+   * - La excepción (motivo + supervisor + PIN de Recursos humanos) se valida SOLO en la base.
+   * `estimatedDeliveryTime` puede venir como día ('YYYY-MM-DD') o instante ISO: se guarda el día en
+   * la zona de la organización.
    */
   async assignVehicleAndDriver(
     shipmentId: string,
     vehicleId: string | null | undefined,
     driverId: string,
-    estimatedDeliveryTime?: string
-  ): Promise<DeliveryShipment> {
+    estimatedDeliveryTime?: string,
+    opciones: OpcionesAsignacion = {}
+  ): Promise<DeliveryShipment & { asignacion?: ResultadoAsignacionRpc }> {
     let fecha: string | null = null;
     if (estimatedDeliveryTime) {
       if (/^\d{4}-\d{2}-\d{2}$/.test(estimatedDeliveryTime)) {
@@ -474,13 +525,44 @@ class DeliveryIntegrationService {
         fecha = toPlainDate(new Date(estimatedDeliveryTime), tz);
       }
     }
-    await this.rpc('logistica_asignar_domiciliario', {
+    const r = await this.rpc<Record<string, unknown>>('logistica_asignar_domiciliario', {
       p_shipment_id: shipmentId,
       p_driver_id: driverId,
       p_vehicle_id: vehicleId || null,
       p_fecha_estimada: fecha,
+      p_sin_vehiculo: opciones.sinVehiculo ?? null,
+      p_motivo: opciones.excepcion?.motivo?.trim() || null,
+      p_pin: opciones.excepcion?.pin || null,
+      p_supervisor: opciones.excepcion?.supervisorId || null,
     });
-    return this.releer(shipmentId);
+    const asignacion = leerResultadoAsignacion(r);
+    if (!asignacion.ok) throw new AsignacionNoPasoError(asignacion);
+    return { ...(await this.releer(shipmentId)), asignacion };
+  }
+
+  /**
+   * Revisión previa de la hoja «Asignar» (solo lee): `logistica_revisar_asignacion`. Sin vehículo ni
+   * «sin vehículo» devuelve la preselección del servidor; con ellos, la revisión de esa elección.
+   */
+  async revisarAsignacion(
+    shipmentIds: readonly string[],
+    driverId: string,
+    seleccion: { vehiculoId?: string | null; sinVehiculo?: SinVehiculo | null } = {}
+  ): Promise<RevisionAsignacion> {
+    const r = await this.rpc<unknown>('logistica_revisar_asignacion', {
+      p_shipment_ids: shipmentIds,
+      p_driver_id: driverId,
+      p_vehicle_id: seleccion.vehiculoId ?? null,
+      p_sin_vehiculo: seleccion.sinVehiculo ?? null,
+    });
+    return leerRevision(r);
+  }
+
+  /** Quién puede autorizar la excepción de asignación (logistica.asignacion.excepcion) y si tiene PIN. */
+  async getAutorizadoresAsignacion(organizationId: number): Promise<{ userId: string; nombre: string; tienePin: boolean }[]> {
+    const { data, error } = await supabase.rpc('fn_logistica_autorizadores', { p_org: organizationId });
+    if (error) throw errorDeRpc(error);
+    return ((data ?? []) as { user_id: string; nombre: string; tiene_pin: boolean }[]).map((a) => ({ userId: a.user_id, nombre: a.nombre, tienePin: a.tiene_pin === true }));
   }
 
   /**
@@ -652,7 +734,9 @@ class DeliveryIntegrationService {
   }
 
   /**
-   * Obtiene vehículos disponibles para delivery
+   * Vehículos para la hoja «Asignar» (Logística 1b): activos, de uso Logística o Ambos (un bus de
+   * Transporte no sale), disponibles o «En uso» (una moto en uso por la misma persona se puede volver
+   * a elegir; si la usa otra persona con envíos abiertos, la base responde VEHICULO_OCUPADO).
    */
   async getAvailableVehicles(organizationId: number): Promise<DeliveryVehicle[]> {
     // vehicles.current_driver_id apunta a auth.users (no a driver_credentials): el embed
@@ -661,22 +745,23 @@ class DeliveryIntegrationService {
       .from('vehicles')
       .select('*')
       .eq('organization_id', organizationId)
-      .eq('status', 'available')
+      .in('status', ['available', 'in_use'])
       .eq('is_active', true)
-      .in('vehicle_type', ['motorcycle', 'car', 'van', 'other']);
+      .in('usage', ['logistics', 'both']);
 
     if (error) throw error;
     return (data || []) as DeliveryVehicle[];
   }
 
   /**
-   * Domiciliarios activos de la organización: los de Recursos humanos (con empleo) y los
-   * externos (sin empleo). Licencia vencida deja fuera; sin licencia (bicicleta, a pie), no.
+   * Domiciliarios activos de la organización con uso Logística o Ambos (un conductor de bus con uso
+   * Transporte no sale): los de Recursos humanos (con empleo) y los externos (sin empleo).
+   *
+   * Logística 1b: la licencia vencida ya no los saca de la lista. La revisión de la base
+   * (`logistica_revisar_asignacion`) la muestra y, con el bloqueo de la organización encendido,
+   * bloquea salvo excepción del supervisor; apagado, solo avisa (decisión 6).
    */
   async getAvailableDrivers(organizationId: number): Promise<DeliveryDriver[]> {
-    // "Hoy" en la zona de la organización: comparar contra el día UTC dejaba fuera (o
-    // dentro) licencias en las horas alrededor de la medianoche.
-    const hoy = todayInTz(await getOrganizationTimezone(organizationId));
     const { data, error } = await supabase
       .from('driver_credentials')
       .select(`
@@ -697,7 +782,7 @@ class DeliveryIntegrationService {
       `)
       .eq('organization_id', organizationId)
       .eq('is_active', true)
-      .or(`license_expiry.is.null,license_expiry.gte.${hoy}`);
+      .in('usage', ['logistics', 'both']);
 
     if (error) throw error;
 

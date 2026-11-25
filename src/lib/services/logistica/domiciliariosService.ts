@@ -28,6 +28,12 @@ export interface DomiciliarioFila {
   is_active: boolean;
   metadata: Record<string, unknown> | null;
   created_at: string;
+  /** Logística 1b: vehículo por defecto y uso. */
+  default_vehicle_id?: string | null;
+  usage?: string | null;
+  vehiculo?: { id: string; plate: string | null; vehicle_type: string; ownership: string | null } | null;
+  /** Alta: el domiciliario quedó, pero el vehículo no (código de la base). */
+  vehiculo_error?: string | null;
   employee?: { first_name?: string | null; last_name?: string | null; phone?: string | null } | null;
 }
 
@@ -47,20 +53,22 @@ export interface EnvioCargaFila {
 
 const COLUMNAS_DOMICILIARIO =
   'id, organization_id, branch_id, user_id, employment_id, full_name, phone, document_type, document_number, is_external, ' +
-  'vehicle_type, license_number, license_expiry, is_active, metadata, created_at, ' +
+  'vehicle_type, license_number, license_expiry, is_active, metadata, created_at, default_vehicle_id, usage, ' +
+  'vehiculo:vehicles!driver_credentials_default_vehicle_id_fkey(id, plate, vehicle_type, ownership), ' +
   'employment:employments!driver_credentials_employment_id_fkey(id, organization_member:organization_members(id, profiles(first_name, last_name, phone)))';
 
 type Perfil = { first_name?: string | null; last_name?: string | null; phone?: string | null };
-type FilaCruda = Omit<DomiciliarioFila, 'employee'> & {
+type FilaCruda = Omit<DomiciliarioFila, 'employee' | 'vehiculo'> & {
+  vehiculo?: DomiciliarioFila['vehiculo'] | DomiciliarioFila['vehiculo'][];
   employment?: { organization_member?: { profiles?: Perfil | Perfil[] | null } | null } | null;
 };
 
 function aplanar(fila: FilaCruda): DomiciliarioFila {
   const perfiles = fila.employment?.organization_member?.profiles;
   const perfil = Array.isArray(perfiles) ? perfiles[0] : perfiles;
-  const { employment: _employment, ...resto } = fila;
+  const { employment: _employment, vehiculo, ...resto } = fila;
   void _employment;
-  return { ...resto, employee: perfil ?? null };
+  return { ...resto, vehiculo: (Array.isArray(vehiculo) ? vehiculo[0] : vehiculo) ?? null, employee: perfil ?? null };
 }
 
 /** Todos los domiciliarios de la organización (activos e inactivos). */
@@ -186,7 +194,25 @@ export async function crearDomiciliario(client: SupabaseClient, organizationId: 
     if (m.includes('EMPLEO_DE_OTRA_ORGANIZACION')) throw new AltaDomiciliarioError('empleo_ajeno', m);
     throw new AltaDomiciliarioError('error', m);
   }
-  return aplanar(data as unknown as FilaCruda);
+  const creado = aplanar(data as unknown as FilaCruda);
+  if (!alta.vehiculoId && !alta.vehiculoNuevo) return creado;
+
+  // Logística 1b: el vehículo por defecto (elegido o creado) en UNA RPC transaccional, con la
+  // guarda de organización y permiso en la base. Si falla, la persona ya quedó registrada.
+  const { error: errVehiculo } = await client.rpc('logistica_vincular_vehiculo', {
+    p_driver_id: creado.id,
+    p_vehicle_id: alta.vehiculoId ?? null,
+    p_nuevo: alta.vehiculoNuevo
+      ? { ...alta.vehiculoNuevo, uso: alta.uso === 'both' ? 'both' : 'logistics', kg: alta.vehiculoNuevo.kg ?? null, m3: alta.vehiculoNuevo.m3 ?? null }
+      : null,
+  });
+  if (errVehiculo) {
+    const m = errVehiculo.message ?? '';
+    const codigo = ['PLACA_DUPLICADA', 'PLACA_REQUERIDA', 'VEHICULO_DE_OTRO', 'VEHICULO_INVALIDO', 'TIPO_INVALIDO'].find((c) => m.includes(c)) ?? 'ERROR';
+    return { ...creado, vehiculo_error: codigo };
+  }
+  const { data: releido } = await client.from('driver_credentials').select(COLUMNAS_DOMICILIARIO).eq('id', creado.id).maybeSingle();
+  return releido ? aplanar(releido as unknown as FilaCruda) : creado;
 }
 
 /** Activar o desactivar (no se borra: tiene envíos y cuadres). */

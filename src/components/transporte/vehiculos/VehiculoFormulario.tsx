@@ -12,12 +12,21 @@
  * organización de la sesión. Documentos: al crear se registran las fechas; al editar, cada
  * documento se sube o renueva con `DialogoDocumento` de Flota (número, vencimiento y archivo), que
  * además copia la fecha al vehículo.
+ *
+ * Logística 1b (Figma «21 Logística» 3155-10709, 3155-11664; nota 3158-11632): Dueño (empresa,
+ * domiciliario —con quién— o tercero) y Uso (nace en el módulo desde el que se crea; se puede pasar a
+ * «Ambos»). Placa opcional en bici y en vehículo de un tercero. Desde Logística, «Conductor por
+ * defecto» es una PERSONA del catálogo y se guarda en su `default_vehicle_id` con la RPC
+ * `logistica_vincular_vehiculo` (también un externo sin cuenta); `current_driver_id` queda como
+ * espejo (disparador de la base). Desde Transporte sigue el «Conductor asignado» de siempre.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Box, Check, FileText, FileUp, Plus, Truck, Warehouse } from 'lucide-react';
-import { AvisoTonal, CampoFecha, EmptyState, FilaDato, FormField, FormSection, ListaDatos, PageHeader, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
+import { Box, Check, FileText, FileUp, Layers, Plus, Truck, UserRound, Warehouse } from 'lucide-react';
+import { AvisoTonal, CampoFecha, ChipsOpcion, EmptyState, FilaDato, FormField, FormSection, ListaDatos, PageHeader, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
+import { toastWarning } from '@/components/ui/use-toast';
+import { DUENOS, USOS, placaObligatoria, usoInicial, type Dueno, type Uso } from '@/lib/logistica/vehiculoAsignacion';
 import { Input } from '@/components/ui/input';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -52,6 +61,7 @@ type Plano = { id: string; name: string; kind: string; rows: number | null; cols
 
 export function VehiculoFormulario({ id }: { id?: string }) {
   const t = useTranslations('catalogoComun.formVehiculo');
+  const tl = useTranslations('logisticaVehiculo');
   const tv = useTranslations('catalogoComun.vehiculos');
   const tc = useTranslations('catalogoComun.comun');
   const tTipos = useTranslations('transporte.tiposVehiculo');
@@ -70,7 +80,10 @@ export function VehiculoFormulario({ id }: { id?: string }) {
   const origenId = id ?? duplicarDe;
 
   const [original, setOriginal] = useState<Vehicle | null>(null);
-  const [form, setForm] = useState<FormVehiculo>(() => vehiculoAFormulario(null, { sede: selectedBranchId ?? null }));
+  const [form, setForm] = useState<FormVehiculo>(() => vehiculoAFormulario(null, { sede: selectedBranchId ?? null, uso: usoInicial(modulo) }));
+  // Logística 1b: persona que tiene este vehículo por defecto (driver_credentials.id).
+  const [conductorDefecto, setConductorDefecto] = useState<string | null>(null);
+  const [conductorDefectoInicial, setConductorDefectoInicial] = useState<string | null>(null);
   const [errores, setErrores] = useState<ErroresVehiculo>({});
   const [vehiculos, setVehiculos] = useState<Vehicle[]>([]);
   const [carriers, setCarriers] = useState<TransportCarrier[]>([]);
@@ -111,7 +124,10 @@ export function VehiculoFormulario({ id }: { id?: string }) {
             return;
           }
           setOriginal(editando ? base : null);
-          setForm(vehiculoAFormulario(base, { sede: selectedBranchId ?? null, duplicar: !editando }));
+          setForm(vehiculoAFormulario(base, { sede: selectedBranchId ?? null, duplicar: !editando, uso: usoInicial(modulo) }));
+          const quien = editando ? p.find((x) => x.vehiculoDefectoId === base.id)?.id ?? null : null;
+          setConductorDefecto(quien);
+          setConductorDefectoInicial(quien);
         }
         setCarga('listo');
       } catch {
@@ -139,7 +155,7 @@ export function VehiculoFormulario({ id }: { id?: string }) {
     if (errores[k]) setErrores((e) => ({ ...e, [k]: undefined }));
   };
 
-  const placas = useMemo(() => new Set(vehiculos.filter((v) => v.id !== id).map((v) => clavePlaca(v.plate))), [vehiculos, id]);
+  const placas = useMemo(() => new Set(vehiculos.filter((v) => v.id !== id && v.plate).map((v) => clavePlaca(v.plate ?? ''))), [vehiculos, id]);
   const anioMaximo = Number(hoy.slice(0, 4)) + 1;
   const tipoTexto = (tipo: string) => (tTipos.has(tipo) ? tTipos(tipo) : tipo);
   const error = (k: keyof FormVehiculo) => (errores[k] ? t(`errores.${k}.${errores[k]}`) : null);
@@ -185,7 +201,23 @@ export function VehiculoFormulario({ id }: { id?: string }) {
         etiqueta: [p.nombre || '—', p.licenciaCategoria ? t(e.porVencer ? 'licenciaPorVencer' : e.apto ? 'licenciaVigente' : 'licenciaNoSirve', { categoria: p.licenciaCategoria }) : null].filter(Boolean).join(' · '),
       }));
   }, [personas, form.vehicle_type, form.current_driver_id, hoy, t]);
-  const conductorElegido = personas.find((p) => p.userId === form.current_driver_id) ?? null;
+  const conductorElegido = modulo === 'logistica' ? personas.find((p) => p.id === conductorDefecto) ?? null : personas.find((p) => p.userId === form.current_driver_id) ?? null;
+  // Conductor por defecto (Logística): personas activas del catálogo, con o sin cuenta; las que ya
+  // tienen OTRO vehículo por defecto también salen (al elegirlas, ese vehículo deja de ser el suyo).
+  const opcionesDefecto = useMemo(
+    () =>
+      personas
+        .filter((p) => p.activo || p.id === conductorDefecto)
+        .map((p) => ({ p, e: evaluarConductor({ ...p, userId: p.userId ?? p.id }, form.vehicle_type, hoy) }))
+        .sort((a, b) => a.p.nombre.localeCompare(b.p.nombre, 'es'))
+        .map(({ p, e }) => ({
+          valor: p.id,
+          etiqueta: [p.nombre || '—', p.licenciaCategoria ? t(e.porVencer ? 'licenciaPorVencer' : e.apto ? 'licenciaVigente' : 'licenciaNoSirve', { categoria: p.licenciaCategoria }) : null].filter(Boolean).join(' · '),
+        })),
+    [personas, conductorDefecto, form.vehicle_type, hoy, t],
+  );
+  const opcionesDuenoPersona = useMemo(() => personas.filter((p) => p.activo || p.id === form.owner_driver_id).map((p) => ({ valor: p.id, etiqueta: [p.nombre || '—', p.externo ? tc('externo') : p.cargo].filter(Boolean).join(' · ') })), [personas, form.owner_driver_id, tc]);
+  const placaPedida = placaObligatoria(form.vehicle_type, form.ownership);
   const planoElegido = planos.find((p) => p.id === form.seat_map_id) ?? null;
   const puestos = (p: Plano) => {
     try {
@@ -197,6 +229,27 @@ export function VehiculoFormulario({ id }: { id?: string }) {
 
   // ── Guardar ───────────────────────────────────────────────────────────────
   const volverA = editando && id ? rutaFicha(modulo, 'vehiculo', id) : rutas.vehiculos;
+
+  /** Logística 1b: el conductor por defecto vive en la persona (RPC transaccional en la base). */
+  const fijarConductorDefecto = async (vehiculoId: string): Promise<boolean> => {
+    if (modulo !== 'logistica' || conductorDefecto === conductorDefectoInicial) return true;
+    try {
+      if (conductorDefectoInicial) {
+        const { error } = await supabase.rpc('logistica_vincular_vehiculo', { p_driver_id: conductorDefectoInicial, p_vehicle_id: null, p_nuevo: null });
+        if (error) throw error;
+      }
+      if (conductorDefecto) {
+        const { error } = await supabase.rpc('logistica_vincular_vehiculo', { p_driver_id: conductorDefecto, p_vehicle_id: vehiculoId, p_nuevo: null });
+        if (error) throw error;
+      }
+      return true;
+    } catch (err) {
+      const m = (err as { message?: string })?.message ?? '';
+      const codigo = ['VEHICULO_DE_OTRO', 'VEHICULO_INVALIDO', 'SIN_PERMISO'].find((c) => m.includes(c)) ?? 'ERROR';
+      toastWarning(tl('ficha.conductorNoGuardado'), tl(`ficha.erroresConductor.${codigo}`));
+      return false;
+    }
+  };
 
   const guardar = useCallback(
     async (modo: 'guardar' | 'otro') => {
@@ -217,20 +270,27 @@ export function VehiculoFormulario({ id }: { id?: string }) {
           for (const c of FECHAS_VEHICULO) delete datos[c];
           let metadata: unknown = original.metadata ?? {};
           if (form.status !== original.status) metadata = agregarBitacora(metadata, { tipo: 'estado', de: original.status, a: form.status, motivo: null, at: new Date().toISOString() });
-          if ((form.current_driver_id ?? null) !== (original.current_driver_id ?? null)) {
+          if (modulo === 'logistica' && conductorDefecto !== conductorDefectoInicial) {
+            const nombreP = (pid: string | null) => (pid ? personas.find((p) => p.id === pid)?.nombre ?? null : null);
+            metadata = agregarBitacora(metadata, { tipo: 'conductor', de: nombreP(conductorDefectoInicial), a: nombreP(conductorDefecto), at: new Date().toISOString() });
+          } else if (modulo !== 'logistica' && (form.current_driver_id ?? null) !== (original.current_driver_id ?? null)) {
             const nombre = (u: string | null | undefined) => (u ? personas.find((p) => p.userId === u)?.nombre ?? null : null);
             metadata = agregarBitacora(metadata, { tipo: 'conductor', de: nombre(original.current_driver_id), a: nombre(form.current_driver_id), at: new Date().toISOString() });
           }
           await transportService.updateVehicle(original.id, { ...datos, metadata } as Partial<Vehicle>);
+          await fijarConductorDefecto(original.id);
           toastSuccess(tv('toast.actualizado'));
           router.push(rutaFicha(modulo, 'vehiculo', original.id));
           return;
         }
         const creado = await transportService.createVehicle({ ...datos, organization_id: organizationId } as Partial<Vehicle>);
+        await fijarConductorDefecto(creado.id);
         toastSuccess(tv('toast.creado'));
         if (modo === 'otro') {
           setVehiculos((v) => [...v, creado]);
-          setForm(vehiculoAFormulario(null, { sede: form.branch_id }));
+          setForm(vehiculoAFormulario(null, { sede: form.branch_id, uso: usoInicial(modulo) }));
+          setConductorDefecto(null);
+          setConductorDefectoInicial(null);
           setErrores({});
           window.scrollTo({ top: 0 });
         } else {
@@ -244,7 +304,8 @@ export function VehiculoFormulario({ id }: { id?: string }) {
         setGuardando(false);
       }
     },
-    [organizationId, form, placas, anioMaximo, editando, original, personas, router, modulo, t, tv],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fijarConductorDefecto lee el mismo estado
+    [organizationId, form, placas, anioMaximo, editando, original, personas, router, modulo, t, tv, conductorDefecto, conductorDefectoInicial],
   );
 
   const guardarDocumentoVehiculo = async (datos: DatosDocumento, archivo: File | null) => {
@@ -322,7 +383,7 @@ export function VehiculoFormulario({ id }: { id?: string }) {
           }}
         >
           <FormSection titulo={t('secciones.identificacion.titulo')} descripcion={t('secciones.identificacion.descripcion')} icono={Truck} columnas={2}>
-            <FormField etiqueta={t('campos.plate')} obligatorio ayuda={t('ayudas.plate')} error={error('plate')}>
+            <FormField etiqueta={t('campos.plate')} obligatorio={placaPedida} ayuda={placaPedida ? t('ayudas.plate') : tl('ficha.placaOpcional')} error={error('plate')}>
               <Input id="vehiculo-plate" value={form.plate} onChange={(e) => poner('plate', e.target.value)} maxLength={20} autoComplete="off" />
             </FormField>
             <CampoSelect
@@ -349,6 +410,36 @@ export function VehiculoFormulario({ id }: { id?: string }) {
             <FormField etiqueta={t('campos.vin')} className="sm:col-span-2">
               <Input id="vehiculo-vin" value={form.vin} onChange={(e) => poner('vin', e.target.value)} maxLength={40} autoComplete="off" />
             </FormField>
+          </FormSection>
+
+          <FormSection titulo={tl('ficha.dueno')} descripcion={tl('ficha.duenoDescripcion')} icono={UserRound}>
+            <div className="flex flex-col gap-3">
+              <ChipsOpcion<Dueno>
+                etiqueta={tl('ficha.dueno')}
+                opciones={DUENOS.map((d) => ({ valor: d, etiqueta: tl(`duenos.${d}`) }))}
+                valor={form.ownership}
+                onValorChange={(v) => poner('ownership', v)}
+              />
+              {form.ownership === 'driver' && (
+                <CampoSelect
+                  etiqueta={tl('ficha.duenoPersona')}
+                  obligatorio
+                  valor={form.owner_driver_id}
+                  onValor={(v) => poner('owner_driver_id', v)}
+                  opciones={opcionesDuenoPersona}
+                  ayuda={tl('ficha.duenoPersonaAyuda')}
+                  error={errores.owner_driver_id ? tl('ficha.errores.owner_driver_id') : null}
+                />
+              )}
+              <AvisoTonal tono="informacion" compacto titulo={tl(`ficha.avisoDueno.${form.ownership}.titulo`)} descripcion={tl(`ficha.avisoDueno.${form.ownership}.descripcion`)} />
+            </div>
+          </FormSection>
+
+          <FormSection titulo={tl('ficha.uso')} descripcion={tl('ficha.usoDescripcion')} icono={Layers}>
+            <div className="flex flex-col gap-2">
+              <ChipsOpcion<Uso> etiqueta={tl('ficha.uso')} opciones={USOS.map((u) => ({ valor: u, etiqueta: tl(`usos.${u}`) }))} valor={form.usage} onValorChange={(v) => poner('usage', v)} />
+              <p className="text-xs text-fg-muted">{tl(`ficha.usoNota.${modulo}`)}</p>
+            </div>
           </FormSection>
 
           <FormSection titulo={t('secciones.capacidad.titulo')} descripcion={t('secciones.capacidad.descripcion')} icono={Box} columnas={3}>
@@ -392,14 +483,25 @@ export function VehiculoFormulario({ id }: { id?: string }) {
               opciones={carriers.map((c) => ({ valor: c.id, etiqueta: c.name }))}
               ayuda={t('ayudas.carrier_id')}
             />
-            <CampoSelect
-              etiqueta={t('campos.current_driver_id')}
-              valor={form.current_driver_id}
-              onValor={(v) => poner('current_driver_id', v)}
-              ninguno={tv('sinAsignar')}
-              opciones={opcionesConductor}
-              ayuda={t('ayudas.current_driver_id')}
-            />
+            {modulo === 'logistica' ? (
+              <CampoSelect
+                etiqueta={tl('ficha.conductorDefecto')}
+                valor={conductorDefecto}
+                onValor={setConductorDefecto}
+                ninguno={tl('ficha.sinConductor')}
+                opciones={opcionesDefecto}
+                ayuda={tl('ficha.conductorAyuda')}
+              />
+            ) : (
+              <CampoSelect
+                etiqueta={t('campos.current_driver_id')}
+                valor={form.current_driver_id}
+                onValor={(v) => poner('current_driver_id', v)}
+                ninguno={tv('sinAsignar')}
+                opciones={opcionesConductor}
+                ayuda={t('ayudas.current_driver_id')}
+              />
+            )}
             <CampoSelect
               etiqueta={t('campos.status')}
               valor={form.status}
@@ -412,7 +514,11 @@ export function VehiculoFormulario({ id }: { id?: string }) {
             </div>
           </FormSection>
 
-          <FormSection titulo={t('secciones.documentos.titulo')} descripcion={t('secciones.documentos.descripcion')} icono={FileText}>
+          <FormSection
+            titulo={t('secciones.documentos.titulo')}
+            descripcion={form.vehicle_type === 'bicycle' ? tl('ficha.biciSinDocumentos') : modulo === 'logistica' ? tl('ficha.documentosBloquean') : t('secciones.documentos.descripcion')}
+            icono={FileText}
+          >
             <ul className="flex flex-col gap-3">
               {filasDocs.map((d) => (
                 <li key={d.campo} className="flex flex-col gap-3 rounded-xl border border-line p-3 sm:flex-row sm:items-center">
@@ -458,6 +564,11 @@ export function VehiculoFormulario({ id }: { id?: string }) {
                   valor={[tipoTexto(form.vehicle_type), capacidadDe({ pasajeros: Number(form.passenger_capacity) || null, kg: Number(form.capacity_kg) || null, m3: Number(form.capacity_m3) || null })].filter(Boolean).join(' · ')}
                 />
                 <FilaDato etiqueta={t('campos.branch_id')} valor={sedes.find((s) => s.id === form.branch_id)?.name ?? t('todasLasSedes')} />
+                <FilaDato
+                  etiqueta={tl('ficha.dueno')}
+                  valor={form.ownership === 'driver' ? personas.find((p) => p.id === form.owner_driver_id)?.nombre ?? tl('duenos.driver') : tl(`duenos.${form.ownership}`)}
+                />
+                <FilaDato etiqueta={tl('ficha.uso')} valor={tl(`usos.${form.usage}`)} />
                 <FilaDato etiqueta={t('resumen.conductor')} valor={conductorElegido?.nombre ?? tv('sinAsignar')} />
                 {planoElegido && <FilaDato etiqueta={t('campos.seat_map_id')} valor={planoElegido.name} />}
               </ListaDatos>

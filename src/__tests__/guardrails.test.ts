@@ -4134,3 +4134,32 @@ describe('44. Detalles en celular: una sola «←», la del MobileHeader del she
     expect(viejas).toEqual([]);
   });
 });
+
+/**
+ * 45. Logística 1b (domiciliario y vehículo, migración 20261125044314): la hoja «Asignar» no
+ * vuelve a ofrecer «Sin vehículo (el del domiciliario)» (que dejaba `vehicle_id` en null), y la
+ * asignación y las reglas siguen en la base (la pantalla no compara el PIN ni decide el bloqueo).
+ */
+describe('45. Logística 1b: el vehículo del envío lo decide la base', () => {
+  const leer = (rel: string) => fs.readFileSync(path.join(SRC_ROOT, rel), 'utf8');
+
+  test('la hoja «Asignar» no usa la opción vieja «ninguno» ni manda un vehículo null escondido', () => {
+    const hoja = leer('components/logistica/asignar/HojaAsignarDomiciliario.tsx');
+    expect(hoja).not.toMatch(/vehiculo\.ninguno/);
+    expect(hoja).not.toMatch(/vehiculo === 'ninguno'/);
+    expect(hoja).toMatch(/revisarAsignacion\(/);
+  });
+
+  test('la pantalla no valida el PIN del supervisor: solo lo envía a la RPC', () => {
+    const dialogo = leer('components/logistica/asignar/DialogoExcepcionAsignacion.tsx');
+    expect(dialogo).not.toMatch(/hr_credentials|crypt\(|lookup_hash/);
+    const servicio = leer('lib/services/deliveryIntegrationService.ts');
+    expect(servicio).toMatch(/p_pin: opciones\.excepcion\?\.pin/);
+  });
+
+  test('ningún archivo de src/ escribe vehicles.current_driver_id desde la asignación de Logística', () => {
+    for (const rel of ['lib/services/deliveryIntegrationService.ts', 'lib/services/logistica/enviosService.ts', 'components/logistica/asignar/HojaAsignarDomiciliario.tsx']) {
+      expect(leer(rel)).not.toMatch(/current_driver_id\s*:/);
+    }
+  });
+});

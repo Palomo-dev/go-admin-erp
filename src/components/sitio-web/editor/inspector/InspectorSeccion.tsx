@@ -35,6 +35,7 @@ import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
 import { EditorCamposContacto, EditorCanales, EditorRedes } from './EditoresContacto';
+import { EditorPlanesMembresia } from './EditorPlanesMembresia';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
 import { InterruptorAvisoFicha } from './AvisoContraentregaEditor';
 import { EditorEtiquetasFicha } from './EditorEtiquetasFicha';
@@ -176,6 +177,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
     }
     if (c.type === 'social_networks') {
       return <EditorRedes key={c.key} valor={contenido[c.key]} ajustes={ajustesSitio} onCambiar={(v) => onCambiarContenido({ ...contenido, [c.key]: v })} />;
+    }
+    // Planes de membresía (Figma «16 Sitio web» E2): orden, ojo y «Popular» de los planes reales.
+    if (c.type === 'membership_plans') {
+      return <EditorPlanesMembresia key={c.key} organizationId={p.organizationId} contenido={contenido} onCambiarContenido={onCambiarContenido} />;
     }
     if (c.type === 'carta') {
       return (

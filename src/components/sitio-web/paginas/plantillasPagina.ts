@@ -14,6 +14,7 @@ import type { PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documento
 import type { TipoMiniaturaSeccion } from '@/components/sitio-web/ui/SectionThumbnail';
 import { SECCIONES_PAGINA_CARTA_QR } from '@/lib/website/contrato/seccionesMesa';
 import { seccionesContactoPorDefecto } from '@/lib/website/contrato/paginaContacto';
+import { seccionesMembresiasPorDefecto } from '@/lib/website/contrato/paginaMembresias';
 import { DOCUMENTOS_LEGALES, type ClaveLegal } from '@/lib/website/configuracionSitio';
 import { datosVacios, metaLegal, plantillaLegal } from '@/lib/website/legales/plantillasLegales';
 
@@ -228,8 +229,10 @@ export const PLANTILLAS_PAGINA: readonly PlantillaPagina[] = [
     tipo: 'membresias',
     slug: 'membresias',
     miniatura: 'productos',
-    giros: ['gimnasio', 'parqueadero'],
-    secciones: [hero('Nuestros planes', 'Elige el plan perfecto para ti'), { tipo: 'membership_plans', variante: 'pricing_table', contenido: {} }],
+    // Figma «16 Sitio web» A/B (3281-100572): la misma plantilla que pinta la tienda en /membresias
+    // cuando no se armó la página. Sirve a cualquier giro (la página existe en todas las tiendas).
+    giros: ['gimnasio', 'parqueadero', 'tienda', 'servicios'],
+    secciones: seccionesMembresiasPorDefecto().map((s) => ({ tipo: s.section_type, variante: s.section_variant, contenido: s.content })),
   },
   {
     id: 'galeria',

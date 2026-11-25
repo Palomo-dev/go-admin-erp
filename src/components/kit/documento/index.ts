@@ -15,6 +15,7 @@ export { ChipDocumento, type ChipDocumentoProps } from './ChipDocumento';
 export { CadenaDocumento, type CadenaDocumentoProps } from './CadenaDocumento';
 export { DocumentoCabecera, type DocumentoCabeceraProps, type DocumentoAccionesMovil } from './DocumentoCabecera';
 export { DocumentoLineas, type DocumentoLineasProps } from './DocumentoLineas';
+export { NombreLinea, CLASES_AJUSTE_NOMBRE, type NombreLineaProps, type AjusteNombreLinea } from './NombreLinea';
 export {
   simboloMoneda,
   decimalesCantidad,

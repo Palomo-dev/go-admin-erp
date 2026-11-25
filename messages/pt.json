@@ -39924,6 +39924,33 @@
           "texto": "Volta à aparência atual no computador e no celular. A forma, o interruptor e as buscas populares não mudam.",
           "confirmar": "Restaurar"
         }
+      },
+      "planesMembresia": {
+        "ayuda": "Use as setas para reordenar · a estrela marca «Popular» (apenas um).",
+        "cargando": "Carregando seus planos…",
+        "error": "Não conseguimos ler seus planos. Verifique a conexão e tente novamente.",
+        "reintentar": "Tentar novamente",
+        "vacioTitulo": "Você ainda não tem planos ativos",
+        "vacioTexto": "Os planos são criados em Assinaturas › Planos com preço, duração e benefícios. Enquanto não houver nenhum, seus clientes não veem esta página.",
+        "crearPlan": "Criar plano em Assinaturas",
+        "abrirPlanes": "Abrir Assinaturas › Planos",
+        "notaTitulo": "Os dados do plano ficam em Assinaturas",
+        "nota": "Preço, duração, benefícios e se o plano está ativo são alterados em Assinaturas › Planos. Aqui apenas: ordem, quais aparecem e qual é «Popular».",
+        "enLinea": "On-line · {precio}",
+        "enLineaSinPrecio": "On-line",
+        "consulta": "Sem preço · botão «Consultar»",
+        "pausado": "Produto pausado · «Indisponível no momento»",
+        "inactivo": "Inativo em Assinaturas · não é publicado",
+        "inactivosEtiqueta": "Planos inativos",
+        "oculto": "Oculto na loja",
+        "subir": "Subir {nombre}",
+        "bajar": "Descer {nombre}",
+        "marcarPopular": "Marcar {nombre} como «Popular»",
+        "quitarPopular": "Remover «Popular» de {nombre}",
+        "ocultar": "Ocultar {nombre} na loja",
+        "mostrar": "Mostrar {nombre} na loja",
+        "paginaNoVisibleTitulo": "Esta página não aparece na loja",
+        "paginaNoVisible": "Você não tem planos ativos: seus clientes veem «Esta página não está disponível» e a página sai do menu e do sitemap. No canvas aparecem planos de exemplo."
       }
     },
     "paginas": {

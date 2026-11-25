@@ -102,6 +102,8 @@ export function OrderItemsList({
 
   // Detalle (Figma 1981:175699): nombre y estado, SKU, modificadores y nota en
   // una línea cada uno; a la derecha «1 × $ 56.000» y el total de la línea.
+  // En el celular el nombre va en hasta 3 líneas (`NombreLinea`) y los importes
+  // no se parten: un nombre largo nunca se monta sobre el total.
   return (
     <div>
       {displayItems.map((item) => (
@@ -113,10 +115,11 @@ export function OrderItemsList({
                 <EnlaceFichaProducto
                   nombre={item.product_name}
                   enlace={enlaceLineaProducto(item.product_id != null ? productos.get(item.product_id) ?? { id: item.product_id } : null)}
+                  ajuste="envolverEnMovil"
                   className="text-[13px] font-semibold"
                 />
               ) : (
-                <p className="text-[13px] font-semibold text-fg">{item.product_name}</p>
+                <p className="min-w-0 break-words text-[13px] font-semibold text-fg [overflow-wrap:anywhere]">{item.product_name}</p>
               )}
               {showStatus && (
                 <span className="rounded-full bg-subtle px-2 text-[11px] font-medium leading-5 text-fg-secondary">
@@ -143,7 +146,7 @@ export function OrderItemsList({
               </button>
             ))}
           </div>
-          <div className="shrink-0 text-right">
+          <div className="shrink-0 whitespace-nowrap text-right">
             <p className="text-[11px] text-fg-muted tabular-nums">{item.quantity} × {formatear(item.unit_price)}</p>
             <p className="text-[13px] font-semibold text-fg tabular-nums">{formatear(item.total)}</p>
           </div>

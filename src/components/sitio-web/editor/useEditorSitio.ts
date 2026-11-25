@@ -43,6 +43,7 @@ import { baseLienzoSitio, pedirFirmaLienzo, urlLienzoBorrador, urlPublicaSitio, 
 import type { SectionManifest } from '@/lib/services/website/sectionContract';
 import { getDefaultSectionsForPageType } from '@/lib/services/website/defaultProductDetailSections';
 import { avisoFaltanDatos } from '@/lib/services/website/fuentesDatosSecciones';
+import { TIPO_PLANES_MEMBRESIA } from '@/lib/website/contrato/paginaMembresias';
 import { useConteoFuentes } from '@/lib/website/useConteoFuentes';
 import { ajustesParaLienzo } from '@/lib/website/ajustesVivos';
 import { temaParaLienzo } from '@/lib/website/v2/tokensEstilo';
@@ -1780,7 +1781,11 @@ export function useEditorSitio() {
   const sujetoDatos = esSedeV2 ? nombreSede(sitioBranch) : t('sede.tuOrganizacion');
   const avisoSeccion = useCallback(
     (s: WebsitePageSection) =>
-      avisoFaltanDatos(s.section_type, getSectionDefinition(s.section_type)?.label ?? s.section_type, conteoFuentes, sujetoDatos),
+      // «Planes de membresía» sin planes pinta su propia muestra «Ejemplo» en el lienzo y su aviso en
+      // el inspector (Figma «16 Sitio web» E1): no se tapa con el estado vacío genérico.
+      s.section_type === TIPO_PLANES_MEMBRESIA
+        ? null
+        : avisoFaltanDatos(s.section_type, getSectionDefinition(s.section_type)?.label ?? s.section_type, conteoFuentes, sujetoDatos),
     [conteoFuentes, sujetoDatos],
   );
 

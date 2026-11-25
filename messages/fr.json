@@ -73955,7 +73955,8 @@
     },
     "chips": {
       "medio": "Moyen de paiement : {valor}",
-      "estadoPago": "État du paiement : {valor}"
+      "estadoPago": "État du paiement : {valor}",
+      "fecha": "Date : {valor}"
     },
     "errorLectura": "Impossible de lire l'encaissement",
     "incluyeAnticipos": "Dont {monto} en acomptes de paiement à la livraison",
@@ -73981,6 +73982,32 @@
       "netasHoy": "Ventes nettes d'aujourd'hui",
       "netasPeriodo": "Ventes nettes de la période",
       "notaMedio": "Filtre les ventes payées avec ces moyens. « Encaissé » additionne les paiements approuvés de la période par moyen."
+    },
+    "movimientos": {
+      "conceptoPedido": "Commande en ligne · {numero}",
+      "conceptoVenta": "Vente · {numero}",
+      "conceptoCobro": "Encaissement par passerelle",
+      "anticipo2805": "acompte, en 2805 jusqu'à la facture",
+      "cuentaProcesador": "{procesador} · à reverser",
+      "conceptoAbono": "Versement de {procesador}",
+      "noSuma": "Ne s'ajoute pas à l'encaissé",
+      "recaudadoHoy": "Encaissé aujourd'hui",
+      "recaudadoPeriodo": "Encaissé sur la période",
+      "recaudadoHoyPor": "Encaissé aujourd'hui par {medio}",
+      "recaudadoPeriodoPor": "Encaissé par {medio}",
+      "pagosAprobados": "{n, plural, one {# paiement approuvé} other {# paiements approuvés}}",
+      "salidasHoy": "Sorties d'aujourd'hui",
+      "salidasPeriodo": "Sorties de la période",
+      "netoHoy": "Net d'aujourd'hui",
+      "netoPeriodo": "Net de la période",
+      "netoDetalle": "Encaissé moins les sorties",
+      "porAbonarTitulo": "Encaissé par passerelles, à reverser",
+      "porAbonarNada": "Aucun encaissement par passerelle sur la période",
+      "totalPeriodo": "Total de la période",
+      "notaMedio": "La caisse compte comme espèces et la banque comme virement. Les transferts et les versements des passerelles n'ont pas de moyen.",
+      "porMedio": "Par moyen de paiement :",
+      "noSumanNota": "Versements et transferts ne s'ajoutent pas.",
+      "porAbonar": "À reverser"
     }
   },
   "documentoCredito": {

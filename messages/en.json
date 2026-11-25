@@ -73955,7 +73955,8 @@
     },
     "chips": {
       "medio": "Payment method: {valor}",
-      "estadoPago": "Payment status: {valor}"
+      "estadoPago": "Payment status: {valor}",
+      "fecha": "Date: {valor}"
     },
     "errorLectura": "Collections could not be loaded",
     "incluyeAnticipos": "Includes {monto} in cash-on-delivery deposits",
@@ -73981,6 +73982,32 @@
       "netasHoy": "Today's net sales",
       "netasPeriodo": "Net sales in the period",
       "notaMedio": "Filters sales paid with these methods. \"Collected\" adds the approved payments of the period by their method."
+    },
+    "movimientos": {
+      "conceptoPedido": "Online order · {numero}",
+      "conceptoVenta": "Sale · {numero}",
+      "conceptoCobro": "Gateway collection",
+      "anticipo2805": "deposit, in 2805 until invoiced",
+      "cuentaProcesador": "{procesador} · to be paid out",
+      "conceptoAbono": "Payout from {procesador}",
+      "noSuma": "Not added to Collected",
+      "recaudadoHoy": "Collected today",
+      "recaudadoPeriodo": "Collected in the period",
+      "recaudadoHoyPor": "Collected today via {medio}",
+      "recaudadoPeriodoPor": "Collected via {medio}",
+      "pagosAprobados": "{n, plural, one {# approved payment} other {# approved payments}}",
+      "salidasHoy": "Outflows today",
+      "salidasPeriodo": "Outflows in the period",
+      "netoHoy": "Net today",
+      "netoPeriodo": "Net for the period",
+      "netoDetalle": "Collected minus outflows",
+      "porAbonarTitulo": "Collected by gateways, to be paid out",
+      "porAbonarNada": "No gateway collections in the period",
+      "totalPeriodo": "Total for the period",
+      "notaMedio": "The till counts as cash and the bank as bank transfer. Transfers and gateway payouts belong to no method.",
+      "porMedio": "By payment method:",
+      "noSumanNota": "Payouts and transfers are not added.",
+      "porAbonar": "To be paid out"
     }
   },
   "documentoCredito": {

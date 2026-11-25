@@ -73965,7 +73965,8 @@
     },
     "chips": {
       "medio": "Meio de pagamento: {valor}",
-      "estadoPago": "Status do pagamento: {valor}"
+      "estadoPago": "Status do pagamento: {valor}",
+      "fecha": "Data: {valor}"
     },
     "errorLectura": "Não foi possível ler a arrecadação",
     "incluyeAnticipos": "Inclui {monto} em sinais de pagamento na entrega",
@@ -73991,6 +73992,32 @@
       "netasHoy": "Vendas líquidas de hoje",
       "netasPeriodo": "Vendas líquidas do período",
       "notaMedio": "Filtra as vendas pagas com estes métodos. «Arrecadado» soma os pagamentos aprovados do período por meio."
+    },
+    "movimientos": {
+      "conceptoPedido": "Pedido online · {numero}",
+      "conceptoVenta": "Venda · {numero}",
+      "conceptoCobro": "Cobrança por gateway",
+      "anticipo2805": "sinal, na 2805 até faturar",
+      "cuentaProcesador": "{procesador} · a repassar",
+      "conceptoAbono": "Repasse de {procesador}",
+      "noSuma": "Não soma ao Arrecadado",
+      "recaudadoHoy": "Arrecadado hoje",
+      "recaudadoPeriodo": "Arrecadado no período",
+      "recaudadoHoyPor": "Arrecadado hoje por {medio}",
+      "recaudadoPeriodoPor": "Arrecadado por {medio}",
+      "pagosAprobados": "{n, plural, one {# pagamento aprovado} other {# pagamentos aprovados}}",
+      "salidasHoy": "Saídas de hoje",
+      "salidasPeriodo": "Saídas do período",
+      "netoHoy": "Líquido de hoje",
+      "netoPeriodo": "Líquido do período",
+      "netoDetalle": "Arrecadado menos saídas",
+      "porAbonarTitulo": "Cobrado por gateways, a repassar",
+      "porAbonarNada": "Sem cobranças por gateway no período",
+      "totalPeriodo": "Total do período",
+      "notaMedio": "O caixa conta como dinheiro e o banco como transferência. Transferências e repasses dos gateways não têm meio.",
+      "porMedio": "Por meio de pagamento:",
+      "noSumanNota": "Repasses e transferências não somam.",
+      "porAbonar": "A repassar"
     }
   },
   "documentoCredito": {

@@ -73953,7 +73953,8 @@
     },
     "chips": {
       "medio": "Medio de pago: {valor}",
-      "estadoPago": "Estado del pago: {valor}"
+      "estadoPago": "Estado del pago: {valor}",
+      "fecha": "Fecha: {valor}"
     },
     "errorLectura": "No se pudo leer el recaudo",
     "incluyeAnticipos": "Incluye {monto} en anticipos de contraentrega",
@@ -73979,6 +73980,32 @@
       "netasHoy": "Ventas netas de hoy",
       "netasPeriodo": "Ventas netas del periodo",
       "notaMedio": "Filtra las ventas pagadas con estos métodos. «Recaudado» suma los pagos aprobados del periodo por su medio."
+    },
+    "movimientos": {
+      "conceptoPedido": "Pedido online · {numero}",
+      "conceptoVenta": "Venta · {numero}",
+      "conceptoCobro": "Cobro con pasarela",
+      "anticipo2805": "anticipo, a la 2805 hasta facturar",
+      "cuentaProcesador": "{procesador} · por abonar",
+      "conceptoAbono": "Abono de {procesador}",
+      "noSuma": "No suma a Recaudado",
+      "recaudadoHoy": "Recaudado hoy",
+      "recaudadoPeriodo": "Recaudado del periodo",
+      "recaudadoHoyPor": "Recaudado hoy por {medio}",
+      "recaudadoPeriodoPor": "Recaudado por {medio}",
+      "pagosAprobados": "{n, plural, one {# pago aprobado} other {# pagos aprobados}}",
+      "salidasHoy": "Salidas de hoy",
+      "salidasPeriodo": "Salidas del periodo",
+      "netoHoy": "Neto de hoy",
+      "netoPeriodo": "Neto del periodo",
+      "netoDetalle": "Recaudado menos salidas",
+      "porAbonarTitulo": "Cobrado por pasarelas, por abonar",
+      "porAbonarNada": "Sin cobros de pasarela en el periodo",
+      "totalPeriodo": "Total del periodo",
+      "notaMedio": "La caja cuenta como efectivo y el banco como transferencia. Los traslados y los abonos de las pasarelas no son de ningún medio.",
+      "porMedio": "Por medio de pago:",
+      "noSumanNota": "Abonos y traslados no suman.",
+      "porAbonar": "Por abonar"
     }
   },
   "documentoCredito": {

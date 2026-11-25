@@ -8,7 +8,8 @@
  * - reviews_default_source NULL → ejemplos (las tiendas nuevas nacen con `real`).
  * - reviews_auto_approve: «Moderar antes de publicar» es su contrario (mismo ajuste).
  * - reviews_who_can_write NULL → cualquier cliente; `buyers` lo exige el servidor de la tienda.
- * - reviews_allow_photos NULL → sí. reviews_request_enabled NULL → sin correo.
+ * - reviews_allow_photos NULL → sí. reviews_request_enabled NULL → sin correo (tiendas de antes);
+ *   las tiendas nuevas nacen con true (DEFAULT, migración 20261125060000).
  * - reviews_request_days NULL → 7. reviews_request_reminder NULL → sí.
  */
 import { esOrigenResenas, type OrigenResenas } from '@/lib/website/v2/seccionesFicha';

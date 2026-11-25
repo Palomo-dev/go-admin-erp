@@ -19,7 +19,7 @@ import {
   type FilaSeguimiento,
 } from '@/lib/logistica/seguimiento';
 import { ESTADOS_EN_RUTA } from '@/lib/logistica/misEnvios';
-import type { EnvioParaRotulo } from '@/lib/logistica/rotuloEnvio';
+import type { EnvioParaRotulo, ViajeParaRotulo } from '@/lib/logistica/rotuloEnvio';
 
 /** Tope de envíos que se traen a la bandeja (la bandeja trabaja en memoria: KPI, filtros y orden). */
 export const MAX_FILAS_BANDEJA = 2000;
@@ -538,10 +538,88 @@ export async function reiniciarCodigoEntrega(db: SupabaseClient, shipmentId: str
   if (error) throw error;
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidDe = (v: unknown): string | null => (typeof v === 'string' && UUID.test(v.trim()) ? v.trim() : null);
+
+type ParadaCruda = { id: string; name: string | null; address: string | null; city: string | null; department: string | null };
+type ViajeCrudo = {
+  id: string;
+  trip_code: string | null;
+  scheduled_departure: string | null;
+  vehicle?: { plate: string | null } | { plate: string | null }[] | null;
+  route?:
+    | { destino?: ParadaCruda | ParadaCruda[] | null }
+    | { destino?: ParadaCruda | ParadaCruda[] | null }[]
+    | null;
+};
+const primero = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
+const parada = (p: ParadaCruda | null): ViajeParaRotulo['terminal'] =>
+  p ? { nombre: p.name, direccion: p.address, ciudad: p.city, departamento: p.department } : null;
+
+/**
+ * Viajes de Transporte de los envíos que salen como encomienda (`metadata.trip_id`; la columna
+ * `shipments.trip_id` no existe, verificado por MCP el 2026-11-25): `trips` → `vehicles` (placa) y
+ * `transport_routes` → parada de destino; la parada propia del envío
+ * (`metadata.destination_stop_id`, `transport_stops`) manda sobre la de la ruta. Mismo cliente
+ * (RLS por pertenencia) y filtrado por la organización. Si algo falla, los envíos salen sin viaje
+ * (guía normal): el rótulo nunca se cae por esto.
+ */
+async function viajesDeEnvios(db: SupabaseClient, organizationId: number, envios: readonly EnvioParaRotulo[]): Promise<Map<string, ViajeParaRotulo>> {
+  const resultado = new Map<string, ViajeParaRotulo>();
+  const conViaje = envios
+    .map((e) => ({ id: e.id, viaje: uuidDe(e.metadata?.trip_id), parada: uuidDe(e.metadata?.destination_stop_id) }))
+    .filter((e): e is { id: string; viaje: string; parada: string | null } => e.viaje != null);
+  if (conViaje.length === 0) return resultado;
+  try {
+    const idsViajes = [...new Set(conViaje.map((e) => e.viaje))];
+    const idsParadas = [...new Set(conViaje.map((e) => e.parada).filter((v): v is string => v != null))];
+    const [viajes, paradas] = await Promise.all([
+      enLotes(idsViajes, async (lote) => {
+        const { data, error } = await db
+          .from('trips')
+          .select(
+            'id, trip_code, scheduled_departure, vehicle:vehicles(plate), ' +
+              'route:transport_routes(destino:transport_stops!transport_routes_destination_stop_id_fkey(id, name, address, city, department))',
+          )
+          .eq('organization_id', organizationId)
+          .in('id', lote);
+        if (error) throw error;
+        return (data ?? []) as unknown as ViajeCrudo[];
+      }),
+      enLotes(idsParadas, async (lote) => {
+        const { data, error } = await db
+          .from('transport_stops')
+          .select('id, name, address, city, department')
+          .eq('organization_id', organizationId)
+          .in('id', lote);
+        if (error) throw error;
+        return (data ?? []) as ParadaCruda[];
+      }),
+    ]);
+    const porViaje = new Map(viajes.map((v) => [v.id, v]));
+    const porParada = new Map(paradas.map((p) => [p.id, p]));
+    for (const e of conViaje) {
+      const v = porViaje.get(e.viaje);
+      if (!v) continue;
+      const deRuta = primero(primero(v.route)?.destino);
+      resultado.set(e.id, {
+        codigo: v.trip_code,
+        salida: v.scheduled_departure,
+        placa: primero(v.vehicle)?.plate ?? null,
+        terminal: parada((e.parada ? porParada.get(e.parada) : undefined) ?? deRuta),
+      });
+    }
+  } catch (err) {
+    console.warn('[logística] no se pudo leer el viaje de las encomiendas; salen como guía normal:', err);
+  }
+  return resultado;
+}
+
 /**
  * Envíos para imprimir sus rótulos (`src/lib/logistica/rotuloEnvio.ts`): una consulta por lote,
  * no una por envío, en el orden pedido. Sin ítems: el rótulo no lleva productos ni precios.
- * Columnas y embeds verificados por MCP el 2026-11-25 (proyecto taqjemqjtumhwptchcxk).
+ * Columnas y embeds verificados por MCP el 2026-11-25 (proyecto taqjemqjtumhwptchcxk). Los que van
+ * en un viaje de Transporte traen además `viaje` (encomienda a la terminal).
  */
 export async function enviosParaGuias(db: SupabaseClient, organizationId: number, ids: readonly string[]): Promise<EnvioParaRotulo[]> {
   const envios = await enLotes(ids, async (lote) => {
@@ -550,7 +628,7 @@ export async function enviosParaGuias(db: SupabaseClient, organizationId: number
       .select(
         'id, shipment_number, tracking_number, external_tracking_url, source_type, source_id, created_at, dispatched_at, fulfillment_mode, ' +
           'delivery_address, delivery_city, delivery_department, delivery_contact_name, delivery_contact_phone, delivery_instructions, ' +
-          'package_count, weight_kg, cod_amount, cod_status, currency, delivery_code_required, metadata, customer:customers(full_name, phone), ' +
+          'package_count, weight_kg, cod_amount, cod_status, currency, delivery_code_required, is_fragile, metadata, customer:customers(full_name, phone), ' +
           'branch:branches(name, city, phone, website_logo_url), organization:organizations(name, logo_url, phone), carrier:transport_carriers(name)',
       )
       .eq('organization_id', organizationId)
@@ -558,6 +636,8 @@ export async function enviosParaGuias(db: SupabaseClient, organizationId: number
     if (error) throw error;
     return (data ?? []) as unknown as EnvioParaRotulo[];
   });
+  const viajes = await viajesDeEnvios(db, organizationId, envios);
+  for (const e of envios) e.viaje = viajes.get(e.id) ?? null;
   const orden = new Map(ids.map((id, i) => [id, i]));
   return envios.sort((a, b) => (orden.get(a.id) ?? 0) - (orden.get(b.id) ?? 0));
 }
@@ -570,10 +650,64 @@ export async function filaDespachoDePedidoWeb(db: SupabaseClient, organizationId
     .eq('organization_id', organizationId)
     .eq('source_type', 'web_order')
     .eq('source_id', webOrderId)
+    // El más reciente: un pedido no debería tener dos envíos, pero si los tiene no se cae.
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
   const envio = data as unknown as EnvioCrudo;
   const pedidos = await pedidosWebDe(db, organizationId, [webOrderId]);
   return aFilaDespacho(envio, pedidos.get(webOrderId) ?? null);
+}
+
+/** Lo que la tarjeta «Entrega» del pedido lee del envío además del detalle de Logística. */
+export interface ExtraEnvioPedido {
+  package_count: number | null;
+  weight_kg: number | string | null;
+  is_fragile: boolean | null;
+  picked_at: string | null;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  external_tracking_url: string | null;
+  carrier: { name: string | null; tracking_url_template: string | null } | null;
+}
+
+export type EnvioDePedido = DetalleEnvio & { extra: ExtraEnvioPedido };
+
+/**
+ * El envío de un pedido web con su detalle (Pedidos online › tarjeta «Entrega», Figma 3236-223013):
+ * el mismo `obtenerDetalleEnvio` de Logística (eventos, intentos, prueba, vehículo) más paquetes,
+ * peso, frágil, horas de salida y entrega y la transportadora. Si hubiera más de uno, el más
+ * reciente. Sesión del usuario (RLS de Logística) y filtrado por la organización. Columnas
+ * verificadas por MCP el 2026-11-25 (proyecto taqjemqjtumhwptchcxk).
+ */
+export async function envioDePedidoWeb(db: SupabaseClient, organizationId: number, webOrderId: string): Promise<EnvioDePedido | null> {
+  const { data, error } = await db
+    .from('shipments')
+    .select('id, package_count, weight_kg, is_fragile, picked_at, dispatched_at, delivered_at, external_tracking_url, carrier:transport_carriers(name, tracking_url_template)')
+    .eq('organization_id', organizationId)
+    .eq('source_type', 'web_order')
+    .eq('source_id', webOrderId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const fila = data as unknown as Omit<ExtraEnvioPedido, 'carrier'> & { id: string; carrier?: Uno<ExtraEnvioPedido['carrier']> };
+  const detalle = await obtenerDetalleEnvio(db, organizationId, fila.id);
+  if (!detalle) return null;
+  return {
+    ...detalle,
+    extra: {
+      package_count: fila.package_count,
+      weight_kg: fila.weight_kg,
+      is_fragile: fila.is_fragile,
+      picked_at: fila.picked_at,
+      dispatched_at: fila.dispatched_at,
+      delivered_at: fila.delivered_at,
+      external_tracking_url: fila.external_tracking_url,
+      carrier: uno(fila.carrier),
+    },
+  };
 }

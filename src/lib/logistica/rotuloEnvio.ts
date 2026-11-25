@@ -13,6 +13,13 @@
  * imprime); sin productos, precios, SKU ni textos internos; campos vacíos no salen; contraentrega
  * como «COBRAR AL ENTREGAR $ saldo» (ya restado el anticipo pagado) y, sin cobro, «PAGADO · NO
  * COBRAR»; marca de la tienda o sede, nunca la de GO Admin.
+ *
+ * Variantes (3224:15679): «FRÁGIL · MANIPULAR CON CUIDADO» cuando el envío lo marca
+ * (`shipments.is_fragile`) y la encomienda en viaje (3224:15906): si el envío va en un viaje de
+ * Transporte (`metadata.trip_id`) y el viaje se pudo leer, el destino es la terminal o la parada
+ * de destino, la entrega dice «Encomienda · recoge en oficina» y el pie lleva el viaje y el bus
+ * (nunca el conductor). Sin datos del viaje sale la guía normal. Esto SOLO lee: el módulo de
+ * encomiendas (remesas, recaudo) va aparte.
  */
 import type { MonochromeRaster, ShipmentGuidePrintPayload, ShipmentLabelPayload } from '@printing';
 import { limpiarIndicaciones } from './indicacionesEntrega';
@@ -38,7 +45,7 @@ export const CLAVE_TRABAJO_ROTULOS = 'go-admin:rotulos:';
 /** Último formato elegido, por sede (el diálogo lo recuerda). */
 export const CLAVE_FORMATO_ROTULO = 'go-admin:rotulos:formato:';
 
-export type TipoEntrega = 'propio' | 'transportadora' | 'recoger';
+export type TipoEntrega = 'propio' | 'transportadora' | 'recoger' | 'encomienda';
 
 /** Momento que cuenta el pie: despachado, entregado a la transportadora o, sin fecha, impreso. */
 export type MomentoRotulo = 'despachado' | 'transportadora' | 'impreso';
@@ -71,6 +78,10 @@ export interface DatosRotulo {
   paquete: { numero: number; total: number };
   pesoKg: number | null;
   entrega: { tipo: TipoEntrega; transportadora: string | null };
+  /** «FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA» (`shipments.is_fragile`). */
+  fragil: boolean;
+  /** Encomienda en un viaje de Transporte; null = guía normal. `terminal`: se conoce la parada de destino. */
+  encomienda: { viaje: string | null; salida: string | null; placa: string | null; terminal: boolean } | null;
   /** Guía de la transportadora (su propio código), solo en envíos por transportadora. */
   guiaExterna: { transportadora: string | null; numero: string } | null;
   cobro: {
@@ -89,6 +100,20 @@ export interface DatosRotulo {
 }
 
 type Uno<T> = T | T[] | null | undefined;
+
+/**
+ * Viaje de Transporte de un envío (encomienda), leído por `enviosParaGuias`: `trips` (código,
+ * salida) → `vehicles` (placa del bus) y la parada de destino: la del envío
+ * (`metadata.destination_stop_id`) o, si no tiene, la de destino de la ruta. Columnas verificadas
+ * por MCP el 2026-11-25: `shipments` no tiene `trip_id` (va en metadata).
+ */
+export interface ViajeParaRotulo {
+  codigo: string | null;
+  /** `trips.scheduled_departure` (timestamptz). */
+  salida: string | null;
+  placa: string | null;
+  terminal: { nombre: string | null; direccion: string | null; ciudad: string | null; departamento: string | null } | null;
+}
 
 /** Fila de `shipments` con los embeds que lee `enviosParaGuias` (columnas verificadas por MCP 2026-11-25). */
 export interface EnvioParaRotulo {
@@ -113,7 +138,10 @@ export interface EnvioParaRotulo {
   cod_status?: string | null;
   currency?: string | null;
   delivery_code_required?: boolean | null;
+  is_fragile?: boolean | null;
   metadata?: Record<string, unknown> | null;
+  /** El viaje de la encomienda, si el envío va en uno y se pudo leer. */
+  viaje?: ViajeParaRotulo | null;
   customer?: Uno<{ full_name?: string | null; phone?: string | null }>;
   branch?: Uno<{ name?: string | null; city?: string | null; phone?: string | null; website_logo_url?: string | null }>;
   organization?: Uno<{ name?: string | null; logo_url?: string | null; phone?: string | null }>;
@@ -151,6 +179,25 @@ const positivo = (v: unknown): number | null => {
 /** La guía impresa es `shipment_number`; el tracking interno (TRK…) nunca sale en el papel. */
 export function numeroGuia(e: Pick<EnvioParaRotulo, 'id' | 'shipment_number'>): string {
   return texto(e.shipment_number) ?? e.id;
+}
+
+/**
+ * Ancho medio de un carácter de la guía en Inter ExtraBold (mayúsculas, dígitos y guiones), en em.
+ * Va un poco por encima de la media real para que «W» o «M» seguidas tampoco se salgan.
+ */
+const ANCHO_CARACTER_GUIA_EM = 0.74;
+const TAMANO_MINIMO_GUIA_PX = 8;
+
+/**
+ * Tamaño de letra (px de diseño) del número de guía para que quepa en UNA línea (decisión 5 del
+ * 2026-11-25, Figma 3238-228068): «DEL-WO-452-MX4K2P7F-A3QZ» se partía en dos en el 10 × 15. Se
+ * achica según los caracteres y el ancho disponible, nunca por encima de `maximoPx`. Puro: lo usan
+ * el rótulo (vista previa, PDF) y, por ser el mismo componente, la imagen de la térmica.
+ */
+export function tamanoNumeroGuia(numero: string, anchoDisponiblePx: number, maximoPx: number, espaciadoEm = 0.05): number {
+  const caracteres = Math.max(1, Array.from(numero ?? '').length);
+  const cabe = anchoDisponiblePx / (caracteres * (ANCHO_CARACTER_GUIA_EM + espaciadoEm));
+  return Math.max(TAMANO_MINIMO_GUIA_PX, Math.min(maximoPx, Math.floor(cabe * 10) / 10));
 }
 
 /** Contraentrega pendiente: ya cobrada o consignada no se vuelve a pedir en la puerta. */
@@ -194,6 +241,10 @@ export function datosRotuloDeEnvio(e: EnvioParaRotulo, ctx: ContextoRotulo): Dat
   const cod = contraentregaPendiente(e);
   const tienda = texto(org?.name);
   const despacho = texto(e.dispatched_at);
+  const viaje = e.viaje ?? null;
+  const terminal = viaje?.terminal ?? null;
+  const conTerminal = !!terminal && !!(texto(terminal.nombre) || texto(terminal.ciudad));
+  const tipo: TipoEntrega = viaje ? 'encomienda' : entrega;
   return {
     id: e.id,
     numero,
@@ -207,29 +258,51 @@ export function datosRotuloDeEnvio(e: EnvioParaRotulo, ctx: ContextoRotulo): Dat
       ciudad: texto(sede?.city),
       telefono: texto(sede?.phone) ?? texto(org?.phone),
     },
-    destinatario: {
-      nombre: texto(e.delivery_contact_name) ?? texto(cliente?.full_name),
-      direccion: texto(e.delivery_address),
-      barrio: texto(meta.delivery_neighborhood) ?? texto(meta.barrio),
-      ciudad: texto(e.delivery_city),
-      departamento: texto(e.delivery_department) ?? texto(meta.delivery_state),
-      telefono: texto(e.delivery_contact_phone) ?? texto(cliente?.phone),
-      indicaciones: limpiarIndicaciones(e.delivery_instructions),
-    },
+    destinatario:
+      conTerminal && terminal
+        ? {
+            // Encomienda: el destino es la oficina de la terminal; el cliente recoge allá.
+            nombre: texto(e.delivery_contact_name) ?? texto(cliente?.full_name),
+            direccion: [texto(terminal.nombre), texto(terminal.direccion)].filter(Boolean).join(' · ') || null,
+            barrio: null,
+            ciudad: texto(terminal.ciudad),
+            departamento: texto(terminal.departamento),
+            telefono: texto(e.delivery_contact_phone) ?? texto(cliente?.phone),
+            indicaciones: null,
+          }
+        : {
+            nombre: texto(e.delivery_contact_name) ?? texto(cliente?.full_name),
+            direccion: texto(e.delivery_address),
+            barrio: texto(meta.delivery_neighborhood) ?? texto(meta.barrio),
+            ciudad: texto(e.delivery_city),
+            departamento: texto(e.delivery_department) ?? texto(meta.delivery_state),
+            telefono: texto(e.delivery_contact_phone) ?? texto(cliente?.phone),
+            indicaciones: limpiarIndicaciones(e.delivery_instructions),
+          },
     paquete: { numero: 1, total: Math.min(Math.max(1, Math.floor(Number(e.package_count) || 1)), 50) },
     pesoKg: positivo(e.weight_kg),
-    entrega: { tipo: entrega, transportadora: entrega === 'transportadora' ? transportadora : null },
-    guiaExterna: entrega === 'transportadora' && texto(e.tracking_number) ? { transportadora, numero: texto(e.tracking_number) as string } : null,
+    entrega: { tipo, transportadora: tipo === 'transportadora' ? transportadora : null },
+    fragil: e.is_fragile === true || meta.is_fragile === true,
+    encomienda: viaje
+      ? {
+          viaje: texto(viaje.codigo),
+          salida: texto(viaje.salida) ? ctx.formatearFecha(viaje.salida as string) : null,
+          placa: texto(viaje.placa),
+          terminal: conTerminal,
+        }
+      : null,
+    guiaExterna: tipo === 'transportadora' && texto(e.tracking_number) ? { transportadora, numero: texto(e.tracking_number) as string } : null,
     cobro: {
       monto: cod > 0 ? ctx.formatearMonto(cod, texto(e.currency)) : null,
       anticipoPagado: cod > 0 && servidor?.anticipoPagado === true,
       pedirCodigo: e.delivery_code_required === true,
     },
     pie: {
-      momento: despacho ? (entrega === 'transportadora' ? 'transportadora' : 'despachado') : 'impreso',
+      momento: despacho ? (tipo === 'transportadora' ? 'transportadora' : 'despachado') : 'impreso',
       fecha: despacho ? ctx.formatearFecha(despacho) : ctx.ahora ? ctx.formatearFecha(ctx.ahora) : null,
       pedido: texto(meta.web_order_number),
-      vehiculo: entrega === 'propio' ? vehiculoDe(meta) : null,
+      // En la encomienda el vehículo es el bus del viaje (`encomienda.placa`), no el del domiciliario.
+      vehiculo: tipo === 'propio' ? vehiculoDe(meta) : null,
     },
   };
 }
@@ -273,8 +346,11 @@ export function textosRotulo(d: DatosRotulo, t: TraducirRotulo, formatearPeso: (
   const destino = [x.ciudad, x.departamento].filter(Boolean).join(' · ').toUpperCase() || null;
   const varios = d.paquete.total > 1;
   const nota = (base: string) => (d.cobro.pedirCodigo ? `${base} ${t('notaCodigo')}` : base);
+  const encomienda = d.encomienda;
   const entrega =
-    d.entrega.tipo === 'recoger'
+    d.entrega.tipo === 'encomienda'
+      ? t('entregaEncomienda')
+      : d.entrega.tipo === 'recoger'
       ? t('entregaRecoger')
       : d.entrega.tipo === 'transportadora'
         ? d.entrega.transportadora
@@ -284,7 +360,20 @@ export function textosRotulo(d: DatosRotulo, t: TraducirRotulo, formatearPeso: (
   const fecha = d.pie.fecha
     ? t(d.pie.momento === 'transportadora' ? 'pieTransportadora' : d.pie.momento === 'despachado' ? 'pieDespachado' : 'pieImpreso', { fecha: d.pie.fecha })
     : null;
-  const vehiculo = d.pie.vehiculo ? t(CLAVE_VEHICULO[d.pie.vehiculo.tipo ?? ''] ?? 'vehiculoOtro', { placa: d.pie.vehiculo.placa }) : null;
+  const vehiculo = encomienda
+    ? encomienda.placa
+      ? t('vehiculoBus', { placa: encomienda.placa })
+      : null
+    : d.pie.vehiculo
+      ? t(CLAVE_VEHICULO[d.pie.vehiculo.tipo ?? ''] ?? 'vehiculoOtro', { placa: d.pie.vehiculo.placa })
+      : null;
+  // La salida del viaje solo cuando el envío aún no sale (si ya salió, la fecha del pie es esa).
+  const viaje = encomienda?.viaje
+    ? encomienda.salida && d.pie.momento === 'impreso'
+      ? t('pieViajeSalida', { codigo: encomienda.viaje, fecha: encomienda.salida })
+      : t('pieViaje', { codigo: encomienda.viaje })
+    : null;
+  const notaCobro = encomienda?.terminal ? t('notaCobroTerminal') : d.cobro.anticipoPagado ? t('notaCobroAnticipo') : t('notaCobro');
   return {
     version: 2,
     senderLabel: t('remitente'),
@@ -298,7 +387,7 @@ export function textosRotulo(d: DatosRotulo, t: TraducirRotulo, formatearPeso: (
     neighborhood: x.barrio,
     destination: destino,
     phone: x.telefono ? t('telefono', { telefono: x.telefono }) : null,
-    instructions: x.indicaciones ? t('indicaciones', { texto: x.indicaciones }) : null,
+    instructions: encomienda?.terminal ? t('indicacionesTerminal') : x.indicaciones ? t('indicaciones', { texto: x.indicaciones }) : null,
     packageLabel: t('paquete'),
     packageText: t('paqueteDe', { numero: d.paquete.numero, total: d.paquete.total }),
     weightLabel: t('peso'),
@@ -313,15 +402,16 @@ export function textosRotulo(d: DatosRotulo, t: TraducirRotulo, formatearPeso: (
           kind: 'collect',
           title: varios ? t('cobrarUnaVez') : t('cobrar'),
           amount: d.cobro.monto,
-          note: nota(varios ? t('notaCobroPaquetes', { total: d.paquete.total }) : d.cobro.anticipoPagado ? t('notaCobroAnticipo') : t('notaCobro')),
+          note: nota(varios ? t('notaCobroPaquetes', { total: d.paquete.total }) : notaCobro),
         }
       : { kind: 'paid', title: t('pagado'), amount: null, note: nota(t('notaPagado')) },
+    handling: d.fragil ? t('manipulacion') : null,
     guideNumber: d.numero,
     guideLabel: t('guia'),
     qrData: d.qr,
     qrCaption: d.qrEsSeguimiento ? t('qrCorto') : null,
     qrCaptionLong: d.qrEsSeguimiento ? t('qrLargo') : null,
-    footer: [fecha, d.pie.pedido ? t('pedidoWeb', { numero: d.pie.pedido }) : null, vehiculo].filter(Boolean).join(' · ') || null,
+    footer: [fecha, viaje, d.pie.pedido ? t('pedidoWeb', { numero: d.pie.pedido }) : null, vehiculo].filter(Boolean).join(' · ') || null,
     cutLabel: t('corte'),
   };
 }

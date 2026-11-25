@@ -18,7 +18,9 @@
  *   vacía, que sigue siendo «propia de la ficha»). La lista se edita con el mismo editor de la
  *   tarjeta (`EtiquetasPropiasTarjeta`).
  * - La fila «Etiquetas propias» de «Cuáles» solo se ordena y se apaga: cada etiqueta propia ya
- *   trae su esquina y sus colores.
+ *   trae su esquina y sus colores. Su muestra es la primera etiqueta propia real (no «Originales»).
+ * - Forma: la muestra usa el mismo radio que la tienda (`RADIO_FORMA_ETIQUETA`). «Círculo» tiene
+ *   tamaño fijo; con un texto que no cabe (`cabeEnCirculo`) sale como píldora (2026-11-25).
  *
  * Textos: `sitioWeb.editor.etiquetasFicha.*` (es/en/fr/pt).
  */
@@ -34,9 +36,11 @@ import {
   CLAVES_NUEVAS_ETIQUETAS,
   ESQUINAS_ETIQUETA_FICHA,
   FORMAS_ETIQUETA_FICHA,
+  RADIO_FORMA_ETIQUETA,
   RELLENOS_ETIQUETA_FICHA,
   TAMANOS_ETIQUETA_FICHA,
   UBICACIONES_ETIQUETAS_FICHA,
+  cabeEnCirculo,
   conClave,
   etiquetasEn,
   itemsEtiquetasParaGuardar,
@@ -45,6 +49,7 @@ import {
   type EsquinaEtiquetaFicha,
   type EtiquetaFichaItem,
   type FormaEtiquetaFicha,
+  type FormaEtiquetaPintada,
   type RellenoEtiquetaFicha,
   type TamanoEtiquetaFicha,
   type TipoEtiquetaFicha,
@@ -75,17 +80,22 @@ const ICONO_MUESTRA: Partial<Record<TipoEtiquetaFicha, LucideIcon>> = {
   sales_count: TrendingUp,
 };
 
-const RADIO_FORMA: Readonly<Record<FormaEtiquetaFicha, string>> = {
-  tarjeta: '9999px',
-  pill: '9999px',
-  rounded: '6px',
-  semi: '10px',
-  square: '0px',
-};
+/**
+ * Forma de la muestra. «De la tarjeta» = la del estilo de tarjeta del sitio (círculo solo en el
+ * descuento, como en la tienda). Un círculo con un texto que no cabe sale como píldora.
+ */
+export function formaMuestraEtiqueta(forma: FormaEtiquetaFicha, formaTarjeta: unknown, tipo: TipoEtiquetaFicha, texto: string): FormaEtiquetaPintada {
+  let f: FormaEtiquetaPintada;
+  if (forma !== 'tarjeta') f = forma;
+  else if (formaTarjeta === 'rounded' || formaTarjeta === 'semi' || formaTarjeta === 'square') f = formaTarjeta;
+  else if (formaTarjeta === 'circle' && tipo === 'discount') f = 'circle';
+  else f = 'pill';
+  return f === 'circle' && !cabeEnCirculo(texto) ? 'pill' : f;
+}
 
-/** Estilo de la muestra: forma, relleno y colores elegidos («De la tarjeta» se ve como sólido y píldora). */
-export function estiloMuestraEtiqueta(bg: string, texto: string, forma: FormaEtiquetaFicha, relleno: RellenoEtiquetaFicha): CSSProperties {
-  const radio = RADIO_FORMA[forma];
+/** Estilo de la muestra: forma (ya resuelta), relleno y colores elegidos («De la tarjeta» se ve como sólido). */
+export function estiloMuestraEtiqueta(bg: string, texto: string, forma: FormaEtiquetaPintada, relleno: RellenoEtiquetaFicha): CSSProperties {
+  const radio = RADIO_FORMA_ETIQUETA[forma];
   if (relleno === 'soft') return { backgroundColor: `color-mix(in srgb, ${bg} 16%, white)`, color: bg, borderRadius: radio };
   if (relleno === 'outline') return { backgroundColor: 'transparent', color: bg, border: `1px solid ${bg}`, borderRadius: radio };
   return { backgroundColor: bg, color: texto, borderRadius: radio };
@@ -160,10 +170,14 @@ export function EditorEtiquetasFicha({ contenido, onCambiar, estiloTarjetaSitio,
             ubicacion={o.ubicacion}
             forma={o.forma}
             relleno={o.relleno}
+            formaTarjeta={normalizarTarjeta(estiloTarjetaSitio)?.label_shape}
+            propia={etiquetasPropiasDe(o.propias ?? normalizarTarjeta(estiloTarjetaSitio)?.labels_custom).find((e) => e.show !== false && e.label.trim() !== '') ?? null}
             colorPrimario={colorPrimario ?? COLOR_VOLUMEN_POR_DEFECTO}
             onGuardar={(items) => poner(k.items, itemsEtiquetasParaGuardar(items))}
           />
           <Ayuda>{t('ayudaCuales')}</Ayuda>
+          <Ayuda>{t('ayudaPromoPropia')}</Ayuda>
+          <Ayuda>{t('ayudaVistaPrevia')}</Ayuda>
 
           <div className="flex flex-col gap-3 border-t border-line pt-3">
             <EtiquetaGrupo>{t('estilo')}</EtiquetaGrupo>
@@ -173,6 +187,7 @@ export function EditorEtiquetasFicha({ contenido, onCambiar, estiloTarjetaSitio,
               valor={o.forma}
               onValorChange={(v) => poner(k.forma, v === 'tarjeta' ? undefined : v)}
             />
+            {o.forma === 'circle' && <Ayuda>{t('ayudaCirculo')}</Ayuda>}
             <ChipsOpcion<RellenoEtiquetaFicha>
               etiqueta={t('relleno')}
               opciones={RELLENOS_ETIQUETA_FICHA.map((v) => ({ valor: v, etiqueta: t(`rellenos.${v}`) }))}
@@ -224,12 +239,16 @@ export function EditorEtiquetasFicha({ contenido, onCambiar, estiloTarjetaSitio,
 // ─── «Cuáles»: una fila por tipo, en el orden guardado ──────────────────────────────────────
 
 function ListaEtiquetas({
-  items, ubicacion, forma, relleno, colorPrimario, onGuardar,
+  items, ubicacion, forma, relleno, formaTarjeta, propia, colorPrimario, onGuardar,
 }: {
   items: EtiquetaFichaItem[];
   ubicacion: UbicacionEtiquetasFicha;
   forma: FormaEtiquetaFicha;
   relleno: RellenoEtiquetaFicha;
+  /** `label_shape` del estilo de tarjeta del sitio (muestra con «De la tarjeta»). */
+  formaTarjeta: unknown;
+  /** Primera etiqueta propia que se pinta: la muestra de su fila. Sin ninguna, «Originales». */
+  propia: EtiquetaPropiaTarjeta | null;
   colorPrimario: string;
   onGuardar: (items: EtiquetaFichaItem[]) => void;
 }) {
@@ -241,15 +260,24 @@ function ListaEtiquetas({
   const colorDe = (id: TipoEtiquetaFicha) => COLOR_POR_DEFECTO[id] ?? colorPrimario;
 
   const muestra = (i: EtiquetaFichaItem) => {
-    const Icono = ICONO_MUESTRA[i.id];
+    const conPropia = i.id === 'custom' && propia != null;
+    const texto = conPropia ? propia.label : t(`muestras.${i.id}`);
+    const bg = conPropia ? (propia.bg || '#111827') : (i.bg ?? colorDe(i.id));
+    const color = conPropia ? (propia.text || '#FFFFFF') : (i.text ?? '#FFFFFF');
+    const f = formaMuestraEtiqueta(forma, formaTarjeta, i.id, texto);
+    const Icono = f === 'circle' || conPropia ? undefined : ICONO_MUESTRA[i.id];
     return (
       <span
         aria-hidden="true"
-        className="inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap px-2 text-[11px] font-semibold leading-none"
-        style={estiloMuestraEtiqueta(i.bg ?? colorDe(i.id), i.text ?? '#FFFFFF', forma, relleno)}
+        data-forma={f}
+        className={cn(
+          'inline-flex shrink-0 items-center whitespace-nowrap text-[11px] font-semibold leading-none',
+          f === 'circle' ? 'size-9 justify-center px-0 text-center' : 'h-6 gap-1 px-2',
+        )}
+        style={estiloMuestraEtiqueta(bg, color, f, relleno)}
       >
         {Icono && <Icono className="size-3" strokeWidth={2} />}
-        {t(`muestras.${i.id}`)}
+        {texto}
       </span>
     );
   };

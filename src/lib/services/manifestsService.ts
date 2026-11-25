@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/dateDisplay';
+import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 
 // Interfaces
 export interface DispatchManifest {
@@ -436,7 +437,7 @@ class ManifestsService {
 
     if (!shipments) return;
 
-    let totalShipments = shipments.length;
+    const totalShipments = shipments.length;
     let totalWeightKg = 0;
     let totalPackages = 0;
     let totalCodAmount = 0;
@@ -483,6 +484,9 @@ class ManifestsService {
     delivery_city?: string;
     weight_kg?: number;
   }>> {
+    // `manifestId` se conserva en la firma por compatibilidad: se excluyen todos los asignados a
+    // manifiestos activos, también los de este.
+    void manifestId;
     // Obtener IDs de envíos ya asignados a manifiestos activos
     const { data: assignedData } = await supabase
       .from('manifest_shipments')
@@ -687,41 +691,6 @@ class ManifestsService {
   // ==================== PROOF OF DELIVERY ====================
 
   /**
-   * Registra una prueba de entrega (POD)
-   */
-  async createProofOfDelivery(shipmentId: string, data: {
-    recipient_name: string;
-    recipient_doc_type?: string;
-    recipient_doc_number?: string;
-    recipient_relationship?: string;
-    signature_url?: string;
-    photo_urls?: string[];
-    latitude?: number;
-    longitude?: number;
-    delivery_location_type?: string;
-    driver_id?: string;
-    notes?: string;
-  }): Promise<void> {
-    const { error } = await supabase.from('proof_of_delivery').insert({
-      shipment_id: shipmentId,
-      delivered_at: new Date().toISOString(),
-      recipient_name: data.recipient_name,
-      recipient_doc_type: data.recipient_doc_type,
-      recipient_doc_number: data.recipient_doc_number,
-      recipient_relationship: data.recipient_relationship,
-      signature_url: data.signature_url,
-      photo_urls: data.photo_urls,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      delivery_location_type: data.delivery_location_type,
-      driver_id: data.driver_id,
-      notes: data.notes,
-    });
-
-    if (error) throw error;
-  }
-
-  /**
    * Obtiene la prueba de entrega de un envío
    */
   async getProofOfDelivery(shipmentId: string): Promise<{
@@ -835,6 +804,20 @@ class ManifestsService {
     latitude?: number;
     longitude?: number;
   }): Promise<void> {
+    // La entrega va por el registro de Logística (logistica_marcar_entregado): quién entrega
+    // (domiciliario asignado o permiso de oficina), prueba, código, estado del envío y evento. La
+    // base ya no acepta un UPDATE directo a 'delivered' ni una prueba de entrega suelta.
+    const r = await deliveryIntegrationService.markAsDelivered(shipmentId, {
+      recipientName: podData.recipient_name,
+      recipientDocType: podData.recipient_doc_type,
+      recipientDocNumber: podData.recipient_doc_number,
+      recipientRelationship: podData.recipient_relationship,
+      notes: podData.notes,
+      latitude: podData.latitude,
+      longitude: podData.longitude,
+    });
+    if (!r.ok) throw new EnvioError(r.error);
+
     // Actualizar estado en manifest_shipments
     const { error: msError } = await supabase
       .from('manifest_shipments')
@@ -848,34 +831,9 @@ class ManifestsService {
 
     if (msError) throw msError;
 
-    // Actualizar estado del envío
-    await supabase
-      .from('shipments')
-      .update({
-        status: 'delivered',
-        delivered_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', shipmentId);
-
-    // Crear POD
-    await this.createProofOfDelivery(shipmentId, podData);
-
     // Crear intento de entrega exitoso
     await this.createDeliveryAttempt(shipmentId, {
       status: 'delivered',
-      latitude: podData.latitude,
-      longitude: podData.longitude,
-    });
-
-    // Crear evento
-    await this.createTransportEvent({
-      organization_id: await this.getShipmentOrganizationId(shipmentId),
-      reference_type: 'shipment',
-      reference_id: shipmentId,
-      event_type: 'delivered',
-      actor_type: 'user',
-      description: `Entregado a ${podData.recipient_name}`,
       latitude: podData.latitude,
       longitude: podData.longitude,
     });

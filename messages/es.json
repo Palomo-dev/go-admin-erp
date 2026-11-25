@@ -38964,7 +38964,7 @@
             "dialogo": "Diálogo"
           },
           "ayudaPagina": "Lo de hoy: el ícono lleva a /auth (y a /mi-cuenta con sesión). Toda tienda empieza aquí.",
-          "ayudaOtros": "En el celular, panel, ventana y diálogo se ven como hoja inferior. Con sesión, el mismo formato muestra el menú de cuenta.",
+          "ayudaOtros": "En el celular se respeta el modo: el panel es un cajón lateral y el diálogo, un diálogo centrado. Solo la ventana se ve como hoja inferior. Con sesión, el mismo formato muestra el menú de cuenta.",
           "notaPagina": "Con «Página» los textos se editan en la página /auth. Elige otro modo para ver título, botón, beneficios y «Después de ingresar».",
           "titulo": "Título",
           "boton": "Texto del botón",
@@ -39519,7 +39519,9 @@
         "texto": "Texto",
         "deLaTarjeta": "De la tarjeta",
         "ayudaFilaPropias": "Cada etiqueta propia trae su esquina y sus colores: se editan abajo, en «Etiquetas propias».",
-        "ayudaCuales": "Una etiqueta apagada en la tarjeta (Estilo de tarjeta › Etiquetas) tampoco sale aquí. Las promociones salen solas cuando el producto está en una promoción web vigente; las de un grupo de clientes, solo a quien pertenece al grupo.",
+        "ayudaCuales": "Cada una sale solo cuando el producto la cumple: «Nuevo» si se creó hace poco, «Agotado» sin unidades, «Unidades vendidas» con ventas en la tienda, «Precio por volumen» con escalones. Una etiqueta apagada en la tarjeta (Estilo de tarjeta › Etiquetas) tampoco sale aquí; «Envío gratis» sale solo si está encendida en la tarjeta. Las promociones salen solas cuando el producto está en una promoción web vigente; las de un grupo de clientes, solo a quien pertenece al grupo.",
+        "ayudaPromoPropia": "Si una etiqueta propia dice lo mismo que la promoción (p. ej. «2 X 1»), sale una sola: la propia, con sus colores, y al tocarla junto al título explica la promoción.",
+        "ayudaVistaPrevia": "En la vista previa, las que este producto no cumple salen de muestra para que veas el estilo. En la tienda solo salen cuando el producto las cumple.",
         "estilo": "Estilo",
         "forma": "Forma",
         "formas": {
@@ -39527,8 +39529,10 @@
           "pill": "Píldora",
           "rounded": "Redonda",
           "semi": "Semi",
-          "square": "Cuadrada"
+          "square": "Cuadrada",
+          "circle": "Círculo"
         },
+        "ayudaCirculo": "Círculo de tamaño fijo para textos cortos como «-83 %», «2x1» o «Nuevo». Si el texto no cabe (más de 6 caracteres, p. ej. «776 vendidos»), esa etiqueta sale como píldora.",
         "relleno": "Relleno",
         "rellenos": {
           "tarjeta": "De la tarjeta",
@@ -39638,6 +39642,204 @@
           "mostrarDe": "Mostrar {nombre}",
           "origen": "Las cuentas salen de Sitio web › SEO y redes.",
           "editarCuentas": "Editar cuentas"
+        }
+      },
+      "aparienciaBuscador": {
+        "abrir": "Apariencia del buscador",
+        "abrirAyuda": "Bordes, esquinas, sombra, interior, ícono, botón, categorías y desplegable · Plantilla: {plantilla}",
+        "titulo": "Buscador › Apariencia",
+        "migas": "Encabezado › Diseño › Buscador · cambia en todas las páginas",
+        "volver": "Volver a Encabezado",
+        "ayudaHoy": "Buscar productos...",
+        "propio": "Propio",
+        "colorPropio": "Color propio",
+        "colorMarca": "Color de la marca",
+        "hoy": "Hoy",
+        "hoyValor": "{valor} (hoy)",
+        "cancelar": "Cancelar",
+        "previa": {
+          "titulo": "Vista previa en vivo",
+          "estados": "Estado de la vista previa",
+          "ayuda": "La tienda real se sigue viendo en el lienzo; esta miniatura muestra los estados sin salir del panel.",
+          "textoEjemplo": "café",
+          "estado": {
+            "normal": "Normal",
+            "hover": "Pasar el cursor",
+            "foco": "Enfocado",
+            "texto": "Con texto"
+          }
+        },
+        "dispositivo": {
+          "computador": "Computador",
+          "celular": "Celular"
+        },
+        "editando": "Editando",
+        "editandoAyuda": "Solo aparece con «igual al de escritorio» apagado. Celular vacío = copia del computador.",
+        "celularCopia": "El celular usa la apariencia del computador. Cambia algo aquí para que tenga la suya.",
+        "formaOculta": "El buscador de este dispositivo está oculto: la apariencia se guarda, pero no se ve hasta que elijas otra forma.",
+        "plantillas": {
+          "titulo": "Plantillas de buscador",
+          "ayuda": "Llenan todos los ajustes de abajo; luego cambias el que quieras y queda «Personalizado (desde …)».",
+          "todayDefecto": "Hoy (por defecto)",
+          "today": "Hoy",
+          "minimal": "Minimal",
+          "pill_button": "Píldora con botón",
+          "categories": "Con categorías",
+          "floating": "Sombra flotante",
+          "thick": "Borde grueso",
+          "dark": "Oscuro",
+          "tint": "Tinte de marca",
+          "inset": "Hundido",
+          "personalizadoSin": "Personalizado",
+          "personalizadoDesde": "Personalizado (desde «{plantilla}»)",
+          "confirmarTitulo": "¿Volver a la plantilla?",
+          "confirmarTexto": "Volver a «{plantilla}» deshace los cambios propios que hiciste después de aplicarla.",
+          "confirmarBoton": "Volver a la plantilla"
+        },
+        "tamano": {
+          "titulo": "Tamaño",
+          "alto": "Alto",
+          "altoCelular": "En el celular el alto mínimo es 44 px (tamaño de dedo).",
+          "altoPropio": "Alto propio en px",
+          "ancho": "Ancho",
+          "automatico": "Automático",
+          "lleno": "Lleno",
+          "anchoMaximo": "Ancho máximo",
+          "sinTope": "Sin tope",
+          "anchoMaximoAyuda": "Entre {min} y {max} px. Vacío = el del encabezado.",
+          "alineacion": "Alineación en la fila",
+          "izquierda": "Izquierda",
+          "centro": "Centro",
+          "derecha": "Derecha"
+        },
+        "bordes": {
+          "titulo": "Bordes",
+          "grosor": "Grosor",
+          "color": "Color",
+          "colorTema": "Del tema (gris borde)",
+          "estilo": "Estilo",
+          "completo": "Completo",
+          "soloAbajo": "Solo abajo",
+          "punteado": "Punteado",
+          "alEnfocar": "Borde al enfocar",
+          "alEnfocarHoy": "Color de la marca (hoy)",
+          "igualNormal": "Igual al normal"
+        },
+        "esquinas": {
+          "titulo": "Esquinas",
+          "forma": "Forma",
+          "square": "Recta",
+          "soft": "Suave",
+          "rounded": "Redondeada",
+          "pill": "Píldora",
+          "radio": "Radio",
+          "radioAyuda": "Afina en px (0–{max}); la forma elegida pasa a «Propio» si lo mueves."
+        },
+        "sombra": {
+          "titulo": "Sombra",
+          "normal": "Sombra",
+          "ayuda": "Cinco sombras fijas, sin sombra libre.",
+          "alEnfocar": "Sombra al enfocar",
+          "igual": "Igual a la normal (hoy)",
+          "unNivelMas": "Un nivel más",
+          "none": "Ninguna",
+          "sm": "Suave",
+          "md": "Media",
+          "lg": "Fuerte",
+          "inner": "Interior"
+        },
+        "interior": {
+          "titulo": "Interior",
+          "fondo": "Fondo",
+          "blanco": "Blanco",
+          "delTema": "Del tema (fondo)",
+          "transparente": "Transparente",
+          "texto": "Color del texto",
+          "ayuda": "Texto de ayuda (placeholder)",
+          "ayudaNota": "Vacío = «Buscar productos...». Máximo {max} caracteres.",
+          "ayudaColor": "Color del texto de ayuda",
+          "fuente": "Fuente",
+          "fuenteTema": "La del tema (textos)",
+          "fuenteTitulos": "La de los títulos"
+        },
+        "contraste": {
+          "texto": "El texto se lee mal ({razon})",
+          "ayuda": "El texto de ayuda se lee mal ({razon})",
+          "boton": "El ícono o el texto del botón se leen mal ({razon})",
+          "necesita": "Necesita {minimo}:1 sobre este fondo. Sugerencia: {sugerido}.",
+          "usar": "Usar sugerencia",
+          "dejar": "Dejarlo así",
+          "nota": "Es un aviso, no un bloqueo: tú decides. Se revisa texto/fondo, ayuda/fondo y botón (ícono/fondo)."
+        },
+        "icono": {
+          "titulo": "Ícono de búsqueda",
+          "dibujo": "El dibujo de la lupa es uno solo para toda la tienda.",
+          "irIconos": "Elegir en Íconos",
+          "posicion": "Posición",
+          "izquierda": "Izquierda (hoy)",
+          "derecha": "Derecha",
+          "sinIcono": "Sin ícono",
+          "color": "Color",
+          "gris": "Gris (hoy)",
+          "colorTexto": "Color del texto",
+          "tamano": "Tamaño"
+        },
+        "boton": {
+          "titulo": "Botón de buscar",
+          "tipo": "Botón",
+          "none": "Sin botón",
+          "icon": "Ícono",
+          "text": "Texto «Buscar»",
+          "icon_text": "Ícono + texto",
+          "celular": "En el celular el botón va siempre pegado y solo con ícono, para no robar ancho.",
+          "texto": "Texto del botón",
+          "textoHoy": "Buscar",
+          "fondo": "Fondo del botón",
+          "primario": "Primario de la marca (hoy)",
+          "acento": "Acento",
+          "iconoTexto": "Ícono y texto del botón",
+          "automatico": "Automático (legible)",
+          "blanco": "Blanco",
+          "negro": "Negro",
+          "posicion": "Posición",
+          "pegado": "Pegado, dentro de la barra",
+          "separado": "Separado, al lado",
+          "esquinas": "Esquinas del botón",
+          "comoBarra": "Como la barra"
+        },
+        "categorias": {
+          "titulo": "Selector de categorías «Todas»",
+          "ayuda": "Lista las categorías del menú. Hoy solo lo trae «Buscador grande».",
+          "mostrar": "Mostrar selector de categorías",
+          "mostrarAyuda": "Automático: encendido solo en Buscador grande.",
+          "estilo": "Estilo",
+          "simple": "Texto simple (hoy)",
+          "enCaja": "En caja",
+          "separador": "Línea separadora",
+          "texto": "Texto de «Todas»",
+          "textoHoy": "Todas",
+          "celular": "En el celular se esconde si no cabe (menos de 360 px de barra)."
+        },
+        "anillo": {
+          "titulo": "Anillo de foco",
+          "nota": "Siempre visible: es lo que ve quien navega con teclado. No se puede apagar; solo se elige el color.",
+          "color": "Color",
+          "hoy": "Color de la marca, 40 % (hoy)"
+        },
+        "desplegable": {
+          "titulo": "Desplegable de sugerencias",
+          "esquinas": "Esquinas",
+          "sombra": "Sombra",
+          "imagenes": "Mostrar imágenes",
+          "precios": "Mostrar precios",
+          "populares": "Búsquedas populares: se editan en Diseño › Buscador."
+        },
+        "restablecer": {
+          "boton": "Restablecer buscador",
+          "ayuda": "Vuelve a lo de hoy: borra la apariencia guardada (computador y celular). Pide confirmación.",
+          "titulo": "¿Restablecer el buscador?",
+          "texto": "Vuelve a la apariencia de hoy en computador y celular. La forma, el interruptor y las búsquedas populares no cambian.",
+          "confirmar": "Restablecer"
         }
       }
     },
@@ -41669,6 +41871,12 @@
       "migracion_pendiente": "Esta acción estará disponible cuando se activen los roles propios en la organización.",
       "error_red": "No hay conexión con el servidor. Inténtalo de nuevo.",
       "error_interno": "Algo falló al guardar. Inténtalo de nuevo."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Registrar entregas en oficina",
+        "descripcion": "Registrar la entrega de un envío sin ser el domiciliario asignado: recogida en mostrador, taquilla o «Cobrar y entregar» en la caja."
+      }
     }
   },
   "pedidoWeb": {
@@ -67334,7 +67542,18 @@
         "pideCodigo": "Pídele al cliente el código de entrega de 4 dígitos.",
         "llevas": "Qué llevas ({n})",
         "envio": "Envío",
-        "pasos": "Pasos"
+        "pasos": "Pasos",
+        "avisoIniciar": "Cuando salgas hacia esta dirección toca «Iniciar ruta»: le avisamos al cliente por WhatsApp y correo y le enviamos su código de entrega.",
+        "avisoIniciarSinCodigo": "Cuando salgas hacia esta dirección toca «Iniciar ruta»: le avisamos al cliente que vas en camino.",
+        "avisoEnCamino": "Le avisamos al cliente que vas en camino y le enviamos su código de entrega.",
+        "avisoEnCaminoSinCodigo": "Le avisamos al cliente que vas en camino.",
+        "despuesDeIniciar": "Después de «Iniciar ruta» la parada queda «En camino» y aparecen «Entregar» y «No se pudo entregar».",
+        "totalPedido": "Total del pedido",
+        "prueba": {
+          "titulo": "Prueba de entrega",
+          "conCodigo": "Al entregar te pedimos el código del cliente (obligatorio en contraentrega), quién recibió y, si quieres, una foto del paquete entregado.",
+          "sinCodigo": "Al entregar te pedimos una foto o la firma de quien recibe y quién recibió."
+        }
       },
       "origen": {
         "tienda": "Tienda web",
@@ -67342,21 +67561,21 @@
         "otro": "Envío"
       },
       "pasos": {
-        "recogido": "Recogí el pedido",
-        "en_camino": "Voy en camino",
+        "recogido": "Recogí el paquete",
+        "en_camino": "Iniciar ruta · en camino",
         "entregado": "Entregado",
         "hechoSr": "hecho",
         "actualSr": "paso actual",
         "pendienteSr": "pendiente",
         "hecho": {
-          "picked": "Pedido recogido",
+          "picked": "Paquete recogido",
           "out_for_delivery": "Vas en camino: le avisamos al cliente"
         },
         "boton": {
-          "recoger": "Recogí el pedido",
-          "en_camino": "Voy en camino",
-          "reintentar": "Reintentar: voy en camino",
-          "entregar": "Entregado",
+          "recoger": "Recogí el paquete",
+          "en_camino": "Iniciar ruta",
+          "reintentar": "Reintentar: iniciar ruta",
+          "entregar": "Entregar",
           "noEntregado": "No se pudo entregar"
         }
       },
@@ -67376,7 +67595,9 @@
         "COBRO_REQUERIDO": "Registra el cobro de la contraentrega.",
         "MOTIVO_INVALIDO": "Elige qué pasó.",
         "ESTADO_SIN_NOVEDAD": "Este envío no admite novedad en su estado actual.",
-        "ENVIO_AJENO": "Este envío ya no está asignado a ti."
+        "ENVIO_AJENO": "Este envío ya no está asignado a ti.",
+        "SIN_PERMISO_ENTREGA": "Este envío no está asignado a ti y no tienes permiso para entregarlo.",
+        "ENTREGA_SOLO_POR_REGISTRO": "La entrega se registra desde «Entregar»."
       },
       "entregar": {
         "titulo": "Entregar {numero}",
@@ -67514,7 +67735,7 @@
         "faltaNota": "Escribe qué pasó.",
         "foto": {
           "titulo": "Foto de evidencia",
-          "ayuda": "Se guarda la ubicación automáticamente"
+          "ayuda": "Hasta 3 fotos · se guarda la ubicación"
         },
         "yAhora": "¿Y ahora?",
         "plan": {
@@ -67528,7 +67749,8 @@
           "devolver": "El paquete vuelve a la sede: entrégalo al terminar la jornada."
         },
         "guardar": "Guardar y seguir con la ruta",
-        "hecho": "Novedad registrada"
+        "hecho": "Novedad registrada",
+        "notaAyuda": "Hasta 300 caracteres. Obligatoria si eliges «Otro»."
       },
       "finJornada": {
         "titulo": "Fin de jornada",
@@ -67554,11 +67776,319 @@
         "paqueteDevolver": "Paquete por devolver",
         "enviado": {
           "titulo": "Resumen enviado",
-          "descripcion": "Tu jornada quedó cerrada. Entrega el efectivo en la caja de la sede: allí lo reciben en Logística › Cuadres."
+          "descripcion": "La oficina recibe línea por línea y cierra el cuadre. Lo que no se cobró hoy sigue en tu ruta de mañana.",
+          "cabecera": "Jornada terminada",
+          "tituloHora": "Resumen enviado · {hora}",
+          "fueraDeTurno": "Quedaste fuera de turno. Gracias por la ruta de hoy.",
+          "entregaloEn": "Entrégalo a quien recibe el dinero en {sede}.",
+          "entregalo": "Entrégalo a quien recibe el dinero en la sede.",
+          "tuCuadre": "Tu cuadre de hoy",
+          "estadosCuadre": {
+            "por_recibir": "Por recibir",
+            "recibiendo": "Recibiendo",
+            "cuadrado": "Cuadrado",
+            "con_diferencia": "Con diferencia"
+          },
+          "pasos": {
+            "enviado": "Resumen enviado",
+            "recibido": "Dinero recibido en la sede",
+            "cerrado": "Cuadre cerrado"
+          },
+          "volver": "Volver a Mis envíos"
         },
         "notaCuadre": "Quien recibe el dinero lo ve en Logística › Cuadres y lo pasa a la caja abierta de la sede.",
         "enviar": "Enviar resumen para el cuadre",
         "errorEnviar": "No se pudo cerrar la jornada. Vuelve a intentar."
+      },
+      "actualizado": "actualizado {hora}",
+      "sinConexion": {
+        "franja": "Sin conexión · ves la ruta de las {hora}. Para entregar necesitas señal.",
+        "franjaSinHora": "Sin conexión. Para entregar necesitas señal.",
+        "pausa": "Sin señal no se pueden registrar entregas, cobros ni novedades: hoy la app no los guarda para enviarlos después. Llamar y Cómo llegar sí funcionan. Si el cliente está esperando, busca señal o llama a la tienda.",
+        "insignia": "Sin señal"
+      },
+      "sinCodigo": {
+        "titulo": "¿El cliente no tiene el código?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Que lo busque en su WhatsApp o correo",
+            "descripcion": "Llegó con el aviso «Tu pedido va en camino». También está en su enlace de rastreo."
+          },
+          "tienda": {
+            "titulo": "Llama a la tienda",
+            "descripcion": "Un administrador puede reiniciar el código desde el detalle del envío."
+          },
+          "novedad": {
+            "titulo": "No se pudo entregar",
+            "descripcion": "Si no aparece, registra la novedad y sigue con la ruta. El paquete vuelve contigo."
+          }
+        },
+        "candado": "Con {max} errores el código se bloquea y solo un administrador lo puede reiniciar. No hay forma de saltarse el código en contraentrega.",
+        "llamarTienda": "Llamar a la tienda",
+        "seguir": "Seguir intentando"
+      },
+      "confirmada": {
+        "titulo": "Entregado",
+        "subtitulo": "{numero} · parada {n} de {total}",
+        "entregadoA": "Entregado a {nombre}",
+        "codigoVerificado": "código verificado",
+        "dinero": {
+          "titulo": "Dinero de esta entrega",
+          "cobrado": {
+            "cash": "Cobrado en efectivo",
+            "card": "Cobrado con datáfono",
+            "transfer": "Cobrado por transferencia"
+          },
+          "recibido": "Recibido",
+          "cambio": "Cambio entregado",
+          "enMano": "En mano ahora"
+        },
+        "siguiente": "Siguiente parada",
+        "sinMas": "No te quedan paradas pendientes. Cuando termines, cuadra tu jornada.",
+        "iniciarRuta": "Iniciar ruta a la parada {n}",
+        "irAParada": "Ir a la parada {n}",
+        "volverRuta": "Volver a mi ruta"
+      },
+      "sinPerfil": {
+        "subtitulo": "La ruta del día de quien reparte",
+        "cifras": "Cifras de despacho de hoy",
+        "kpis": {
+          "porDespachar": "Por despachar",
+          "sinDomiciliario": "{n} sin domiciliario asignado",
+          "todosAsignados": "Todos tienen domiciliario",
+          "enRuta": "En ruta",
+          "enCalle": "{n, plural, =0 {Ningún domiciliario en la calle} one {# domiciliario en la calle} other {# domiciliarios en la calle}}",
+          "novedades": "Novedades",
+          "porReprogramar": "{n} por reprogramar hoy",
+          "sinNovedades": "Nada por reprogramar hoy",
+          "porCuadrar": "Por cuadrar",
+          "domiciliariosConEfectivo": "{n, plural, =0 {Sin efectivo por recibir} one {# domiciliario con efectivo} other {# domiciliarios con efectivo}}"
+        },
+        "registrarme": "Registrarme como domiciliario",
+        "irADomiciliarios": "Ir a Domiciliarios",
+        "irAlInicio": "Ir al inicio",
+        "copiarCorreo": "Copiar mi correo",
+        "correoCopiado": "Correo copiado",
+        "noSeCopio": "No se pudo copiar el correo",
+        "b1": {
+          "titulo": "Tu cuenta no tiene perfil de domiciliario",
+          "tituloSede": "Tu cuenta no tiene perfil de domiciliario en {sede}",
+          "descripcion": "Mis envíos es la ruta del día de quien reparte: sus paradas en orden, entregar con el código del cliente, cobrar la contraentrega y cuadrar al terminar. Cada domiciliario la ve con su propia cuenta, en el celular o en el computador.",
+          "comoLlega": "¿Cómo llega alguien aquí?",
+          "pasos": {
+            "1": "Quien despacha lo registra en Logística › Domiciliarios y le vincula su cuenta de GO Admin (su correo).",
+            "2": "Desde Por despachar le asigna envíos; la placa de su vehículo queda guardada en cada envío.",
+            "3": "El domiciliario entra con su cuenta y ve aquí su ruta de hoy, en orden."
+          },
+          "notaRegistrar": "«Registrarme» abre el mismo diálogo de Domiciliarios con tu cuenta ya vinculada: documento, teléfono y vehículo (SOAT, tecnomecánica y licencia si es moto o carro).",
+          "loQueHace": "Lo que hace un domiciliario en esta página"
+        },
+        "b2": {
+          "titulo": "Esta página es para domiciliarios",
+          "descripcion": "Aquí cada domiciliario ve sus envíos del día en orden de ruta, entrega con el código del cliente, cobra la contraentrega y cuadra al terminar. Tu cuenta todavía no está registrada como domiciliario.",
+          "cuandoTeRegistren": "Cuando te registren, aquí podrás",
+          "quienRegistra": "¿Quién te registra?",
+          "quienRegistraTexto": "La persona que despacha en tu sede o un administrador, desde Logística › Domiciliarios. Pídele que use tu correo de GO Admin para vincular tu cuenta:",
+          "yaRegistrado": "¿Ya te registraron y sigues viendo esto? Puede que te registraran en otra sede o sin vincular tu cuenta: pídele a quien despacha que lo revise en tu ficha."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "Ver la ruta del día",
+            "descripcion": "Envíos en orden de parada, con dirección, hora prometida y lo que hay que cobrar."
+          },
+          "codigo": {
+            "titulo": "Entregar con el código del cliente",
+            "descripcion": "El cliente lo recibe por WhatsApp y correo cuando el pedido sale en camino."
+          },
+          "cobrar": {
+            "titulo": "Cobrar la contraentrega",
+            "descripcion": "Efectivo con cambio, datáfono o transferencia; siempre el total."
+          },
+          "cuadrar": {
+            "titulo": "Cuadrar al terminar",
+            "descripcion": "Envía el resumen y entrega el efectivo en la caja de la sede."
+          }
+        },
+        "atajos": {
+          "titulo": "Atajos de tu cargo",
+          "ayuda": "Lo que tu menú te muestra, a un toque."
+        },
+        "ejemplo": {
+          "titulo": "Así se ve la ruta de un domiciliario",
+          "etiqueta": "Ejemplo",
+          "descripcion": "Cada domiciliario ve solo sus envíos del día, en el celular o en el computador.",
+          "guia": "ENV-000{n}",
+          "direccion": "Dirección · barrio"
+        },
+        "verRutaDe": "Ver la ruta de un domiciliario"
+      },
+      "mapa": {
+        "ver": "Ver mapa de la ruta",
+        "titulo": "Ruta de hoy",
+        "subtitulo": "Parada {n} de {total} · {pendientes, plural, one {# pendiente} other {# pendientes}}",
+        "etiqueta": "Mapa de la ruta de hoy",
+        "etiquetaParada": "Mapa de la parada {numero}",
+        "abrirGoogle": "Abrir la ruta en Google Maps",
+        "sinCoordenadas": "{n, plural, one {# parada no tiene coordenadas: Google Maps la ubica por la dirección escrita.} other {# paradas no tienen coordenadas: Google Maps las ubica por la dirección escrita.}}",
+        "sinPuntos": {
+          "titulo": "Las paradas no tienen coordenadas",
+          "descripcion": "Abre la ruta en Google Maps: las ubica por la dirección escrita."
+        }
+      },
+      "vehiculo": {
+        "titulo": "Mi vehículo y documentos",
+        "vigencia": {
+          "vencido": "Vencido",
+          "enDias": "{n, plural, =0 {Vence hoy} one {En # día} other {En # días}}",
+          "vigente": "Vigente",
+          "sin_dato": "Sin fecha"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Tecnomecánica",
+          "licencia": "Licencia de conducción",
+          "licenciaCategoria": "Licencia de conducción {categoria}"
+        },
+        "sinFecha": "Sin fecha registrada",
+        "vencio": "Venció {fecha}",
+        "vigenteHasta": "Vigente hasta {fecha}",
+        "vence": "Vence {fecha}",
+        "dueno": {
+          "company": "de la empresa",
+          "driver": "del domiciliario",
+          "third_party": "de un tercero"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Documento vencido",
+        "porDefecto": "Por defecto",
+        "filaTitulo": "Mi vehículo hoy · {placa}",
+        "filaVencido": "{documento} vencido",
+        "filaPorVencer": "{documento} vence {n, plural, =0 {hoy} one {en # día} other {en # días}}",
+        "filaAlDia": "documentos al día",
+        "placaCongelada": "{n, plural, one {Esta placa quedó guardada en tu envío de hoy al asignarlo: si cambias de vehículo, el envío ya asignado no cambia.} other {Esta placa quedó guardada en tus # envíos de hoy al asignarlos: si cambias de vehículo, los envíos ya asignados no cambian.}}",
+        "sinVehiculo": {
+          "titulo": "Sin vehículo registrado",
+          "descripcion": "Hoy no tienes un vehículo asignado. Si usas moto o carro, pídele a quien despacha que lo registre en tu ficha."
+        },
+        "documentosDelVehiculo": "Documentos del vehículo",
+        "tusDocumentos": "Tus documentos",
+        "avisoVencido": "{documento}: venció el {fecha}. Si tu sede tiene activo el bloqueo por documentos, la oficina no podrá asignarte envíos hasta que lo actualice en tu ficha. Solo un supervisor de despacho puede autorizar una excepción con su PIN.",
+        "avisoPorVencer": "{documento}: renuévalo antes del {fecha}. Si se vence y tu sede tiene activo el bloqueo por documentos, la oficina no podrá asignarte envíos hasta que lo actualice en tu ficha. Solo un supervisor de despacho puede autorizar una excepción con su PIN.",
+        "noEscribesPin": "Tú no escribes el PIN: lo digita el supervisor en su cuenta cuando asigna o reasigna. Si nadie autoriza, verás «No tienes envíos pendientes».",
+        "cambiaste": "¿Cambiaste de vehículo o renovaste un documento? Avísale a quien despacha: lo actualiza en Logística › Domiciliarios.",
+        "excepcion": {
+          "titulo": "Hoy te asignaron con excepción",
+          "autorizo": "Autorizó",
+          "hora": "Hora",
+          "conPin": "{hora} · con su PIN",
+          "motivo": "Motivo",
+          "envios": "Envíos",
+          "enviosHoy": "{n, plural, one {# envío de hoy} other {# envíos de hoy}}",
+          "nota": "Queda en la bitácora de cada envío. Mientras no renueves el documento, cada nueva asignación necesita otra excepción."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logística",
+        "vehiculoCorto": "vehículo {placa}",
+        "rutaDeHoy": "Ruta de hoy",
+        "paradaDe": "Parada {n} de {total}",
+        "entregadoMin": "entregado {hora}",
+        "notaMapa": "Las paradas sin coordenadas no salen en el mapa: Google Maps las ubica por la dirección escrita.",
+        "miVehiculo": "Mi vehículo hoy",
+        "dineroDeHoy": "Dinero de hoy",
+        "notaDinero": "Al terminar, entregas el efectivo en caja y el cuadre queda en Logística › Cuadres. Lo que no se cobró hoy sigue en la ruta de mañana.",
+        "notaTabla": "El orden sale de la ruta del día: primero lo que va en camino, luego por hora prometida. «Entregar» pide el código que el cliente recibió; la novedad solo se reporta cuando el paquete ya salió.",
+        "verVehiculo": "Ver mi vehículo y documentos",
+        "cuadrePendiente": "Cuadre pendiente",
+        "buscar": "Buscar envío o dirección…",
+        "sinResultados": "Ninguna parada coincide con la búsqueda",
+        "columnas": {
+          "parada": "Parada · envío",
+          "direccion": "Dirección y municipio",
+          "ventana": "Hora prometida",
+          "contraentrega": "Contraentrega",
+          "acciones": "Acciones"
+        },
+        "entregadoA": "Entregado {hora}",
+        "reprogramado": "Reprogramado · {fecha}",
+        "porCobrar": "Por cobrar",
+        "seCobraDespues": "Se cobra al reintentar",
+        "filtros": {
+          "todos": "Todos · {n}",
+          "pendientes": "Pendientes · {n}",
+          "entregados": "Entregados · {n}",
+          "novedades": "Novedades · {n}"
+        },
+        "kpis": {
+          "asignados": "Asignados hoy",
+          "enCamino": "En camino",
+          "nadieEnCamino": "Ninguno en camino",
+          "entregados": "Entregados",
+          "aTiempo": "{n} de {total} a tiempo",
+          "porCobrar": "Por cobrar contraentrega",
+          "enviosHoy": "{n, plural, one {# envío de hoy} other {# envíos de hoy}}",
+          "nadaPorCobrar": "Nada por cobrar",
+          "cuadre": "Cuadre pendiente",
+          "enManoDetalle": "En mano · se cuadra al terminar"
+        },
+        "acciones": {
+          "novedad": "Novedad",
+          "verEntrega": "Ver entrega",
+          "verNovedad": "Ver novedad"
+        },
+        "dinero": {
+          "enMano": "Efectivo en mano",
+          "porCobrar": "{n, plural, one {Por cobrar hoy (# envío)} other {Por cobrar hoy (# envíos)}}",
+          "otrosMedios": "Datáfono y transferencias",
+          "ultimoCuadre": "Último cuadre",
+          "estado": {
+            "cuadrado": "Cuadrado · sin diferencia",
+            "con_diferencia": "Cerrado con diferencia"
+          }
+        }
+      },
+      "supervisor": {
+        "viendo": "Viendo la ruta de {nombre}",
+        "subtitulo": "La ruta del día de cada domiciliario",
+        "verRutaDe": "Ver la ruta de",
+        "elige": "Elige un domiciliario",
+        "reasignar": "Reasignar",
+        "noReasignable": "El domiciliario ya lleva el paquete: registra una novedad para que vuelva a la sede y luego reasígnalo.",
+        "sinPermiso": {
+          "titulo": "Solo quien despacha ve la ruta de otro domiciliario",
+          "descripcion": "Ver la ruta de un domiciliario, reasignar y registrar novedades lo hace quien tiene el permiso de gestionar Logística."
+        },
+        "sinDomiciliarios": {
+          "titulo": "Aún no hay domiciliarios activos",
+          "descripcion": "Regístralos en Logística › Domiciliarios para ver su ruta aquí."
+        },
+        "irDomiciliarios": "Ir a Domiciliarios",
+        "irPorDespachar": "Ir a Por despachar",
+        "llamarA": "Llamar a {nombre}",
+        "chip": {
+          "avance": "{n} de {total}",
+          "sinEnvios": "sin envíos",
+          "envios": "{n, plural, one {# envío} other {# envíos}}",
+          "vencido": "{documento} vencido",
+          "porVencer": "{documento} vence {n, plural, =0 {hoy} one {en # día} other {en # días}}",
+          "estados": {
+            "en_ruta": "en ruta",
+            "libre": "libre",
+            "fuera_de_turno": "fuera de turno",
+            "inactivo": "inactivo"
+          }
+        },
+        "nota": "Como supervisor puedes reasignar paradas y registrar novedades. Entregar con código y cobrar la contraentrega solo lo hace el domiciliario, desde su sesión.",
+        "notaCelular": "Estás viendo la ruta de {nombre}. Solo el domiciliario entrega y cobra; tú puedes reasignar una parada o registrar una novedad.",
+        "elDomiciliario": "un domiciliario",
+        "vehiculoDe": "Vehículo de {nombre} hoy",
+        "dineroDe": "Dinero de {nombre} hoy",
+        "notaDinero": "Cuando {nombre} termine su jornada, recibes el efectivo en Logística › Cuadres. Lo que no se cobró hoy sigue en su ruta de mañana.",
+        "notaTabla": "Lo que hace el supervisor queda en la línea de tiempo del envío con su nombre. «Reasignar» abre la hoja «Asignar domiciliario» con el vehículo preseleccionado y la revisión de documentos de la Fase 1b.",
+        "verFicha": "Ver a {nombre} en Domiciliarios",
+        "verMapa": "Ver mapa de su ruta",
+        "ocultarMapa": "Ocultar el mapa",
+        "verEnvio": "Ver el envío"
       }
     },
     "domiciliario": {
@@ -68766,7 +69296,17 @@
         "DIRECCION_REQUERIDA": "Falta la dirección de entrega.",
         "ERROR": "No se pudo completar. Intenta de nuevo.",
         "DOMICILIARIO_NO_COBRA": "Ese domiciliario no cobra contraentrega y el envío tiene cobro.",
-        "ENVIO_AJENO": "Ese envío es de otro domiciliario."
+        "ENVIO_AJENO": "Ese envío es de otro domiciliario.",
+        "SIN_PERMISO_ENTREGA": "Solo entrega el domiciliario asignado o quien tenga el permiso «Registrar entregas en oficina».",
+        "ENTREGA_SOLO_POR_REGISTRO": "La entrega se registra con «Marcar entregado» (prueba, código y cobro).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "El pedido tiene un envío activo: entrégalo con el registro de entrega de Logística.",
+        "NO_OPEN_CASH_SESSION": "No hay caja abierta en la sede. Abre la caja para cobrar y entregar.",
+        "ORIGEN_NO_SOPORTADO": "Este envío no viene de un pedido online: entrégalo desde Logística.",
+        "METODO_INVALIDO": "Elige el medio de cobro.",
+        "PEDIDO_DE_PASARELA": "El pedido se pagó en línea: no se cobra en la caja.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirma el pedido antes de cobrarlo.",
+        "FACTURA_REQUERIDA": "No se pudo armar la factura del pedido. Intenta de nuevo.",
+        "SESION_REQUERIDA": "Tu sesión venció. Vuelve a entrar."
       },
       "chips": {
         "intento": "{n}.º intento",
@@ -68941,7 +69481,11 @@
           "titular": "Titular",
           "familiar": "Familiar",
           "porteria": "Portería",
-          "otro": "Otra persona"
+          "otro": "Otra persona",
+          "customer": "Titular",
+          "family": "Familiar",
+          "doorman": "Portería",
+          "other": "Otra persona"
         },
         "cobroTitulo": "Contraentrega: cobrar {monto}",
         "codigo": "Código de entrega",
@@ -68967,6 +69511,18 @@
           "codigo": "El código tiene 4 dígitos.",
           "metodo": "Elige el medio de cobro.",
           "monto": "Escribe el monto cobrado."
+        },
+        "caja": {
+          "titulo": "Cobrar y entregar",
+          "descripcion": "Queda la prueba de entrega del envío, el cobro entra a la caja y se emite la factura, todo junto.",
+          "confirmar": "Cobrar y entregar",
+          "cobroTitulo": "Cobrar {monto} en la caja",
+          "cobroNota": "Entra a la caja abierta de la sede. No pasa al cuadre del domiciliario.",
+          "referencia": "Referencia",
+          "referenciaAyuda": "Opcional: número del datáfono o de la transferencia.",
+          "ok": "Pedido cobrado y entregado",
+          "factura": "Factura {numero}",
+          "error": "No se pudo cobrar y entregar"
         }
       },
       "novedad": {
@@ -69423,7 +69979,11 @@
           "confirmarTermica": "{count, plural, one {Imprimir # guía} other {Imprimir # guías}}",
           "confirmarPdf": "{count, plural, one {Abrir PDF de # guía} other {Abrir PDF de # guías}}",
           "confirmarA4": "{count, plural, one {Imprimir hoja A4} other {Imprimir # hojas A4}}",
-          "cancelar": "Cancelar"
+          "cancelar": "Cancelar",
+          "fragil": "Frágil — manipular con cuidado",
+          "fragilAyuda": "Se guarda en el envío y la guía {numero} lleva el aviso «FRÁGIL».",
+          "fragilBloqueado": "Este envío ya salió: «Frágil» solo se cambia mientras está en preparación.",
+          "fragilError": "No se pudo guardar «Frágil». Inténtalo otra vez."
         }
       },
       "form": {
@@ -69526,7 +70086,7 @@
           "pesoTotalAyuda": "Suma de las líneas; se puede corregir al pesar.",
           "valorDeclarado": "Valor declarado",
           "valorDeclaradoAyuda": "Base del seguro de la transportadora.",
-          "fragil": "Frágil",
+          "fragil": "Frágil — manipular con cuidado",
           "fragilAyuda": "Se marca en la guía",
           "firma": "Pedir firma",
           "firmaAyuda": "Quien recibe firma al entregar",
@@ -69640,7 +70200,14 @@
         "cerrar": "Cerrar",
         "sinTrabajoTitulo": "No hay guías para imprimir",
         "sinTrabajo": "Vuelve a Logística y elige «Imprimir guía» otra vez."
-      }
+      },
+      "manipulacion": "FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA",
+      "entregaEncomienda": "Encomienda · recoge en oficina",
+      "indicacionesTerminal": "Recoge en oficina presentando cédula.",
+      "notaCobroTerminal": "Cobrar en la oficina antes de entregar.",
+      "pieViaje": "Viaje {codigo}",
+      "pieViajeSalida": "Viaje {codigo}, sale {fecha}",
+      "vehiculoBus": "Bus {placa}"
     }
   },
   "transporte": {
@@ -72938,6 +73505,135 @@
       "titulo": "Agregar empresa con NIT",
       "descripcion": "{persona} queda como contacto de la empresa.",
       "creada": "{empresa} quedó ligada al cliente."
+    }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Entrega",
+    "copiado": "Número de guía copiado",
+    "noCopiado": "No se pudo copiar",
+    "cargando": "Cargando el envío…",
+    "indicacion": "Indicación: {texto}",
+    "envio": "Envío {monto}",
+    "envioPagado": "Envío {monto} · pagado",
+    "sinGuia": "Sin guía",
+    "whatsapp": "Hola, te escribo por el pedido {pedido}.",
+    "estados": {
+      "sin_envio": "Sin envío",
+      "recoger": "Listo para recoger",
+      "recogerPreparando": "Para recoger",
+      "por_despachar": "Por despachar",
+      "asignado": "Asignado",
+      "en_camino": "En camino",
+      "en_camino_transportadora": "En camino (transportadora)",
+      "entregado": "Entregado",
+      "novedad": "Novedad",
+      "devuelto": "Devuelto",
+      "cancelado": "Cancelado"
+    },
+    "tipo": {
+      "recoger": "Recoger en tienda",
+      "transportadora": "Transportadora",
+      "propio": "Domicilio propio"
+    },
+    "cobro": {
+      "cobrar": "Cobrar al entregar",
+      "enCaja": "En la caja de la sede",
+      "saldo": "Saldo = total {total} − anticipo {anticipo}",
+      "contraentrega": "Contraentrega: lo cobra quien entrega",
+      "cobrado": "Cobrado al entregar",
+      "cobradoNota": "Entra al cuadre del domiciliario (Logística › Cuadres)",
+      "pagado": "Pagado · no cobrar",
+      "pagadoNota": "No se cobra nada en la puerta"
+    },
+    "recoger": {
+      "listoDesde": "Listo para recoger desde las {hora}",
+      "preparando": "Se está preparando para recoger",
+      "nota": "Sin guía: se entrega en el mostrador. Pide el número del pedido ({pedido}) y el nombre de quien compró."
+    },
+    "filas": {
+      "listo": "Listo",
+      "listoAprox": "Listo aprox",
+      "asignado": "Asignado",
+      "salio": "Salió",
+      "entregadoTransportadora": "Entregado a la transportadora",
+      "entregado": "Entregado",
+      "entregaAprox": "Entrega aprox"
+    },
+    "sinEnvio": {
+      "titulo": "Este pedido aún no tiene envío",
+      "nota": "Se crea solo al confirmar. Si no se creó (pedido anterior o un error), créalo aquí: sale con su guía DEL-WO-… y queda en «Por despachar» en Logística.",
+      "error": "No se pudo leer el envío de este pedido. Recarga la página o revísalo en Logística."
+    },
+    "acciones": {
+      "crearYAsignar": "Crear envío y asignar domiciliario",
+      "asignar": "Asignar",
+      "verGuia": "Ver guía",
+      "imprimirGuia": "Imprimir guía",
+      "verEnvio": "Ver envío",
+      "cambiar": "Cambiar",
+      "verMapa": "Ver en el mapa"
+    },
+    "guia": {
+      "titulo": "Número de guía",
+      "nuestra": "Nuestra guía (pegada en la caja)",
+      "copiar": "Copiar número de guía",
+      "creada": "Creada {hora}",
+      "deTransportadora": "Guía de {nombre}",
+      "deTransportadoraSinNombre": "Guía de la transportadora",
+      "rastrearEn": "Rastrear en {nombre}",
+      "rastrear": "Rastrear en la transportadora"
+    },
+    "entregado": {
+      "titulo": "Entregado {hora}",
+      "recibio": "Recibió: {nombre}",
+      "codigo": "código de entrega verificado"
+    },
+    "novedad": {
+      "titulo": "No se pudo entregar · intento {n}",
+      "desdeLogistica": "Reprogramar o devolver se hace desde Logística."
+    },
+    "devuelto": {
+      "titulo": "Devuelto a la sede",
+      "motivo": "Motivo: {motivo}",
+      "nota": "El pedido no se cancela solo: decide si sale de nuevo o se devuelve el dinero."
+    },
+    "domiciliario": {
+      "rol": "Domiciliario",
+      "placa": "placa {placa}",
+      "llamar": "Llamar a {nombre}",
+      "whatsapp": "Escribir por WhatsApp a {nombre}",
+      "sinAsignar": "Sin asignar"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# paquete} other {# paquetes}}",
+      "peso": "{kg} kg",
+      "fragil": "Frágil"
+    },
+    "entregar": {
+      "bloqueado": "El envío aún no puede entregarse",
+      "bloqueadoNota": "Márcalo «Listo para salir» o asígnale domiciliario en Logística; el pedido y el envío se marcan entregados juntos."
+    },
+    "historial": {
+      "listo": "Listo · envío por despachar",
+      "guia": "Guía {numero}",
+      "paquetes": "{count, plural, one {# paquete} other {# paquetes}}",
+      "asignado": "Domiciliario asignado",
+      "entregadoTransportadora": "Entregado a la transportadora",
+      "recogido": "Recogido por el domiciliario",
+      "enTransito": "En tránsito",
+      "enCaminoIntento": "En camino · {n}.º intento",
+      "enReparto": "En reparto",
+      "enCamino": "En camino",
+      "salioDe": "Salió de {sede}",
+      "novedadMotivo": "Novedad · {motivo}",
+      "novedad": "Novedad · no se pudo entregar",
+      "entregado": "Entregado",
+      "recibio": "Recibió: {nombre}",
+      "devuelto": "Devuelto a la sede",
+      "cancelado": "Envío cancelado",
+      "aprox": "aprox {hora}",
+      "transportadora": "Transportadora",
+      "logistica": "Logística"
     }
   }
 }

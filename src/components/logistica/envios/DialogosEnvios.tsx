@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Ban, ChevronLeft, ChevronRight, Printer, RefreshCw, RotateCcw } from 'lucide-react';
 import { normalizePaperWidth } from '@printing';
-import { CampoNumero, Dialogo, FormField, SegmentedControl, TarjetaSeleccionable } from '@/components/kit';
+import { CampoNumero, Dialogo, FormField, SegmentedControl, SettingRow, TarjetaSeleccionable } from '@/components/kit';
 import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import { canonicoDeEstado, MOTIVOS_NOVEDAD, type MotivoNovedad } from '@/lib/logistica/estadosEnvio';
-import { ESTADOS_CAMBIO_ESTADO, particionPorTransicion, type EstadoCambioEstado } from '@/lib/logistica/envios';
+import { camposEditables, ESTADOS_CAMBIO_ESTADO, particionPorTransicion, type EstadoCambioEstado } from '@/lib/logistica/envios';
 import { avisarCliente } from '../logisticaApi';
 import { abrirConfiguracion } from '@/components/configuracion/dialogo/abrirConfiguracion';
 import { HojaRotulosA4 } from '../rotulo/HojaRotulosA4';
@@ -455,10 +455,15 @@ const ESCALA_VISTA: Record<FormatoRotulo, number> = { '80mm': 0.72, '10x15': 0.7
  * térmica) a escala. Se elige el formato (se recuerda por sede), las copias por envío, y se pasa
  * de una guía a otra con las flechas. Si la sede tiene impresora de rótulos en línea la térmica
  * va allá; si no, se abre el PDF a tamaño real.
+ *
+ * «Frágil — manipular con cuidado» se marca aquí por guía y se GUARDA en el envío
+ * (`shipments.is_fragile`, con la RLS de Logística): la vista previa cambia al instante y lo que se
+ * imprime ya lo lleva. Solo mientras el envío está en preparación (la misma regla del formulario).
  */
 export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, onImprimir }: DialogoImprimirGuiasProps) {
   const t = useTranslations('logistica.envios.dialogos.guias');
-  const { prepararRotulos, resolverRotulos, estacionRotulos } = useImpresionLogistica();
+  const { prepararRotulos, resolverRotulos, estacionRotulos, guardarFragil } = useImpresionLogistica();
+  const [guardandoFragil, setGuardandoFragil] = useState(false);
   const [copias, setCopias] = useState<number | null>(1);
   const [enviando, setEnviando] = useState(false);
   const [datos, setDatos] = useState<DatosRotulo[] | null | 'error'>(null);
@@ -514,6 +519,26 @@ export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, onImpri
   const actual = Math.min(indice, Math.max(0, paginas - 1));
   useEffect(() => setIndice(0), [elegido]);
 
+  // «Frágil» de la guía que se está viendo (en 10 × 15 y 80 mm; en A4 la hoja lleva varias).
+  const idActual = elegido !== 'a4' ? guias[actual]?.id ?? null : null;
+  const datoActual = idActual && listos ? listos.find((d) => d.id === idActual) ?? null : null;
+  const envioActual = idActual ? envios.find((e) => e.id === idActual) ?? null : null;
+  const fragilEditable = !!envioActual && camposEditables({ status: envioActual.status, vinculado: !!envioActual.sourceId, nuevo: false }).has('fragil');
+  const cambiarFragil = async (fragil: boolean) => {
+    if (!idActual) return;
+    const poner = (v: boolean) => setDatos((ds) => (Array.isArray(ds) ? ds.map((d) => (d.id === idActual ? { ...d, fragil: v } : d)) : ds));
+    poner(fragil);
+    setGuardandoFragil(true);
+    try {
+      await guardarFragil(idActual, fragil);
+    } catch {
+      poner(!fragil);
+      toastError(t('fragilError'));
+    } finally {
+      setGuardandoFragil(false);
+    }
+  };
+
   const termica = elegido === '80mm' && hayTermicaEnLinea(estacion);
   const impresora = estacion?.impresoras[0] ?? null;
   const total = rotulos.length || envios.length * nCopias;
@@ -549,7 +574,7 @@ export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, onImpri
       descripcion={t('descripcion')}
       icono={Printer}
       ancho={520}
-      primario={{ etiqueta: primario, onClick: () => void confirmar(), cargando: enviando, deshabilitada: envios.length === 0 || datos === null || datos === 'error' }}
+      primario={{ etiqueta: primario, onClick: () => void confirmar(), cargando: enviando, deshabilitada: envios.length === 0 || datos === null || datos === 'error' || guardandoFragil }}
       textoCancelar={t('cancelar')}
     >
       <div className="flex flex-col gap-4">
@@ -621,6 +646,23 @@ export function DialogoImprimirGuias({ abierto, onAbiertoChange, envios, onImpri
             </p>
           )}
         </div>
+
+        {datoActual && (
+          <div className="rounded-lg border border-line bg-surface">
+            <SettingRow
+              htmlFor="guia-fragil"
+              titulo={t('fragil')}
+              descripcion={fragilEditable ? t('fragilAyuda', { numero: guias[actual]?.textos.guideNumber ?? '' }) : t('fragilBloqueado')}
+            >
+              <Switch
+                id="guia-fragil"
+                checked={datoActual.fragil}
+                onCheckedChange={(v) => void cambiarFragil(v)}
+                disabled={!fragilEditable || guardandoFragil}
+              />
+            </SettingRow>
+          </div>
+        )}
 
         {estacion &&
           (elegido === 'a4' ? (

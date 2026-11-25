@@ -9,7 +9,9 @@
  * - tarjeta, perillas, acento y paginación solo con su bandera;
  * - las plantillas de antes dan el MISMO documento que antes, byte a byte («Solo estilo» y
  *   «Plantilla completa»): huellas generadas en la rama base con las mismas entradas
- *   (`fixtures/huellasPlantillasMain.json`).
+ *   (`fixtures/huellasPlantillasMain.json`). 2026-11-25: `completa` y `completaSede` se
+ *   regeneraron porque la página Contacto del juego base pasó a Contacto v2 a propósito
+ *   (`paginaContacto()` en plantillasPagina.ts; el estilo no cambió). Ver contactoV2Sembrado.test.ts.
  */
 jest.mock('@/lib/supabase/config', () => ({ supabase: { from: jest.fn() }, getProjectRef: jest.fn(() => 'test') }));
 jest.mock('@/lib/utils/offlineCache', () => ({

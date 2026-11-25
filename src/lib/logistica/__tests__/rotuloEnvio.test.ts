@@ -5,6 +5,8 @@
  * - Contraentrega = saldo (ya restado el anticipo) en «COBRAR AL ENTREGAR»; sin cobro, «PAGADO · NO COBRAR».
  * - Sin productos, precios, SKU ni textos internos; campos vacíos no salen.
  * - Indicaciones sin «País: COL (05)» ni los datos de la factura electrónica.
+ * - «FRÁGIL» (3224:15741) cuando el envío lo marca; encomienda a la terminal (3224:15906) cuando va
+ *   en un viaje de Transporte que se pudo leer; sin viaje, la guía normal.
  */
 import {
   buildPlainTextShipmentGuide,
@@ -17,6 +19,8 @@ import {
 } from '@printing';
 import es from '../../../../messages/es.json';
 import { limpiarIndicaciones } from '../indicacionesEntrega';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { enviosParaGuias } from '@/lib/services/logistica/despachoService';
 import {
   contraentregaPendiente,
   datosRotuloDeEnvio,
@@ -29,6 +33,7 @@ import {
   tipoEntregaDe,
   type EnvioParaRotulo,
   type TraducirRotulo,
+  type ViajeParaRotulo,
 } from '../rotuloEnvio';
 
 type Arbol = { [k: string]: string | Arbol };
@@ -192,6 +197,152 @@ describe('rótulo de envío', () => {
   });
 });
 
+describe('frágil (Figma 3224:15741)', () => {
+  test('el envío marcado lleva el aviso; sin marca no sale nada', () => {
+    expect(textos({ is_fragile: true })[0].handling).toBe('FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA');
+    expect(textos({ is_fragile: false })[0].handling).toBeNull();
+    expect(textos()[0].handling).toBeNull();
+  });
+
+  test('los envíos que lo guardaron en la metadata (antes de la columna) también lo llevan', () => {
+    expect(textos({ metadata: { is_fragile: true } })[0].handling).toBe('FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA');
+  });
+
+  test('cada paquete del envío lo lleva', () => {
+    expect(textos({ is_fragile: true, package_count: 2 }).map((l) => l.handling)).toEqual([
+      'FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA',
+      'FRÁGIL · MANIPULAR CON CUIDADO · ESTE LADO ARRIBA',
+    ]);
+  });
+});
+
+describe('encomienda a la terminal (Figma 3224:15906)', () => {
+  const viaje: ViajeParaRotulo = {
+    codigo: 'V-1118',
+    salida: '2026-11-24T20:00:00Z',
+    placa: 'WNP103',
+    terminal: { nombre: 'Terminal de Tunja', direccion: 'oficina 4', ciudad: 'Tunja', departamento: 'Boyacá' },
+  };
+  const encomienda = (p: Partial<EnvioParaRotulo> = {}) =>
+    textos({
+      source_type: 'manual',
+      source_id: null,
+      delivery_address: 'Calle 10 # 5-20',
+      delivery_city: 'Tunja',
+      delivery_department: 'Boyacá',
+      delivery_contact_name: 'Laura Medina',
+      delivery_contact_phone: '314 222 9010',
+      delivery_instructions: 'Llamar al llegar',
+      cod_amount: '120000',
+      metadata: { trip_id: '0f0e0d0c-0b0a-4908-8706-050403020100', vehiculo: { tipo: 'motorcycle', placa: 'KLM48F' } },
+      viaje,
+      ...p,
+    })[0];
+
+  test('destino = la oficina de la terminal, entrega en palabras, cobro en la oficina y el pie con el viaje y el bus', () => {
+    expect(encomienda()).toMatchObject({
+      receiverName: 'Laura Medina',
+      address: 'Terminal de Tunja · oficina 4',
+      neighborhood: null,
+      destination: 'TUNJA · BOYACÁ',
+      phone: 'Tel. 314 222 9010',
+      instructions: 'Recoge en oficina presentando cédula.',
+      deliveryText: 'Encomienda · recoge en oficina',
+      charge: { kind: 'collect', title: 'COBRAR AL ENTREGAR', amount: '$ 120.000', note: 'Cobrar en la oficina antes de entregar.' },
+      footer: 'Despachado 25 nov 2026, 10:40 · Viaje V-1118 · Bus WNP103',
+    });
+  });
+
+  test('nunca el conductor ni la moto del domiciliario; sin despachar, el pie dice cuándo sale el viaje', () => {
+    const l = encomienda({ dispatched_at: null });
+    expect(l.footer).toBe('Viaje V-1118, sale 24 nov 2026, 11:52 · Bus WNP103');
+    expect(l.footer).not.toContain('Moto');
+  });
+
+  test('sin parada de destino conocida: la dirección del envío, pero sigue siendo encomienda', () => {
+    const l = encomienda({ viaje: { ...viaje, terminal: null } });
+    expect(l.address).toBe('Calle 10 # 5-20');
+    expect(l.instructions).toBe('Indicaciones: Llamar al llegar');
+    expect(l.deliveryText).toBe('Encomienda · recoge en oficina');
+    expect(l.charge.note).toBe('No entregue sin cobrar.');
+  });
+
+  test('sin datos del viaje: la guía normal', () => {
+    const l = encomienda({ viaje: null });
+    expect(l.deliveryText).toBe('Domicilio propio');
+    expect(l.address).toBe('Calle 10 # 5-20');
+    expect(l.footer).toBe('Despachado 25 nov 2026, 10:40 · Moto KLM48F');
+  });
+});
+
+describe('enviosParaGuias: el viaje de la encomienda', () => {
+  const TRIP = '0f0e0d0c-0b0a-4908-8706-050403020100';
+  const PARADA = '1f0e0d0c-0b0a-4908-8706-050403020100';
+  /** Cliente falso: responde por tabla y registra los filtros. */
+  function db(respuestas: Record<string, unknown[] | Error>) {
+    const llamadas: { tabla: string; metodos: [string, unknown[]][] }[] = [];
+    return {
+      llamadas,
+      cliente: {
+        from(tabla: string) {
+          const llamada = { tabla, metodos: [] as [string, unknown[]][] };
+          llamadas.push(llamada);
+          const cadena: Record<string, unknown> = {};
+          for (const m of ['select', 'eq', 'in']) {
+            cadena[m] = (...a: unknown[]) => {
+              llamada.metodos.push([m, a]);
+              return cadena;
+            };
+          }
+          const r = respuestas[tabla];
+          cadena.then = (ok: (v: unknown) => unknown) => ok(r instanceof Error ? { data: null, error: r } : { data: r ?? [], error: null });
+          return cadena;
+        },
+      } as unknown as SupabaseClient,
+    };
+  }
+
+  test('lee el viaje, el bus y la parada (la del envío manda sobre la de la ruta), filtrado por la organización', async () => {
+    const { cliente, llamadas } = db({
+      shipments: [
+        { id: 'a', metadata: { trip_id: TRIP, destination_stop_id: PARADA } },
+        { id: 'b', metadata: { trip_id: TRIP } },
+        { id: 'c', metadata: {} },
+      ],
+      trips: [
+        {
+          id: TRIP,
+          trip_code: 'V-1118',
+          scheduled_departure: '2026-11-25T15:00:00Z',
+          vehicle: { plate: 'WNP103' },
+          route: { destino: { id: 'r', name: 'Terminal Norte', address: null, city: 'Tunja', department: 'Boyacá' } },
+        },
+      ],
+      transport_stops: [{ id: PARADA, name: 'Terminal de Tunja', address: 'oficina 4', city: 'Tunja', department: 'Boyacá' }],
+    });
+    const envios = await enviosParaGuias(cliente, 7, ['a', 'b', 'c']);
+    expect(envios.map((e) => e.viaje?.terminal?.nombre ?? null)).toEqual(['Terminal de Tunja', 'Terminal Norte', null]);
+    expect(envios[0].viaje).toMatchObject({ codigo: 'V-1118', placa: 'WNP103' });
+    expect(envios[2].viaje).toBeNull();
+    for (const l of llamadas) expect(l.metodos).toContainEqual(['eq', ['organization_id', 7]]);
+    expect(llamadas.find((l) => l.tabla === 'trips')?.metodos).toContainEqual(['in', ['id', [TRIP]]]);
+  });
+
+  test('si el viaje no se puede leer, los envíos salen sin viaje (guía normal)', async () => {
+    const aviso = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { cliente } = db({ shipments: [{ id: 'a', metadata: { trip_id: TRIP } }], trips: new Error('permiso') });
+    const envios = await enviosParaGuias(cliente, 7, ['a']);
+    expect(envios[0].viaje).toBeNull();
+    aviso.mockRestore();
+  });
+
+  test('un trip_id que no es un uuid no se consulta', async () => {
+    const { cliente, llamadas } = db({ shipments: [{ id: 'a', metadata: { trip_id: 'no-es-un-uuid' } }] });
+    await enviosParaGuias(cliente, 7, ['a']);
+    expect(llamadas.map((l) => l.tabla)).toEqual(['shipments']);
+  });
+});
+
 describe('agente de impresión: la misma plantilla', () => {
   const paper = getPaperSpec(DEFAULT_PAPER_WIDTH);
 
@@ -206,6 +357,15 @@ describe('agente de impresión: la misma plantilla', () => {
     }
     const pagado = buildPlainTextShipmentGuide(payloadAgenteDeRotulo('e1', textos({ cod_amount: 0 })[0]), paper);
     expect(pagado).toContain('PAGADO · NO COBRAR');
+  });
+
+  test('frágil también en el respaldo en texto y en el payload clásico (isFragile)', () => {
+    const fragil = payloadAgenteDeRotulo('e1', textos({ is_fragile: true })[0]);
+    expect(buildPlainTextShipmentGuide(fragil, paper)).toContain('FRÁGIL · MANIPULAR CON CUIDADO');
+    expect(buildShipmentGuidesHTML([fragil], paper)).toContain('FRÁGIL · MANIPULAR CON CUIDADO');
+    expect(buildPlainTextShipmentGuide(payloadAgenteDeRotulo('e1', textos()[0]), paper)).not.toContain('FRÁGIL');
+    const clasico = { shipmentId: 'x', shipmentNumber: 'ENV-1', createdAt: '2026-11-25T15:00:00Z', isFragile: true };
+    expect(buildPlainTextShipmentGuide(clasico, paper)).toContain('FRÁGIL · MANIPULAR CON CUIDADO');
   });
 
   test('con imagen, la impresora del sistema muestra esa imagen y la térmica la manda en bandas GS v 0', () => {

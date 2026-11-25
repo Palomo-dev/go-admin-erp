@@ -12,8 +12,11 @@
 --     encola la invalidación de caché de la tienda. La revisión de la migración queda en el
 --     historial.
 --
--- Al final borra la tabla de respaldo solo si TODAS las organizaciones se revirtieron; si alguna
--- se saltó, la tabla se conserva para decidir a mano.
+-- Al final borra la tabla de respaldo solo si TODAS las organizaciones se revirtieron y no quedan
+-- filas de otras migraciones; si no, la tabla se conserva.
+--
+-- Desde 20261125230000 la tabla tiene la columna `migracion`: esta reversión solo lee sus filas
+-- ('20261125050000'). Si se revierten las dos, primero la de 20261125230000.
 
 do $$
 declare
@@ -35,7 +38,11 @@ begin
     return;
   end if;
 
-  for b in select * from public.website_contacto_v2_respaldo where resultado = 'aplicada' order by id desc loop
+  for b in execute format(
+    'select * from public.website_contacto_v2_respaldo where resultado = %L %s order by id desc', 'aplicada',
+    case when exists (select 1 from information_schema.columns
+                       where table_schema = 'public' and table_name = 'website_contacto_v2_respaldo' and column_name = 'migracion')
+         then 'and migracion = ''20261125050000''' else '' end) loop
     if b.modelo = 'legacy' then
       perform 1 from public.website_pages where id = b.page_id::uuid for update;
       select coalesce(jsonb_agg(to_jsonb(s) order by s.sort_order, s.created_at, s.id), '[]') into v_actual
@@ -98,7 +105,8 @@ begin
     end if;
   end loop;
 
-  if v_saltadas = 0 then
+  if v_saltadas = 0
+     and not exists (select 1 from public.website_contacto_v2_respaldo where coalesce(to_jsonb(website_contacto_v2_respaldo)->>'migracion', '20261125050000') <> '20261125050000') then
     drop table public.website_contacto_v2_respaldo;
   else
     raise notice 'reversion_contacto_v2: % organizaciones no se revirtieron; se conserva el respaldo', v_saltadas;

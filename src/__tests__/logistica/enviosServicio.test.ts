@@ -38,7 +38,7 @@ const getOrderById = jest.fn(async (id: string) => ({ id, delivery_type: 'delive
 jest.mock('@/lib/services/webOrdersService', () => ({ webOrdersService: { getOrderById: (id: string) => getOrderById(id) } }));
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { actualizarEnvio, crearEnvio, listarEnvios, metadataDeFormulario, numeroEnvioManual, type EnvioEditable } from '@/lib/services/logistica/enviosService';
+import { actualizarEnvio, crearEnvio, listarEnvios, marcarFragil, metadataDeFormulario, numeroEnvioManual, type EnvioEditable } from '@/lib/services/logistica/enviosService';
 import type { DatosFormularioEnvio } from '@/lib/logistica/envios';
 
 type Llamada = { tabla: string; metodos: [string, unknown[]][] };
@@ -126,10 +126,12 @@ describe('crearEnvio', () => {
     const insert = createShipment.mock.calls[0][0];
     expect(insert).toMatchObject({
       organization_id: 1, branch_id: 3, source_type: 'manual', status: 'pending', fulfillment_mode: 'own', shipping_fee: 8000, cod_amount: 128900,
-      cod_status: 'pending', shipping_zone_id: 'z1', total_cost: 8000, expected_delivery_date: '2026-11-25',
+      cod_status: 'pending', shipping_zone_id: 'z1', total_cost: 8000, expected_delivery_date: '2026-11-25', is_fragile: true,
     });
     expect(String(insert.shipment_number)).toMatch(/^ENV-/);
-    expect(insert.metadata).toMatchObject({ is_fragile: true, barrio: 'Chapinero', package_type: 'small_box', shipping_fee_source: 'zona' });
+    expect(insert.metadata).toMatchObject({ barrio: 'Chapinero', package_type: 'small_box', shipping_fee_source: 'zona' });
+    // «Frágil» es la columna `is_fragile` (20261125220000), ya no una clave de la metadata.
+    expect(insert.metadata).not.toHaveProperty('is_fragile');
     expect(addShipmentItem).toHaveBeenCalledTimes(1);
     expect(addShipmentItem).toHaveBeenCalledWith('nuevo-1', expect.objectContaining({ description: 'Audífonos', qty: 1, unit_value: 89000 }));
     expect(assignVehicleAndDriver).toHaveBeenCalledWith('nuevo-1', null, 'd1');
@@ -141,6 +143,8 @@ describe('crearEnvio', () => {
     expect(createShipmentFromWebOrder).toHaveBeenCalledTimes(1);
     expect(createShipment).not.toHaveBeenCalled();
     expect(r.id).toBe('envio-web');
+    // La ruta del pedido no sabe de «Frágil»: se marca en el envío recién creado.
+    expect(updateShipment).toHaveBeenCalledWith('envio-web', { is_fragile: true });
   });
 
   test('si el domiciliario no se puede asignar, el envío queda y se avisa', async () => {
@@ -180,6 +184,7 @@ describe('actualizarEnvio', () => {
     await actualizarEnvio(original('pending'), d, { zonaId: null, fuenteCosto: 'sin_zonas' });
     const cambios = (updateShipment.mock.calls[0] as unknown[])[1] as Record<string, unknown>;
     expect(cambios.metadata).toMatchObject({ web_order_number: 'WO-1', sender_name: 'Org 1 · Sede Centro', shipping_fee_source: 'sin_zonas' });
+    expect(cambios.is_fragile).toBe(true);
     expect(deleteShipmentItem).toHaveBeenCalledWith('i1');
     expect(addShipmentItem).toHaveBeenCalledWith('s1', expect.objectContaining({ description: 'Cargador', qty: 2, unit_value: 39900 }));
     expect(assignVehicleAndDriver).toHaveBeenCalledWith('s1', null, 'd2');
@@ -200,9 +205,38 @@ describe('ayudantes', () => {
     expect(numeroEnvioManual()).toMatch(/^ENV-[0-9A-Z]+-[0-9A-Z]{4}$/);
   });
   test('metadataDeFormulario fusiona y quita lo vacío, y el viaje solo en modo viaje', () => {
-    const m = metadataDeFormulario(datos({ modo: 'viaje', viajeId: 't1', paradaOrigenId: 'p1', fragil: false }), { otra: 1, is_fragile: true }, null);
+    const m = metadataDeFormulario(datos({ modo: 'viaje', viajeId: 't1', paradaOrigenId: 'p1', fragil: true }), { otra: 1, is_fragile: true }, null);
     expect(m).toMatchObject({ otra: 1, trip_id: 't1', origin_stop_id: 'p1' });
     expect(m).not.toHaveProperty('is_fragile');
     expect(metadataDeFormulario(datos({ modo: 'own', viajeId: 't1' }), { trip_id: 'viejo' }, null)).not.toHaveProperty('trip_id');
+  });
+});
+
+describe('marcarFragil', () => {
+  /** Cliente falso del UPDATE: registra la cadena y devuelve las filas tocadas. */
+  const db = (filas: unknown[]) => {
+    const metodos: [string, unknown[]][] = [];
+    const cadena: Record<string, unknown> = {};
+    for (const m of ['from', 'update', 'eq', 'select']) {
+      cadena[m] = (...args: unknown[]) => {
+        metodos.push([m, args]);
+        return cadena;
+      };
+    }
+    cadena.then = (ok: (v: unknown) => unknown) => ok({ data: filas, error: null });
+    return { cliente: cadena as unknown as SupabaseClient, metodos };
+  };
+
+  test('un UPDATE de la columna, filtrado por la organización de la sesión y el envío', async () => {
+    const { cliente, metodos } = db([{ id: 's1' }]);
+    await marcarFragil(cliente, 7, 's1', true);
+    expect(metodos[0]).toEqual(['from', ['shipments']]);
+    expect(metodos[1][0]).toBe('update');
+    expect(metodos[1][1][0]).toMatchObject({ is_fragile: true });
+    expect(metodos).toEqual(expect.arrayContaining([['eq', ['organization_id', 7]], ['eq', ['id', 's1']]]));
+  });
+
+  test('si la RLS no deja tocar la fila, avisa en vez de fingir que guardó', async () => {
+    await expect(marcarFragil(db([]).cliente, 7, 's1', false)).rejects.toThrow('SIN_PERMISO');
   });
 });

@@ -29,6 +29,8 @@ import {
   type BuscadorOpcion,
 } from './buscadorCelularLogica';
 import { BusquedasPopulares } from './BusquedasPopulares';
+import { CabeceraVistaApariencia, FilaAparienciaBuscador, VistaAparienciaBuscador } from './VistaAparienciaBuscador';
+import { aparienciaDisponible } from './aparienciaBuscadorLogica';
 import { useTextosEditor } from '../textos';
 import {
   BOTONES_EXTRA,
@@ -115,6 +117,27 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   // Cabecera de la tienda (Figma 2754:59674, 2757:60344, 2754:60110, 2772:62317): Íconos, Selector
   // de moneda, Carrito y Favoritos, cada una en su vista con «volver», como el botón principal.
   const [vistaTienda, setVistaTienda] = useState<VistaCabeceraTienda | null>(null);
+  // «Buscador › Apariencia» (Figma 3242:99098): vista propia con «volver», abierta desde Diseño › Buscador.
+  const [vistaApariencia, setVistaApariencia] = useState(false);
+
+  if (vistaApariencia) {
+    return (
+      <aside aria-label={t('inspector.etiqueta', { nombre: titulo })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
+        <CabeceraVistaApariencia onVolver={() => setVistaApariencia(false)} />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista="buscador-apariencia">
+          <VistaAparienciaBuscador
+            ajustes={a}
+            cambiar={cambiar}
+            coloresTema={p.coloresTema}
+            onIrIconos={() => {
+              setVistaApariencia(false);
+              setVistaTienda('iconos');
+            }}
+          />
+        </div>
+      </aside>
+    );
+  }
 
   if (vistaTienda) {
     return (
@@ -186,7 +209,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
         {pestana === 'diseno' && (
           <>
             <TarjetaPlantilla nombre={p.porDefecto.nombre} enBorrador={p.enBorrador} />
-            <Diseno {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} />
+            <Diseno {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} onAbrirApariencia={() => setVistaApariencia(true)} />
           </>
         )}
         {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} onAbrirVista={setVistaTienda} />}
@@ -201,6 +224,7 @@ type Interno = InspectorEncabezadoProps & {
   onAbrirBoton?: () => void;
   onAbrirSegundo?: () => void;
   onAbrirVista?: (v: VistaCabeceraTienda) => void;
+  onAbrirApariencia?: () => void;
 };
 
 // ─── Menú (en Contenido y en Diseño, como en Figma) ───────────────────────────────────────────
@@ -652,6 +676,10 @@ function Diseno(p: Interno) {
             />
             <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.diseno.buscadorCelularAyuda')}</p>
           </>
+        )}
+        {/* Se suma a lo de hoy (Figma 3242:99098): la apariencia vive en su vista, nada se quita de aquí. */}
+        {aparienciaDisponible(a) && p.onAbrirApariencia && (
+          <FilaAparienciaBuscador ajustes={a} coloresTema={p.coloresTema} onAbrir={p.onAbrirApariencia} />
         )}
         {(buscadorComputador(a) !== 'hidden' || buscadorCelular(a) !== 'hidden') && (
           <BusquedasPopulares ajustes={a} onCambiar={cambiar} />

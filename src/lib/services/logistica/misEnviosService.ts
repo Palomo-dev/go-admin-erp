@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EnvioDomiciliario } from '@/lib/logistica/misEnvios';
 import { ESTADOS_EN_RUTA, rutaFotoEnvio } from '@/lib/logistica/misEnvios';
+import { barrioDeEnvio } from './despachoService';
 
 export interface ItemEnvio {
   id: string;
@@ -21,6 +22,11 @@ export interface ItemEnvio {
 export type EnvioApp = EnvioDomiciliario & {
   organization_id: number;
   driver_id: string | null;
+  /** Vehículo congelado al asignar (Logística 1b). */
+  vehicle_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  /** Barrio: lo guardan el pedido web y la venta POS en `metadata` (`barrioDeEnvio`). */
+  barrio?: string | null;
   customer?: { full_name?: string | null; phone?: string | null } | null;
   shipment_items?: ItemEnvio[];
 };
@@ -30,7 +36,12 @@ const COLUMNAS =
   'delivery_contact_name, delivery_contact_phone, delivery_instructions, delivery_latitude, delivery_longitude, ' +
   'expected_delivery_date, assigned_at, picked_at, dispatched_at, delivered_at, created_at, updated_at, cod_amount, cod_status, ' +
   'cod_collected_amount, cod_collected_method, cod_collected_at, delivery_code_required, failed_attempts, exception_reason, ' +
-  'shipping_fee, payment_status, customer:customers(full_name, phone), shipment_items(id, description, qty, total_value)';
+  'shipping_fee, payment_status, vehicle_id, metadata, fulfillment_mode, customer:customers(full_name, phone), shipment_items(id, description, qty, total_value)';
+
+/** Barrio de cada envío: la misma lectura que la bandeja de Por despachar. */
+function conBarrio(envios: EnvioApp[]): EnvioApp[] {
+  return envios.map((e) => ({ ...e, barrio: barrioDeEnvio({ metadata: e.metadata ?? null, delivery_department: null }) }));
+}
 
 /** Hora prometida de los pedidos de la tienda (`web_orders.estimated_delivery_at`). */
 async function conPromesa(client: SupabaseClient, organizationId: number, envios: EnvioApp[]): Promise<EnvioApp[]> {
@@ -56,7 +67,7 @@ export async function listarMisEnvios(client: SupabaseClient, organizationId: nu
     .order('created_at', { ascending: true })
     .limit(300);
   if (error) throw error;
-  return conPromesa(client, organizationId, (data ?? []) as unknown as EnvioApp[]);
+  return conPromesa(client, organizationId, conBarrio((data ?? []) as unknown as EnvioApp[]));
 }
 
 /** Una parada del domiciliario. Si el envío no es suyo, null (no se distingue de «no existe»). */
@@ -70,7 +81,7 @@ export async function obtenerParada(client: SupabaseClient, organizationId: numb
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
-  const [conHora] = await conPromesa(client, organizationId, [data as unknown as EnvioApp]);
+  const [conHora] = await conPromesa(client, organizationId, conBarrio([data as unknown as EnvioApp]));
   return conHora;
 }
 
@@ -97,4 +108,51 @@ export async function subirImagenEnvio(
   });
   if (error) throw error;
   return ruta;
+}
+
+/** Cuadre de la jornada (`courier_settlements`): el domiciliario lee los suyos por RLS. */
+export interface CuadreJornada {
+  id: string;
+  status: string;
+  difference: number | string | null;
+  expected_total: number | string | null;
+  received_total: number | string | null;
+  opened_at: string;
+  closed_at: string | null;
+}
+
+/** Los cuadres del domiciliario abiertos desde `desde` (el más reciente primero). */
+export async function cuadresDesde(client: SupabaseClient, organizationId: number, driverId: string, desde: string): Promise<CuadreJornada[]> {
+  const { data, error } = await client
+    .from('courier_settlements')
+    .select('id, status, difference, expected_total, received_total, opened_at, closed_at')
+    .eq('organization_id', organizationId)
+    .eq('driver_id', driverId)
+    .gte('opened_at', desde)
+    .order('opened_at', { ascending: false })
+    .limit(5);
+  if (error) throw error;
+  return (data ?? []) as CuadreJornada[];
+}
+
+/** Vehículo del domiciliario: placa, tipo, dueño, capacidad y vencimientos (SOAT, tecnomecánica). */
+export interface VehiculoApp {
+  id: string;
+  plate: string | null;
+  vehicle_type: string;
+  ownership: string | null;
+  capacity_kg: number | string | null;
+  soat_expiry: string | null;
+  techno_expiry: string | null;
+}
+
+export async function leerVehiculo(client: SupabaseClient, organizationId: number, vehicleId: string): Promise<VehiculoApp | null> {
+  const { data, error } = await client
+    .from('vehicles')
+    .select('id, plate, vehicle_type, ownership, capacity_kg, soat_expiry, techno_expiry')
+    .eq('organization_id', organizationId)
+    .eq('id', vehicleId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as VehiculoApp | null) ?? null;
 }

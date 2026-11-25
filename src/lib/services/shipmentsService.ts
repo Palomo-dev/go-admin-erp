@@ -3,6 +3,7 @@ import { buscarClientes } from '@/lib/services/customers/busquedaClientesService
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz } from '@/lib/utils/dateDisplay';
 import { getDayRange } from '@/lib/utils/dateRanges';
+import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 
 export interface AvailableDriver {
   id: string;
@@ -851,21 +852,22 @@ class ShipmentsService {
     customer_feedback?: string;
     customer_rating?: number;
   }) {
-    const { data, error } = await supabase
-      .from('proof_of_delivery')
-      .insert({
-        shipment_id: shipmentId,
-        delivered_at: new Date().toISOString(),
-        ...pod,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    await this.updateStatus(shipmentId, 'delivered');
-
-    return data;
+    // Un solo camino de entrega: el registro de Logística (logistica_marcar_entregado) escribe la
+    // prueba, el estado, el evento y valida quién entrega. La base ya no acepta la prueba suelta ni
+    // el UPDATE directo a 'delivered'. Contraentrega: usar `deliveryIntegrationService.markAsDelivered`
+    // con el código y el cobro.
+    const r = await deliveryIntegrationService.markAsDelivered(shipmentId, {
+      recipientName: pod.recipient_name,
+      recipientDocType: pod.recipient_doc_type,
+      recipientDocNumber: pod.recipient_doc_number,
+      recipientRelationship: pod.recipient_relationship,
+      signatureUrl: pod.signature_url,
+      photoUrls: pod.photo_urls,
+      locationType: pod.delivery_location_type,
+      notes: pod.notes,
+    });
+    if (!r.ok) throw new EnvioError(r.error);
+    return this.getProofOfDelivery(shipmentId);
   }
 
   // ==================== INCIDENTS ====================

@@ -13,16 +13,21 @@
  * código errado la base devuelve los intentos restantes; con 5 errores bloquea y un administrador
  * lo reinicia. Lo que se registra como cobrado es el total de la contraentrega; el efectivo
  * recibido y el cambio quedan en la nota de la prueba.
+ *
+ * Fase 2026-11-25: «¿El cliente no tiene el código?» abre una hoja con tres salidas y ninguna para
+ * saltarse el código; al confirmar se ve «Entrega confirmada» con la siguiente parada; sin señal
+ * no se confirma (la cola sin conexión va en otra fase).
  */
 import { useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, HelpCircle } from 'lucide-react';
 import { AvisoTonal, CampoNumero, ChipsOpcion, EmptyState, FormField, PageHeader, Skeleton, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { useBranch } from '@/lib/context/BranchContext';
 import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import { subirImagenEnvio } from '@/lib/services/logistica/misEnviosService';
 import {
@@ -43,11 +48,15 @@ import { MAX_INTENTOS_CODIGO } from '@/lib/logistica/contraentrega';
 import { puedeEntregarse } from '@/lib/logistica/estadosEnvio';
 import { avisarCliente } from '../logisticaApi';
 import { useParada } from './useMiRuta';
-import { ubicacionActual } from './ParadaPantalla';
+import { ubicacionActual } from './ubicacion';
+import { useEnLinea } from './useEnLinea';
+import { HojaSinCodigo } from './HojaSinCodigo';
+import { HojaNovedad } from './HojaNovedad';
+import { EntregaConfirmada, type DatosEntrega } from './EntregaConfirmada';
 import { CampoCodigo } from './CampoCodigo';
 import { CapturaFoto } from './CapturaFoto';
 import { PadFirma, type PadFirmaRef } from './PadFirma';
-import { BarraInferior, Bloque } from './piezas';
+import { AvisoPausaSinConexion, BarraInferior, Bloque } from './piezas';
 import { RUTA_MIS_ENVIOS, rutaNoEntregado, rutaParada } from './rutas';
 
 export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
@@ -56,7 +65,12 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
   const router = useRouter();
   const moneda = useMonedaOrganizacion();
   const idAyudaCodigo = useId();
-  const { orgId, envio, estado } = useParada(shipmentId);
+  const { orgId, envio, estado, recargar } = useParada(shipmentId);
+  const { branches } = useBranch();
+  const enLinea = useEnLinea();
+  const [confirmada, setConfirmada] = useState<DatosEntrega | null>(null);
+  const [sinCodigo, setSinCodigo] = useState(false);
+  const [novedad, setNovedad] = useState(false);
 
   const [codigo, setCodigo] = useState('');
   const [prueba, setPrueba] = useState<PruebaEntrega | null>(null);
@@ -79,6 +93,8 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
   const nombreReceptor = receptor ?? envio?.delivery_contact_name ?? envio?.customer?.full_name ?? '';
   const rapidos = useMemo(() => montosRapidos(total), [total]);
   const cambio = medio === 'cash' && efectivo != null ? cambioADevolver(total, efectivo) : null;
+
+  if (confirmada) return <EntregaConfirmada datos={confirmada} />;
 
   if (estado === 'cargando') {
     return (
@@ -120,7 +136,7 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
 
   const confirmar = async () => {
     setIntentado(true);
-    if (faltante || errorCodigo === 'bloqueado') return;
+    if (faltante || errorCodigo === 'bloqueado' || !enLinea) return;
     setEnviando(true);
     try {
       const [urlsFotos, urlFirma, urlsComprobante, ubicacion] = await Promise.all([
@@ -162,7 +178,17 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
       }
       void avisarCliente(envio, r.aviso);
       toastSuccess(t('hecho'));
-      router.push(RUTA_MIS_ENVIOS);
+      setConfirmada({
+        envio,
+        receptor: nombreReceptor.trim(),
+        relacion: t(`receptor.relaciones.${relacion}`),
+        codigoVerificado: codigoRequerido,
+        entregadoEn: new Date(),
+        total,
+        medio: total > 0 ? medio : null,
+        recibidoEfectivo: medio === 'cash' ? efectivo : null,
+        cambio,
+      });
     } catch (err) {
       const codigoError = err instanceof EnvioError ? err.codigo : 'ERROR';
       if (codigoError === 'CODIGO_BLOQUEADO') setErrorCodigo('bloqueado');
@@ -181,6 +207,10 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
         titulo={t('titulo', { numero: envio.shipment_number })}
         subtitulo={[envio.delivery_contact_name, envio.delivery_address].filter(Boolean).join(' · ')}
         variante="form"
+        migas={[
+          { etiqueta: tm('titulo'), href: RUTA_MIS_ENVIOS },
+          { etiqueta: tm('parada.titulo', { numero: envio.shipment_number }), href: rutaParada(envio.id) },
+        ]}
         volverA={rutaParada(envio.id)}
       />
 
@@ -214,6 +244,14 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
             <p id={idAyudaCodigo} className="text-[13px] text-fg-muted">
               {t('codigo.ayuda')}
             </p>
+            <button
+              type="button"
+              onClick={() => setSinCodigo(true)}
+              className="inline-flex items-center gap-1.5 self-start rounded-lg py-1 text-sm font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <HelpCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tm('sinCodigo.titulo')}
+            </button>
           </div>
         )}
 
@@ -316,11 +354,13 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
         </section>
       )}
 
+      {!enLinea && <AvisoPausaSinConexion />}
+
       <BarraInferior>
         <button
           type="button"
           onClick={confirmar}
-          disabled={enviando || errorCodigo === 'bloqueado'}
+          disabled={enviando || errorCodigo === 'bloqueado' || !enLinea}
           aria-busy={enviando}
           className={clasesBoton({ tamano: 'lg', anchoCompleto: true })}
         >
@@ -333,6 +373,31 @@ export function EntregarPantalla({ shipmentId }: { shipmentId: string }) {
           </button>
         )}
       </BarraInferior>
+
+      <HojaSinCodigo
+        abierto={sinCodigo}
+        onAbiertoChange={setSinCodigo}
+        subtitulo={[envio.shipment_number, envio.delivery_contact_name || envio.customer?.full_name].filter(Boolean).join(' · ')}
+        telefonoTienda={branches.find((b) => b.id === envio.branch_id)?.phone ?? null}
+        onNovedad={
+          puedeReportarNovedad(String(envio.status))
+            ? () => {
+                setSinCodigo(false);
+                setNovedad(true);
+              }
+            : null
+        }
+      />
+      <HojaNovedad
+        envio={novedad ? envio : null}
+        orgId={orgId}
+        onCerrar={() => setNovedad(false)}
+        onHecho={() => {
+          setNovedad(false);
+          recargar();
+          router.push(RUTA_MIS_ENVIOS);
+        }}
+      />
     </div>
   );
 }

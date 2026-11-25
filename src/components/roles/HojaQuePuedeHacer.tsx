@@ -90,6 +90,7 @@ function Detalle({
 }) {
   const t = useTranslations('roles.quePuede');
   const tr = useTranslations('roles');
+  const { etiquetaPermiso } = useEtiquetasRoles();
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
 
   const permisos: PermisoConOrigen[] = useMemo(() => {
@@ -182,7 +183,7 @@ function Detalle({
                 <ul>
                   {g.permisos.map((p) => (
                     <li key={p.permiso.id} className="flex min-h-11 items-center justify-between gap-2 px-3 py-2 text-sm">
-                      <span className={cn('min-w-0', p.concedido ? 'text-fg' : 'text-fg-muted line-through')}>{p.permiso.nombre}</span>
+                      <span className={cn('min-w-0', p.concedido ? 'text-fg' : 'text-fg-muted line-through')}>{etiquetaPermiso(p.permiso).nombre}</span>
                       <span className="flex shrink-0 gap-1">
                         {p.origenes.map((o) => (
                           <ChipOrigen key={o} origen={o} />

@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { QRCodeSVG } from 'qrcode.react';
 import type { ShipmentLabelPayload } from '@printing';
 import { CodigoBarras } from '@/components/kit/CodigoBarras';
-import { ROTULO_MM, TERMICA_MM } from '@/lib/logistica/rotuloEnvio';
+import { ROTULO_MM, TERMICA_MM, tamanoNumeroGuia } from '@/lib/logistica/rotuloEnvio';
 
 export type FormatoPapelRotulo = '10x15' | '80mm';
 
@@ -193,6 +193,13 @@ export function RotuloEnvio({ textos: l, formato = '10x15', className, style, on
         {texto(l.charge.note, { fontSize: u(8.5), lineHeight: 1.3 })}
       </section>
 
+      {/* Manipulación (Figma 3224:15741): recuadro punteado bajo el cobro, solo si el envío es frágil. */}
+      {l.handling && (
+        <section data-rotulo-manipulacion="" style={{ border: `${u(2)} dashed ${NEGRO}`, padding: `${u(5)} ${u(8)}`, textAlign: 'center' }}>
+          {texto(l.handling, { fontSize: u(10), fontWeight: 800, letterSpacing: '0.04em', lineHeight: 1.25 })}
+        </section>
+      )}
+
       {!termica && <div style={{ flex: 1, minHeight: 0 }} />}
 
       {/* La guía: Code 128 + número + QR de seguimiento. */}
@@ -204,7 +211,8 @@ export function RotuloEnvio({ textos: l, formato = '10x15', className, style, on
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: u(8) }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {texto(l.guideLabel, etiqueta)}
-              {texto(l.guideNumber, { fontSize: u(17), fontWeight: 800, letterSpacing: '0.04em', wordBreak: 'break-all' })}
+              {/* Una sola línea: el número se achica para caber (320 − 16 de margen − 8 − 64 del QR). */}
+              {texto(l.guideNumber, { fontSize: u(tamanoNumeroGuia(l.guideNumber, 232, 17, 0.04)), fontWeight: 800, letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden' })}
               {texto(l.qrCaptionLong, { fontSize: u(7.5), marginTop: u(2) })}
             </div>
             <QRCodeSVG value={l.qrData} size={256} level="M" marginSize={0} bgColor={BLANCO} fgColor={NEGRO} style={{ width: u(64), height: u(64), flex: 'none' }} aria-hidden="true" />
@@ -222,7 +230,8 @@ export function RotuloEnvio({ textos: l, formato = '10x15', className, style, on
               <div data-rotulo-barras={l.guideNumber}>
                 <CodigoBarras valor={l.guideNumber} mostrarTexto={false} textoSinCodigo={l.guideNumber} altoBarras={u(62)} onListo={marcar} />
               </div>
-              {texto(l.guideNumber, { fontSize: u(17), fontWeight: 800, letterSpacing: '0.05em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden' })}
+              {/* Una sola línea: el número se achica para caber (400 − 32 de margen − 12 − 76 del QR). */}
+              {texto(l.guideNumber, { fontSize: u(tamanoNumeroGuia(l.guideNumber, 280, 17)), fontWeight: 800, letterSpacing: '0.05em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden' })}
             </div>
             <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(3) }}>
               <QRCodeSVG value={l.qrData} size={256} level="M" marginSize={0} bgColor={BLANCO} fgColor={NEGRO} style={{ width: u(76), height: u(76) }} aria-hidden="true" />

@@ -52,13 +52,25 @@ export interface RegistrarDomiciliarioDialogProps {
   textoConfirmar?: string;
   /** Candidatos ya leídos por la pantalla (si no, se leen al abrir). */
   candidatos?: CandidatosAlta | null;
+  /**
+   * «Registrarme como domiciliario» desde Mis envíos: la cuenta de la sesión queda elegida (y su
+   * nombre y celular) en cuanto llegan los candidatos. El resto del formulario es el mismo.
+   */
+  usuarioPropio?: string | null;
 }
 
 const SIN = '__sin__';
 const NUEVO = '__nuevo__';
 const CATEGORIAS = ['A1', 'A2', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'] as const;
 
-export function RegistrarDomiciliarioDialog({ abierto, onAbiertoChange, onRegistrado, textoConfirmar, candidatos: candidatosProp }: RegistrarDomiciliarioDialogProps) {
+export function RegistrarDomiciliarioDialog({
+  abierto,
+  onAbiertoChange,
+  onRegistrado,
+  textoConfirmar,
+  candidatos: candidatosProp,
+  usuarioPropio,
+}: RegistrarDomiciliarioDialogProps) {
   const t = useTranslations('logistica.domiciliario.alta');
   const tv = useTranslations('logisticaVehiculo');
   const { getToday } = useFormatDate();
@@ -185,6 +197,22 @@ export function RegistrarDomiciliarioDialog({ abierto, onAbiertoChange, onRegist
   const campoConError = (campo: string) =>
     intentado && !validacion.success && validacion.error.issues.some((i) => i.path[0] === campo) ? t(`errores.${campo}`) : null;
   const faltaEmpleo = intentado && esEmpleado && !empleo;
+
+  // Cuenta propia ya elegida (Mis envíos › Registrarme): una vez por apertura, cuando llegan los candidatos.
+  const propioAplicado = useRef(false);
+  useEffect(() => {
+    if (!abierto) {
+      propioAplicado.current = false;
+      return;
+    }
+    if (!usuarioPropio || propioAplicado.current || !candidatos) return;
+    const m = candidatos.miembros.find((x) => x.userId === usuarioPropio);
+    propioAplicado.current = true;
+    if (!m) return;
+    setUsuario(m.userId);
+    setNombre((n) => n || m.nombre);
+    if (m.telefono) setCelular((c) => c || (m.telefono as string));
+  }, [abierto, usuarioPropio, candidatos]);
 
   const elegirEmpleado = (id: string) => {
     const e = candidatos?.empleados.find((x) => x.employmentId === id);

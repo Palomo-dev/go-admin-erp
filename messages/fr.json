@@ -38966,7 +38966,7 @@
             "dialogo": "Dialogue"
           },
           "ayudaPagina": "Comme aujourd’hui : l’icône mène à /auth (et à /mi-cuenta une fois connecté). Toute boutique commence ici.",
-          "ayudaOtros": "Sur mobile, panneau, fenêtre et dialogue s’affichent en feuille du bas. Une fois connecté, le même format affiche le menu du compte.",
+          "ayudaOtros": "Sur mobile, le mode est conservé : le panneau est un tiroir latéral et le dialogue, un dialogue centré. Seule la fenêtre s’affiche en feuille du bas. Une fois connecté, le même format affiche le menu du compte.",
           "notaPagina": "Avec «Page», les textes se modifient sur la page /auth. Choisissez un autre mode pour voir titre, bouton, avantages et «Après la connexion».",
           "titulo": "Titre",
           "boton": "Texte du bouton",
@@ -39521,7 +39521,9 @@
         "texto": "Texte",
         "deLaTarjeta": "Celui de la carte",
         "ayudaFilaPropias": "Chaque étiquette personnalisée a son coin et ses couleurs : modifiez-les plus bas, dans « Étiquettes personnalisées ».",
-        "ayudaCuales": "Une étiquette désactivée sur la carte (Style de carte › Étiquettes) ne s'affiche pas non plus ici. Les promotions s'affichent d'elles-mêmes quand le produit fait partie d'une promotion web en cours ; celles d'un groupe de clients, seulement aux membres du groupe.",
+        "ayudaCuales": "Chacune ne s’affiche que si le produit la remplit : « Nouveau » s’il a été créé récemment, « Épuisé » sans unités, « Unités vendues » avec des ventes en boutique, « Prix dégressif » avec des paliers. Une étiquette désactivée sur la carte (Style de carte › Étiquettes) ne s’affiche pas ici non plus ; « Livraison gratuite » ne s’affiche que si elle est activée sur la carte. Les promotions s’affichent seules quand le produit est dans une promotion web en cours ; celles d’un groupe de clients, uniquement aux membres du groupe.",
+        "ayudaPromoPropia": "Si une étiquette personnalisée dit la même chose que la promotion (p. ex. « 2 X 1 »), une seule s’affiche : la personnalisée, avec ses couleurs, et en la touchant à côté du titre elle explique la promotion.",
+        "ayudaVistaPrevia": "Dans l’aperçu, celles que ce produit ne remplit pas s’affichent en exemple pour voir le style. En boutique, elles ne s’affichent que si le produit les remplit.",
         "estilo": "Style",
         "forma": "Forme",
         "formas": {
@@ -39529,8 +39531,10 @@
           "pill": "Pilule",
           "rounded": "Arrondie",
           "semi": "Semi",
-          "square": "Carrée"
+          "square": "Carrée",
+          "circle": "Cercle"
         },
+        "ayudaCirculo": "Cercle de taille fixe pour les textes courts comme « -83 % », « 2x1 » ou « Nouveau ». Si le texte ne tient pas (plus de 6 caractères, p. ex. « 776 vendus »), l’étiquette s’affiche en pilule.",
         "relleno": "Remplissage",
         "rellenos": {
           "tarjeta": "Celui de la carte",
@@ -39640,6 +39644,204 @@
           "mostrarDe": "Afficher {nombre}",
           "origen": "Les comptes proviennent de Site web › SEO et réseaux.",
           "editarCuentas": "Modifier les comptes"
+        }
+      },
+      "aparienciaBuscador": {
+        "abrir": "Apparence de la recherche",
+        "abrirAyuda": "Bordures, coins, ombre, intérieur, icône, bouton, catégories et liste déroulante · Modèle : {plantilla}",
+        "titulo": "Recherche › Apparence",
+        "migas": "En-tête › Design › Recherche · change sur toutes les pages",
+        "volver": "Retour à l’en-tête",
+        "ayudaHoy": "Rechercher des produits...",
+        "propio": "Personnalisé",
+        "colorPropio": "Couleur personnalisée",
+        "colorMarca": "Couleur de la marque",
+        "hoy": "Actuel",
+        "hoyValor": "{valor} (actuel)",
+        "cancelar": "Annuler",
+        "previa": {
+          "titulo": "Aperçu en direct",
+          "estados": "État de l’aperçu",
+          "ayuda": "La vraie boutique reste visible sur le canevas ; cette miniature montre les états sans quitter le panneau.",
+          "textoEjemplo": "café",
+          "estado": {
+            "normal": "Normal",
+            "hover": "Survol",
+            "foco": "Focus",
+            "texto": "Avec texte"
+          }
+        },
+        "dispositivo": {
+          "computador": "Ordinateur",
+          "celular": "Mobile"
+        },
+        "editando": "Modification",
+        "editandoAyuda": "Visible uniquement avec « identique à l’ordinateur » désactivé. Mobile vide = copie de l’ordinateur.",
+        "celularCopia": "Le mobile utilise l’apparence de l’ordinateur. Modifiez quelque chose ici pour qu’il ait la sienne.",
+        "formaOculta": "La recherche de cet appareil est masquée : l’apparence est enregistrée mais ne s’affiche pas tant que vous ne choisissez pas une autre forme.",
+        "plantillas": {
+          "titulo": "Modèles de recherche",
+          "ayuda": "Ils remplissent tous les réglages ci-dessous ; modifiez ensuite ce que vous voulez et cela devient « Personnalisé (depuis …) ».",
+          "todayDefecto": "Actuel (par défaut)",
+          "today": "Actuel",
+          "minimal": "Minimal",
+          "pill_button": "Pilule avec bouton",
+          "categories": "Avec catégories",
+          "floating": "Ombre flottante",
+          "thick": "Bordure épaisse",
+          "dark": "Sombre",
+          "tint": "Teinte de marque",
+          "inset": "Creusé",
+          "personalizadoSin": "Personnalisé",
+          "personalizadoDesde": "Personnalisé (depuis « {plantilla} »)",
+          "confirmarTitulo": "Revenir au modèle ?",
+          "confirmarTexto": "Revenir à « {plantilla} » annule les modifications faites après l’avoir appliqué.",
+          "confirmarBoton": "Revenir au modèle"
+        },
+        "tamano": {
+          "titulo": "Taille",
+          "alto": "Hauteur",
+          "altoCelular": "Sur mobile, la hauteur minimale est de 44 px (taille du doigt).",
+          "altoPropio": "Hauteur personnalisée en px",
+          "ancho": "Largeur",
+          "automatico": "Automatique",
+          "lleno": "Pleine",
+          "anchoMaximo": "Largeur maximale",
+          "sinTope": "Sans limite",
+          "anchoMaximoAyuda": "Entre {min} et {max} px. Vide = celle de l’en-tête.",
+          "alineacion": "Alignement dans la ligne",
+          "izquierda": "Gauche",
+          "centro": "Centre",
+          "derecha": "Droite"
+        },
+        "bordes": {
+          "titulo": "Bordures",
+          "grosor": "Épaisseur",
+          "color": "Couleur",
+          "colorTema": "Du thème (gris bordure)",
+          "estilo": "Style",
+          "completo": "Complète",
+          "soloAbajo": "En bas seulement",
+          "punteado": "Pointillé",
+          "alEnfocar": "Bordure au focus",
+          "alEnfocarHoy": "Couleur de la marque (actuel)",
+          "igualNormal": "Identique à la normale"
+        },
+        "esquinas": {
+          "titulo": "Coins",
+          "forma": "Forme",
+          "square": "Droits",
+          "soft": "Doux",
+          "rounded": "Arrondis",
+          "pill": "Pilule",
+          "radio": "Rayon",
+          "radioAyuda": "Ajustez en px (0–{max}) ; la forme choisie passe à « Personnalisé » si vous le modifiez."
+        },
+        "sombra": {
+          "titulo": "Ombre",
+          "normal": "Ombre",
+          "ayuda": "Cinq ombres fixes, sans ombre libre.",
+          "alEnfocar": "Ombre au focus",
+          "igual": "Identique à la normale (actuel)",
+          "unNivelMas": "Un niveau de plus",
+          "none": "Aucune",
+          "sm": "Douce",
+          "md": "Moyenne",
+          "lg": "Forte",
+          "inner": "Intérieure"
+        },
+        "interior": {
+          "titulo": "Intérieur",
+          "fondo": "Fond",
+          "blanco": "Blanc",
+          "delTema": "Du thème (fond)",
+          "transparente": "Transparent",
+          "texto": "Couleur du texte",
+          "ayuda": "Texte d’aide (placeholder)",
+          "ayudaNota": "Vide = « Rechercher des produits... ». {max} caractères maximum.",
+          "ayudaColor": "Couleur du texte d’aide",
+          "fuente": "Police",
+          "fuenteTema": "Celle du thème (textes)",
+          "fuenteTitulos": "Celle des titres"
+        },
+        "contraste": {
+          "texto": "Le texte est peu lisible ({razon})",
+          "ayuda": "Le texte d’aide est peu lisible ({razon})",
+          "boton": "L’icône ou le texte du bouton est peu lisible ({razon})",
+          "necesita": "Il faut {minimo}:1 sur ce fond. Suggestion : {sugerido}.",
+          "usar": "Utiliser la suggestion",
+          "dejar": "Laisser ainsi",
+          "nota": "C’est un avertissement, pas un blocage : vous décidez. Vérifiés : texte/fond, aide/fond et bouton (icône/fond)."
+        },
+        "icono": {
+          "titulo": "Icône de recherche",
+          "dibujo": "Le dessin de la loupe est unique pour toute la boutique.",
+          "irIconos": "Choisir dans Icônes",
+          "posicion": "Position",
+          "izquierda": "Gauche (actuel)",
+          "derecha": "Droite",
+          "sinIcono": "Sans icône",
+          "color": "Couleur",
+          "gris": "Gris (actuel)",
+          "colorTexto": "Couleur du texte",
+          "tamano": "Taille"
+        },
+        "boton": {
+          "titulo": "Bouton de recherche",
+          "tipo": "Bouton",
+          "none": "Sans bouton",
+          "icon": "Icône",
+          "text": "Texte « Rechercher »",
+          "icon_text": "Icône + texte",
+          "celular": "Sur mobile, le bouton est toujours collé et n’affiche que l’icône, pour ne pas prendre de largeur.",
+          "texto": "Texte du bouton",
+          "textoHoy": "Rechercher",
+          "fondo": "Fond du bouton",
+          "primario": "Principale de la marque (actuel)",
+          "acento": "Accent",
+          "iconoTexto": "Icône et texte du bouton",
+          "automatico": "Automatique (lisible)",
+          "blanco": "Blanc",
+          "negro": "Noir",
+          "posicion": "Position",
+          "pegado": "Collé, dans la barre",
+          "separado": "Séparé, à côté",
+          "esquinas": "Coins du bouton",
+          "comoBarra": "Comme la barre"
+        },
+        "categorias": {
+          "titulo": "Sélecteur de catégories « Toutes »",
+          "ayuda": "Liste les catégories du menu. Aujourd’hui, seule la « Grande recherche » l’a.",
+          "mostrar": "Afficher le sélecteur de catégories",
+          "mostrarAyuda": "Automatique : activé seulement dans Grande recherche.",
+          "estilo": "Style",
+          "simple": "Texte simple (actuel)",
+          "enCaja": "Encadré",
+          "separador": "Ligne de séparation",
+          "texto": "Texte de « Toutes »",
+          "textoHoy": "Toutes",
+          "celular": "Sur mobile, il se masque s’il ne tient pas (barre de moins de 360 px)."
+        },
+        "anillo": {
+          "titulo": "Anneau de focus",
+          "nota": "Toujours visible : c’est ce que voient les personnes qui naviguent au clavier. Il ne peut pas être désactivé ; seule la couleur se choisit.",
+          "color": "Couleur",
+          "hoy": "Couleur de la marque, 40 % (actuel)"
+        },
+        "desplegable": {
+          "titulo": "Liste de suggestions",
+          "esquinas": "Coins",
+          "sombra": "Ombre",
+          "imagenes": "Afficher les images",
+          "precios": "Afficher les prix",
+          "populares": "Recherches populaires : elles se modifient dans Design › Recherche."
+        },
+        "restablecer": {
+          "boton": "Réinitialiser la recherche",
+          "ayuda": "Revient à l’apparence actuelle : supprime l’apparence enregistrée (ordinateur et mobile). Demande une confirmation.",
+          "titulo": "Réinitialiser la recherche ?",
+          "texto": "Revient à l’apparence actuelle sur ordinateur et mobile. La forme, l’interrupteur et les recherches populaires ne changent pas.",
+          "confirmar": "Réinitialiser"
         }
       }
     },
@@ -41671,6 +41873,12 @@
       "migracion_pendiente": "Cette action sera disponible lorsque les rôles personnalisés seront activés dans l'organisation.",
       "error_red": "Pas de connexion avec le serveur. Réessayez.",
       "error_interno": "Un problème est survenu lors de l'enregistrement. Réessayez."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Enregistrer des livraisons au bureau",
+        "descripcion": "Enregistrer la livraison d’un envoi sans être le livreur assigné : retrait au comptoir, guichet ou « Encaisser et livrer » en caisse."
+      }
     }
   },
   "pedidoWeb": {
@@ -67336,7 +67544,18 @@
         "pideCodigo": "Demande au client le code de livraison à 4 chiffres.",
         "llevas": "Ce que tu transportes ({n})",
         "envio": "Livraison",
-        "pasos": "Étapes"
+        "pasos": "Étapes",
+        "avisoIniciar": "Quand tu pars vers cette adresse, touche « Démarrer la tournée » : on prévient le client par WhatsApp et e-mail et on lui envoie son code de livraison.",
+        "avisoIniciarSinCodigo": "Quand tu pars vers cette adresse, touche « Démarrer la tournée » : on prévient le client que tu es en route.",
+        "avisoEnCamino": "On a prévenu le client que tu es en route et on lui a envoyé son code de livraison.",
+        "avisoEnCaminoSinCodigo": "On a prévenu le client que tu es en route.",
+        "despuesDeIniciar": "Après « Démarrer la tournée », l’arrêt passe « En route » et « Livrer » et « Livraison impossible » apparaissent.",
+        "totalPedido": "Total de la commande",
+        "prueba": {
+          "titulo": "Preuve de livraison",
+          "conCodigo": "À la livraison, on te demande le code du client (obligatoire en paiement à la livraison), qui a reçu et, si tu veux, une photo du colis livré.",
+          "sinCodigo": "À la livraison, on te demande une photo ou la signature de la personne qui reçoit, et qui a reçu."
+        }
       },
       "origen": {
         "tienda": "Boutique en ligne",
@@ -67344,21 +67563,21 @@
         "otro": "Livraison"
       },
       "pasos": {
-        "recogido": "J'ai récupéré la commande",
-        "en_camino": "Je suis en route",
+        "recogido": "J’ai récupéré le colis",
+        "en_camino": "Démarrer la tournée · en route",
         "entregado": "Livré",
         "hechoSr": "fait",
         "actualSr": "étape en cours",
         "pendienteSr": "à faire",
         "hecho": {
-          "picked": "Commande récupérée",
+          "picked": "Colis récupéré",
           "out_for_delivery": "Tu es en route : le client a été prévenu"
         },
         "boton": {
-          "recoger": "J'ai récupéré la commande",
-          "en_camino": "Je suis en route",
-          "reintentar": "Réessayer : je suis en route",
-          "entregar": "Livré",
+          "recoger": "J’ai récupéré le colis",
+          "en_camino": "Démarrer la tournée",
+          "reintentar": "Réessayer : démarrer la tournée",
+          "entregar": "Livrer",
           "noEntregado": "Livraison impossible"
         }
       },
@@ -67378,7 +67597,9 @@
         "COBRO_REQUERIDO": "Enregistre l'encaissement du paiement à la livraison.",
         "MOTIVO_INVALIDO": "Choisis ce qui s'est passé.",
         "ESTADO_SIN_NOVEDAD": "Cette livraison n'accepte pas d'incident dans son statut actuel.",
-        "ENVIO_AJENO": "Cet envoi ne vous est plus attribué."
+        "ENVIO_AJENO": "Cet envoi ne vous est plus attribué.",
+        "SIN_PERMISO_ENTREGA": "Cet envoi ne vous est pas assigné et vous n’avez pas l’autorisation de le livrer.",
+        "ENTREGA_SOLO_POR_REGISTRO": "La livraison s’enregistre depuis « Livrer »."
       },
       "entregar": {
         "titulo": "Livrer {numero}",
@@ -67516,7 +67737,7 @@
         "faltaNota": "Écris ce qui s'est passé.",
         "foto": {
           "titulo": "Photo de preuve",
-          "ayuda": "La position est enregistrée automatiquement"
+          "ayuda": "Jusqu’à 3 photos · la position est enregistrée"
         },
         "yAhora": "Et maintenant ?",
         "plan": {
@@ -67530,7 +67751,8 @@
           "devolver": "Le colis retourne à l'agence : remets-le en fin de journée."
         },
         "guardar": "Enregistrer et continuer la tournée",
-        "hecho": "Incident enregistré"
+        "hecho": "Incident enregistré",
+        "notaAyuda": "Jusqu’à 300 caractères. Obligatoire si tu choisis « Autre »."
       },
       "finJornada": {
         "titulo": "Fin de journée",
@@ -67556,11 +67778,319 @@
         "paqueteDevolver": "Colis à retourner",
         "enviado": {
           "titulo": "Résumé envoyé",
-          "descripcion": "Ta journée est clôturée. Remets les espèces à la caisse de l'agence : elles sont reçues dans Logistique › Rapprochements."
+          "descripcion": "Le bureau reçoit ligne par ligne et clôture le rapprochement. Ce qui n’a pas été encaissé aujourd’hui reste dans ta tournée de demain.",
+          "cabecera": "Journée terminée",
+          "tituloHora": "Résumé envoyé · {hora}",
+          "fueraDeTurno": "Tu es hors service. Merci pour la tournée d’aujourd’hui.",
+          "entregaloEn": "Remets-le à la personne qui reçoit l’argent à {sede}.",
+          "entregalo": "Remets-le à la personne qui reçoit l’argent à l’agence.",
+          "tuCuadre": "Ton rapprochement du jour",
+          "estadosCuadre": {
+            "por_recibir": "À recevoir",
+            "recibiendo": "En réception",
+            "cuadrado": "Rapproché",
+            "con_diferencia": "Avec écart"
+          },
+          "pasos": {
+            "enviado": "Résumé envoyé",
+            "recibido": "Argent reçu à l’agence",
+            "cerrado": "Rapprochement clôturé"
+          },
+          "volver": "Revenir à Mes livraisons"
         },
         "notaCuadre": "La personne qui reçoit l'argent le voit dans Logistique › Rapprochements et le met dans la caisse ouverte de l'agence.",
         "enviar": "Envoyer le résumé pour le rapprochement",
         "errorEnviar": "Impossible de clôturer la journée. Réessaie."
+      },
+      "actualizado": "mis à jour {hora}",
+      "sinConexion": {
+        "franja": "Hors ligne · tu vois la tournée de {hora}. Pour livrer, il te faut du réseau.",
+        "franjaSinHora": "Hors ligne. Pour livrer, il te faut du réseau.",
+        "pausa": "Sans réseau, impossible d’enregistrer livraisons, encaissements ou incidents : l’app ne les garde pas encore pour les envoyer plus tard. Appeler et Itinéraire fonctionnent. Si le client attend, cherche du réseau ou appelle la boutique.",
+        "insignia": "Sans réseau"
+      },
+      "sinCodigo": {
+        "titulo": "Le client n’a pas le code ?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Qu’il le cherche dans WhatsApp ou ses e-mails",
+            "descripcion": "Il est arrivé avec l’avis « Ta commande est en route ». Il est aussi dans son lien de suivi."
+          },
+          "tienda": {
+            "titulo": "Appelle la boutique",
+            "descripcion": "Un administrateur peut réinitialiser le code depuis le détail de l’envoi."
+          },
+          "novedad": {
+            "titulo": "Livraison impossible",
+            "descripcion": "S’il ne le trouve pas, enregistre l’incident et continue ta tournée. Le colis revient avec toi."
+          }
+        },
+        "candado": "Après {max} erreurs, le code est bloqué et seul un administrateur peut le réinitialiser. Impossible de passer outre le code en paiement à la livraison.",
+        "llamarTienda": "Appeler la boutique",
+        "seguir": "Continuer d’essayer"
+      },
+      "confirmada": {
+        "titulo": "Livré",
+        "subtitulo": "{numero} · arrêt {n} sur {total}",
+        "entregadoA": "Livré à {nombre}",
+        "codigoVerificado": "code vérifié",
+        "dinero": {
+          "titulo": "Argent de cette livraison",
+          "cobrado": {
+            "cash": "Encaissé en espèces",
+            "card": "Encaissé par TPE",
+            "transfer": "Encaissé par virement"
+          },
+          "recibido": "Reçu",
+          "cambio": "Monnaie rendue",
+          "enMano": "En poche maintenant"
+        },
+        "siguiente": "Arrêt suivant",
+        "sinMas": "Il ne te reste aucun arrêt. Quand tu as fini, clôture ta journée.",
+        "iniciarRuta": "Démarrer la tournée vers l’arrêt {n}",
+        "irAParada": "Aller à l’arrêt {n}",
+        "volverRuta": "Revenir à ma tournée"
+      },
+      "sinPerfil": {
+        "subtitulo": "La tournée du jour de celui qui livre",
+        "cifras": "Chiffres d’expédition du jour",
+        "kpis": {
+          "porDespachar": "À expédier",
+          "sinDomiciliario": "{n} sans livreur assigné",
+          "todosAsignados": "Tous ont un livreur",
+          "enRuta": "En tournée",
+          "enCalle": "{n, plural, =0 {Aucun livreur dehors} one {# livreur dehors} other {# livreurs dehors}}",
+          "novedades": "Incidents",
+          "porReprogramar": "{n} à reprogrammer aujourd’hui",
+          "sinNovedades": "Rien à reprogrammer aujourd’hui",
+          "porCuadrar": "À rapprocher",
+          "domiciliariosConEfectivo": "{n, plural, =0 {Aucune espèce à recevoir} one {# livreur avec des espèces} other {# livreurs avec des espèces}}"
+        },
+        "registrarme": "M’inscrire comme livreur",
+        "irADomiciliarios": "Aller aux Livreurs",
+        "irAlInicio": "Aller à l’accueil",
+        "copiarCorreo": "Copier mon e-mail",
+        "correoCopiado": "E-mail copié",
+        "noSeCopio": "Impossible de copier l’e-mail",
+        "b1": {
+          "titulo": "Ton compte n’a pas de profil de livreur",
+          "tituloSede": "Ton compte n’a pas de profil de livreur à {sede}",
+          "descripcion": "Mes livraisons, c’est la tournée du jour de celui qui livre : ses arrêts dans l’ordre, livrer avec le code du client, encaisser le paiement à la livraison et faire le rapprochement à la fin. Chaque livreur la voit avec son propre compte, sur le téléphone ou l’ordinateur.",
+          "comoLlega": "Comment quelqu’un arrive ici ?",
+          "pasos": {
+            "1": "Celui qui expédie l’inscrit dans Logistique › Livreurs et lie son compte GO Admin (son e-mail).",
+            "2": "Depuis À expédier, il lui assigne des envois ; la plaque de son véhicule est enregistrée sur chaque envoi.",
+            "3": "Le livreur se connecte avec son compte et voit ici sa tournée du jour, dans l’ordre."
+          },
+          "notaRegistrar": "« M’inscrire » ouvre la même fenêtre que Livreurs avec ton compte déjà lié : pièce d’identité, téléphone et véhicule (SOAT, contrôle technique et permis pour une moto ou une voiture).",
+          "loQueHace": "Ce que fait un livreur sur cette page"
+        },
+        "b2": {
+          "titulo": "Cette page est pour les livreurs",
+          "descripcion": "Ici, chaque livreur voit ses envois du jour dans l’ordre de la tournée, livre avec le code du client, encaisse le paiement à la livraison et fait le rapprochement à la fin. Ton compte n’est pas encore inscrit comme livreur.",
+          "cuandoTeRegistren": "Une fois inscrit, ici tu pourras",
+          "quienRegistra": "Qui t’inscrit ?",
+          "quienRegistraTexto": "La personne qui expédie dans ton agence ou un administrateur, depuis Logistique › Livreurs. Demande-lui d’utiliser ton e-mail GO Admin pour lier ton compte :",
+          "yaRegistrado": "Déjà inscrit et tu vois encore ceci ? Tu as peut-être été inscrit dans une autre agence ou sans lier ton compte : demande à celui qui expédie de vérifier ta fiche."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "Voir la tournée du jour",
+            "descripcion": "Envois dans l’ordre des arrêts, avec adresse, heure promise et ce qu’il faut encaisser."
+          },
+          "codigo": {
+            "titulo": "Livrer avec le code du client",
+            "descripcion": "Le client le reçoit par WhatsApp et e-mail quand la commande part."
+          },
+          "cobrar": {
+            "titulo": "Encaisser le paiement à la livraison",
+            "descripcion": "Espèces avec monnaie, TPE ou virement ; toujours le total."
+          },
+          "cuadrar": {
+            "titulo": "Rapprocher à la fin",
+            "descripcion": "Envoie le résumé et remets les espèces à la caisse de l’agence."
+          }
+        },
+        "atajos": {
+          "titulo": "Raccourcis de ton poste",
+          "ayuda": "Ce que ton menu te montre, en un geste."
+        },
+        "ejemplo": {
+          "titulo": "À quoi ressemble la tournée d’un livreur",
+          "etiqueta": "Exemple",
+          "descripcion": "Chaque livreur ne voit que ses envois du jour, sur le téléphone ou l’ordinateur.",
+          "guia": "ENV-000{n}",
+          "direccion": "Adresse · quartier"
+        },
+        "verRutaDe": "Voir la tournée d’un livreur"
+      },
+      "mapa": {
+        "ver": "Voir la carte de la tournée",
+        "titulo": "Tournée du jour",
+        "subtitulo": "Arrêt {n} sur {total} · {pendientes, plural, one {# en attente} other {# en attente}}",
+        "etiqueta": "Carte de la tournée du jour",
+        "etiquetaParada": "Carte de l’arrêt {numero}",
+        "abrirGoogle": "Ouvrir la tournée dans Google Maps",
+        "sinCoordenadas": "{n, plural, one {# arrêt n’a pas de coordonnées : Google Maps le situe par l’adresse écrite.} other {# arrêts n’ont pas de coordonnées : Google Maps les situe par l’adresse écrite.}}",
+        "sinPuntos": {
+          "titulo": "Les arrêts n’ont pas de coordonnées",
+          "descripcion": "Ouvre la tournée dans Google Maps : il les situe par l’adresse écrite."
+        }
+      },
+      "vehiculo": {
+        "titulo": "Mon véhicule et mes documents",
+        "vigencia": {
+          "vencido": "Expiré",
+          "enDias": "{n, plural, =0 {Expire aujourd’hui} one {Dans # jour} other {Dans # jours}}",
+          "vigente": "Valide",
+          "sin_dato": "Sans date"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Contrôle technique",
+          "licencia": "Permis de conduire",
+          "licenciaCategoria": "Permis de conduire {categoria}"
+        },
+        "sinFecha": "Aucune date enregistrée",
+        "vencio": "Expiré le {fecha}",
+        "vigenteHasta": "Valide jusqu’au {fecha}",
+        "vence": "Expire le {fecha}",
+        "dueno": {
+          "company": "de l’entreprise",
+          "driver": "du livreur",
+          "third_party": "d’un tiers"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Document expiré",
+        "porDefecto": "Par défaut",
+        "filaTitulo": "Mon véhicule aujourd’hui · {placa}",
+        "filaVencido": "{documento} expiré",
+        "filaPorVencer": "{documento} expire {n, plural, =0 {aujourd’hui} one {dans # jour} other {dans # jours}}",
+        "filaAlDia": "documents à jour",
+        "placaCongelada": "{n, plural, one {Cette plaque a été enregistrée sur ton envoi du jour à l’assignation : si tu changes de véhicule, l’envoi déjà assigné ne change pas.} other {Cette plaque a été enregistrée sur tes # envois du jour à l’assignation : si tu changes de véhicule, les envois déjà assignés ne changent pas.}}",
+        "sinVehiculo": {
+          "titulo": "Aucun véhicule enregistré",
+          "descripcion": "Tu n’as pas de véhicule assigné aujourd’hui. Si tu utilises une moto ou une voiture, demande à celui qui expédie de l’enregistrer sur ta fiche."
+        },
+        "documentosDelVehiculo": "Documents du véhicule",
+        "tusDocumentos": "Tes documents",
+        "avisoVencido": "{documento} : expiré le {fecha}. Si ton agence a activé le blocage par documents, le bureau ne pourra pas t’assigner d’envois tant qu’il n’est pas mis à jour sur ta fiche. Seul un superviseur d’expédition peut autoriser une exception avec son PIN.",
+        "avisoPorVencer": "{documento} : renouvelle-le avant le {fecha}. S’il expire et que ton agence a activé le blocage par documents, le bureau ne pourra pas t’assigner d’envois tant qu’il n’est pas mis à jour sur ta fiche. Seul un superviseur d’expédition peut autoriser une exception avec son PIN.",
+        "noEscribesPin": "Ce n’est pas toi qui saisis le PIN : le superviseur le tape sur son compte quand il assigne ou réassigne. Si personne n’autorise, tu verras « Aucun envoi en attente ».",
+        "cambiaste": "Tu as changé de véhicule ou renouvelé un document ? Préviens celui qui expédie : il le met à jour dans Logistique › Livreurs.",
+        "excepcion": {
+          "titulo": "Aujourd’hui on t’a assigné avec une exception",
+          "autorizo": "Autorisé par",
+          "hora": "Heure",
+          "conPin": "{hora} · avec son PIN",
+          "motivo": "Motif",
+          "envios": "Envois",
+          "enviosHoy": "{n, plural, one {# envoi du jour} other {# envois du jour}}",
+          "nota": "C’est consigné dans le journal de chaque envoi. Tant que tu ne renouvelles pas le document, chaque nouvelle assignation demande une autre exception."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logistique",
+        "vehiculoCorto": "véhicule {placa}",
+        "rutaDeHoy": "Tournée du jour",
+        "paradaDe": "Arrêt {n} sur {total}",
+        "entregadoMin": "livré {hora}",
+        "notaMapa": "Les arrêts sans coordonnées n’apparaissent pas sur la carte : Google Maps les situe par l’adresse écrite.",
+        "miVehiculo": "Mon véhicule aujourd’hui",
+        "dineroDeHoy": "Argent du jour",
+        "notaDinero": "À la fin, tu remets les espèces en caisse et le rapprochement est dans Logistique › Rapprochements. Ce qui n’a pas été encaissé aujourd’hui reste dans la tournée de demain.",
+        "notaTabla": "L’ordre vient de la tournée du jour : d’abord ce qui est en route, puis par heure promise. « Livrer » demande le code reçu par le client ; un incident ne se signale qu’une fois le colis parti.",
+        "verVehiculo": "Voir mon véhicule et mes documents",
+        "cuadrePendiente": "Rapprochement en attente",
+        "buscar": "Rechercher un envoi ou une adresse…",
+        "sinResultados": "Aucun arrêt ne correspond à la recherche",
+        "columnas": {
+          "parada": "Arrêt · envoi",
+          "direccion": "Adresse et commune",
+          "ventana": "Heure promise",
+          "contraentrega": "Paiement à la livraison",
+          "acciones": "Actions"
+        },
+        "entregadoA": "Livré {hora}",
+        "reprogramado": "Reprogrammé · {fecha}",
+        "porCobrar": "À encaisser",
+        "seCobraDespues": "Encaissé au nouvel essai",
+        "filtros": {
+          "todos": "Tous · {n}",
+          "pendientes": "En attente · {n}",
+          "entregados": "Livrés · {n}",
+          "novedades": "Incidents · {n}"
+        },
+        "kpis": {
+          "asignados": "Assignés aujourd’hui",
+          "enCamino": "En route",
+          "nadieEnCamino": "Aucun en route",
+          "entregados": "Livrés",
+          "aTiempo": "{n} sur {total} à l’heure",
+          "porCobrar": "Paiements à la livraison à encaisser",
+          "enviosHoy": "{n, plural, one {# envoi du jour} other {# envois du jour}}",
+          "nadaPorCobrar": "Rien à encaisser",
+          "cuadre": "Rapprochement en attente",
+          "enManoDetalle": "En poche · rapproché à la fin"
+        },
+        "acciones": {
+          "novedad": "Incident",
+          "verEntrega": "Voir la livraison",
+          "verNovedad": "Voir l’incident"
+        },
+        "dinero": {
+          "enMano": "Espèces en poche",
+          "porCobrar": "{n, plural, one {À encaisser aujourd’hui (# envoi)} other {À encaisser aujourd’hui (# envois)}}",
+          "otrosMedios": "TPE et virements",
+          "ultimoCuadre": "Dernier rapprochement",
+          "estado": {
+            "cuadrado": "Rapproché · sans écart",
+            "con_diferencia": "Clôturé avec écart"
+          }
+        }
+      },
+      "supervisor": {
+        "viendo": "Tournée de {nombre}",
+        "subtitulo": "La tournée du jour de chaque livreur",
+        "verRutaDe": "Voir la tournée de",
+        "elige": "Choisis un livreur",
+        "reasignar": "Réassigner",
+        "noReasignable": "Le livreur a déjà le colis : enregistre un incident pour qu’il revienne à l’agence, puis réassigne-le.",
+        "sinPermiso": {
+          "titulo": "Seul celui qui expédie voit la tournée d’un autre livreur",
+          "descripcion": "Voir la tournée d’un livreur, réassigner et enregistrer des incidents est réservé à qui a le droit de gérer la Logistique."
+        },
+        "sinDomiciliarios": {
+          "titulo": "Aucun livreur actif pour l’instant",
+          "descripcion": "Inscris-les dans Logistique › Livreurs pour voir leur tournée ici."
+        },
+        "irDomiciliarios": "Aller aux Livreurs",
+        "irPorDespachar": "Aller à À expédier",
+        "llamarA": "Appeler {nombre}",
+        "chip": {
+          "avance": "{n} sur {total}",
+          "sinEnvios": "aucun envoi",
+          "envios": "{n, plural, one {# envoi} other {# envois}}",
+          "vencido": "{documento} expiré",
+          "porVencer": "{documento} expire {n, plural, =0 {aujourd’hui} one {dans # jour} other {dans # jours}}",
+          "estados": {
+            "en_ruta": "en tournée",
+            "libre": "libre",
+            "fuera_de_turno": "hors service",
+            "inactivo": "inactif"
+          }
+        },
+        "nota": "En tant que superviseur, tu peux réassigner des arrêts et enregistrer des incidents. Livrer avec le code et encaisser le paiement à la livraison, seul le livreur le fait, depuis sa session.",
+        "notaCelular": "Tu vois la tournée de {nombre}. Seul le livreur livre et encaisse ; toi, tu peux réassigner un arrêt ou enregistrer un incident.",
+        "elDomiciliario": "un livreur",
+        "vehiculoDe": "Véhicule de {nombre} aujourd’hui",
+        "dineroDe": "Argent de {nombre} aujourd’hui",
+        "notaDinero": "Quand {nombre} termine sa journée, tu reçois les espèces dans Logistique › Rapprochements. Ce qui n’a pas été encaissé aujourd’hui reste dans sa tournée de demain.",
+        "notaTabla": "Ce que fait le superviseur est consigné dans l’historique de l’envoi avec son nom. « Réassigner » ouvre la fenêtre « Assigner un livreur » avec le véhicule présélectionné et la vérification des documents de la Phase 1b.",
+        "verFicha": "Voir {nombre} dans Livreurs",
+        "verMapa": "Voir la carte de sa tournée",
+        "ocultarMapa": "Masquer la carte",
+        "verEnvio": "Voir l’envoi"
       }
     },
     "domiciliario": {
@@ -68768,7 +69298,17 @@
         "DIRECCION_REQUERIDA": "L’adresse de livraison manque.",
         "ERROR": "Impossible de terminer. Réessayez.",
         "DOMICILIARIO_NO_COBRA": "Ce livreur n'encaisse pas le paiement à la livraison et cet envoi a un montant à encaisser.",
-        "ENVIO_AJENO": "Cet envoi appartient à un autre livreur."
+        "ENVIO_AJENO": "Cet envoi appartient à un autre livreur.",
+        "SIN_PERMISO_ENTREGA": "Seul le livreur assigné ou une personne disposant de l’autorisation « Enregistrer des livraisons au bureau » peut livrer.",
+        "ENTREGA_SOLO_POR_REGISTRO": "La livraison s’enregistre avec « Marquer livré » (preuve, code et encaissement).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "La commande a un envoi actif : livrez-la avec l’enregistrement de livraison de Logistique.",
+        "NO_OPEN_CASH_SESSION": "Aucune caisse ouverte sur ce site. Ouvrez la caisse pour encaisser et livrer.",
+        "ORIGEN_NO_SOPORTADO": "Cet envoi ne provient pas d’une commande en ligne : livrez-le depuis Logistique.",
+        "METODO_INVALIDO": "Choisissez le moyen de paiement.",
+        "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s’encaisse pas en caisse.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirmez la commande avant de l’encaisser.",
+        "FACTURA_REQUERIDA": "Impossible de préparer la facture de la commande. Réessayez.",
+        "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous."
       },
       "chips": {
         "intento": "Tentative {n}",
@@ -68943,7 +69483,11 @@
           "titular": "Titulaire",
           "familiar": "Membre de la famille",
           "porteria": "Accueil / gardien",
-          "otro": "Autre personne"
+          "otro": "Autre personne",
+          "customer": "Titulaire",
+          "family": "Membre de la famille",
+          "doorman": "Accueil / gardien",
+          "other": "Autre personne"
         },
         "cobroTitulo": "Paiement à la livraison : encaisser {monto}",
         "codigo": "Code de livraison",
@@ -68969,6 +69513,18 @@
           "codigo": "Le code comporte 4 chiffres.",
           "metodo": "Choisissez le moyen d’encaissement.",
           "monto": "Indiquez le montant encaissé."
+        },
+        "caja": {
+          "titulo": "Encaisser et livrer",
+          "descripcion": "La preuve de livraison, l’encaissement en caisse et la facture sont enregistrés ensemble.",
+          "confirmar": "Encaisser et livrer",
+          "cobroTitulo": "Encaisser {monto} en caisse",
+          "cobroNota": "Le montant entre dans la caisse ouverte du site. Il ne passe pas au règlement du livreur.",
+          "referencia": "Référence",
+          "referenciaAyuda": "Facultatif : numéro du terminal de paiement ou du virement.",
+          "ok": "Commande encaissée et livrée",
+          "factura": "Facture {numero}",
+          "error": "Impossible d’encaisser et de livrer"
         }
       },
       "novedad": {
@@ -69425,7 +69981,11 @@
           "confirmarTermica": "{count, plural, one {Imprimer # étiquette} other {Imprimer # étiquettes}}",
           "confirmarPdf": "{count, plural, one {Ouvrir le PDF de # étiquette} other {Ouvrir le PDF de # étiquettes}}",
           "confirmarA4": "{count, plural, one {Imprimer la feuille A4} other {Imprimer # feuilles A4}}",
-          "cancelar": "Annuler"
+          "cancelar": "Annuler",
+          "fragil": "Fragile — manipuler avec soin",
+          "fragilAyuda": "Enregistré sur l’envoi ; l’étiquette {numero} porte la mention « FRAGILE ».",
+          "fragilBloqueado": "Cet envoi est déjà parti : « Fragile » ne se modifie que pendant la préparation.",
+          "fragilError": "Impossible d’enregistrer « Fragile ». Réessayez."
         }
       },
       "form": {
@@ -69528,7 +70088,7 @@
           "pesoTotalAyuda": "Somme des lignes ; modifiable à la pesée.",
           "valorDeclarado": "Valeur déclarée",
           "valorDeclaradoAyuda": "Base de l’assurance du transporteur.",
-          "fragil": "Fragile",
+          "fragil": "Fragile — manipuler avec soin",
           "fragilAyuda": "Indiqué sur l’étiquette",
           "firma": "Demander une signature",
           "firmaAyuda": "Le destinataire signe à la livraison",
@@ -69642,7 +70202,14 @@
         "cerrar": "Fermer",
         "sinTrabajoTitulo": "Aucune étiquette à imprimer",
         "sinTrabajo": "Revenez à Logistique et choisissez « Imprimer l’étiquette » à nouveau."
-      }
+      },
+      "manipulacion": "FRAGILE · MANIPULER AVEC SOIN · HAUT",
+      "entregaEncomienda": "Colis · retrait au guichet",
+      "indicacionesTerminal": "Retrait au guichet sur présentation d’une pièce d’identité.",
+      "notaCobroTerminal": "Encaisser au guichet avant de remettre.",
+      "pieViaje": "Voyage {codigo}",
+      "pieViajeSalida": "Voyage {codigo}, départ {fecha}",
+      "vehiculoBus": "Car {placa}"
     }
   },
   "transporte": {
@@ -72940,6 +73507,135 @@
       "titulo": "Ajouter une entreprise avec NIT",
       "descripcion": "{persona} devient contact de l’entreprise.",
       "creada": "{empresa} est maintenant liée au client."
+    }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Livraison",
+    "copiado": "Numéro de suivi copié",
+    "noCopiado": "Impossible de copier",
+    "cargando": "Chargement de l’envoi…",
+    "indicacion": "Indication : {texto}",
+    "envio": "Livraison {monto}",
+    "envioPagado": "Livraison {monto} · payée",
+    "sinGuia": "Sans étiquette",
+    "whatsapp": "Bonjour, je vous écris au sujet de la commande {pedido}.",
+    "estados": {
+      "sin_envio": "Sans envoi",
+      "recoger": "Prêt à retirer",
+      "recogerPreparando": "À retirer",
+      "por_despachar": "À expédier",
+      "asignado": "Assigné",
+      "en_camino": "En route",
+      "en_camino_transportadora": "En route (transporteur)",
+      "entregado": "Livré",
+      "novedad": "Incident",
+      "devuelto": "Retourné",
+      "cancelado": "Annulé"
+    },
+    "tipo": {
+      "recoger": "Retrait en magasin",
+      "transportadora": "Transporteur",
+      "propio": "Livraison propre"
+    },
+    "cobro": {
+      "cobrar": "Encaisser à la livraison",
+      "enCaja": "À la caisse de l’agence",
+      "saldo": "Solde = total {total} − acompte {anticipo}",
+      "contraentrega": "Contre-remboursement : encaissé par le livreur",
+      "cobrado": "Encaissé à la livraison",
+      "cobradoNota": "Entre dans le décompte du livreur (Logistique › Décomptes)",
+      "pagado": "Payé · ne pas encaisser",
+      "pagadoNota": "Rien n’est encaissé à la porte"
+    },
+    "recoger": {
+      "listoDesde": "Prêt à retirer depuis {hora}",
+      "preparando": "En préparation pour le retrait",
+      "nota": "Sans étiquette : remis au comptoir. Demandez le numéro de commande ({pedido}) et le nom de l’acheteur."
+    },
+    "filas": {
+      "listo": "Prêt",
+      "listoAprox": "Prêt vers",
+      "asignado": "Assigné",
+      "salio": "Parti",
+      "entregadoTransportadora": "Remis au transporteur",
+      "entregado": "Livré",
+      "entregaAprox": "Livraison vers"
+    },
+    "sinEnvio": {
+      "titulo": "Cette commande n’a pas encore d’envoi",
+      "nota": "Il est créé à la confirmation. S’il ne l’a pas été (ancienne commande ou erreur), créez-le ici : il reçoit son étiquette DEL-WO-… et passe « À expédier » dans Logistique.",
+      "error": "Impossible de charger l’envoi de cette commande. Rechargez la page ou vérifiez-le dans Logistique."
+    },
+    "acciones": {
+      "crearYAsignar": "Créer l’envoi et assigner un livreur",
+      "asignar": "Assigner",
+      "verGuia": "Voir l’étiquette",
+      "imprimirGuia": "Imprimer l’étiquette",
+      "verEnvio": "Voir l’envoi",
+      "cambiar": "Changer",
+      "verMapa": "Voir sur la carte"
+    },
+    "guia": {
+      "titulo": "Numéro de suivi",
+      "nuestra": "Notre étiquette (collée sur le colis)",
+      "copiar": "Copier le numéro de suivi",
+      "creada": "Créée {hora}",
+      "deTransportadora": "Suivi {nombre}",
+      "deTransportadoraSinNombre": "Suivi du transporteur",
+      "rastrearEn": "Suivre sur {nombre}",
+      "rastrear": "Suivre chez le transporteur"
+    },
+    "entregado": {
+      "titulo": "Livré {hora}",
+      "recibio": "Reçu par : {nombre}",
+      "codigo": "code de livraison vérifié"
+    },
+    "novedad": {
+      "titulo": "Livraison impossible · tentative {n}",
+      "desdeLogistica": "La reprogrammation ou le retour se fait depuis Logistique."
+    },
+    "devuelto": {
+      "titulo": "Retourné à l’agence",
+      "motivo": "Motif : {motivo}",
+      "nota": "La commande n’est pas annulée automatiquement : décidez si elle repart ou si l’argent est remboursé."
+    },
+    "domiciliario": {
+      "rol": "Livreur",
+      "placa": "plaque {placa}",
+      "llamar": "Appeler {nombre}",
+      "whatsapp": "Écrire à {nombre} sur WhatsApp",
+      "sinAsignar": "Non assigné"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# colis} other {# colis}}",
+      "peso": "{kg} kg",
+      "fragil": "Fragile"
+    },
+    "entregar": {
+      "bloqueado": "L’envoi ne peut pas encore être livré",
+      "bloqueadoNota": "Marquez-le « Prêt à partir » ou assignez un livreur dans Logistique ; la commande et l’envoi sont marqués livrés ensemble."
+    },
+    "historial": {
+      "listo": "Prêt · envoi à expédier",
+      "guia": "Étiquette {numero}",
+      "paquetes": "{count, plural, one {# colis} other {# colis}}",
+      "asignado": "Livreur assigné",
+      "entregadoTransportadora": "Remis au transporteur",
+      "recogido": "Récupéré par le livreur",
+      "enTransito": "En transit",
+      "enCaminoIntento": "En route · tentative {n}",
+      "enReparto": "En cours de livraison",
+      "enCamino": "En route",
+      "salioDe": "Parti de {sede}",
+      "novedadMotivo": "Incident · {motivo}",
+      "novedad": "Incident · livraison impossible",
+      "entregado": "Livré",
+      "recibio": "Reçu par : {nombre}",
+      "devuelto": "Retourné à l’agence",
+      "cancelado": "Envoi annulé",
+      "aprox": "vers {hora}",
+      "transportadora": "Transporteur",
+      "logistica": "Logistique"
     }
   }
 }

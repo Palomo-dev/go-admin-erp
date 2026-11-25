@@ -1,7 +1,12 @@
 import { supabase } from '@/lib/supabase/config';
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+
+// `xlsx`, `jspdf` y `jspdf-autotable` se cargan solo al exportar (`import()` dentro
+// de cada función): importados arriba viajaban en el arranque de toda pantalla
+// que use este servicio aunque nadie exportara nada.
+const cargarPdf = async () => {
+  const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
+  return { jsPDF, autoTable };
+};
 
 // Tipos para Proveedores
 export interface Supplier {
@@ -1170,6 +1175,7 @@ class SupplierService {
         'Fecha Creación': new Date(s.created_at).toLocaleDateString('es-CO')
       }));
 
+      const XLSX = await import('xlsx');
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Proveedores');
@@ -1185,6 +1191,7 @@ class SupplierService {
    * Exportar proveedores a PDF
    */
   async exportSuppliersToPDF(organizationId: number, ids?: readonly number[]): Promise<Blob> {
+    const { jsPDF, autoTable } = await cargarPdf();
     try {
       const data = await this.proveedoresParaExportar(organizationId, ids);
 

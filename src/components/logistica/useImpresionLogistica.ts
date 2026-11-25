@@ -28,6 +28,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import { enviosParaGuias } from '@/lib/services/logistica/despachoService';
+import { marcarFragil } from '@/lib/services/logistica/enviosService';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { formatMoneda } from '@/lib/utils/moneda';
@@ -100,6 +101,15 @@ export function useImpresionLogistica() {
         textos: textosRotulo(d, tRotulo as unknown as TraducirRotulo, (kg) => formato.number(kg, { maximumFractionDigits: 2 })),
       })),
     [tRotulo, formato],
+  );
+
+  /** Guarda «Frágil» en el envío (organización de la sesión; la RLS de Logística decide). */
+  const guardarFragil = useCallback(
+    async (id: string, fragil: boolean): Promise<void> => {
+      if (!organization?.id) throw new Error('SIN_ORGANIZACION');
+      await marcarFragil(supabase, organization.id, id, fragil);
+    },
+    [organization?.id],
   );
 
   const estacionRotulos = useCallback(async (sede: number | null | undefined): Promise<EstacionRotulos> => {
@@ -213,5 +223,5 @@ export function useImpresionLogistica() {
     [branches, branchFilter, selectedBranchId, timezone, moneda.code, organization?.id],
   );
 
-  return { imprimirGuias, imprimirHojaRuta, prepararRotulos, resolverRotulos, estacionRotulos };
+  return { imprimirGuias, imprimirHojaRuta, prepararRotulos, resolverRotulos, estacionRotulos, guardarFragil };
 }

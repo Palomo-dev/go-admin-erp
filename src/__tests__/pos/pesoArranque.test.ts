@@ -31,6 +31,15 @@ const PANTALLAS = ['src/app/app/pos/page.tsx', 'src/app/app/pos/mesas/page.tsx',
 /** Paquetes que no se usan para vender y pesan: no pueden estar en el arranque. */
 const PROHIBIDOS = ['react-icons/gi', 'xlsx', 'jspdf', 'jspdf-autotable'];
 
+/**
+ * Inventario (2026-11-25): el catálogo y el formulario de productos abrían con
+ * 3,7 MB. Sí usan el selector de iconos (ya solo con los iconos que ofrece: lo
+ * vigila `src/components/common/__tests__/iconSelector.test.tsx`), pero Excel
+ * y PDF solo hacen falta al exportar y se cargan en ese momento.
+ */
+const PANTALLAS_INVENTARIO = ['src/app/app/inventario/productos/page.tsx', 'src/app/app/inventario/productos/nuevo/page.tsx'];
+const PROHIBIDOS_INVENTARIO = ['xlsx', 'jspdf', 'jspdf-autotable'];
+
 const EXTENSIONES = ['.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts', '/index.js'];
 
 function resolver(desde: string, spec: string): string | null {
@@ -95,7 +104,8 @@ function paquetesAlcanzados(entrada: string): { archivos: number; cadenas: Map<s
   return { archivos: padre.size, cadenas };
 }
 
-const esProhibido = (spec: string) => PROHIBIDOS.some((p) => spec === p || spec.startsWith(`${p}/`));
+const esDeLaLista = (lista: string[]) => (spec: string) => lista.some((p) => spec === p || spec.startsWith(`${p}/`));
+const esProhibido = esDeLaLista(PROHIBIDOS);
 
 describe('POS · peso de arranque', () => {
   test.each(PANTALLAS)('%s no carga al abrir iconos, Excel ni PDF', (pantalla) => {
@@ -103,6 +113,15 @@ describe('POS · peso de arranque', () => {
     // Si el recorrido se queda corto, la prueba dejó de leer bien los imports y no protege nada.
     expect(archivos).toBeGreaterThan(100);
     const culpables = [...cadenas].filter(([spec]) => esProhibido(spec)).map(([spec, cadena]) => `${spec}\n    ${cadena.join('\n  → ')}`);
+    expect(culpables).toEqual([]);
+  });
+
+  test.each(PANTALLAS_INVENTARIO)('%s no carga al abrir Excel ni PDF', (pantalla) => {
+    const { archivos, cadenas } = paquetesAlcanzados(pantalla);
+    expect(archivos).toBeGreaterThan(100);
+    const culpables = [...cadenas]
+      .filter(([spec]) => esDeLaLista(PROHIBIDOS_INVENTARIO)(spec))
+      .map(([spec, cadena]) => `${spec}\n    ${cadena.join('\n  → ')}`);
     expect(culpables).toEqual([]);
   });
 

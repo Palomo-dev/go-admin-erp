@@ -1,10 +1,14 @@
 'use client';
 
 /**
- * Detalle de una parada (Figma 2801:4241): estado y promesa, cliente con llamar / WhatsApp / cómo
- * llegar, lo que se cobra, lo que lleva y los pasos. El botón grande del pie es el siguiente paso:
- * «Recogí el pedido» (picked) → «Voy en camino» (out_for_delivery, avisa al cliente) →
- * «Entregado» (pantalla Entregar) · «No se pudo entregar» (pantalla de novedad).
+ * Detalle de una parada (Figma 2801:4241 y «02/03a/03b», 3231-16576): estado y promesa, cliente
+ * con llamar / WhatsApp / cómo llegar, lo que se cobra, lo que lleva y los pasos. El botón grande
+ * del pie es el siguiente paso, con el vocabulario del computador (decisión 2026-11-25):
+ * «Recogí el paquete» (picked) → «Iniciar ruta» (out_for_delivery, avisa al cliente y le manda su
+ * código) → «Entregar» (pantalla Entregar) · «No se pudo entregar» (hoja de novedad sobre la
+ * parada; la página `/no-entregado` sigue como enlace directo).
+ *
+ * Sin señal se pausan los pasos, Entregar y la novedad; llamar y cómo llegar siguen.
  *
  * Los cambios de estado son la RPC `logistica_cambiar_estado` (deliveryIntegrationService); la
  * base valida la transición y devuelve el aviso que se le pasa al servidor.
@@ -13,37 +17,30 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Banknote, CheckCircle2, Circle, CircleCheck, Clock, MapPin, XCircle } from 'lucide-react';
-import { EmptyState, PageHeader, Skeleton, clasesBoton } from '@/components/kit';
+import { Banknote, Camera, CheckCircle2, Circle, CircleCheck, Clock, MapPin, Navigation, PackageCheck, XCircle } from 'lucide-react';
+import { AvisoTonal, EmptyState, PageHeader, Skeleton, clasesBoton } from '@/components/kit';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
-import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { deliveryIntegrationService, EnvioError } from '@/lib/services/deliveryIntegrationService';
 import {
   enlaceWaze,
   estadoDelPaso,
   estadoPromesa,
+  pinesRuta,
   porCobrar,
   puedeReportarNovedad,
   siguientePaso,
 } from '@/lib/logistica/misEnvios';
-import { avisarCliente } from '../logisticaApi';
 import { useParada } from './useMiRuta';
-import { BarraInferior, Bloque, BotonesContacto, ChipPromesa, InsigniaEstadoApp, enlacesDe } from './piezas';
-import { RUTA_MIS_ENVIOS, rutaEntregar, rutaNoEntregado } from './rutas';
+import { useEnLinea } from './useEnLinea';
+import { useAvanzarParada } from './useAvanzarParada';
+import { HojaNovedad } from './HojaNovedad';
+import { MapaRutaDinamico } from './MapaRutaDinamico';
+import { AvisoPausaSinConexion, BarraInferior, Bloque, BotonesContacto, ChipPromesa, InsigniaEstadoApp, enlacesDe } from './piezas';
+import { RUTA_MIS_ENVIOS, rutaEntregar } from './rutas';
 
-/** Ubicación del celular para el evento (opcional: sin permiso o sin señal, no se manda). */
-export function ubicacionActual(espera = 5000): Promise<{ latitude: number; longitude: number } | null> {
-  if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
-  return new Promise((ok) => {
-    navigator.geolocation.getCurrentPosition(
-      (p) => ok({ latitude: p.coords.latitude, longitude: p.coords.longitude }),
-      () => ok(null),
-      { enableHighAccuracy: true, timeout: espera, maximumAge: 60_000 },
-    );
-  });
-}
+/** Se movió a `./ubicacion`; se re-exporta para quien lo importaba de aquí. */
+export { ubicacionActual } from './ubicacion';
 
 export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   const t = useTranslations('logistica.misEnvios');
@@ -51,8 +48,11 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   const locale = useLocaleIntl();
   const moneda = useMonedaOrganizacion();
   const { resolveFor } = useOrgTimezone();
-  const { envio, estado, recargar } = useParada(shipmentId);
-  const [ocupado, setOcupado] = useState(false);
+  const { orgId, envio, estado, recargar } = useParada(shipmentId);
+  const enLinea = useEnLinea();
+  const { avanzar: avanzarParada, ocupadoId } = useAvanzarParada();
+  const ocupado = ocupadoId !== null;
+  const [novedad, setNovedad] = useState(false);
   const [ahora, setAhora] = useState(() => new Date());
 
   useEffect(() => {
@@ -63,7 +63,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   if (estado === 'cargando') {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3" aria-busy="true">
-        <PageHeader titulo={t('parada.cargando')} variante="form" volverA={RUTA_MIS_ENVIOS} cargando />
+        <PageHeader titulo={t('parada.cargando')} variante="form" migas={[{ etiqueta: t('titulo'), href: RUTA_MIS_ENVIOS }]} volverA={RUTA_MIS_ENVIOS} cargando />
         <Skeleton className="h-20 w-full rounded-xl" />
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-32 w-full rounded-xl" />
@@ -73,7 +73,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
   if (!envio) {
     return (
       <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-4">
-        <PageHeader titulo={t('titulo')} variante="form" volverA={RUTA_MIS_ENVIOS} />
+        <PageHeader titulo={t('titulo')} variante="form" migas={[{ etiqueta: t('titulo'), href: RUTA_MIS_ENVIOS }]} volverA={RUTA_MIS_ENVIOS} />
         <EmptyState
           variante={estado === 'error' ? 'error' : 'empty'}
           compacto
@@ -86,6 +86,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
     );
   }
 
+  const migas = [{ etiqueta: t('titulo'), href: RUTA_MIS_ENVIOS }];
   const zona = resolveFor(envio.branch_id ?? null).timezone;
   const hora = (v: string | null | undefined) => (v ? new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: zona }).format(new Date(v)) : null);
   const nombre = envio.delivery_contact_name || envio.customer?.full_name || t('cliente');
@@ -98,22 +99,12 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
 
   const avanzar = async () => {
     const destino = estadoDelPaso(paso);
-    if (!destino) return;
-    setOcupado(true);
-    try {
-      const ubicacion = await ubicacionActual(3000);
-      const r = await deliveryIntegrationService.changeStatus(envio.id, destino, ubicacion ?? {});
-      void avisarCliente(envio, r.aviso);
-      toastSuccess(t(`pasos.hecho.${destino}`));
-      recargar();
-    } catch (err) {
-      const codigo = err instanceof EnvioError ? err.codigo : 'ERROR';
-      toastError(t('errores.titulo'), t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.ERROR'));
-      recargar();
-    } finally {
-      setOcupado(false);
-    }
+    if (!destino || !enLinea) return;
+    await avanzarParada(envio, destino);
+    recargar();
   };
+  // El punto de la parada en el mapa (el mismo mapa de la ruta, con un solo pin).
+  const pin = pinesRuta({ pendientes: [envio], entregados: [], novedades: [] })[0] ?? null;
 
   const pasos: Array<{ clave: 'recogido' | 'en_camino' | 'entregado'; hecho: boolean; hora: string | null }> = [
     { clave: 'recogido', hecho: !!envio.picked_at, hora: hora(envio.picked_at) },
@@ -121,6 +112,22 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
     { clave: 'entregado', hecho: !!envio.delivered_at, hora: hora(envio.delivered_at) },
   ];
   const actual = pasos.findIndex((p) => !p.hecho);
+  const totalItems = (envio.shipment_items ?? []).reduce((s, it) => s + Math.round(Number(it.total_value ?? 0) * 100), 0);
+  const totalPedido = totalItems > 0 ? (totalItems + Math.round(Number(envio.shipping_fee ?? 0) * 100)) / 100 : null;
+  const reporta = puedeReportarNovedad(String(envio.status));
+  /** Lo que se le dice al domiciliario sobre el aviso al cliente (solo los pedidos de la tienda se avisan). */
+  const textoAviso =
+    envio.source_type !== 'web_order'
+      ? null
+      : paso === 'en_camino' || paso === 'reintentar'
+      ? envio.delivery_code_required
+        ? t('parada.avisoIniciar')
+        : t('parada.avisoIniciarSinCodigo')
+      : envio.status === 'out_for_delivery'
+        ? envio.delivery_code_required
+          ? t('parada.avisoEnCamino')
+          : t('parada.avisoEnCaminoSinCodigo')
+        : null;
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col px-4 pt-4 pb-28 sm:pt-6 gap-3">
@@ -128,8 +135,11 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
         titulo={t('parada.titulo', { numero: envio.shipment_number })}
         subtitulo={`${origen} · ${nombre}`}
         variante="form"
+        migas={migas}
         volverA={RUTA_MIS_ENVIOS}
       />
+
+      {!enLinea && <AvisoPausaSinConexion />}
 
       <Bloque>
         <div className="flex items-center justify-between gap-2">
@@ -137,6 +147,7 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
           <ChipPromesa envio={envio} zona={zona} ahora={ahora} />
         </div>
         {promesa?.tipo === 'tarde' && <p className="text-sm text-fg-secondary">{t('parada.tarde')}</p>}
+        {textoAviso && <p className="text-sm text-fg-secondary">{textoAviso}</p>}
         {envio.status === 'failed_attempt' && envio.exception_reason && (
           <p className="text-sm text-warning-text">{t('parada.novedadAnterior', { motivo: t(`novedad.motivos.${envio.exception_reason}.titulo`) })}</p>
         )}
@@ -144,15 +155,20 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
 
       <Bloque>
         <h2 className="text-xl font-semibold text-fg">{nombre}</h2>
-        <p className="text-[15px] text-fg">{[envio.delivery_address, envio.delivery_city].filter(Boolean).join(' · ') || t('sinDireccion')}</p>
+        <p className="text-[15px] text-fg">{envio.delivery_address || t('sinDireccion')}</p>
+        {(envio.delivery_city || envio.barrio) && <p className="text-sm text-fg-secondary">{[envio.delivery_city, envio.barrio].filter(Boolean).join(' · ')}</p>}
         {envio.delivery_instructions && <p className="text-sm text-fg-secondary">{t('parada.indicaciones', { texto: envio.delivery_instructions })}</p>}
         <BotonesContacto enlaces={enlaces} />
       </Bloque>
 
       {(enlaces.comoLlegar || waze) && (
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-line bg-subtle px-4 py-8 text-center">
-          <MapPin aria-hidden="true" className="size-6 text-fg-muted" strokeWidth={1.5} />
-          <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-line bg-subtle text-center">
+          {pin ? (
+            <MapaRutaDinamico pines={[pin]} etiqueta={t('mapa.etiquetaParada', { numero: envio.shipment_number })} className="h-44 w-full" />
+          ) : (
+            <MapPin aria-hidden="true" className="mt-8 size-6 text-fg-muted" strokeWidth={1.5} />
+          )}
+          <div className={pin ? 'flex w-full flex-wrap justify-center gap-2 px-4 pb-4' : 'flex flex-wrap justify-center gap-2 px-4 pb-8'}>
             {enlaces.comoLlegar && (
               <a href={enlaces.comoLlegar} target="_blank" rel="noopener noreferrer" className={clasesBoton({ variante: 'secundario' })}>
                 {t('contacto.googleMaps')}
@@ -195,7 +211,26 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
                 <span className="shrink-0 text-fg">{moneda.formatear(Number(envio.shipping_fee))}</span>
               </li>
             )}
+            {totalPedido != null && (
+              <li className="flex justify-between gap-3 border-t border-line pt-2">
+                <span className="text-fg-secondary">{t('parada.totalPedido')}</span>
+                <span className="shrink-0 text-base font-semibold text-fg">{moneda.formatear(totalPedido)}</span>
+              </li>
+            )}
           </ul>
+        </Bloque>
+      )}
+
+      {envio.status === 'out_for_delivery' && (
+        <Bloque
+          titulo={
+            <span className="flex items-center gap-2">
+              <Camera aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              {t('parada.prueba.titulo')}
+            </span>
+          }
+        >
+          <p className="text-sm text-fg-secondary">{envio.delivery_code_required ? t('parada.prueba.conCodigo') : t('parada.prueba.sinCodigo')}</p>
         </Bloque>
       )}
 
@@ -218,27 +253,55 @@ export function ParadaPantalla({ shipmentId }: { shipmentId: string }) {
         </ol>
       </Bloque>
 
-      {(paso || puedeReportarNovedad(String(envio.status))) && (
+      {paso === 'en_camino' && <AvisoTonal tono="informacion" compacto titulo={t('parada.despuesDeIniciar')} />}
+
+      {(paso || reporta) && (
         <BarraInferior>
           {paso === 'entregar' ? (
-            <Link href={rutaEntregar(envio.id)} className={clasesBoton({ tamano: 'lg', anchoCompleto: true })}>
-              <CircleCheck aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              {t('pasos.boton.entregar')}
-            </Link>
+            enLinea ? (
+              <Link href={rutaEntregar(envio.id)} className={clasesBoton({ tamano: 'lg', anchoCompleto: true })}>
+                <CircleCheck aria-hidden="true" className="size-5" strokeWidth={1.5} />
+                {t('pasos.boton.entregar')}
+              </Link>
+            ) : (
+              <button type="button" disabled className={clasesBoton({ tamano: 'lg', anchoCompleto: true })}>
+                <CircleCheck aria-hidden="true" className="size-5" strokeWidth={1.5} />
+                {t('pasos.boton.entregar')}
+              </button>
+            )
           ) : paso ? (
-            <button type="button" onClick={avanzar} disabled={ocupado} aria-busy={ocupado} className={clasesBoton({ tamano: 'lg', anchoCompleto: true })}>
-              <CircleCheck aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            <button type="button" onClick={avanzar} disabled={ocupado || !enLinea} aria-busy={ocupado} className={clasesBoton({ tamano: 'lg', anchoCompleto: true })}>
+              {paso === 'recoger' ? (
+                <PackageCheck aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              ) : (
+                <Navigation aria-hidden="true" className="size-5" strokeWidth={1.5} />
+              )}
               {ocupado ? t('guardando') : t(`pasos.boton.${paso}`)}
             </button>
           ) : null}
-          {puedeReportarNovedad(String(envio.status)) && (
-            <Link href={rutaNoEntregado(envio.id)} className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true })}>
+          {reporta && (
+            <button
+              type="button"
+              onClick={() => setNovedad(true)}
+              disabled={!enLinea}
+              className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true })}
+            >
               <XCircle aria-hidden="true" className="size-5" strokeWidth={1.5} />
               {t('pasos.boton.noEntregado')}
-            </Link>
+            </button>
           )}
         </BarraInferior>
       )}
+
+      <HojaNovedad
+        envio={novedad ? envio : null}
+        orgId={orgId}
+        onCerrar={() => setNovedad(false)}
+        onHecho={() => {
+          setNovedad(false);
+          router.push(RUTA_MIS_ENVIOS);
+        }}
+      />
     </div>
   );
 }

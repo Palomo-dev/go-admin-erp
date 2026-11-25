@@ -839,8 +839,10 @@ export function contadorFavoritos(cantidad: number, mostrar: boolean): string | 
  * - `pagina`: lo de hoy (y el valor sin clave): el ícono lleva a /auth, o a /mi-cuenta con sesión.
  * - `panel`: panel lateral a la derecha · `ventana`: ventana compacta colgada del ícono, sin
  *   beneficios · `dialogo`: diálogo centrado con pestañas Ingresar / Crear cuenta.
- * En el celular, todo modo distinto de `pagina` es una hoja inferior. Con sesión, el mismo modo
- * muestra el menú de cuenta (Hola {nombre}, Mis pedidos, Favoritos, Direcciones, Cerrar sesión).
+ * En el celular se respeta el modo (panel = cajón lateral, diálogo = diálogo centrado); solo la
+ * ventana, que no cabe colgada del ícono, es una hoja inferior (tienda:
+ * components/site/cuenta/reglaAcceso.ts). Con sesión, el mismo modo muestra el menú de cuenta
+ * (Hola {nombre}, Mis pedidos, Favoritos, Direcciones, Cerrar sesión).
  * /auth, /auth?tab=register, /auth/reset-password y /mi-cuenta siguen funcionando siempre.
  */
 export const MODOS_CUENTA = ['pagina', 'panel', 'ventana', 'dialogo'] as const;

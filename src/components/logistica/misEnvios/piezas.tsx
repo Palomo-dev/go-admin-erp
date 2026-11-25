@@ -6,7 +6,7 @@
  */
 import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { Clock, MessageCircle, Navigation, Phone } from 'lucide-react';
+import { Clock, MessageCircle, Navigation, Phone, WifiOff } from 'lucide-react';
 import { StatusBadge } from '@/components/kit';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -179,5 +179,32 @@ export function Bloque({ titulo, children, className, accion }: { titulo?: React
       )}
       {children}
     </section>
+  );
+}
+
+/**
+ * Franja «Sin conexión» bajo la cabecera (Figma Envío/AvisoConexion): dice de qué hora es la ruta
+ * que se ve y que para entregar hace falta señal.
+ */
+export function FranjaSinConexion({ actualizadoEn, zona }: { actualizadoEn: Date | null; zona?: string }) {
+  const t = useTranslations('logistica.misEnvios.sinConexion');
+  const locale = useLocaleIntl();
+  const hora = actualizadoEn ? new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit', timeZone: zona }).format(actualizadoEn) : null;
+  return (
+    <div role="status" className="-mx-4 flex items-start gap-3 bg-fg px-4 py-3 text-sm text-fg-on-brand sm:mx-0 sm:rounded-xl">
+      <WifiOff aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
+      <p>{hora ? t('franja', { hora }) : t('franjaSinHora')}</p>
+    </div>
+  );
+}
+
+/** Aviso de lo que queda en pausa sin señal (entregas, cobros y novedades). */
+export function AvisoPausaSinConexion() {
+  const t = useTranslations('logistica.misEnvios.sinConexion');
+  return (
+    <div role="note" className="flex items-start gap-3 rounded-xl border border-line-warning bg-warning-subtle p-4 text-sm text-warning-text">
+      <WifiOff aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
+      <p>{t('pausa')}</p>
+    </div>
   );
 }

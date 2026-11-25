@@ -38966,7 +38966,7 @@
             "dialogo": "Dialog"
           },
           "ayudaPagina": "As today: the icon goes to /auth (and to /mi-cuenta when signed in). Every store starts here.",
-          "ayudaOtros": "On mobile, panel, window and dialog show as a bottom sheet. When signed in, the same format shows the account menu.",
+          "ayudaOtros": "On mobile the mode is kept: the panel is a side drawer and the dialog a centered dialog. Only the window shows as a bottom sheet. When signed in, the same format shows the account menu.",
           "notaPagina": "With «Page» the texts are edited on the /auth page. Choose another mode to see title, button, benefits and «After signing in».",
           "titulo": "Title",
           "boton": "Button text",
@@ -39521,7 +39521,9 @@
         "texto": "Text",
         "deLaTarjeta": "From the card",
         "ayudaFilaPropias": "Each custom label has its own corner and colors: edit them below, under “Custom labels”.",
-        "ayudaCuales": "A label turned off on the card (Card style › Labels) doesn't show here either. Promotions show on their own when the product is in an active web promotion; customer-group promotions, only to members of the group.",
+        "ayudaCuales": "Each one shows only when the product meets it: “New” if it was created recently, “Sold out” with no units, “Units sold” with store sales, “Volume pricing” with tiers. A label turned off on the card (Card style › Labels) does not show here either; “Free shipping” shows only if it is on in the card. Promotions show automatically when the product is in an active web promotion; customer-group ones, only to members of the group.",
+        "ayudaPromoPropia": "If a custom label says the same as the promotion (e.g. “2 X 1”), only one shows: the custom one, with its colors, and tapping it next to the title explains the promotion.",
+        "ayudaVistaPrevia": "In the preview, the ones this product does not meet show as samples so you can see the style. In the store they only show when the product meets them.",
         "estilo": "Style",
         "forma": "Shape",
         "formas": {
@@ -39529,8 +39531,10 @@
           "pill": "Pill",
           "rounded": "Rounded",
           "semi": "Semi",
-          "square": "Square"
+          "square": "Square",
+          "circle": "Circle"
         },
+        "ayudaCirculo": "Fixed-size circle for short texts like “-83 %”, “2x1” or “New”. If the text does not fit (more than 6 characters, e.g. “776 sold”), that label shows as a pill.",
         "relleno": "Fill",
         "rellenos": {
           "tarjeta": "From the card",
@@ -39640,6 +39644,204 @@
           "mostrarDe": "Show {nombre}",
           "origen": "Accounts come from Website › SEO and social.",
           "editarCuentas": "Edit accounts"
+        }
+      },
+      "aparienciaBuscador": {
+        "abrir": "Search bar appearance",
+        "abrirAyuda": "Borders, corners, shadow, inside, icon, button, categories and dropdown · Template: {plantilla}",
+        "titulo": "Search › Appearance",
+        "migas": "Header › Design › Search · changes on every page",
+        "volver": "Back to Header",
+        "ayudaHoy": "Search products...",
+        "propio": "Custom",
+        "colorPropio": "Custom color",
+        "colorMarca": "Brand color",
+        "hoy": "Today",
+        "hoyValor": "{valor} (today)",
+        "cancelar": "Cancel",
+        "previa": {
+          "titulo": "Live preview",
+          "estados": "Preview state",
+          "ayuda": "The real store is still shown on the canvas; this thumbnail shows the states without leaving the panel.",
+          "textoEjemplo": "coffee",
+          "estado": {
+            "normal": "Normal",
+            "hover": "Hover",
+            "foco": "Focused",
+            "texto": "With text"
+          }
+        },
+        "dispositivo": {
+          "computador": "Desktop",
+          "celular": "Mobile"
+        },
+        "editando": "Editing",
+        "editandoAyuda": "Only shown with «same as desktop» turned off. Empty mobile = copy of desktop.",
+        "celularCopia": "Mobile uses the desktop appearance. Change something here to give it its own.",
+        "formaOculta": "The search bar on this device is hidden: the appearance is saved but not shown until you pick another style.",
+        "plantillas": {
+          "titulo": "Search bar templates",
+          "ayuda": "They fill in all the settings below; then change any of them and it becomes «Custom (from …)».",
+          "todayDefecto": "Today (default)",
+          "today": "Today",
+          "minimal": "Minimal",
+          "pill_button": "Pill with button",
+          "categories": "With categories",
+          "floating": "Floating shadow",
+          "thick": "Thick border",
+          "dark": "Dark",
+          "tint": "Brand tint",
+          "inset": "Inset",
+          "personalizadoSin": "Custom",
+          "personalizadoDesde": "Custom (from «{plantilla}»)",
+          "confirmarTitulo": "Go back to the template?",
+          "confirmarTexto": "Going back to «{plantilla}» undoes the changes you made after applying it.",
+          "confirmarBoton": "Go back to the template"
+        },
+        "tamano": {
+          "titulo": "Size",
+          "alto": "Height",
+          "altoCelular": "On mobile the minimum height is 44 px (finger size).",
+          "altoPropio": "Custom height in px",
+          "ancho": "Width",
+          "automatico": "Automatic",
+          "lleno": "Full",
+          "anchoMaximo": "Maximum width",
+          "sinTope": "No limit",
+          "anchoMaximoAyuda": "Between {min} and {max} px. Empty = the header’s.",
+          "alineacion": "Alignment in the row",
+          "izquierda": "Left",
+          "centro": "Center",
+          "derecha": "Right"
+        },
+        "bordes": {
+          "titulo": "Borders",
+          "grosor": "Thickness",
+          "color": "Color",
+          "colorTema": "Theme (border gray)",
+          "estilo": "Style",
+          "completo": "Full",
+          "soloAbajo": "Bottom only",
+          "punteado": "Dashed",
+          "alEnfocar": "Border on focus",
+          "alEnfocarHoy": "Brand color (today)",
+          "igualNormal": "Same as normal"
+        },
+        "esquinas": {
+          "titulo": "Corners",
+          "forma": "Shape",
+          "square": "Square",
+          "soft": "Soft",
+          "rounded": "Rounded",
+          "pill": "Pill",
+          "radio": "Radius",
+          "radioAyuda": "Fine-tune in px (0–{max}); the chosen shape becomes «Custom» if you move it."
+        },
+        "sombra": {
+          "titulo": "Shadow",
+          "normal": "Shadow",
+          "ayuda": "Five fixed shadows, no free-form shadow.",
+          "alEnfocar": "Shadow on focus",
+          "igual": "Same as normal (today)",
+          "unNivelMas": "One level more",
+          "none": "None",
+          "sm": "Soft",
+          "md": "Medium",
+          "lg": "Strong",
+          "inner": "Inner"
+        },
+        "interior": {
+          "titulo": "Inside",
+          "fondo": "Background",
+          "blanco": "White",
+          "delTema": "Theme (background)",
+          "transparente": "Transparent",
+          "texto": "Text color",
+          "ayuda": "Hint text (placeholder)",
+          "ayudaNota": "Empty = «Search products...». Up to {max} characters.",
+          "ayudaColor": "Hint text color",
+          "fuente": "Font",
+          "fuenteTema": "Theme font (body)",
+          "fuenteTitulos": "Heading font"
+        },
+        "contraste": {
+          "texto": "The text is hard to read ({razon})",
+          "ayuda": "The hint text is hard to read ({razon})",
+          "boton": "The button icon or text is hard to read ({razon})",
+          "necesita": "It needs {minimo}:1 on this background. Suggestion: {sugerido}.",
+          "usar": "Use suggestion",
+          "dejar": "Keep it",
+          "nota": "This is a warning, not a block: you decide. Checked: text/background, hint/background and button (icon/background)."
+        },
+        "icono": {
+          "titulo": "Search icon",
+          "dibujo": "The magnifier drawing is one for the whole store.",
+          "irIconos": "Choose in Icons",
+          "posicion": "Position",
+          "izquierda": "Left (today)",
+          "derecha": "Right",
+          "sinIcono": "No icon",
+          "color": "Color",
+          "gris": "Gray (today)",
+          "colorTexto": "Text color",
+          "tamano": "Size"
+        },
+        "boton": {
+          "titulo": "Search button",
+          "tipo": "Button",
+          "none": "No button",
+          "icon": "Icon",
+          "text": "«Search» text",
+          "icon_text": "Icon + text",
+          "celular": "On mobile the button is always attached and icon-only, so it doesn’t take width.",
+          "texto": "Button text",
+          "textoHoy": "Search",
+          "fondo": "Button background",
+          "primario": "Brand primary (today)",
+          "acento": "Accent",
+          "iconoTexto": "Button icon and text",
+          "automatico": "Automatic (readable)",
+          "blanco": "White",
+          "negro": "Black",
+          "posicion": "Position",
+          "pegado": "Attached, inside the bar",
+          "separado": "Separate, beside it",
+          "esquinas": "Button corners",
+          "comoBarra": "Like the bar"
+        },
+        "categorias": {
+          "titulo": "«All» category selector",
+          "ayuda": "Lists the menu categories. Today only «Large search» has it.",
+          "mostrar": "Show category selector",
+          "mostrarAyuda": "Automatic: on only in Large search.",
+          "estilo": "Style",
+          "simple": "Plain text (today)",
+          "enCaja": "Boxed",
+          "separador": "Divider line",
+          "texto": "«All» text",
+          "textoHoy": "All",
+          "celular": "On mobile it hides when it doesn’t fit (bar under 360 px)."
+        },
+        "anillo": {
+          "titulo": "Focus ring",
+          "nota": "Always visible: it’s what keyboard users see. It can’t be turned off; you only pick the color.",
+          "color": "Color",
+          "hoy": "Brand color, 40% (today)"
+        },
+        "desplegable": {
+          "titulo": "Suggestions dropdown",
+          "esquinas": "Corners",
+          "sombra": "Shadow",
+          "imagenes": "Show images",
+          "precios": "Show prices",
+          "populares": "Popular searches: edited in Design › Search."
+        },
+        "restablecer": {
+          "boton": "Reset search bar",
+          "ayuda": "Back to today’s look: deletes the saved appearance (desktop and mobile). Asks for confirmation.",
+          "titulo": "Reset the search bar?",
+          "texto": "Goes back to today’s appearance on desktop and mobile. The style, the switch and the popular searches don’t change.",
+          "confirmar": "Reset"
         }
       }
     },
@@ -41671,6 +41873,12 @@
       "migracion_pendiente": "This action will be available once custom roles are enabled in the organization.",
       "error_red": "No connection to the server. Try again.",
       "error_interno": "Something failed while saving. Try again."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Record deliveries at the office",
+        "descripcion": "Record the delivery of a shipment without being the assigned courier: counter pickup, ticket office or \"Charge and deliver\" at the register."
+      }
     }
   },
   "pedidoWeb": {
@@ -67336,7 +67544,18 @@
         "pideCodigo": "Ask the customer for the 4-digit delivery code.",
         "llevas": "What you carry ({n})",
         "envio": "Shipping",
-        "pasos": "Steps"
+        "pasos": "Steps",
+        "avisoIniciar": "When you head to this address, tap “Start route”: we notify the customer by WhatsApp and email and send them their delivery code.",
+        "avisoIniciarSinCodigo": "When you head to this address, tap “Start route”: we let the customer know you are on your way.",
+        "avisoEnCamino": "We let the customer know you are on your way and sent them their delivery code.",
+        "avisoEnCaminoSinCodigo": "We let the customer know you are on your way.",
+        "despuesDeIniciar": "After “Start route” the stop becomes “On the way” and “Deliver” and “Couldn’t deliver” appear.",
+        "totalPedido": "Order total",
+        "prueba": {
+          "titulo": "Proof of delivery",
+          "conCodigo": "When delivering we ask for the customer’s code (required for cash on delivery), who received it and, optionally, a photo of the delivered package.",
+          "sinCodigo": "When delivering we ask for a photo or the recipient’s signature and who received it."
+        }
       },
       "origen": {
         "tienda": "Online store",
@@ -67344,21 +67563,21 @@
         "otro": "Delivery"
       },
       "pasos": {
-        "recogido": "I picked up the order",
-        "en_camino": "I'm on my way",
+        "recogido": "I picked up the package",
+        "en_camino": "Start route · on the way",
         "entregado": "Delivered",
         "hechoSr": "done",
         "actualSr": "current step",
         "pendienteSr": "pending",
         "hecho": {
-          "picked": "Order picked up",
+          "picked": "Package picked up",
           "out_for_delivery": "You're on your way: we notified the customer"
         },
         "boton": {
-          "recoger": "I picked up the order",
-          "en_camino": "I'm on my way",
-          "reintentar": "Retry: I'm on my way",
-          "entregar": "Delivered",
+          "recoger": "I picked up the package",
+          "en_camino": "Start route",
+          "reintentar": "Retry: start route",
+          "entregar": "Deliver",
           "noEntregado": "Couldn't deliver"
         }
       },
@@ -67378,7 +67597,9 @@
         "COBRO_REQUERIDO": "Record the cash-on-delivery payment.",
         "MOTIVO_INVALIDO": "Choose what happened.",
         "ESTADO_SIN_NOVEDAD": "This delivery can't take an issue in its current status.",
-        "ENVIO_AJENO": "This shipment is no longer assigned to you."
+        "ENVIO_AJENO": "This shipment is no longer assigned to you.",
+        "SIN_PERMISO_ENTREGA": "This shipment isn't assigned to you and you don't have permission to deliver it.",
+        "ENTREGA_SOLO_POR_REGISTRO": "Deliveries are recorded from \"Deliver\"."
       },
       "entregar": {
         "titulo": "Deliver {numero}",
@@ -67516,7 +67737,7 @@
         "faltaNota": "Write what happened.",
         "foto": {
           "titulo": "Evidence photo",
-          "ayuda": "Your location is saved automatically"
+          "ayuda": "Up to 3 photos · your location is saved"
         },
         "yAhora": "What now?",
         "plan": {
@@ -67530,7 +67751,8 @@
           "devolver": "The package goes back to the branch: hand it in at the end of your shift."
         },
         "guardar": "Save and continue the route",
-        "hecho": "Issue recorded"
+        "hecho": "Issue recorded",
+        "notaAyuda": "Up to 300 characters. Required if you choose “Other”."
       },
       "finJornada": {
         "titulo": "End of shift",
@@ -67556,11 +67778,319 @@
         "paqueteDevolver": "Package to return",
         "enviado": {
           "titulo": "Summary sent",
-          "descripcion": "Your shift is closed. Hand in the cash at the branch register: it's received in Logistics › Settlements."
+          "descripcion": "The office receives line by line and closes the settlement. Whatever wasn’t collected today stays on tomorrow’s route.",
+          "cabecera": "Shift ended",
+          "tituloHora": "Summary sent · {hora}",
+          "fueraDeTurno": "You are now off shift. Thanks for today’s route.",
+          "entregaloEn": "Hand it to whoever receives the money at {sede}.",
+          "entregalo": "Hand it to whoever receives the money at the branch.",
+          "tuCuadre": "Your settlement today",
+          "estadosCuadre": {
+            "por_recibir": "To receive",
+            "recibiendo": "Receiving",
+            "cuadrado": "Settled",
+            "con_diferencia": "With difference"
+          },
+          "pasos": {
+            "enviado": "Summary sent",
+            "recibido": "Money received at the branch",
+            "cerrado": "Settlement closed"
+          },
+          "volver": "Back to My deliveries"
         },
         "notaCuadre": "Whoever receives the money sees it in Logistics › Settlements and puts it in the branch's open register.",
         "enviar": "Send summary for settlement",
         "errorEnviar": "Your shift couldn't be closed. Try again."
+      },
+      "actualizado": "updated {hora}",
+      "sinConexion": {
+        "franja": "Offline · you are seeing the route as of {hora}. You need signal to deliver.",
+        "franjaSinHora": "Offline. You need signal to deliver.",
+        "pausa": "Without signal you can’t record deliveries, payments or issues: the app doesn’t save them to send later yet. Call and Directions still work. If the customer is waiting, find signal or call the store.",
+        "insignia": "No signal"
+      },
+      "sinCodigo": {
+        "titulo": "The customer doesn’t have the code?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Ask them to check WhatsApp or email",
+            "descripcion": "It came with the “Your order is on the way” notice. It is also in their tracking link."
+          },
+          "tienda": {
+            "titulo": "Call the store",
+            "descripcion": "An administrator can reset the code from the shipment detail."
+          },
+          "novedad": {
+            "titulo": "Couldn’t deliver",
+            "descripcion": "If it doesn’t turn up, record the issue and continue your route. The package comes back with you."
+          }
+        },
+        "candado": "After {max} wrong attempts the code is locked and only an administrator can reset it. There is no way to skip the code on cash on delivery.",
+        "llamarTienda": "Call the store",
+        "seguir": "Keep trying"
+      },
+      "confirmada": {
+        "titulo": "Delivered",
+        "subtitulo": "{numero} · stop {n} of {total}",
+        "entregadoA": "Delivered to {nombre}",
+        "codigoVerificado": "code verified",
+        "dinero": {
+          "titulo": "Money from this delivery",
+          "cobrado": {
+            "cash": "Collected in cash",
+            "card": "Collected by card terminal",
+            "transfer": "Collected by transfer"
+          },
+          "recibido": "Received",
+          "cambio": "Change given",
+          "enMano": "Cash on hand now"
+        },
+        "siguiente": "Next stop",
+        "sinMas": "You have no pending stops left. When you finish, settle your shift.",
+        "iniciarRuta": "Start route to stop {n}",
+        "irAParada": "Go to stop {n}",
+        "volverRuta": "Back to my route"
+      },
+      "sinPerfil": {
+        "subtitulo": "The day’s route of whoever delivers",
+        "cifras": "Today’s dispatch figures",
+        "kpis": {
+          "porDespachar": "To dispatch",
+          "sinDomiciliario": "{n} without a courier",
+          "todosAsignados": "All have a courier",
+          "enRuta": "On route",
+          "enCalle": "{n, plural, =0 {No couriers out} one {# courier out} other {# couriers out}}",
+          "novedades": "Issues",
+          "porReprogramar": "{n} to reschedule today",
+          "sinNovedades": "Nothing to reschedule today",
+          "porCuadrar": "To settle",
+          "domiciliariosConEfectivo": "{n, plural, =0 {No cash to receive} one {# courier with cash} other {# couriers with cash}}"
+        },
+        "registrarme": "Register me as a courier",
+        "irADomiciliarios": "Go to Couriers",
+        "irAlInicio": "Go to home",
+        "copiarCorreo": "Copy my email",
+        "correoCopiado": "Email copied",
+        "noSeCopio": "The email could not be copied",
+        "b1": {
+          "titulo": "Your account has no courier profile",
+          "tituloSede": "Your account has no courier profile at {sede}",
+          "descripcion": "My deliveries is the day’s route of whoever delivers: stops in order, delivering with the customer’s code, collecting cash on delivery and settling at the end. Each courier sees it with their own account, on the phone or on the computer.",
+          "comoLlega": "How does someone get here?",
+          "pasos": {
+            "1": "Whoever dispatches registers them in Logistics › Couriers and links their GO Admin account (their email).",
+            "2": "From To dispatch they assign shipments; the vehicle plate is saved on each shipment.",
+            "3": "The courier signs in with their account and sees today’s route here, in order."
+          },
+          "notaRegistrar": "“Register me” opens the same Couriers dialog with your account already linked: ID, phone and vehicle (SOAT, technical inspection and license for a motorbike or car).",
+          "loQueHace": "What a courier does on this page"
+        },
+        "b2": {
+          "titulo": "This page is for couriers",
+          "descripcion": "Here each courier sees their shipments for the day in route order, delivers with the customer’s code, collects cash on delivery and settles at the end. Your account is not registered as a courier yet.",
+          "cuandoTeRegistren": "Once you are registered, here you can",
+          "quienRegistra": "Who registers you?",
+          "quienRegistraTexto": "Whoever dispatches at your branch or an administrator, from Logistics › Couriers. Ask them to use your GO Admin email to link your account:",
+          "yaRegistrado": "Already registered and still seeing this? You may have been registered at another branch or without linking your account: ask whoever dispatches to check your profile."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "See the day’s route",
+            "descripcion": "Shipments in stop order, with address, promised time and what to collect."
+          },
+          "codigo": {
+            "titulo": "Deliver with the customer’s code",
+            "descripcion": "The customer gets it by WhatsApp and email when the order is on the way."
+          },
+          "cobrar": {
+            "titulo": "Collect cash on delivery",
+            "descripcion": "Cash with change, card terminal or transfer; always the full amount."
+          },
+          "cuadrar": {
+            "titulo": "Settle at the end",
+            "descripcion": "Send the summary and hand in the cash at the branch register."
+          }
+        },
+        "atajos": {
+          "titulo": "Shortcuts for your role",
+          "ayuda": "What your menu shows you, one tap away."
+        },
+        "ejemplo": {
+          "titulo": "What a courier’s route looks like",
+          "etiqueta": "Example",
+          "descripcion": "Each courier sees only their own shipments for the day, on the phone or on the computer.",
+          "guia": "ENV-000{n}",
+          "direccion": "Address · neighborhood"
+        },
+        "verRutaDe": "See a courier’s route"
+      },
+      "mapa": {
+        "ver": "See route map",
+        "titulo": "Today’s route",
+        "subtitulo": "Stop {n} of {total} · {pendientes, plural, one {# pending} other {# pending}}",
+        "etiqueta": "Map of today’s route",
+        "etiquetaParada": "Map of stop {numero}",
+        "abrirGoogle": "Open the route in Google Maps",
+        "sinCoordenadas": "{n, plural, one {# stop has no coordinates: Google Maps finds it by the written address.} other {# stops have no coordinates: Google Maps finds them by the written address.}}",
+        "sinPuntos": {
+          "titulo": "The stops have no coordinates",
+          "descripcion": "Open the route in Google Maps: it finds them by the written address."
+        }
+      },
+      "vehiculo": {
+        "titulo": "My vehicle and documents",
+        "vigencia": {
+          "vencido": "Expired",
+          "enDias": "{n, plural, =0 {Expires today} one {In # day} other {In # days}}",
+          "vigente": "Valid",
+          "sin_dato": "No date"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Technical inspection",
+          "licencia": "Driver’s license",
+          "licenciaCategoria": "Driver’s license {categoria}"
+        },
+        "sinFecha": "No date recorded",
+        "vencio": "Expired {fecha}",
+        "vigenteHasta": "Valid until {fecha}",
+        "vence": "Expires {fecha}",
+        "dueno": {
+          "company": "company-owned",
+          "driver": "courier-owned",
+          "third_party": "third-party"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Expired document",
+        "porDefecto": "Default",
+        "filaTitulo": "My vehicle today · {placa}",
+        "filaVencido": "{documento} expired",
+        "filaPorVencer": "{documento} expires {n, plural, =0 {today} one {in # day} other {in # days}}",
+        "filaAlDia": "documents up to date",
+        "placaCongelada": "{n, plural, one {This plate was saved on today’s shipment when it was assigned: if you change vehicle, the assigned shipment doesn’t change.} other {This plate was saved on your # shipments today when they were assigned: if you change vehicle, the assigned shipments don’t change.}}",
+        "sinVehiculo": {
+          "titulo": "No vehicle registered",
+          "descripcion": "You have no vehicle assigned today. If you use a motorbike or car, ask whoever dispatches to register it on your profile."
+        },
+        "documentosDelVehiculo": "Vehicle documents",
+        "tusDocumentos": "Your documents",
+        "avisoVencido": "{documento}: expired on {fecha}. If your branch has the document block on, the office can’t assign you shipments until it’s updated on your profile. Only a dispatch supervisor can authorize an exception with their PIN.",
+        "avisoPorVencer": "{documento}: renew it before {fecha}. If it expires and your branch has the document block on, the office can’t assign you shipments until it’s updated on your profile. Only a dispatch supervisor can authorize an exception with their PIN.",
+        "noEscribesPin": "You don’t type the PIN: the supervisor enters it on their account when assigning or reassigning. If nobody authorizes, you’ll see “No pending shipments”.",
+        "cambiaste": "Changed vehicle or renewed a document? Tell whoever dispatches: they update it in Logistics › Couriers.",
+        "excepcion": {
+          "titulo": "Today you were assigned with an exception",
+          "autorizo": "Authorized by",
+          "hora": "Time",
+          "conPin": "{hora} · with their PIN",
+          "motivo": "Reason",
+          "envios": "Shipments",
+          "enviosHoy": "{n, plural, one {# shipment today} other {# shipments today}}",
+          "nota": "It is recorded in each shipment’s log. Until you renew the document, each new assignment needs another exception."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logistics",
+        "vehiculoCorto": "vehicle {placa}",
+        "rutaDeHoy": "Today’s route",
+        "paradaDe": "Stop {n} of {total}",
+        "entregadoMin": "delivered {hora}",
+        "notaMapa": "Stops without coordinates aren’t on the map: Google Maps finds them by the written address.",
+        "miVehiculo": "My vehicle today",
+        "dineroDeHoy": "Today’s money",
+        "notaDinero": "When you finish, you hand in the cash and the settlement is in Logistics › Settlements. Whatever wasn’t collected today stays on tomorrow’s route.",
+        "notaTabla": "The order comes from the day’s route: first what is on the way, then by promised time. “Deliver” asks for the code the customer received; an issue can only be reported once the package has left.",
+        "verVehiculo": "See my vehicle and documents",
+        "cuadrePendiente": "Settlement pending",
+        "buscar": "Search shipment or address…",
+        "sinResultados": "No stop matches the search",
+        "columnas": {
+          "parada": "Stop · shipment",
+          "direccion": "Address and city",
+          "ventana": "Promised time",
+          "contraentrega": "Cash on delivery",
+          "acciones": "Actions"
+        },
+        "entregadoA": "Delivered {hora}",
+        "reprogramado": "Rescheduled · {fecha}",
+        "porCobrar": "To collect",
+        "seCobraDespues": "Collected on retry",
+        "filtros": {
+          "todos": "All · {n}",
+          "pendientes": "Pending · {n}",
+          "entregados": "Delivered · {n}",
+          "novedades": "Issues · {n}"
+        },
+        "kpis": {
+          "asignados": "Assigned today",
+          "enCamino": "On the way",
+          "nadieEnCamino": "None on the way",
+          "entregados": "Delivered",
+          "aTiempo": "{n} of {total} on time",
+          "porCobrar": "Cash on delivery to collect",
+          "enviosHoy": "{n, plural, one {# shipment today} other {# shipments today}}",
+          "nadaPorCobrar": "Nothing to collect",
+          "cuadre": "Settlement pending",
+          "enManoDetalle": "On hand · settled at the end"
+        },
+        "acciones": {
+          "novedad": "Issue",
+          "verEntrega": "See delivery",
+          "verNovedad": "See issue"
+        },
+        "dinero": {
+          "enMano": "Cash on hand",
+          "porCobrar": "{n, plural, one {To collect today (# shipment)} other {To collect today (# shipments)}}",
+          "otrosMedios": "Card terminal and transfers",
+          "ultimoCuadre": "Last settlement",
+          "estado": {
+            "cuadrado": "Settled · no difference",
+            "con_diferencia": "Closed with difference"
+          }
+        }
+      },
+      "supervisor": {
+        "viendo": "Viewing {nombre}’s route",
+        "subtitulo": "Each courier’s route for the day",
+        "verRutaDe": "See the route of",
+        "elige": "Choose a courier",
+        "reasignar": "Reassign",
+        "noReasignable": "The courier already has the package: record an issue so it returns to the branch, then reassign it.",
+        "sinPermiso": {
+          "titulo": "Only dispatchers see another courier’s route",
+          "descripcion": "Seeing a courier’s route, reassigning and recording issues is done by whoever has permission to manage Logistics."
+        },
+        "sinDomiciliarios": {
+          "titulo": "There are no active couriers yet",
+          "descripcion": "Register them in Logistics › Couriers to see their route here."
+        },
+        "irDomiciliarios": "Go to Couriers",
+        "irPorDespachar": "Go to To dispatch",
+        "llamarA": "Call {nombre}",
+        "chip": {
+          "avance": "{n} of {total}",
+          "sinEnvios": "no shipments",
+          "envios": "{n, plural, one {# shipment} other {# shipments}}",
+          "vencido": "{documento} expired",
+          "porVencer": "{documento} expires {n, plural, =0 {today} one {in # day} other {in # days}}",
+          "estados": {
+            "en_ruta": "on route",
+            "libre": "free",
+            "fuera_de_turno": "off shift",
+            "inactivo": "inactive"
+          }
+        },
+        "nota": "As a supervisor you can reassign stops and record issues. Delivering with the code and collecting cash on delivery is only done by the courier, from their own session.",
+        "notaCelular": "You are viewing {nombre}’s route. Only the courier delivers and collects; you can reassign a stop or record an issue.",
+        "elDomiciliario": "a courier",
+        "vehiculoDe": "{nombre}’s vehicle today",
+        "dineroDe": "{nombre}’s money today",
+        "notaDinero": "When {nombre} ends the shift, you receive the cash in Logistics › Settlements. Whatever wasn’t collected today stays on tomorrow’s route.",
+        "notaTabla": "What the supervisor does is recorded on the shipment timeline with their name. “Reassign” opens the “Assign courier” sheet with the vehicle preselected and the Phase 1b document check.",
+        "verFicha": "See {nombre} in Couriers",
+        "verMapa": "See their route map",
+        "ocultarMapa": "Hide the map",
+        "verEnvio": "See the shipment"
       }
     },
     "domiciliario": {
@@ -68768,7 +69298,17 @@
         "DIRECCION_REQUERIDA": "The delivery address is missing.",
         "ERROR": "Couldn't complete. Try again.",
         "DOMICILIARIO_NO_COBRA": "That courier doesn't collect cash on delivery and this shipment has a payment to collect.",
-        "ENVIO_AJENO": "That shipment belongs to another courier."
+        "ENVIO_AJENO": "That shipment belongs to another courier.",
+        "SIN_PERMISO_ENTREGA": "Only the assigned courier or someone with the \"Record deliveries at the office\" permission can deliver.",
+        "ENTREGA_SOLO_POR_REGISTRO": "Deliveries are recorded with \"Mark delivered\" (proof, code and payment).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "The order has an active shipment: deliver it with the Logistics delivery record.",
+        "NO_OPEN_CASH_SESSION": "There is no open cash register at this branch. Open it to charge and deliver.",
+        "ORIGEN_NO_SOPORTADO": "This shipment doesn't come from an online order: deliver it from Logistics.",
+        "METODO_INVALIDO": "Choose the payment method.",
+        "PEDIDO_DE_PASARELA": "The order was paid online: it isn't charged at the register.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirm the order before charging it.",
+        "FACTURA_REQUERIDA": "The order's invoice couldn't be prepared. Try again.",
+        "SESION_REQUERIDA": "Your session expired. Sign in again."
       },
       "chips": {
         "intento": "Attempt {n}",
@@ -68943,7 +69483,11 @@
           "titular": "Account holder",
           "familiar": "Family member",
           "porteria": "Front desk",
-          "otro": "Someone else"
+          "otro": "Someone else",
+          "customer": "Account holder",
+          "family": "Family member",
+          "doorman": "Front desk",
+          "other": "Someone else"
         },
         "cobroTitulo": "Cash on delivery: collect {monto}",
         "codigo": "Delivery code",
@@ -68969,6 +69513,18 @@
           "codigo": "The code has 4 digits.",
           "metodo": "Choose the payment method.",
           "monto": "Enter the amount collected."
+        },
+        "caja": {
+          "titulo": "Charge and deliver",
+          "descripcion": "The proof of delivery, the payment into the register and the invoice are recorded together.",
+          "confirmar": "Charge and deliver",
+          "cobroTitulo": "Charge {monto} at the register",
+          "cobroNota": "It goes into the branch's open register. It doesn't go to the courier's settlement.",
+          "referencia": "Reference",
+          "referenciaAyuda": "Optional: card terminal or transfer number.",
+          "ok": "Order charged and delivered",
+          "factura": "Invoice {numero}",
+          "error": "Couldn't charge and deliver"
         }
       },
       "novedad": {
@@ -69425,7 +69981,11 @@
           "confirmarTermica": "{count, plural, one {Print # label} other {Print # labels}}",
           "confirmarPdf": "{count, plural, one {Open PDF of # label} other {Open PDF of # labels}}",
           "confirmarA4": "{count, plural, one {Print A4 sheet} other {Print # A4 sheets}}",
-          "cancelar": "Cancel"
+          "cancelar": "Cancel",
+          "fragil": "Fragile — handle with care",
+          "fragilAyuda": "Saved on the shipment; label {numero} carries the “FRAGILE” notice.",
+          "fragilBloqueado": "This shipment has already left: “Fragile” can only be changed while it is being prepared.",
+          "fragilError": "Couldn’t save “Fragile”. Try again."
         }
       },
       "form": {
@@ -69528,7 +70088,7 @@
           "pesoTotalAyuda": "Sum of the lines; can be corrected when weighed.",
           "valorDeclarado": "Declared value",
           "valorDeclaradoAyuda": "Basis for the carrier’s insurance.",
-          "fragil": "Fragile",
+          "fragil": "Fragile — handle with care",
           "fragilAyuda": "Marked on the label",
           "firma": "Ask for signature",
           "firmaAyuda": "The recipient signs on delivery",
@@ -69642,7 +70202,14 @@
         "cerrar": "Close",
         "sinTrabajoTitulo": "There are no labels to print",
         "sinTrabajo": "Go back to Logistics and choose “Print label” again."
-      }
+      },
+      "manipulacion": "FRAGILE · HANDLE WITH CARE · THIS SIDE UP",
+      "entregaEncomienda": "Parcel · pick up at the office",
+      "indicacionesTerminal": "Pick up at the office with an ID.",
+      "notaCobroTerminal": "Collect at the office before handing over.",
+      "pieViaje": "Trip {codigo}",
+      "pieViajeSalida": "Trip {codigo}, departs {fecha}",
+      "vehiculoBus": "Bus {placa}"
     }
   },
   "transporte": {
@@ -72940,6 +73507,135 @@
       "titulo": "Add company with tax ID",
       "descripcion": "{persona} becomes a contact of the company.",
       "creada": "{empresa} is now linked to the customer."
+    }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Delivery",
+    "copiado": "Tracking number copied",
+    "noCopiado": "Could not copy",
+    "cargando": "Loading the shipment…",
+    "indicacion": "Note: {texto}",
+    "envio": "Shipping {monto}",
+    "envioPagado": "Shipping {monto} · paid",
+    "sinGuia": "No label",
+    "whatsapp": "Hi, I'm writing about order {pedido}.",
+    "estados": {
+      "sin_envio": "No shipment",
+      "recoger": "Ready for pickup",
+      "recogerPreparando": "For pickup",
+      "por_despachar": "To dispatch",
+      "asignado": "Assigned",
+      "en_camino": "On the way",
+      "en_camino_transportadora": "On the way (carrier)",
+      "entregado": "Delivered",
+      "novedad": "Issue",
+      "devuelto": "Returned",
+      "cancelado": "Cancelled"
+    },
+    "tipo": {
+      "recoger": "Store pickup",
+      "transportadora": "Carrier",
+      "propio": "Own delivery"
+    },
+    "cobro": {
+      "cobrar": "Collect on delivery",
+      "enCaja": "At the branch register",
+      "saldo": "Balance = total {total} − deposit {anticipo}",
+      "contraentrega": "Cash on delivery: collected by whoever delivers",
+      "cobrado": "Collected on delivery",
+      "cobradoNota": "Goes to the courier's settlement (Logistics › Settlements)",
+      "pagado": "Paid · do not collect",
+      "pagadoNota": "Nothing is collected at the door"
+    },
+    "recoger": {
+      "listoDesde": "Ready for pickup since {hora}",
+      "preparando": "Being prepared for pickup",
+      "nota": "No label: handed over at the counter. Ask for the order number ({pedido}) and the buyer's name."
+    },
+    "filas": {
+      "listo": "Ready",
+      "listoAprox": "Ready approx.",
+      "asignado": "Assigned",
+      "salio": "Left",
+      "entregadoTransportadora": "Handed to the carrier",
+      "entregado": "Delivered",
+      "entregaAprox": "Delivery approx."
+    },
+    "sinEnvio": {
+      "titulo": "This order has no shipment yet",
+      "nota": "It is created on confirmation. If it wasn't (older order or an error), create it here: it gets its DEL-WO-… label and goes to «To dispatch» in Logistics.",
+      "error": "The shipment for this order could not be loaded. Reload the page or check it in Logistics."
+    },
+    "acciones": {
+      "crearYAsignar": "Create shipment and assign courier",
+      "asignar": "Assign",
+      "verGuia": "View label",
+      "imprimirGuia": "Print label",
+      "verEnvio": "View shipment",
+      "cambiar": "Change",
+      "verMapa": "View on map"
+    },
+    "guia": {
+      "titulo": "Tracking number",
+      "nuestra": "Our label (stuck on the box)",
+      "copiar": "Copy tracking number",
+      "creada": "Created {hora}",
+      "deTransportadora": "{nombre} tracking number",
+      "deTransportadoraSinNombre": "Carrier tracking number",
+      "rastrearEn": "Track on {nombre}",
+      "rastrear": "Track with the carrier"
+    },
+    "entregado": {
+      "titulo": "Delivered {hora}",
+      "recibio": "Received by: {nombre}",
+      "codigo": "delivery code verified"
+    },
+    "novedad": {
+      "titulo": "Could not deliver · attempt {n}",
+      "desdeLogistica": "Rescheduling or returning is done from Logistics."
+    },
+    "devuelto": {
+      "titulo": "Returned to the branch",
+      "motivo": "Reason: {motivo}",
+      "nota": "The order is not cancelled automatically: decide whether it goes out again or the money is refunded."
+    },
+    "domiciliario": {
+      "rol": "Courier",
+      "placa": "plate {placa}",
+      "llamar": "Call {nombre}",
+      "whatsapp": "Message {nombre} on WhatsApp",
+      "sinAsignar": "Unassigned"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# package} other {# packages}}",
+      "peso": "{kg} kg",
+      "fragil": "Fragile"
+    },
+    "entregar": {
+      "bloqueado": "The shipment can't be delivered yet",
+      "bloqueadoNota": "Mark it «Ready to leave» or assign a courier in Logistics; the order and the shipment are marked delivered together."
+    },
+    "historial": {
+      "listo": "Ready · shipment to dispatch",
+      "guia": "Label {numero}",
+      "paquetes": "{count, plural, one {# package} other {# packages}}",
+      "asignado": "Courier assigned",
+      "entregadoTransportadora": "Handed to the carrier",
+      "recogido": "Picked up by the courier",
+      "enTransito": "In transit",
+      "enCaminoIntento": "On the way · attempt {n}",
+      "enReparto": "Out for delivery",
+      "enCamino": "On the way",
+      "salioDe": "Left {sede}",
+      "novedadMotivo": "Issue · {motivo}",
+      "novedad": "Issue · could not deliver",
+      "entregado": "Delivered",
+      "recibio": "Received by: {nombre}",
+      "devuelto": "Returned to the branch",
+      "cancelado": "Shipment cancelled",
+      "aprox": "approx. {hora}",
+      "transportadora": "Carrier",
+      "logistica": "Logistics"
     }
   }
 }

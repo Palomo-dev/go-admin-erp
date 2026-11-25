@@ -1,16 +1,11 @@
 /* AUTO-GENERADO por sync-agent.js — NO EDITAR */
 ﻿import type { KitchenTicketPrintPayload, SaleTicketPrintPayload, ShipmentGuidePrintPayload, ElectronicInvoicePrintPayload } from './types';
+import { moneyFormatter } from './money';
+import { formatQuantity, isMeasuredLine, itemsSummary, lineNamePrefix, linePriceDetail } from './quantity';
 import type { PaperSpec } from './paper';
+import { rasterToBmpDataUrl } from './escposImage';
+import { resolveShipmentLabel } from './shipmentLabel';
 
-function formatMoney(value: number): string {
-  // `style: 'currency'` separa el simbolo del importe con U+00A0 (espacio
-  // duro). Ese byte es 0xA0, que las impresoras termicas interpretan en CP437
-  // como "a" acentuada: en papel salia "$a36.480". Se normaliza a espacio
-  // normal, que es identico en pantalla y correcto en la impresora.
-  return value
-    .toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 2 })
-    .replace(/\u00a0/g, ' ');
-}
 
 const FISCAL_LABELS: Record<string, string> = {
   O_23: 'Gran contribuyente',
@@ -276,12 +271,13 @@ function buildCss(paper: PaperSpec): string {
 }
 
 export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: PaperSpec): string {
+  const formatMoney = moneyFormatter(payload, { symbol: true });
   const isPreCuenta = (payload.title || '').toUpperCase().includes('PRE-CUENTA') || (payload.title || '').toUpperCase().includes('PRE CUENTA');
   const title = payload.title || 'TICKET DE VENTA';
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, payload.locale);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
   const customerFiscal = payload.customerFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -303,16 +299,21 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
     const discLine = item.discountAmount && item.discountAmount > 0
       ? `<div class="item-detail">Desc: -${formatMoney(item.discountAmount)}</div>`
       : '';
+    // Nota para el cliente (texto libre del cajero): se escapa.
+    const noteLine = item.note
+      ? `<div class="item-detail item-note">&raquo; ${item.note.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)}</div>`
+      : '';
 
     return `
     <div class="item">
       <div class="item-line">
-        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-name">${lineNamePrefix(item, payload.locale)}${item.productName}</span>
         <span class="item-total">${formatMoney(item.total)}</span>
       </div>
-      <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
+      <div class="item-detail">${linePriceDetail(item, formatMoney, payload.locale)}</div>
       ${variantLine}
       ${modifierLine}
+      ${noteLine}
       ${taxLine}
       ${discLine}
     </div>`;
@@ -410,7 +411,7 @@ export function buildSaleTicketHTML(payload: SaleTicketPrintPayload, paper: Pape
     ${payload.saleNumber ? `<div class="meta-row"><span class="meta-label">Venta:</span><span class="meta-value">#${payload.saleNumber}</span></div>` : ''}
     ${payload.tableName ? `<div class="meta-row"><span class="meta-label">Mesa:</span><span class="meta-value">${payload.tableName}</span></div>` : ''}
     <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
-    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${itemsText}</span></div>
     ${payload.cashierName ? `<div class="meta-row"><span class="meta-label">Cajero:</span><span class="meta-value">${payload.cashierName}</span></div>` : ''}
     ${payload.serverName ? `<div class="meta-row"><span class="meta-label">Mesero:</span><span class="meta-value">${payload.serverName}</span></div>` : ''}
   </div>
@@ -453,7 +454,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items);
 
   const itemsHTML = payload.items.map(item => {
     const variantEntries = item.variantData ? Object.entries(item.variantData).filter(([, v]) => !!v) : [];
@@ -473,7 +474,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
     return `
     <div class="item">
       <div class="item-line">
-        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-name">${isMeasuredLine(item) ? `${formatQuantity(item)} ` : `${formatQuantity(item)}x `}${item.productName}</span>
       </div>
       ${variantLine}
       ${modifierLine}
@@ -494,7 +495,7 @@ function buildKitchenTicketBody(payload: KitchenTicketPrintPayload): string {
     <div class="meta-row"><span class="meta-label">Ticket:</span><span class="meta-value">#${payload.ticketId}</span></div>
     <div class="meta-row"><span class="meta-label">Mesa:</span><span class="meta-value">${payload.tableName || '-'}</span></div>
     <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
-    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${itemsText}</span></div>
     ${payload.serverName ? `<div class="meta-row"><span class="meta-label">Mesero:</span><span class="meta-value">${payload.serverName}</span></div>` : ''}
   </div>
 
@@ -548,106 +549,69 @@ export function buildKitchenTicketsHTML(payloads: KitchenTicketPrintPayload[], p
   return wrapDocument(title, paper, payloads.map(buildKitchenTicketBody));
 }
 
-function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload): string {
-  const tracking = payload.trackingNumber || payload.shipmentNumber || payload.shipmentId;
-  const dateStr = new Date(payload.createdAt).toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
-  const timeStr = new Date(payload.createdAt).toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
+/** Escapa texto para HTML (los datos del envio los escribe la persona). */
+function escGuia(v: unknown): string {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
 
-  const itemsHtml = (payload.items || []).map((item) => {
-    const qty = item.quantity || 1;
-    const desc = item.description || '-';
-    const total = item.totalValue || (qty * (item.unitValue || 0));
-    let details = '';
-    if (item.sku) details += `<div style="font-size:9px;color:#555">SKU: ${item.sku}</div>`;
-    if (item.weightKg) details += `<div style="font-size:9px;color:#555">Peso: ${item.weightKg} kg</div>`;
-    if (item.variantData) {
-      const entries = Object.entries(item.variantData);
-      if (entries.length > 0) details += `<div style="font-size:9px;color:#555;word-break:break-word;overflow-wrap:anywhere">${entries.map(([k, v]) => `${k}: ${v}`).join(', ')}</div>`;
-    }
-    if (item.modifiers && item.modifiers.length > 0) {
-      const modStr = item.modifiers.map((m) => `${m.name}${m.extraPrice > 0 ? ` (+${formatMoney(m.extraPrice)})` : ''}`).join(', ');
-      details += `<div style="font-size:9px;color:#555;word-break:break-word;overflow-wrap:anywhere">${modStr}</div>`;
-    }
-    if (item.discountAmount && item.discountAmount > 0) details += `<div style="font-size:9px;color:#555">Desc: -${formatMoney(item.discountAmount)}</div>`;
-    if (item.taxAmount && item.taxAmount > 0) details += `<div style="font-size:9px;color:#555">Imp: ${formatMoney(item.taxAmount)}</div>`;
-    return `<div style="border-bottom:1px dashed #ccc;padding:2px 0">
-      <div style="display:flex;justify-content:space-between;font-weight:bold"><span>${qty}x ${desc}</span><span>${formatMoney(total)}</span></div>
-      ${details}
-    </div>`;
-  }).join('');
-
-  const totalsHtml = `
-    <div class="totals">
-      ${payload.itemsTotalValue ? `<div class="total-line"><span>Valor Items:</span><span>${formatMoney(payload.itemsTotalValue)}</span></div>` : ''}
-      ${payload.freightCost ? `<div class="total-line"><span>Flete:</span><span>${formatMoney(payload.freightCost)}</span></div>` : ''}
-      ${payload.insuranceCost ? `<div class="total-line"><span>Seguro:</span><span>${formatMoney(payload.insuranceCost)}</span></div>` : ''}
-      ${payload.codAmount ? `<div class="total-line"><span>Contra Entrega:</span><span>${formatMoney(payload.codAmount)}</span></div>` : ''}
-      ${payload.totalCost ? `<div class="total-line" style="font-weight:bold;font-size:12px"><span>TOTAL:</span><span>${formatMoney(payload.totalCost)}</span></div>` : ''}
-    </div>`;
-
-  const driverHtml = payload.driver ? `
-    <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">CONDUCTOR</div>
-    <div>${payload.driver.name || 'Sin asignar'}</div>
-    ${payload.driver.phone ? `<div style="font-size:10px">Tel: ${payload.driver.phone}</div>` : ''}
-    ${payload.driver.licenseNumber ? `<div style="font-size:10px">Lic: ${payload.driver.licenseNumber}${payload.driver.licenseCategory ? ` (${payload.driver.licenseCategory})` : ''}</div>` : ''}
-  ` : '';
-
+/**
+ * Rotulo de envio (Figma «21 Logistica» 3223:15627). Con `label.raster` la pagina muestra la
+ * IMAGEN del rotulo que genero el ERP con su vista previa (la misma que sale por ESC/POS), a lo
+ * ancho imprimible del papel. Sin imagen, una version HTML sencilla con los mismos textos.
+ */
+function buildShipmentGuideBody(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
+  const l = resolveShipmentLabel(payload);
+  const image = rasterToBmpDataUrl(l.raster, paper.charsPerLine * 12);
+  if (image && l.raster) {
+    const mm = (l.raster.width / 203) * 25.4;
+    return `<img src="${image}" alt="${escGuia(l.guideNumber)}" style="display:block;width:${mm.toFixed(2)}mm;height:auto;image-rendering:pixelated">`;
+  }
+  const line = (text: string | null | undefined, style: string) => (text ? `<div style="${style}">${escGuia(text)}</div>` : '');
+  const collect = l.charge.kind === 'collect';
   return `
-  <div style="text-align:center;font-weight:bold;font-size:14px">${payload.businessName || ''}</div>
-  ${payload.businessNit ? `<div style="font-size:10px">NIT: ${payload.businessNit}</div>` : ''}
-  ${payload.businessPhone ? `<div style="font-size:10px">Tel: ${payload.businessPhone}</div>` : ''}
-  ${payload.businessAddress ? `<div style="font-size:10px">${payload.businessAddress}</div>` : ''}
-  <div style="border-top:2px solid #000;border-bottom:2px solid #000;text-align:center;font-weight:bold;font-size:16px;margin:4px 0;padding:2px 0">GUIA DE ENVIO</div>
-  <div style="font-weight:bold">No: ${tracking}</div>
-  <div style="font-size:10px">Fecha: ${dateStr} ${timeStr}</div>
-  ${payload.status ? `<div style="font-size:10px">Estado: ${payload.status.toUpperCase()}</div>` : ''}
-  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">REMITENTE</div>
-  <div>${payload.senderName || '-'}</div>
-  ${payload.senderPhone ? `<div style="font-size:10px">Tel: ${payload.senderPhone}</div>` : ''}
-  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">DESTINATARIO</div>
-  <div>${payload.receiverName || '-'}</div>
-  ${payload.receiverPhone ? `<div style="font-size:10px">Tel: ${payload.receiverPhone}</div>` : ''}
-  ${payload.receiverAddress ? `<div style="font-size:10px;word-break:break-word;overflow-wrap:anywhere">Dir: ${payload.receiverAddress}</div>` : ''}
-  ${payload.receiverCity ? `<div style="font-size:10px">Ciudad: ${payload.receiverCity}</div>` : ''}
-  ${payload.receiverInstructions ? `<div style="font-size:10px;word-break:break-word;overflow-wrap:anywhere">Instr: ${payload.receiverInstructions}</div>` : ''}
-  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">RUTA</div>
-  <div style="font-size:10px">Origen: ${payload.originStop || '-'} -> Destino: ${payload.destinationStop || '-'}</div>
-  ${driverHtml}
-  <div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">DETALLES</div>
-  <div style="font-size:10px">
-    ${payload.weightKg ? `Peso: ${payload.weightKg} kg | ` : ''}Paquetes: ${payload.packageCount || 1}
-    ${payload.packageType ? `| Tipo: ${payload.packageType}` : ''}
-    ${payload.deliveryType ? `| Entrega: ${payload.deliveryType}` : ''}
-  </div>
-  ${payload.declaredValue ? `<div style="font-size:10px">Valor Declarado: ${formatMoney(payload.declaredValue)}</div>` : ''}
-  ${payload.isFragile ? '<div style="font-weight:bold">** FRAGIL **</div>' : ''}
-  ${payload.requiresSignature ? '<div style="font-weight:bold">** REQUIERE FIRMA **</div>' : ''}
-  ${itemsHtml ? `<div style="border-top:1px solid #000;margin-top:4px;padding-top:2px;font-weight:bold">ITEMS</div>${itemsHtml}` : ''}
-  ${totalsHtml}
-  <div style="text-align:center;margin:6px 0">
-    <svg data-barcode="${tracking}"></svg>
-    <div style="font-size:10px;margin-top:2px">${tracking}</div>
-  </div>
-  <div style="border-top:1px dashed #000;margin-top:8px;padding-top:8px">
-    <div style="margin-bottom:24px">Firma Conductor:<br>________________</div>
-    <div>Firma Destinatario:<br>________________</div>
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#000">
+    ${line(l.senderLabel, 'font-size:8px;font-weight:600')}
+    ${line(l.storeName, 'font-size:13px;font-weight:bold')}
+    ${line(l.branchLine, 'font-size:9px')}
+    <div style="border:2px solid #000;padding:4px 6px;margin:6px 0">
+      ${line(l.receiverLabel, 'font-size:8px;font-weight:600')}
+      ${line(l.receiverName, 'font-size:17px;font-weight:bold')}
+      ${line(l.address, 'font-size:12px;font-weight:600;word-break:break-word')}
+      ${line(l.neighborhood, 'font-size:10px')}
+      ${line(l.destination, 'font-size:13px;font-weight:bold')}
+      ${line(l.phone, 'font-size:12px;font-weight:600')}
+      ${line(l.instructions, 'font-size:9px;word-break:break-word')}
+    </div>
+    <div style="font-size:11px;font-weight:600">${escGuia([`${l.packageLabel} ${l.packageText}`, l.weightText ? `${l.weightLabel} ${l.weightText}` : null, l.deliveryText].filter(Boolean).join(' · '))}</div>
+    ${l.carrierGuideText ? `<div style="border:1px solid #000;padding:3px 6px;margin:6px 0">${line(l.carrierGuideLabel, 'font-size:8px;font-weight:600')}${line(l.carrierGuideText, 'font-size:11px;font-weight:bold')}</div>` : ''}
+    <div style="${collect ? 'background:#000;color:#fff;' : 'border:2px solid #000;'}text-align:center;padding:5px 6px;margin:6px 0">
+      ${line(l.charge.title, 'font-size:12px;font-weight:bold;letter-spacing:1px')}
+      ${line(l.charge.amount, 'font-size:22px;font-weight:bold')}
+      ${line(l.charge.note, 'font-size:9px')}
+    </div>
+    ${l.handling ? `<div style="border:2px dashed #000;padding:3px 6px;margin:6px 0;text-align:center">${line(l.handling, 'font-size:10px;font-weight:bold;letter-spacing:0.4px')}</div>` : ''}
+    ${line(l.guideLabel, 'font-size:8px;font-weight:600;margin-top:6px')}
+    ${line(l.guideNumber, 'font-size:17px;font-weight:bold')}
+    ${line(l.qrCaptionLong, 'font-size:8px')}
+    ${line(l.footer, 'font-size:9px;margin-top:4px')}
   </div>`;
 }
 
 export function buildShipmentGuideHTML(payload: ShipmentGuidePrintPayload, paper: PaperSpec): string {
-  return wrapDocument(`Guia ${payload.trackingNumber || payload.shipmentId}`, paper, [buildShipmentGuideBody(payload)]);
+  return wrapDocument(`Guia ${resolveShipmentLabel(payload).guideNumber}`, paper, [buildShipmentGuideBody(payload, paper)]);
 }
 
 export function buildShipmentGuidesHTML(payloads: ShipmentGuidePrintPayload[], paper: PaperSpec): string {
-  const title = payloads.length === 1 ? `Guia ${payloads[0].trackingNumber || payloads[0].shipmentId}` : `Guias (${payloads.length})`;
-  return wrapDocument(title, paper, payloads.map(buildShipmentGuideBody));
+  const title = payloads.length === 1 ? `Guia ${resolveShipmentLabel(payloads[0]).guideNumber}` : `Guias (${payloads.length})`;
+  return wrapDocument(title, paper, payloads.map((p) => buildShipmentGuideBody(p, paper)));
 }
 
 function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): string {
+  const formatMoney = moneyFormatter(payload, { symbol: true });
   const dateObj = new Date(payload.createdAt);
   const dateStr = dateObj.toLocaleDateString('es-CO', payload.timezone ? { timeZone: payload.timezone } : {});
   const timeStr = dateObj.toLocaleTimeString('es-CO', { ...(payload.timezone ? { timeZone: payload.timezone } : {}), hour: '2-digit', minute: '2-digit', hour12: false });
-  const itemCount = payload.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsText = itemsSummary(payload.items, payload.locale);
 
   const businessFiscal = payload.businessFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
   const customerFiscal = payload.customerFiscalResponsibilities?.map(translateFiscal).join(', ') || '';
@@ -671,16 +635,21 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
     const discLine = item.discountAmount && item.discountAmount > 0
       ? `<div class="item-detail">Desc: -${formatMoney(item.discountAmount)}</div>`
       : '';
+    // Nota para el cliente (texto libre del cajero): se escapa.
+    const noteLine = item.note
+      ? `<div class="item-detail item-note">&raquo; ${item.note.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)}</div>`
+      : '';
 
     return `
     <div class="item">
       <div class="item-line">
-        <span class="item-name">${item.quantity}x ${item.productName}</span>
+        <span class="item-name">${lineNamePrefix(item, payload.locale)}${item.productName}</span>
         <span class="item-total">${formatMoney(item.total)}</span>
       </div>
-      <div class="item-detail">${formatMoney(item.unitPrice)} c/u</div>
+      <div class="item-detail">${linePriceDetail(item, formatMoney, payload.locale)}</div>
       ${variantLine}
       ${modifierLine}
+      ${noteLine}
       ${taxLine}
       ${discLine}
     </div>`;
@@ -745,7 +714,7 @@ function buildElectronicInvoiceBody(payload: ElectronicInvoicePrintPayload): str
   <div class="meta">
     <div class="meta-row"><span class="meta-label">Factura No:</span><span class="meta-value">${payload.invoiceNumber}</span></div>
     <div class="meta-row"><span class="meta-label">Fecha:</span><span class="meta-value">${dateStr} ${timeStr}</span></div>
-    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${payload.items.length} (${itemCount} unidades)</span></div>
+    <div class="meta-row"><span class="meta-label">Items:</span><span class="meta-value">${itemsText}</span></div>
     ${payload.cashierName ? `<div class="meta-row"><span class="meta-label">Cajero:</span><span class="meta-value">${payload.cashierName}</span></div>` : ''}
     ${validationDateStr ? `<div class="meta-row"><span class="meta-label">Validacion DIAN:</span><span class="meta-value">${validationDateStr}</span></div>` : ''}
   </div>

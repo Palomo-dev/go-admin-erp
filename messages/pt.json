@@ -38976,7 +38976,7 @@
             "dialogo": "Diálogo"
           },
           "ayudaPagina": "Como hoje: o ícone leva a /auth (e a /mi-cuenta com sessão). Toda loja começa aqui.",
-          "ayudaOtros": "No celular, painel, janela e diálogo aparecem como folha inferior. Com sessão, o mesmo formato mostra o menu da conta.",
+          "ayudaOtros": "No celular o modo é mantido: o painel é uma gaveta lateral e o diálogo, um diálogo centralizado. Só a janela aparece como folha inferior. Com sessão, o mesmo formato mostra o menu da conta.",
           "notaPagina": "Com «Página» os textos são editados na página /auth. Escolha outro modo para ver título, botão, benefícios e «Depois de entrar».",
           "titulo": "Título",
           "boton": "Texto do botão",
@@ -39531,7 +39531,9 @@
         "texto": "Texto",
         "deLaTarjeta": "Do cartão",
         "ayudaFilaPropias": "Cada etiqueta própria tem seu canto e suas cores: edite-as abaixo, em «Etiquetas próprias».",
-        "ayudaCuales": "Uma etiqueta desligada no cartão (Estilo do cartão › Etiquetas) também não aparece aqui. As promoções aparecem sozinhas quando o produto está em uma promoção web vigente; as de um grupo de clientes, só para quem pertence ao grupo.",
+        "ayudaCuales": "Cada uma aparece só quando o produto a cumpre: «Novo» se foi criado há pouco, «Esgotado» sem unidades, «Unidades vendidas» com vendas na loja, «Preço por volume» com faixas. Uma etiqueta desligada no cartão (Estilo do cartão › Etiquetas) também não aparece aqui; «Frete grátis» aparece só se estiver ligada no cartão. As promoções aparecem sozinhas quando o produto está numa promoção web vigente; as de um grupo de clientes, só para quem pertence ao grupo.",
+        "ayudaPromoPropia": "Se uma etiqueta própria disser o mesmo que a promoção (p. ex. «2 X 1»), aparece uma só: a própria, com suas cores, e ao tocá-la junto ao título ela explica a promoção.",
+        "ayudaVistaPrevia": "Na pré-visualização, as que este produto não cumpre aparecem como amostra para você ver o estilo. Na loja só aparecem quando o produto as cumpre.",
         "estilo": "Estilo",
         "forma": "Forma",
         "formas": {
@@ -39539,8 +39541,10 @@
           "pill": "Pílula",
           "rounded": "Arredondada",
           "semi": "Semi",
-          "square": "Quadrada"
+          "square": "Quadrada",
+          "circle": "Círculo"
         },
+        "ayudaCirculo": "Círculo de tamanho fixo para textos curtos como «-83 %», «2x1» ou «Novo». Se o texto não couber (mais de 6 caracteres, p. ex. «776 vendidos»), essa etiqueta aparece como pílula.",
         "relleno": "Preenchimento",
         "rellenos": {
           "tarjeta": "Do cartão",
@@ -39650,6 +39654,204 @@
           "mostrarDe": "Mostrar {nombre}",
           "origen": "As contas vêm de Site › SEO e redes.",
           "editarCuentas": "Editar contas"
+        }
+      },
+      "aparienciaBuscador": {
+        "abrir": "Aparência da busca",
+        "abrirAyuda": "Bordas, cantos, sombra, interior, ícone, botão, categorias e lista suspensa · Modelo: {plantilla}",
+        "titulo": "Busca › Aparência",
+        "migas": "Cabeçalho › Design › Busca · muda em todas as páginas",
+        "volver": "Voltar ao Cabeçalho",
+        "ayudaHoy": "Buscar produtos...",
+        "propio": "Personalizado",
+        "colorPropio": "Cor personalizada",
+        "colorMarca": "Cor da marca",
+        "hoy": "Atual",
+        "hoyValor": "{valor} (atual)",
+        "cancelar": "Cancelar",
+        "previa": {
+          "titulo": "Pré-visualização ao vivo",
+          "estados": "Estado da pré-visualização",
+          "ayuda": "A loja real continua aparecendo na tela; esta miniatura mostra os estados sem sair do painel.",
+          "textoEjemplo": "café",
+          "estado": {
+            "normal": "Normal",
+            "hover": "Passar o cursor",
+            "foco": "Em foco",
+            "texto": "Com texto"
+          }
+        },
+        "dispositivo": {
+          "computador": "Computador",
+          "celular": "Celular"
+        },
+        "editando": "Editando",
+        "editandoAyuda": "Só aparece com «igual ao do computador» desligado. Celular vazio = cópia do computador.",
+        "celularCopia": "O celular usa a aparência do computador. Mude algo aqui para que ele tenha a sua.",
+        "formaOculta": "A busca deste dispositivo está oculta: a aparência é salva, mas só aparece quando você escolher outra forma.",
+        "plantillas": {
+          "titulo": "Modelos de busca",
+          "ayuda": "Preenchem todos os ajustes abaixo; depois você muda o que quiser e fica «Personalizado (a partir de …)».",
+          "todayDefecto": "Atual (padrão)",
+          "today": "Atual",
+          "minimal": "Minimal",
+          "pill_button": "Pílula com botão",
+          "categories": "Com categorias",
+          "floating": "Sombra flutuante",
+          "thick": "Borda grossa",
+          "dark": "Escuro",
+          "tint": "Tom da marca",
+          "inset": "Rebaixado",
+          "personalizadoSin": "Personalizado",
+          "personalizadoDesde": "Personalizado (a partir de «{plantilla}»)",
+          "confirmarTitulo": "Voltar ao modelo?",
+          "confirmarTexto": "Voltar a «{plantilla}» desfaz as mudanças que você fez depois de aplicá-lo.",
+          "confirmarBoton": "Voltar ao modelo"
+        },
+        "tamano": {
+          "titulo": "Tamanho",
+          "alto": "Altura",
+          "altoCelular": "No celular a altura mínima é 44 px (tamanho do dedo).",
+          "altoPropio": "Altura personalizada em px",
+          "ancho": "Largura",
+          "automatico": "Automática",
+          "lleno": "Cheia",
+          "anchoMaximo": "Largura máxima",
+          "sinTope": "Sem limite",
+          "anchoMaximoAyuda": "Entre {min} e {max} px. Vazio = a do cabeçalho.",
+          "alineacion": "Alinhamento na linha",
+          "izquierda": "Esquerda",
+          "centro": "Centro",
+          "derecha": "Direita"
+        },
+        "bordes": {
+          "titulo": "Bordas",
+          "grosor": "Espessura",
+          "color": "Cor",
+          "colorTema": "Do tema (cinza da borda)",
+          "estilo": "Estilo",
+          "completo": "Completa",
+          "soloAbajo": "Só embaixo",
+          "punteado": "Tracejada",
+          "alEnfocar": "Borda ao focar",
+          "alEnfocarHoy": "Cor da marca (atual)",
+          "igualNormal": "Igual à normal"
+        },
+        "esquinas": {
+          "titulo": "Cantos",
+          "forma": "Forma",
+          "square": "Retos",
+          "soft": "Suaves",
+          "rounded": "Arredondados",
+          "pill": "Pílula",
+          "radio": "Raio",
+          "radioAyuda": "Ajuste em px (0–{max}); a forma escolhida vira «Personalizado» se você mexer."
+        },
+        "sombra": {
+          "titulo": "Sombra",
+          "normal": "Sombra",
+          "ayuda": "Cinco sombras fixas, sem sombra livre.",
+          "alEnfocar": "Sombra ao focar",
+          "igual": "Igual à normal (atual)",
+          "unNivelMas": "Um nível a mais",
+          "none": "Nenhuma",
+          "sm": "Suave",
+          "md": "Média",
+          "lg": "Forte",
+          "inner": "Interna"
+        },
+        "interior": {
+          "titulo": "Interior",
+          "fondo": "Fundo",
+          "blanco": "Branco",
+          "delTema": "Do tema (fundo)",
+          "transparente": "Transparente",
+          "texto": "Cor do texto",
+          "ayuda": "Texto de ajuda (placeholder)",
+          "ayudaNota": "Vazio = «Buscar produtos...». Máximo de {max} caracteres.",
+          "ayudaColor": "Cor do texto de ajuda",
+          "fuente": "Fonte",
+          "fuenteTema": "A do tema (textos)",
+          "fuenteTitulos": "A dos títulos"
+        },
+        "contraste": {
+          "texto": "O texto está difícil de ler ({razon})",
+          "ayuda": "O texto de ajuda está difícil de ler ({razon})",
+          "boton": "O ícone ou o texto do botão está difícil de ler ({razon})",
+          "necesita": "Precisa de {minimo}:1 sobre este fundo. Sugestão: {sugerido}.",
+          "usar": "Usar sugestão",
+          "dejar": "Deixar assim",
+          "nota": "É um aviso, não um bloqueio: você decide. Verificados: texto/fundo, ajuda/fundo e botão (ícone/fundo)."
+        },
+        "icono": {
+          "titulo": "Ícone de busca",
+          "dibujo": "O desenho da lupa é um só para toda a loja.",
+          "irIconos": "Escolher em Ícones",
+          "posicion": "Posição",
+          "izquierda": "Esquerda (atual)",
+          "derecha": "Direita",
+          "sinIcono": "Sem ícone",
+          "color": "Cor",
+          "gris": "Cinza (atual)",
+          "colorTexto": "Cor do texto",
+          "tamano": "Tamanho"
+        },
+        "boton": {
+          "titulo": "Botão de buscar",
+          "tipo": "Botão",
+          "none": "Sem botão",
+          "icon": "Ícone",
+          "text": "Texto «Buscar»",
+          "icon_text": "Ícone + texto",
+          "celular": "No celular o botão fica sempre colado e só com ícone, para não ocupar largura.",
+          "texto": "Texto do botão",
+          "textoHoy": "Buscar",
+          "fondo": "Fundo do botão",
+          "primario": "Principal da marca (atual)",
+          "acento": "Destaque",
+          "iconoTexto": "Ícone e texto do botão",
+          "automatico": "Automático (legível)",
+          "blanco": "Branco",
+          "negro": "Preto",
+          "posicion": "Posição",
+          "pegado": "Colado, dentro da barra",
+          "separado": "Separado, ao lado",
+          "esquinas": "Cantos do botão",
+          "comoBarra": "Como a barra"
+        },
+        "categorias": {
+          "titulo": "Seletor de categorias «Todas»",
+          "ayuda": "Lista as categorias do menu. Hoje só a «Busca grande» tem.",
+          "mostrar": "Mostrar seletor de categorias",
+          "mostrarAyuda": "Automático: ligado só na Busca grande.",
+          "estilo": "Estilo",
+          "simple": "Texto simples (atual)",
+          "enCaja": "Em caixa",
+          "separador": "Linha divisória",
+          "texto": "Texto de «Todas»",
+          "textoHoy": "Todas",
+          "celular": "No celular ele se esconde se não couber (barra com menos de 360 px)."
+        },
+        "anillo": {
+          "titulo": "Anel de foco",
+          "nota": "Sempre visível: é o que vê quem navega pelo teclado. Não pode ser desligado; só se escolhe a cor.",
+          "color": "Cor",
+          "hoy": "Cor da marca, 40% (atual)"
+        },
+        "desplegable": {
+          "titulo": "Lista de sugestões",
+          "esquinas": "Cantos",
+          "sombra": "Sombra",
+          "imagenes": "Mostrar imagens",
+          "precios": "Mostrar preços",
+          "populares": "Buscas populares: são editadas em Design › Busca."
+        },
+        "restablecer": {
+          "boton": "Restaurar busca",
+          "ayuda": "Volta ao visual atual: apaga a aparência salva (computador e celular). Pede confirmação.",
+          "titulo": "Restaurar a busca?",
+          "texto": "Volta à aparência atual no computador e no celular. A forma, o interruptor e as buscas populares não mudam.",
+          "confirmar": "Restaurar"
         }
       }
     },
@@ -41681,6 +41883,12 @@
       "migracion_pendiente": "Esta ação estará disponível quando as funções próprias forem ativadas na organização.",
       "error_red": "Sem conexão com o servidor. Tente novamente.",
       "error_interno": "Algo falhou ao salvar. Tente novamente."
+    },
+    "permisosCatalogo": {
+      "logistica_entregar_oficina": {
+        "nombre": "Registrar entregas no escritório",
+        "descripcion": "Registrar a entrega de um envio sem ser o entregador atribuído: retirada no balcão, guichê ou «Cobrar e entregar» no caixa."
+      }
     }
   },
   "pedidoWeb": {
@@ -67346,7 +67554,18 @@
         "pideCodigo": "Peça ao cliente o código de entrega de 4 dígitos.",
         "llevas": "O que você leva ({n})",
         "envio": "Frete",
-        "pasos": "Passos"
+        "pasos": "Passos",
+        "avisoIniciar": "Quando sair para este endereço, toque em «Iniciar rota»: avisamos o cliente por WhatsApp e e-mail e enviamos o código de entrega.",
+        "avisoIniciarSinCodigo": "Quando sair para este endereço, toque em «Iniciar rota»: avisamos o cliente que você está a caminho.",
+        "avisoEnCamino": "Avisamos o cliente que você está a caminho e enviamos o código de entrega.",
+        "avisoEnCaminoSinCodigo": "Avisamos o cliente que você está a caminho.",
+        "despuesDeIniciar": "Depois de «Iniciar rota» a parada fica «A caminho» e aparecem «Entregar» e «Não foi possível entregar».",
+        "totalPedido": "Total do pedido",
+        "prueba": {
+          "titulo": "Comprovante de entrega",
+          "conCodigo": "Na entrega pedimos o código do cliente (obrigatório no pagamento na entrega), quem recebeu e, se quiser, uma foto do pacote entregue.",
+          "sinCodigo": "Na entrega pedimos uma foto ou a assinatura de quem recebe e quem recebeu."
+        }
       },
       "origen": {
         "tienda": "Loja online",
@@ -67354,21 +67573,21 @@
         "otro": "Entrega"
       },
       "pasos": {
-        "recogido": "Retirei o pedido",
-        "en_camino": "Estou a caminho",
+        "recogido": "Retirei o pacote",
+        "en_camino": "Iniciar rota · a caminho",
         "entregado": "Entregue",
         "hechoSr": "feito",
         "actualSr": "passo atual",
         "pendienteSr": "pendente",
         "hecho": {
-          "picked": "Pedido retirado",
+          "picked": "Pacote retirado",
           "out_for_delivery": "Você está a caminho: avisamos o cliente"
         },
         "boton": {
-          "recoger": "Retirei o pedido",
-          "en_camino": "Estou a caminho",
-          "reintentar": "Tentar de novo: estou a caminho",
-          "entregar": "Entregue",
+          "recoger": "Retirei o pacote",
+          "en_camino": "Iniciar rota",
+          "reintentar": "Tentar de novo: iniciar rota",
+          "entregar": "Entregar",
           "noEntregado": "Não foi possível entregar"
         }
       },
@@ -67388,7 +67607,9 @@
         "COBRO_REQUERIDO": "Registre a cobrança na entrega.",
         "MOTIVO_INVALIDO": "Escolha o que aconteceu.",
         "ESTADO_SIN_NOVEDAD": "Esta entrega não aceita ocorrência no status atual.",
-        "ENVIO_AJENO": "Este envio não está mais atribuído a você."
+        "ENVIO_AJENO": "Este envio não está mais atribuído a você.",
+        "SIN_PERMISO_ENTREGA": "Este envio não está atribuído a você e você não tem permissão para entregá-lo.",
+        "ENTREGA_SOLO_POR_REGISTRO": "A entrega é registrada em «Entregar»."
       },
       "entregar": {
         "titulo": "Entregar {numero}",
@@ -67526,7 +67747,7 @@
         "faltaNota": "Escreva o que aconteceu.",
         "foto": {
           "titulo": "Foto de evidência",
-          "ayuda": "A localização é salva automaticamente"
+          "ayuda": "Até 3 fotos · a localização é salva"
         },
         "yAhora": "E agora?",
         "plan": {
@@ -67540,7 +67761,8 @@
           "devolver": "O pacote volta à filial: entregue-o ao encerrar o dia."
         },
         "guardar": "Salvar e seguir a rota",
-        "hecho": "Ocorrência registrada"
+        "hecho": "Ocorrência registrada",
+        "notaAyuda": "Até 300 caracteres. Obrigatória se escolher «Outro»."
       },
       "finJornada": {
         "titulo": "Fim do dia",
@@ -67566,11 +67788,319 @@
         "paqueteDevolver": "Pacote a devolver",
         "enviado": {
           "titulo": "Resumo enviado",
-          "descripcion": "Seu dia foi encerrado. Entregue o dinheiro no caixa da filial: ele é recebido em Logística › Acertos."
+          "descripcion": "O escritório recebe linha por linha e fecha o acerto. O que não foi cobrado hoje continua na sua rota de amanhã.",
+          "cabecera": "Dia encerrado",
+          "tituloHora": "Resumo enviado · {hora}",
+          "fueraDeTurno": "Você ficou fora de turno. Obrigado pela rota de hoje.",
+          "entregaloEn": "Entregue a quem recebe o dinheiro em {sede}.",
+          "entregalo": "Entregue a quem recebe o dinheiro na filial.",
+          "tuCuadre": "Seu acerto de hoje",
+          "estadosCuadre": {
+            "por_recibir": "A receber",
+            "recibiendo": "Recebendo",
+            "cuadrado": "Acertado",
+            "con_diferencia": "Com diferença"
+          },
+          "pasos": {
+            "enviado": "Resumo enviado",
+            "recibido": "Dinheiro recebido na filial",
+            "cerrado": "Acerto fechado"
+          },
+          "volver": "Voltar a Minhas entregas"
         },
         "notaCuadre": "Quem recebe o dinheiro o vê em Logística › Acertos e o coloca no caixa aberto da filial.",
         "enviar": "Enviar resumo para o acerto",
         "errorEnviar": "Não foi possível encerrar o dia. Tente de novo."
+      },
+      "actualizado": "atualizado {hora}",
+      "sinConexion": {
+        "franja": "Sem conexão · você vê a rota das {hora}. Para entregar você precisa de sinal.",
+        "franjaSinHora": "Sem conexão. Para entregar você precisa de sinal.",
+        "pausa": "Sem sinal não é possível registrar entregas, cobranças nem ocorrências: o app ainda não as guarda para enviar depois. Ligar e Como chegar funcionam. Se o cliente estiver esperando, procure sinal ou ligue para a loja.",
+        "insignia": "Sem sinal"
+      },
+      "sinCodigo": {
+        "titulo": "O cliente não tem o código?",
+        "opciones": {
+          "buscar": {
+            "titulo": "Peça que procure no WhatsApp ou e-mail",
+            "descripcion": "Chegou com o aviso «Seu pedido está a caminho». Também está no link de rastreio."
+          },
+          "tienda": {
+            "titulo": "Ligue para a loja",
+            "descripcion": "Um administrador pode reiniciar o código no detalhe do envio."
+          },
+          "novedad": {
+            "titulo": "Não foi possível entregar",
+            "descripcion": "Se não aparecer, registre a ocorrência e siga a rota. O pacote volta com você."
+          }
+        },
+        "candado": "Com {max} erros o código é bloqueado e só um administrador pode reiniciá-lo. Não há como pular o código no pagamento na entrega.",
+        "llamarTienda": "Ligar para a loja",
+        "seguir": "Continuar tentando"
+      },
+      "confirmada": {
+        "titulo": "Entregue",
+        "subtitulo": "{numero} · parada {n} de {total}",
+        "entregadoA": "Entregue a {nombre}",
+        "codigoVerificado": "código verificado",
+        "dinero": {
+          "titulo": "Dinheiro desta entrega",
+          "cobrado": {
+            "cash": "Cobrado em dinheiro",
+            "card": "Cobrado na maquininha",
+            "transfer": "Cobrado por transferência"
+          },
+          "recibido": "Recebido",
+          "cambio": "Troco entregue",
+          "enMano": "Em mãos agora"
+        },
+        "siguiente": "Próxima parada",
+        "sinMas": "Você não tem mais paradas pendentes. Ao terminar, feche o acerto do dia.",
+        "iniciarRuta": "Iniciar rota para a parada {n}",
+        "irAParada": "Ir para a parada {n}",
+        "volverRuta": "Voltar à minha rota"
+      },
+      "sinPerfil": {
+        "subtitulo": "A rota do dia de quem entrega",
+        "cifras": "Números de expedição de hoje",
+        "kpis": {
+          "porDespachar": "A despachar",
+          "sinDomiciliario": "{n} sem entregador atribuído",
+          "todosAsignados": "Todos têm entregador",
+          "enRuta": "Em rota",
+          "enCalle": "{n, plural, =0 {Nenhum entregador na rua} one {# entregador na rua} other {# entregadores na rua}}",
+          "novedades": "Ocorrências",
+          "porReprogramar": "{n} para reprogramar hoje",
+          "sinNovedades": "Nada para reprogramar hoje",
+          "porCuadrar": "A acertar",
+          "domiciliariosConEfectivo": "{n, plural, =0 {Sem dinheiro a receber} one {# entregador com dinheiro} other {# entregadores com dinheiro}}"
+        },
+        "registrarme": "Registrar-me como entregador",
+        "irADomiciliarios": "Ir para Entregadores",
+        "irAlInicio": "Ir para o início",
+        "copiarCorreo": "Copiar meu e-mail",
+        "correoCopiado": "E-mail copiado",
+        "noSeCopio": "Não foi possível copiar o e-mail",
+        "b1": {
+          "titulo": "Sua conta não tem perfil de entregador",
+          "tituloSede": "Sua conta não tem perfil de entregador em {sede}",
+          "descripcion": "Minhas entregas é a rota do dia de quem entrega: as paradas em ordem, entregar com o código do cliente, cobrar o pagamento na entrega e fazer o acerto no fim. Cada entregador a vê com a própria conta, no celular ou no computador.",
+          "comoLlega": "Como alguém chega aqui?",
+          "pasos": {
+            "1": "Quem despacha o registra em Logística › Entregadores e vincula a conta GO Admin dele (o e-mail).",
+            "2": "Em A despachar atribui envios; a placa do veículo fica salva em cada envio.",
+            "3": "O entregador entra com a conta e vê aqui a rota de hoje, em ordem."
+          },
+          "notaRegistrar": "«Registrar-me» abre o mesmo diálogo de Entregadores com sua conta já vinculada: documento, telefone e veículo (SOAT, inspeção técnica e habilitação se for moto ou carro).",
+          "loQueHace": "O que um entregador faz nesta página"
+        },
+        "b2": {
+          "titulo": "Esta página é para entregadores",
+          "descripcion": "Aqui cada entregador vê os envios do dia em ordem de rota, entrega com o código do cliente, cobra o pagamento na entrega e faz o acerto no fim. Sua conta ainda não está registrada como entregador.",
+          "cuandoTeRegistren": "Quando registrarem você, aqui poderá",
+          "quienRegistra": "Quem registra você?",
+          "quienRegistraTexto": "Quem despacha na sua filial ou um administrador, em Logística › Entregadores. Peça que use seu e-mail do GO Admin para vincular sua conta:",
+          "yaRegistrado": "Já registraram você e continua vendo isto? Talvez tenham registrado em outra filial ou sem vincular sua conta: peça a quem despacha que confira sua ficha."
+        },
+        "funciones": {
+          "ruta": {
+            "titulo": "Ver a rota do dia",
+            "descripcion": "Envios em ordem de parada, com endereço, horário prometido e o que cobrar."
+          },
+          "codigo": {
+            "titulo": "Entregar com o código do cliente",
+            "descripcion": "O cliente recebe por WhatsApp e e-mail quando o pedido sai a caminho."
+          },
+          "cobrar": {
+            "titulo": "Cobrar o pagamento na entrega",
+            "descripcion": "Dinheiro com troco, maquininha ou transferência; sempre o total."
+          },
+          "cuadrar": {
+            "titulo": "Fazer o acerto no fim",
+            "descripcion": "Envie o resumo e entregue o dinheiro no caixa da filial."
+          }
+        },
+        "atajos": {
+          "titulo": "Atalhos do seu cargo",
+          "ayuda": "O que seu menu mostra, a um toque."
+        },
+        "ejemplo": {
+          "titulo": "Assim é a rota de um entregador",
+          "etiqueta": "Exemplo",
+          "descripcion": "Cada entregador vê só os próprios envios do dia, no celular ou no computador.",
+          "guia": "ENV-000{n}",
+          "direccion": "Endereço · bairro"
+        },
+        "verRutaDe": "Ver a rota de um entregador"
+      },
+      "mapa": {
+        "ver": "Ver mapa da rota",
+        "titulo": "Rota de hoje",
+        "subtitulo": "Parada {n} de {total} · {pendientes, plural, one {# pendente} other {# pendentes}}",
+        "etiqueta": "Mapa da rota de hoje",
+        "etiquetaParada": "Mapa da parada {numero}",
+        "abrirGoogle": "Abrir a rota no Google Maps",
+        "sinCoordenadas": "{n, plural, one {# parada não tem coordenadas: o Google Maps a localiza pelo endereço escrito.} other {# paradas não têm coordenadas: o Google Maps as localiza pelo endereço escrito.}}",
+        "sinPuntos": {
+          "titulo": "As paradas não têm coordenadas",
+          "descripcion": "Abra a rota no Google Maps: ele as localiza pelo endereço escrito."
+        }
+      },
+      "vehiculo": {
+        "titulo": "Meu veículo e documentos",
+        "vigencia": {
+          "vencido": "Vencido",
+          "enDias": "{n, plural, =0 {Vence hoje} one {Em # dia} other {Em # dias}}",
+          "vigente": "Vigente",
+          "sin_dato": "Sem data"
+        },
+        "documentos": {
+          "soat": "SOAT",
+          "tecnomecanica": "Inspeção técnica",
+          "licencia": "Carteira de habilitação",
+          "licenciaCategoria": "Carteira de habilitação {categoria}"
+        },
+        "sinFecha": "Sem data registrada",
+        "vencio": "Venceu em {fecha}",
+        "vigenteHasta": "Vigente até {fecha}",
+        "vence": "Vence em {fecha}",
+        "dueno": {
+          "company": "da empresa",
+          "driver": "do entregador",
+          "third_party": "de um terceiro"
+        },
+        "capacidad": "{kg} kg",
+        "documentoVencido": "Documento vencido",
+        "porDefecto": "Padrão",
+        "filaTitulo": "Meu veículo hoje · {placa}",
+        "filaVencido": "{documento} vencido",
+        "filaPorVencer": "{documento} vence {n, plural, =0 {hoje} one {em # dia} other {em # dias}}",
+        "filaAlDia": "documentos em dia",
+        "placaCongelada": "{n, plural, one {Esta placa ficou salva no seu envio de hoje ao ser atribuído: se trocar de veículo, o envio já atribuído não muda.} other {Esta placa ficou salva nos seus # envios de hoje ao serem atribuídos: se trocar de veículo, os envios já atribuídos não mudam.}}",
+        "sinVehiculo": {
+          "titulo": "Sem veículo registrado",
+          "descripcion": "Hoje você não tem veículo atribuído. Se usa moto ou carro, peça a quem despacha que o registre na sua ficha."
+        },
+        "documentosDelVehiculo": "Documentos do veículo",
+        "tusDocumentos": "Seus documentos",
+        "avisoVencido": "{documento}: venceu em {fecha}. Se sua filial tem o bloqueio por documentos ativo, o escritório não poderá atribuir envios até atualizá-lo na sua ficha. Só um supervisor de expedição pode autorizar uma exceção com o PIN dele.",
+        "avisoPorVencer": "{documento}: renove antes de {fecha}. Se vencer e sua filial tiver o bloqueio por documentos ativo, o escritório não poderá atribuir envios até atualizá-lo na sua ficha. Só um supervisor de expedição pode autorizar uma exceção com o PIN dele.",
+        "noEscribesPin": "Você não digita o PIN: o supervisor o digita na conta dele ao atribuir ou reatribuir. Se ninguém autorizar, você verá «Sem envios pendentes».",
+        "cambiaste": "Trocou de veículo ou renovou um documento? Avise quem despacha: ele atualiza em Logística › Entregadores.",
+        "excepcion": {
+          "titulo": "Hoje você foi atribuído com exceção",
+          "autorizo": "Autorizou",
+          "hora": "Hora",
+          "conPin": "{hora} · com o PIN dele",
+          "motivo": "Motivo",
+          "envios": "Envios",
+          "enviosHoy": "{n, plural, one {# envio de hoje} other {# envios de hoje}}",
+          "nota": "Fica registrado no histórico de cada envio. Enquanto não renovar o documento, cada nova atribuição precisa de outra exceção."
+        }
+      },
+      "escritorio": {
+        "migaLogistica": "Logística",
+        "vehiculoCorto": "veículo {placa}",
+        "rutaDeHoy": "Rota de hoje",
+        "paradaDe": "Parada {n} de {total}",
+        "entregadoMin": "entregue {hora}",
+        "notaMapa": "As paradas sem coordenadas não aparecem no mapa: o Google Maps as localiza pelo endereço escrito.",
+        "miVehiculo": "Meu veículo hoje",
+        "dineroDeHoy": "Dinheiro de hoje",
+        "notaDinero": "Ao terminar, você entrega o dinheiro no caixa e o acerto fica em Logística › Acertos. O que não foi cobrado hoje continua na rota de amanhã.",
+        "notaTabla": "A ordem vem da rota do dia: primeiro o que está a caminho, depois pelo horário prometido. «Entregar» pede o código que o cliente recebeu; a ocorrência só é registrada quando o pacote já saiu.",
+        "verVehiculo": "Ver meu veículo e documentos",
+        "cuadrePendiente": "Acerto pendente",
+        "buscar": "Buscar envio ou endereço…",
+        "sinResultados": "Nenhuma parada corresponde à busca",
+        "columnas": {
+          "parada": "Parada · envio",
+          "direccion": "Endereço e município",
+          "ventana": "Horário prometido",
+          "contraentrega": "Pagamento na entrega",
+          "acciones": "Ações"
+        },
+        "entregadoA": "Entregue {hora}",
+        "reprogramado": "Reprogramado · {fecha}",
+        "porCobrar": "A cobrar",
+        "seCobraDespues": "Cobra-se na nova tentativa",
+        "filtros": {
+          "todos": "Todos · {n}",
+          "pendientes": "Pendentes · {n}",
+          "entregados": "Entregues · {n}",
+          "novedades": "Ocorrências · {n}"
+        },
+        "kpis": {
+          "asignados": "Atribuídos hoje",
+          "enCamino": "A caminho",
+          "nadieEnCamino": "Nenhum a caminho",
+          "entregados": "Entregues",
+          "aTiempo": "{n} de {total} no horário",
+          "porCobrar": "Pagamento na entrega a cobrar",
+          "enviosHoy": "{n, plural, one {# envio de hoje} other {# envios de hoje}}",
+          "nadaPorCobrar": "Nada a cobrar",
+          "cuadre": "Acerto pendente",
+          "enManoDetalle": "Em mãos · acerta-se ao terminar"
+        },
+        "acciones": {
+          "novedad": "Ocorrência",
+          "verEntrega": "Ver entrega",
+          "verNovedad": "Ver ocorrência"
+        },
+        "dinero": {
+          "enMano": "Dinheiro em mãos",
+          "porCobrar": "{n, plural, one {A cobrar hoje (# envio)} other {A cobrar hoje (# envios)}}",
+          "otrosMedios": "Maquininha e transferências",
+          "ultimoCuadre": "Último acerto",
+          "estado": {
+            "cuadrado": "Acertado · sem diferença",
+            "con_diferencia": "Fechado com diferença"
+          }
+        }
+      },
+      "supervisor": {
+        "viendo": "Vendo a rota de {nombre}",
+        "subtitulo": "A rota do dia de cada entregador",
+        "verRutaDe": "Ver a rota de",
+        "elige": "Escolha um entregador",
+        "reasignar": "Reatribuir",
+        "noReasignable": "O entregador já está com o pacote: registre uma ocorrência para que volte à filial e depois reatribua.",
+        "sinPermiso": {
+          "titulo": "Só quem despacha vê a rota de outro entregador",
+          "descripcion": "Ver a rota de um entregador, reatribuir e registrar ocorrências é feito por quem tem permissão para gerenciar a Logística."
+        },
+        "sinDomiciliarios": {
+          "titulo": "Ainda não há entregadores ativos",
+          "descripcion": "Registre-os em Logística › Entregadores para ver a rota deles aqui."
+        },
+        "irDomiciliarios": "Ir para Entregadores",
+        "irPorDespachar": "Ir para A despachar",
+        "llamarA": "Ligar para {nombre}",
+        "chip": {
+          "avance": "{n} de {total}",
+          "sinEnvios": "sem envios",
+          "envios": "{n, plural, one {# envio} other {# envios}}",
+          "vencido": "{documento} vencido",
+          "porVencer": "{documento} vence {n, plural, =0 {hoje} one {em # dia} other {em # dias}}",
+          "estados": {
+            "en_ruta": "em rota",
+            "libre": "livre",
+            "fuera_de_turno": "fora de turno",
+            "inactivo": "inativo"
+          }
+        },
+        "nota": "Como supervisor você pode reatribuir paradas e registrar ocorrências. Entregar com o código e cobrar o pagamento na entrega só o entregador faz, na própria sessão.",
+        "notaCelular": "Você está vendo a rota de {nombre}. Só o entregador entrega e cobra; você pode reatribuir uma parada ou registrar uma ocorrência.",
+        "elDomiciliario": "um entregador",
+        "vehiculoDe": "Veículo de {nombre} hoje",
+        "dineroDe": "Dinheiro de {nombre} hoje",
+        "notaDinero": "Quando {nombre} encerrar o dia, você recebe o dinheiro em Logística › Acertos. O que não foi cobrado hoje continua na rota de amanhã.",
+        "notaTabla": "O que o supervisor faz fica na linha do tempo do envio com o nome dele. «Reatribuir» abre a folha «Atribuir entregador» com o veículo pré-selecionado e a revisão de documentos da Fase 1b.",
+        "verFicha": "Ver {nombre} em Entregadores",
+        "verMapa": "Ver mapa da rota dele",
+        "ocultarMapa": "Ocultar o mapa",
+        "verEnvio": "Ver o envio"
       }
     },
     "domiciliario": {
@@ -68778,7 +69308,17 @@
         "DIRECCION_REQUERIDA": "Falta o endereço de entrega.",
         "ERROR": "Não foi possível concluir. Tente novamente.",
         "DOMICILIARIO_NO_COBRA": "Esse entregador não cobra na entrega e o envio tem valor a cobrar.",
-        "ENVIO_AJENO": "Esse envio é de outro entregador."
+        "ENVIO_AJENO": "Esse envio é de outro entregador.",
+        "SIN_PERMISO_ENTREGA": "Só entrega o entregador atribuído ou quem tem a permissão «Registrar entregas no escritório».",
+        "ENTREGA_SOLO_POR_REGISTRO": "A entrega é registrada com «Marcar entregue» (comprovante, código e cobrança).",
+        "PEDIDO_CON_ENVIO_ACTIVO": "O pedido tem um envio ativo: entregue-o com o registro de entrega da Logística.",
+        "NO_OPEN_CASH_SESSION": "Não há caixa aberto na filial. Abra o caixa para cobrar e entregar.",
+        "ORIGEN_NO_SOPORTADO": "Este envio não vem de um pedido online: entregue-o pela Logística.",
+        "METODO_INVALIDO": "Escolha a forma de pagamento.",
+        "PEDIDO_DE_PASARELA": "O pedido foi pago online: não é cobrado no caixa.",
+        "PEDIDO_SIN_CONFIRMAR": "Confirme o pedido antes de cobrá-lo.",
+        "FACTURA_REQUERIDA": "Não foi possível montar a fatura do pedido. Tente de novo.",
+        "SESION_REQUERIDA": "Sua sessão expirou. Entre de novo."
       },
       "chips": {
         "intento": "{n}ª tentativa",
@@ -68953,7 +69493,11 @@
           "titular": "Titular",
           "familiar": "Familiar",
           "porteria": "Portaria",
-          "otro": "Outra pessoa"
+          "otro": "Outra pessoa",
+          "customer": "Titular",
+          "family": "Familiar",
+          "doorman": "Portaria",
+          "other": "Outra pessoa"
         },
         "cobroTitulo": "Pagamento na entrega: receber {monto}",
         "codigo": "Código de entrega",
@@ -68979,6 +69523,18 @@
           "codigo": "O código tem 4 dígitos.",
           "metodo": "Escolha o meio de recebimento.",
           "monto": "Informe o valor recebido."
+        },
+        "caja": {
+          "titulo": "Cobrar e entregar",
+          "descripcion": "O comprovante de entrega, a cobrança no caixa e a fatura ficam registrados juntos.",
+          "confirmar": "Cobrar e entregar",
+          "cobroTitulo": "Cobrar {monto} no caixa",
+          "cobroNota": "Entra no caixa aberto da filial. Não vai para o acerto do entregador.",
+          "referencia": "Referência",
+          "referenciaAyuda": "Opcional: número da maquininha ou da transferência.",
+          "ok": "Pedido cobrado e entregue",
+          "factura": "Fatura {numero}",
+          "error": "Não foi possível cobrar e entregar"
         }
       },
       "novedad": {
@@ -69435,7 +69991,11 @@
           "confirmarTermica": "{count, plural, one {Imprimir # guia} other {Imprimir # guias}}",
           "confirmarPdf": "{count, plural, one {Abrir PDF de # guia} other {Abrir PDF de # guias}}",
           "confirmarA4": "{count, plural, one {Imprimir folha A4} other {Imprimir # folhas A4}}",
-          "cancelar": "Cancelar"
+          "cancelar": "Cancelar",
+          "fragil": "Frágil — manusear com cuidado",
+          "fragilAyuda": "Fica salvo no envio e a etiqueta {numero} leva o aviso «FRÁGIL».",
+          "fragilBloqueado": "Este envio já saiu: «Frágil» só muda enquanto está em preparação.",
+          "fragilError": "Não foi possível salvar «Frágil». Tente novamente."
         }
       },
       "form": {
@@ -69538,7 +70098,7 @@
           "pesoTotalAyuda": "Soma das linhas; pode ser corrigido ao pesar.",
           "valorDeclarado": "Valor declarado",
           "valorDeclaradoAyuda": "Base do seguro da transportadora.",
-          "fragil": "Frágil",
+          "fragil": "Frágil — manusear com cuidado",
           "fragilAyuda": "Marcado na etiqueta",
           "firma": "Pedir assinatura",
           "firmaAyuda": "Quem recebe assina na entrega",
@@ -69652,7 +70212,14 @@
         "cerrar": "Fechar",
         "sinTrabajoTitulo": "Não há guias para imprimir",
         "sinTrabajo": "Volte a Logística e escolha «Imprimir guia» novamente."
-      }
+      },
+      "manipulacion": "FRÁGIL · MANUSEAR COM CUIDADO · ESTE LADO PARA CIMA",
+      "entregaEncomienda": "Encomenda · retirar no escritório",
+      "indicacionesTerminal": "Retirar no escritório apresentando documento de identidade.",
+      "notaCobroTerminal": "Cobrar no escritório antes de entregar.",
+      "pieViaje": "Viagem {codigo}",
+      "pieViajeSalida": "Viagem {codigo}, sai {fecha}",
+      "vehiculoBus": "Ônibus {placa}"
     }
   },
   "transporte": {
@@ -72950,6 +73517,135 @@
       "titulo": "Adicionar empresa com NIT",
       "descripcion": "{persona} fica como contato da empresa.",
       "creada": "{empresa} ficou vinculada ao cliente."
+    }
+  },
+  "pedidoWebEntrega": {
+    "titulo": "Entrega",
+    "copiado": "Número de rastreio copiado",
+    "noCopiado": "Não foi possível copiar",
+    "cargando": "Carregando o envio…",
+    "indicacion": "Indicação: {texto}",
+    "envio": "Frete {monto}",
+    "envioPagado": "Frete {monto} · pago",
+    "sinGuia": "Sem etiqueta",
+    "whatsapp": "Olá, escrevo sobre o pedido {pedido}.",
+    "estados": {
+      "sin_envio": "Sem envio",
+      "recoger": "Pronto para retirar",
+      "recogerPreparando": "Para retirar",
+      "por_despachar": "A despachar",
+      "asignado": "Atribuído",
+      "en_camino": "A caminho",
+      "en_camino_transportadora": "A caminho (transportadora)",
+      "entregado": "Entregue",
+      "novedad": "Ocorrência",
+      "devuelto": "Devolvido",
+      "cancelado": "Cancelado"
+    },
+    "tipo": {
+      "recoger": "Retirada na loja",
+      "transportadora": "Transportadora",
+      "propio": "Entrega própria"
+    },
+    "cobro": {
+      "cobrar": "Cobrar na entrega",
+      "enCaja": "No caixa da filial",
+      "saldo": "Saldo = total {total} − sinal {anticipo}",
+      "contraentrega": "Pagamento na entrega: cobrado por quem entrega",
+      "cobrado": "Cobrado na entrega",
+      "cobradoNota": "Entra no acerto do entregador (Logística › Acertos)",
+      "pagado": "Pago · não cobrar",
+      "pagadoNota": "Nada é cobrado na porta"
+    },
+    "recoger": {
+      "listoDesde": "Pronto para retirar desde {hora}",
+      "preparando": "Sendo preparado para retirada",
+      "nota": "Sem etiqueta: entregue no balcão. Peça o número do pedido ({pedido}) e o nome de quem comprou."
+    },
+    "filas": {
+      "listo": "Pronto",
+      "listoAprox": "Pronto aprox.",
+      "asignado": "Atribuído",
+      "salio": "Saiu",
+      "entregadoTransportadora": "Entregue à transportadora",
+      "entregado": "Entregue",
+      "entregaAprox": "Entrega aprox."
+    },
+    "sinEnvio": {
+      "titulo": "Este pedido ainda não tem envio",
+      "nota": "É criado ao confirmar. Se não foi criado (pedido antigo ou erro), crie aqui: sai com a etiqueta DEL-WO-… e fica em «A despachar» na Logística.",
+      "error": "Não foi possível ler o envio deste pedido. Recarregue a página ou confira na Logística."
+    },
+    "acciones": {
+      "crearYAsignar": "Criar envio e atribuir entregador",
+      "asignar": "Atribuir",
+      "verGuia": "Ver etiqueta",
+      "imprimirGuia": "Imprimir etiqueta",
+      "verEnvio": "Ver envio",
+      "cambiar": "Trocar",
+      "verMapa": "Ver no mapa"
+    },
+    "guia": {
+      "titulo": "Número de rastreio",
+      "nuestra": "Nossa etiqueta (colada na caixa)",
+      "copiar": "Copiar número de rastreio",
+      "creada": "Criada {hora}",
+      "deTransportadora": "Rastreio {nombre}",
+      "deTransportadoraSinNombre": "Rastreio da transportadora",
+      "rastrearEn": "Rastrear em {nombre}",
+      "rastrear": "Rastrear na transportadora"
+    },
+    "entregado": {
+      "titulo": "Entregue {hora}",
+      "recibio": "Recebeu: {nombre}",
+      "codigo": "código de entrega verificado"
+    },
+    "novedad": {
+      "titulo": "Não foi possível entregar · tentativa {n}",
+      "desdeLogistica": "Reagendar ou devolver é feito na Logística."
+    },
+    "devuelto": {
+      "titulo": "Devolvido à filial",
+      "motivo": "Motivo: {motivo}",
+      "nota": "O pedido não é cancelado sozinho: decida se sai de novo ou se o dinheiro é devolvido."
+    },
+    "domiciliario": {
+      "rol": "Entregador",
+      "placa": "placa {placa}",
+      "llamar": "Ligar para {nombre}",
+      "whatsapp": "Escrever para {nombre} no WhatsApp",
+      "sinAsignar": "Sem atribuir"
+    },
+    "chips": {
+      "paquetes": "{count, plural, one {# volume} other {# volumes}}",
+      "peso": "{kg} kg",
+      "fragil": "Frágil"
+    },
+    "entregar": {
+      "bloqueado": "O envio ainda não pode ser entregue",
+      "bloqueadoNota": "Marque-o «Pronto para sair» ou atribua um entregador na Logística; o pedido e o envio são marcados como entregues juntos."
+    },
+    "historial": {
+      "listo": "Pronto · envio a despachar",
+      "guia": "Etiqueta {numero}",
+      "paquetes": "{count, plural, one {# volume} other {# volumes}}",
+      "asignado": "Entregador atribuído",
+      "entregadoTransportadora": "Entregue à transportadora",
+      "recogido": "Retirado pelo entregador",
+      "enTransito": "Em trânsito",
+      "enCaminoIntento": "A caminho · {n}ª tentativa",
+      "enReparto": "Saiu para entrega",
+      "enCamino": "A caminho",
+      "salioDe": "Saiu de {sede}",
+      "novedadMotivo": "Ocorrência · {motivo}",
+      "novedad": "Ocorrência · não foi possível entregar",
+      "entregado": "Entregue",
+      "recibio": "Recebeu: {nombre}",
+      "devuelto": "Devolvido à filial",
+      "cancelado": "Envio cancelado",
+      "aprox": "aprox. {hora}",
+      "transportadora": "Transportadora",
+      "logistica": "Logística"
     }
   }
 }

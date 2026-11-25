@@ -17,6 +17,7 @@ import type { CheckoutData, CobroVentaExistente, Sale } from '@/components/pos/t
 import { leerMembresiasVendidas, type MembresiaVendida } from '@/lib/pos/venta/membresias';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
 import { pagosConRedondeo } from '@/lib/pos/peso/cobroRedondeo';
+import { partesDesdeGuardado } from '@/lib/clientes/facturarA';
 
 export const POS_CHECKOUT_RPC = 'pos_checkout_v1';
 
@@ -131,7 +132,14 @@ export interface CheckoutEnvelope {
   organization_id: number;
   branch_id: number;
   user_id: string | null;
+  /** Adquiriente: la persona del carrito o, con «Facturar a», la empresa escogida (null = consumidor final). */
   customer_id: string | null;
+  /**
+   * «Facturar a» (migración 20261125200000): la persona del carrito como contacto (quien recibe)
+   * cuando la factura sale a una empresa ligada o a consumidor final. Ausente = como siempre.
+   * El servidor valida el vínculo y responde `empresa_no_ligada` (42501) si no.
+   */
+  contact_customer_id?: string;
   currency: string;
   tax_included: boolean;
   tax_breakdown: unknown;
@@ -240,6 +248,10 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     && checkout.commission_type !== 'none'
   );
   const mesa = input.mode === 'settle' && input.settle?.table_session_id ? input.settle : null;
+  // «Facturar a»: solo en una venta nueva (el cobro de una venta existente conserva su cliente).
+  const factura = input.mode === 'settle'
+    ? { customer_id: cart.customer_id ?? null, contact_customer_id: null }
+    : partesDesdeGuardado(cart.customer_id ?? null, cart.facturar_a);
   // Con líneas por peso o medida el cobro se redondea a la moneda y la línea
   // guarda el importe exacto: el faltante de redondeo (< media unidad) se suma
   // al último pago para que la venta no quede pendiente (cobroRedondeo.ts).
@@ -330,7 +342,8 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
     organization_id: input.organizationId,
     branch_id: input.branchId,
     user_id: input.userId,
-    customer_id: cart.customer_id ?? null,
+    customer_id: factura.customer_id,
+    ...(factura.contact_customer_id ? { contact_customer_id: factura.contact_customer_id } : {}),
     currency: input.currency,
     tax_included: checkout.tax_included || false,
     tax_breakdown: checkout.tax_breakdown ?? null,

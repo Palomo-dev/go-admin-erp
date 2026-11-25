@@ -2,6 +2,7 @@
 import type { FuenteLista, PrecioClienteFila } from '@/lib/listasPrecios/precioLista';
 import type { MembresiaVendida } from '@/lib/pos/venta/membresias';
 import type { Pesaje } from '@/lib/pos/peso/pesada';
+import type { FacturarAGuardado } from '@/lib/clientes/facturarA';
 
 export interface Category {
   id: number;
@@ -206,6 +207,12 @@ export interface Cart {
   price_list_cache?: { customer_id: string; filas: Record<string, PrecioClienteFila> } | null;
   /** «Usar precio normal» en esta venta (permiso pos.precios.cambiar_en_venta). */
   price_list_override?: boolean;
+  /**
+   * «Facturar a» del cobro (2026-11-25): a nombre de quién sale la factura cuando no es la persona
+   * del carrito (empresa ligada o consumidor final). `null` = como siempre. La lista de precios sale
+   * de la empresa escogida y el sobre lleva `contact_customer_id` (`partesDesdeGuardado`).
+   */
+  facturar_a?: FacturarAGuardado | null;
   organization_id: number;
   branch_id: number;
   customer_id?: string;

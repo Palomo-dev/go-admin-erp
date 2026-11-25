@@ -72823,5 +72823,56 @@
       "texto": "If you charge VAT (for example, collection fees), the DIAN expects your RUT to say 48 (VAT payer). Update the RUT and the tax profile. The invoice can still be issued.",
       "accion": "View tax profile"
     }
+  },
+  "clientesFacturarA": {
+    "titulo": "Bill to",
+    "cargando": "Loading who to bill…",
+    "sinNombre": "No name",
+    "clienteCarrito": "Cart customer: {nombre}",
+    "aviso": "This customer has companies: should the invoice go to one of them?",
+    "avisoAyuda": "If you leave it as is, the invoice goes to {persona}.",
+    "opciones": {
+      "consumidorFinal": "Final consumer",
+      "consumidorFinalSub": "222222222222 · no details",
+      "persona": "Individual (ID)",
+      "personaCorta": "Individual",
+      "personaSinDocumento": "No ID",
+      "empresa": "Company (tax ID)",
+      "empresaCorta": "Company",
+      "empresaSub": "{n, plural, one {# linked company} other {# linked companies}}"
+    },
+    "empresasDe": "Companies of {persona}",
+    "escogida": "selected",
+    "ningunaMarcada": "none selected by default",
+    "ultimaVez": "Last time: {empresa}",
+    "principal": "primary on the profile",
+    "iva": {
+      "48": "48 · VAT responsible",
+      "49": "49 · Not VAT responsible",
+      "sin": "VAT not set"
+    },
+    "ivaCorto": "VAT {codigo}",
+    "agregarEmpresa": "Add company with tax ID",
+    "resumen": {
+      "adquiriente": "Buyer · on the invoice",
+      "recibe": "Receives · contact",
+      "correo": "Invoice email: {correo}",
+      "sinCorreo": "No invoice email",
+      "cartera": "Receivables and withholdings in its name",
+      "noAdquiriente": "Not listed as buyer; their history stays on their profile"
+    },
+    "resumenCorto": {
+      "titulo": "Invoice in the name of",
+      "recibe": "received by {persona}"
+    },
+    "aNombreDe": "to {empresa}",
+    "errores": {
+      "empresaNoLigada": "The company is no longer linked to this customer or is not in your organization. Choose again who the invoice goes to."
+    },
+    "agregar": {
+      "titulo": "Add company with tax ID",
+      "descripcion": "{persona} becomes a contact of the company.",
+      "creada": "{empresa} is now linked to the customer."
+    }
   }
 }

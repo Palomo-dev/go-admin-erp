@@ -72833,5 +72833,56 @@
       "texto": "Se você cobra IVA (por exemplo, comissões de arrecadação), a DIAN espera que seu RUT diga 48 (contribuinte de IVA). Atualize o RUT e o perfil tributário. A fatura pode ser emitida mesmo assim.",
       "accion": "Ver perfil tributário"
     }
+  },
+  "clientesFacturarA": {
+    "titulo": "Faturar para",
+    "cargando": "Carregando para quem faturar…",
+    "sinNombre": "Sem nome",
+    "clienteCarrito": "Cliente do carrinho: {nombre}",
+    "aviso": "Este cliente tem empresas: a fatura vai para uma delas?",
+    "avisoAyuda": "Se você não mudar nada, a fatura sai para {persona}.",
+    "opciones": {
+      "consumidorFinal": "Consumidor final",
+      "consumidorFinalSub": "222222222222 · sem dados",
+      "persona": "Pessoa (documento)",
+      "personaCorta": "Pessoa",
+      "personaSinDocumento": "Sem documento",
+      "empresa": "Empresa (NIT)",
+      "empresaCorta": "Empresa",
+      "empresaSub": "{n, plural, one {# empresa vinculada} other {# empresas vinculadas}}"
+    },
+    "empresasDe": "Empresas de {persona}",
+    "escogida": "escolhida",
+    "ningunaMarcada": "nenhuma vem marcada",
+    "ultimaVez": "Da última vez: {empresa}",
+    "principal": "principal na ficha",
+    "iva": {
+      "48": "48 · Responsável pelo IVA",
+      "49": "49 · Não responsável pelo IVA",
+      "sin": "IVA não definido"
+    },
+    "ivaCorto": "IVA {codigo}",
+    "agregarEmpresa": "Adicionar empresa com NIT",
+    "resumen": {
+      "adquiriente": "Adquirente · vai na fatura",
+      "recibe": "Recebe · contato",
+      "correo": "E-mail da fatura: {correo}",
+      "sinCorreo": "Sem e-mail da fatura",
+      "cartera": "Contas a receber e retenções em seu nome",
+      "noAdquiriente": "Não figura como adquirente; seu histórico continua na ficha"
+    },
+    "resumenCorto": {
+      "titulo": "Fatura em nome de",
+      "recibe": "recebe {persona}"
+    },
+    "aNombreDe": "para {empresa}",
+    "errores": {
+      "empresaNoLigada": "A empresa não está mais vinculada a este cliente ou não é da organização. Escolha novamente para quem sai a fatura."
+    },
+    "agregar": {
+      "titulo": "Adicionar empresa com NIT",
+      "descripcion": "{persona} fica como contato da empresa.",
+      "creada": "{empresa} ficou vinculada ao cliente."
+    }
   }
 }

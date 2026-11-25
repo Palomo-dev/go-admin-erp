@@ -46,6 +46,7 @@ import { agotadoPorStock } from '@/lib/pos/stockDisponible';
 import { calcularLineaVenta, totalesDeLineas } from '@/lib/pos/lineaVenta';
 import { aplicarListaALineas, type PrecioClienteFila } from '@/lib/listasPrecios/precioLista';
 import { resolverPreciosCliente } from '@/lib/services/listasPreciosService';
+import { aGuardado, clienteDePrecios, desdeGuardado, mismaEleccion, type FacturarA } from '@/lib/clientes/facturarA';
 import {
   calcularLineaDelCarrito,
   impuestosQueAplican,
@@ -1477,6 +1478,8 @@ export class POSService {
 
       const cart = carts[cartIndex];
       cart.customer_id = customerId;
+      // «Facturar a» es de la persona anterior: con otro cliente vuelve a la de siempre.
+      cart.facturar_a = null;
 
       if (customerId) {
         // Obtener datos del cliente (fase 4D: del catálogo local sin red)
@@ -1556,6 +1559,26 @@ export class POSService {
     const nueva = firma(metodos);
     if (firma(cart.payment_methods ?? []) === nueva) return false;
     cart.payment_methods = nueva ? nueva.split(',') : [];
+    await this.calculateCartTotals(cart);
+    cart.updated_at = new Date().toISOString();
+    const carts = this.readAllCarts();
+    const i = this.indexOfLiveCart(carts, cart.id);
+    if (i !== -1) {
+      carts[i] = cart;
+      this.saveCartsToStorage(carts);
+    }
+    return true;
+  }
+
+  /**
+   * «Facturar a» del cobro (Figma «06 Clientes» 3201-21438, 2026-11-25): guarda a nombre de quién sale
+   * la factura y recalcula el carrito (la lista de precios sale de la empresa escogida). Igual que
+   * `recalcularPromocionesPorMetodo`: cambia el carrito que recibe y lo guarda. Devuelve si cambió.
+   */
+  static async cambiarFacturarA(cart: Cart, facturarA: FacturarA | null, personaTieneDocumento: boolean): Promise<boolean> {
+    const siguiente = aGuardado(facturarA, personaTieneDocumento);
+    if (mismaEleccion(cart.facturar_a ?? null, siguiente)) return false;
+    cart.facturar_a = siguiente;
     await this.calculateCartTotals(cart);
     cart.updated_at = new Date().toISOString();
     const carts = this.readAllCarts();
@@ -2517,7 +2540,9 @@ export class POSService {
    * (`fn_pos_validar_linea_venta`) y marca `sale_items.price_list_id`.
    */
   private static async aplicarListaDePrecios(cart: Cart): Promise<void> {
-    const cliente = cart.customer_id ?? null;
+    // «Facturar a» (2026-11-25): con empresa escogida manda la lista de la empresa (la que valida
+    // pos_checkout_v1 con el adquiriente del sobre); si no, la de la persona del carrito.
+    const cliente = clienteDePrecios(cart.customer_id ?? null, desdeGuardado(cart.facturar_a));
     if (!cliente) {
       cart.price_list_cache = null;
       if (cart.items.some((i) => i.price_list_id)) cart.items = aplicarListaALineas(cart.items, new Map(), true);

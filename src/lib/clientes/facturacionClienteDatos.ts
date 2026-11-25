@@ -7,6 +7,7 @@
  * Las reglas (DV, correo, IVA 48/49, estado de la tarjeta) viven en `facturacionElectronica.ts`.
  */
 import { supabase } from '@/lib/supabase/config';
+import { buildCustomerInsert, emptyCustomerValues } from '@/lib/services/customers/customerPayload';
 import {
   claveDocumento,
   conResponsabilidadIva,
@@ -44,6 +45,10 @@ export interface EmpresaLigada {
   dv: number | null;
   cargo: string | null;
   principal: boolean;
+  /** Facturar a (2026-11-25): IVA 48/49 y correo de factura de la empresa. */
+  fiscal_responsibilities?: string[] | null;
+  billing_email?: string | null;
+  email?: string | null;
 }
 
 export interface DatosFacturacionCliente {
@@ -88,7 +93,36 @@ export async function catalogoResponsabilidades(): Promise<Array<{ code: string;
 interface FilaEnlace {
   is_primary?: boolean | null;
   position?: string | null;
-  company?: Uno<{ id: string; full_name?: string | null; company_name?: string | null; identification_type?: string | null; identification_number?: string | null; dv?: number | null }>;
+  company?: Uno<FilaEmpresa>;
+}
+
+interface FilaEmpresa {
+  id: string;
+  full_name?: string | null;
+  company_name?: string | null;
+  identification_type?: string | null;
+  identification_number?: string | null;
+  dv?: number | null;
+  fiscal_responsibilities?: string[] | null;
+  billing_email?: string | null;
+  email?: string | null;
+}
+
+const COLUMNAS_EMPRESA = 'id, full_name, company_name, identification_type, identification_number, dv, fiscal_responsibilities, billing_email, email';
+
+function empresaDeFila(c: FilaEmpresa, cargo: string | null, principal: boolean): EmpresaLigada {
+  return {
+    id: c.id,
+    nombre: c.company_name || c.full_name || '',
+    identification_type: c.identification_type ?? null,
+    identification_number: c.identification_number ?? null,
+    dv: c.dv ?? null,
+    cargo,
+    principal,
+    fiscal_responsibilities: c.fiscal_responsibilities ?? null,
+    billing_email: c.billing_email ?? null,
+    email: c.email ?? null,
+  };
 }
 
 export async function cargarFacturacionCliente(organizationId: number, clienteId: string): Promise<DatosFacturacionCliente | null> {
@@ -110,7 +144,7 @@ export async function cargarFacturacionCliente(organizationId: number, clienteId
   } else {
     const { data: enlaces } = await supabase
       .from('customer_company_links')
-      .select('is_primary, position, company:customers!customer_company_links_company_id_fkey(id, full_name, company_name, identification_type, identification_number, dv)')
+      .select(`is_primary, position, company:customers!customer_company_links_company_id_fkey(${COLUMNAS_EMPRESA})`)
       .eq('organization_id', organizationId)
       .eq('person_id', clienteId)
       .order('is_primary', { ascending: false });
@@ -118,37 +152,19 @@ export async function cargarFacturacionCliente(organizationId: number, clienteId
       .map((l) => {
         const c = uno(l.company);
         if (!c) return null;
-        return {
-          id: c.id,
-          nombre: c.company_name || c.full_name || '',
-          identification_type: c.identification_type ?? null,
-          identification_number: c.identification_number ?? null,
-          dv: c.dv ?? null,
-          cargo: l.position ?? null,
-          principal: l.is_primary === true || c.id === ficha.parent_customer_id,
-        };
+        return empresaDeFila(c, l.position ?? null, l.is_primary === true || c.id === ficha.parent_customer_id);
       })
       .filter((e): e is EmpresaLigada => e !== null);
     // La empresa del pedido web queda en parent_customer_id aunque no tenga enlace: también cuenta.
     if (ficha.parent_customer_id && !empresas.some((e) => e.id === ficha.parent_customer_id)) {
       const { data: padre } = await supabase
         .from('customers')
-        .select('id, full_name, company_name, identification_type, identification_number, dv')
+        .select(COLUMNAS_EMPRESA)
         .eq('id', ficha.parent_customer_id)
         .eq('organization_id', organizationId)
         .maybeSingle();
-      const p = padre as { id: string; full_name?: string | null; company_name?: string | null; identification_type?: string | null; identification_number?: string | null; dv?: number | null } | null;
-      if (p) {
-        empresas.unshift({
-          id: p.id,
-          nombre: p.company_name || p.full_name || '',
-          identification_type: p.identification_type ?? null,
-          identification_number: p.identification_number ?? null,
-          dv: p.dv ?? null,
-          cargo: null,
-          principal: true,
-        });
-      }
+      const p = padre as FilaEmpresa | null;
+      if (p) empresas.unshift(empresaDeFila(p, null, true));
     }
     empresas.sort((a, b) => Number(b.principal) - Number(a.principal));
   }
@@ -262,6 +278,48 @@ export async function ligarComoContacto(organizationId: number, personaId: strin
     is_primary: (count ?? 0) === 0,
   });
   if (error) throw error;
+}
+
+/**
+ * «Agregar empresa con NIT» desde «Facturar a» (2026-11-25): crea la ficha de la empresa con los datos
+ * de facturación del diálogo (misma traducción formulario → fila que «Nuevo cliente»,
+ * `buildCustomerInsert`, más la de facturación, `filaFacturacion`) y deja a la persona como contacto.
+ */
+export async function crearEmpresaFacturacion(organizationId: number, personaId: string, empresaId: string, d: DatosFacturacionFormulario): Promise<void> {
+  const base = buildCustomerInsert(
+    {
+      ...emptyCustomerValues(),
+      customerType: 'company',
+      companyName: d.razonSocial,
+      tradeName: d.nombreComercial,
+      documentType: d.tipoDocumento,
+      documentNumber: d.numero,
+      municipalityId: d.municipioId,
+      roles: ['cliente'],
+    },
+    { organizationId, branchId: null },
+  );
+  const fila = Object.fromEntries(Object.entries({ ...base, ...filaFacturacion({ ...d, tipoPersona: 'company' }), id: empresaId }).filter(([, v]) => v !== undefined));
+  const { error } = await supabase.from('customers').insert(fila);
+  if (error) throw error;
+  await ligarComoContacto(organizationId, personaId, empresaId);
+}
+
+/**
+ * «La última vez: <empresa>»: la empresa de la venta más reciente en la que la persona recibió
+ * (`sales.contact_customer_id`). Solo sugerencia: el selector nunca la marca sola.
+ */
+export async function ultimaEmpresaFacturada(organizationId: number, personaId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('sales')
+    .select('customer_id')
+    .eq('organization_id', organizationId)
+    .eq('contact_customer_id', personaId)
+    .not('customer_id', 'is', null)
+    .neq('status', 'void')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  return ((data ?? [])[0] as { customer_id?: string | null } | undefined)?.customer_id ?? null;
 }
 
 /** Empresas de la organización para «Empresa ligada (opcional)». */

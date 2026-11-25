@@ -72823,5 +72823,56 @@
       "texto": "Si vous facturez de la TVA (par exemple des commissions d'encaissement), la DIAN attend que votre RUT indique 48 (assujetti à la TVA). Mettez à jour le RUT et le profil fiscal. La facture peut être émise quand même.",
       "accion": "Voir le profil fiscal"
     }
+  },
+  "clientesFacturarA": {
+    "titulo": "Facturer à",
+    "cargando": "Chargement du destinataire de la facture…",
+    "sinNombre": "Sans nom",
+    "clienteCarrito": "Client du panier : {nombre}",
+    "aviso": "Ce client a des entreprises : la facture va-t-elle à l’une d’elles ?",
+    "avisoAyuda": "Si vous ne touchez à rien, la facture est émise à {persona}.",
+    "opciones": {
+      "consumidorFinal": "Consommateur final",
+      "consumidorFinalSub": "222222222222 · sans données",
+      "persona": "Personne (pièce d’identité)",
+      "personaCorta": "Personne",
+      "personaSinDocumento": "Sans document",
+      "empresa": "Entreprise (NIT)",
+      "empresaCorta": "Entreprise",
+      "empresaSub": "{n, plural, one {# entreprise liée} other {# entreprises liées}}"
+    },
+    "empresasDe": "Entreprises de {persona}",
+    "escogida": "choisie",
+    "ningunaMarcada": "aucune n’est cochée",
+    "ultimaVez": "La dernière fois : {empresa}",
+    "principal": "principale sur la fiche",
+    "iva": {
+      "48": "48 · Assujetti à la TVA",
+      "49": "49 · Non assujetti à la TVA",
+      "sin": "TVA non définie"
+    },
+    "ivaCorto": "TVA {codigo}",
+    "agregarEmpresa": "Ajouter une entreprise avec NIT",
+    "resumen": {
+      "adquiriente": "Acquéreur · figure sur la facture",
+      "recibe": "Reçoit · contact",
+      "correo": "E-mail de facturation : {correo}",
+      "sinCorreo": "Pas d’e-mail de facturation",
+      "cartera": "Créances et retenues à son nom",
+      "noAdquiriente": "N’apparaît pas comme acquéreur ; son historique reste sur sa fiche"
+    },
+    "resumenCorto": {
+      "titulo": "Facture au nom de",
+      "recibe": "reçue par {persona}"
+    },
+    "aNombreDe": "à {empresa}",
+    "errores": {
+      "empresaNoLigada": "L’entreprise n’est plus liée à ce client ou n’appartient pas à l’organisation. Choisissez à nouveau au nom de qui émettre la facture."
+    },
+    "agregar": {
+      "titulo": "Ajouter une entreprise avec NIT",
+      "descripcion": "{persona} devient contact de l’entreprise.",
+      "creada": "{empresa} est maintenant liée au client."
+    }
   }
 }

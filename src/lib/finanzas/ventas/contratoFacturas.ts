@@ -27,6 +27,8 @@ export const ERRORES_FACTURA = [
   'producto_eliminado',
   'vendedor_invalido',
   'numero_duplicado',
+  // «Facturar a» (20261125200000): la empresa no está ligada a la persona que recibe, o es de otra organización.
+  'empresa_no_ligada',
 ] as const;
 export type ErrorFactura = (typeof ERRORES_FACTURA)[number] | 'error_desconocido' | 'datos_invalidos';
 
@@ -45,6 +47,7 @@ export function estadoHttpErrorFactura(codigo: ErrorFactura): number {
       return 401;
     case 'sin_permiso':
     case 'sin_acceso_sucursal':
+    case 'empresa_no_ligada':
       return 403;
     case 'factura_no_encontrada':
       return 404;
@@ -116,7 +119,10 @@ export const lineaFacturaSchema = z
 export const guardarFacturaSchema = z
   .object({
     number: z.string().trim().max(60).nullable().optional(),
+    /** Adquiriente: la persona o, con «Facturar a», la empresa escogida (null = consumidor final). */
     customer_id: uuidOpcional,
+    /** «Facturar a»: la persona que recibe cuando la factura sale a una empresa ligada o a consumidor final. */
+    contact_customer_id: uuidOpcional,
     branch_id: z.number().int().positive(),
     issue_date: fechaInstante,
     due_date: fechaInstante,

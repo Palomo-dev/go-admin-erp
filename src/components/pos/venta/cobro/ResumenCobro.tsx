@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { ChevronDown, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
@@ -38,6 +38,8 @@ export interface ResumenCobroProps {
   pagado: number;
   falta: number;
   cambio: number;
+  /** «Factura a nombre de» (Facturar a, Figma 3205-22900): solo cuando la factura no sale a la persona. */
+  facturaA?: ReactNode;
 }
 
 /** La tarifa solo se pinta si el nombre del impuesto no la trae ya («IVA 19%»). */
@@ -58,6 +60,7 @@ export function ResumenCobro({
   pagado,
   falta,
   cambio,
+  facturaA,
 }: ResumenCobroProps) {
   const t = useTranslations('posCobro.resumen');
   const formatear = useMemo(() => crearFormateadorMoneda(moneda), [moneda]);
@@ -118,7 +121,8 @@ export function ResumenCobro({
         total={totalAPagar}
       />
 
-      <dl aria-label={t('cifras')} className="mt-auto grid grid-cols-3 gap-2">
+      {facturaA && <div className="mt-auto">{facturaA}</div>}
+      <dl aria-label={t('cifras')} className={cn(facturaA ? 'mt-2' : 'mt-auto', 'grid grid-cols-3 gap-2')}>
         <div className="flex flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2">
           <dt className="text-xs text-fg-secondary">{t('pagado')}</dt>
           <dd className="text-base font-semibold tabular-nums text-fg">{formatear(pagado)}</dd>

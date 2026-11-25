@@ -72802,6 +72802,121 @@
       }
     }
   },
+  "formularioCheckout": {
+    "titulo": "Checkout form",
+    "nuevo": "New",
+    "descripcion": "Which details your store asks for, in what order and which are required. Drag to reorder within each block.",
+    "descripcionMovil": "Which details your store asks for, in what order and which are required. Press and hold the handle to reorder.",
+    "restablecer": "Restore recommended",
+    "secciones": {
+      "contacto": "Contact",
+      "entrega": "Delivery"
+    },
+    "conteo": "{campos} fields · {visibles} visible",
+    "notaSeccion": {
+      "contacto": "Email is always required",
+      "entrega": "Only for home delivery or carrier: not asked for pickup"
+    },
+    "campos": {
+      "email": {
+        "nombre": "Email",
+        "detalle": "The order confirmation is sent here"
+      },
+      "celular": {
+        "nombre": "Mobile with country code",
+        "detalle": "Flag and +57 · to arrange delivery"
+      },
+      "nombre": {
+        "nombre": "Full name",
+        "detalle": "One field: split into first and last name"
+      },
+      "factura": {
+        "nombre": "Invoice to a company (tax ID)",
+        "detalle": "Checkbox: tax ID with check digit, company name and invoice email"
+      },
+      "direccion": {
+        "nombre": "Address",
+        "detalle": "Street, avenue and number"
+      },
+      "complemento": {
+        "nombre": "Apartment, house or office",
+        "detalle": "Address line 2"
+      },
+      "ciudad": {
+        "nombre": "City or municipality",
+        "detalle": "Searchable list of municipalities · calculates shipping"
+      },
+      "barrio": {
+        "nombre": "Neighborhood",
+        "detalle": "Finds the delivery zone"
+      },
+      "notas": {
+        "nombre": "Delivery instructions",
+        "detalle": "Opens with «Add instructions»"
+      }
+    },
+    "motivos": {
+      "correo": "Always required: confirmation, customer record and payment gateways",
+      "nombre": "Needed for delivery and invoicing",
+      "direccion": "Required for home delivery · not for pickup",
+      "ciudad": "Calculates shipping · required for home delivery",
+      "barrio": "Always shown when delivery zones need it",
+      "factura": "Checkbox is always optional; when ticked, it asks for the ID",
+      "notas": "Always goes last"
+    },
+    "oculto": "Hidden in the store",
+    "obligatorio": "Required",
+    "opcional": "Optional",
+    "requisito": "Requirement",
+    "requisitoDe": "Requirement for «{nombre}»",
+    "mostrar": "Show «{nombre}» in the store",
+    "mostrarEnTienda": "Show in the store",
+    "editar": "Edit «{nombre}»",
+    "asa": "Move «{nombre}», position {n} of {total}. Space to pick up, arrows to move.",
+    "fijoOrden": "«{nombre}» always goes last",
+    "bloqueado": "Cannot be changed: {motivo}",
+    "errorContactoTitulo": "Show the email or the mobile",
+    "errorContacto": "Without either one we cannot confirm the order to the customer or notify them about shipping. Turn on at least one.",
+    "errorFila": "Keep the email or the mobile visible",
+    "verVistaPrevia": "See preview",
+    "volverLista": "Back to the list",
+    "pie": {
+      "sinCambios": "No changes",
+      "cambios": "{n, plural, one {# unsaved change} other {# unsaved changes}}",
+      "error": "Cannot save: check the {seccion} block",
+      "descartar": "Discard"
+    },
+    "vistaPrevia": {
+      "titulo": "Preview",
+      "subtitulo": "What your customer sees · live",
+      "dispositivo": "Preview device",
+      "computador": "Computer",
+      "celular": "Mobile",
+      "nota": "Hidden fields do not appear; «(opcional)» is added automatically. A block with no visible fields is not shown."
+    },
+    "dialogo": {
+      "titulo": "Edit «{nombre}»",
+      "descripcion": "Change what it is called in your store. The stored data does not change.",
+      "etiqueta": "Label",
+      "etiquetaAyuda": "This is what the customer sees in the store.",
+      "ayuda": "Help text",
+      "ayudaAyuda": "Leave it empty to show no help.",
+      "ejemplo": "Placeholder text",
+      "ejemploAyuda": "Shown in gray inside the empty field.",
+      "ejemploTienda": "The store’s example",
+      "volver": "Back to the recommended text",
+      "cancelar": "Cancel",
+      "guardar": "Save",
+      "listo": "Done"
+    },
+    "restablecerDialogo": {
+      "titulo": "Go back to the recommended form?",
+      "descripcion": "Order, what is shown and what is required are restored, and the original labels come back.",
+      "contacto": "Contact: email, mobile, name and company invoice (optional).",
+      "entrega": "Delivery: address, apartment, city or municipality, neighborhood and instructions.",
+      "confirmar": "Restore"
+    }
+  },
   "pagosIntentos": {
     "insignias": {
       "A": "Awaiting payment",

@@ -72802,6 +72802,121 @@
       }
     }
   },
+  "formularioCheckout": {
+    "titulo": "Formulaire de paiement",
+    "nuevo": "Nouveau",
+    "descripcion": "Les informations demandées par votre boutique, dans quel ordre et lesquelles sont obligatoires. Faites glisser pour réordonner dans chaque bloc.",
+    "descripcionMovil": "Les informations demandées par votre boutique, dans quel ordre et lesquelles sont obligatoires. Maintenez la poignée pour réordonner.",
+    "restablecer": "Rétablir la recommandation",
+    "secciones": {
+      "contacto": "Contact",
+      "entrega": "Livraison"
+    },
+    "conteo": "{campos} champs · {visibles} visibles",
+    "notaSeccion": {
+      "contacto": "L’e-mail est toujours demandé",
+      "entrega": "Seulement en livraison ou transporteur : pas demandé au retrait"
+    },
+    "campos": {
+      "email": {
+        "nombre": "E-mail",
+        "detalle": "La confirmation de commande arrive ici"
+      },
+      "celular": {
+        "nombre": "Mobile avec indicatif",
+        "detalle": "Drapeau et +57 · pour organiser la livraison"
+      },
+      "nombre": {
+        "nombre": "Nom et prénom",
+        "detalle": "Un seul champ : séparé en prénom et nom"
+      },
+      "factura": {
+        "nombre": "Facture au nom d’une entreprise (NIT)",
+        "detalle": "Case : NIT avec clé, raison sociale et e-mail de facturation"
+      },
+      "direccion": {
+        "nombre": "Adresse",
+        "detalle": "Rue, avenue et numéro"
+      },
+      "complemento": {
+        "nombre": "Appartement, maison ou bureau",
+        "detalle": "Complément d’adresse"
+      },
+      "ciudad": {
+        "nombre": "Ville ou commune",
+        "detalle": "Liste des communes avec recherche · calcule la livraison"
+      },
+      "barrio": {
+        "nombre": "Quartier",
+        "detalle": "Situe la zone de livraison"
+      },
+      "notas": {
+        "nombre": "Instructions pour le livreur",
+        "detalle": "S’ouvre avec « Ajouter des instructions »"
+      }
+    },
+    "motivos": {
+      "correo": "Toujours obligatoire : confirmation, fiche client et passerelles",
+      "nombre": "Nécessaire pour la livraison et la facture",
+      "direccion": "Obligatoire en livraison · pas au retrait",
+      "ciudad": "Calcule la livraison · obligatoire en livraison",
+      "barrio": "Toujours affiché quand les zones de livraison le demandent",
+      "factura": "Case toujours facultative ; cochée, elle demande le document",
+      "notas": "Toujours à la fin"
+    },
+    "oculto": "Masqué dans la boutique",
+    "obligatorio": "Obligatoire",
+    "opcional": "Facultatif",
+    "requisito": "Exigence",
+    "requisitoDe": "Exigence de « {nombre} »",
+    "mostrar": "Afficher « {nombre} » dans la boutique",
+    "mostrarEnTienda": "Afficher dans la boutique",
+    "editar": "Modifier « {nombre} »",
+    "asa": "Déplacer « {nombre} », position {n} sur {total}. Espace pour saisir, flèches pour déplacer.",
+    "fijoOrden": "« {nombre} » est toujours à la fin",
+    "bloqueado": "Non modifiable : {motivo}",
+    "errorContactoTitulo": "Affichez l’e-mail ou le mobile",
+    "errorContacto": "Sans l’un des deux, nous ne pouvons ni confirmer la commande au client ni le prévenir de l’envoi. Activez-en au moins un.",
+    "errorFila": "Laissez l’e-mail ou le mobile visible",
+    "verVistaPrevia": "Voir l’aperçu",
+    "volverLista": "Retour à la liste",
+    "pie": {
+      "sinCambios": "Aucune modification",
+      "cambios": "{n, plural, one {# modification non enregistrée} other {# modifications non enregistrées}}",
+      "error": "Impossible d’enregistrer : vérifiez le bloc {seccion}",
+      "descartar": "Abandonner"
+    },
+    "vistaPrevia": {
+      "titulo": "Aperçu",
+      "subtitulo": "Ce que voit votre client · en direct",
+      "dispositivo": "Appareil de l’aperçu",
+      "computador": "Ordinateur",
+      "celular": "Mobile",
+      "nota": "Ce qui est masqué n’apparaît pas ; « (opcional) » s’ajoute tout seul. Un bloc sans champ visible n’est pas affiché."
+    },
+    "dialogo": {
+      "titulo": "Modifier « {nombre} »",
+      "descripcion": "Changez son nom dans votre boutique. La donnée enregistrée ne change pas.",
+      "etiqueta": "Libellé",
+      "etiquetaAyuda": "C’est ce que voit le client dans la boutique.",
+      "ayuda": "Texte d’aide",
+      "ayudaAyuda": "Laissez vide pour ne pas afficher d’aide.",
+      "ejemplo": "Texte d’exemple",
+      "ejemploAyuda": "Affiché en gris dans le champ vide.",
+      "ejemploTienda": "L’exemple de la boutique",
+      "volver": "Revenir au texte recommandé",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "listo": "Terminé"
+    },
+    "restablecerDialogo": {
+      "titulo": "Revenir au formulaire recommandé ?",
+      "descripcion": "L’ordre, ce qui s’affiche et ce qui est obligatoire sont rétablis, et les libellés d’origine reviennent.",
+      "contacto": "Contact : e-mail, mobile, nom et facture entreprise (facultative).",
+      "entrega": "Livraison : adresse, appartement, ville ou commune, quartier et instructions.",
+      "confirmar": "Rétablir"
+    }
+  },
   "pagosIntentos": {
     "insignias": {
       "A": "En attente de paiement",

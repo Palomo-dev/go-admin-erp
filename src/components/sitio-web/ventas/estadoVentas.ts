@@ -8,6 +8,8 @@
  * navegador solo pinta lo que llega; ninguna regla se repite en el cliente.
  */
 
+import { esFormularioRecomendado, resolverFormulario, validarFormularioCheckout, type FormularioCheckout } from '@/lib/website/formularioCheckout';
+
 export const TEMAS_VENTA = ['checkout', 'pagos', 'envios', 'cupones', 'pedidos', 'reservas', 'pasarela'] as const;
 export type TemaVenta = (typeof TEMAS_VENTA)[number];
 
@@ -410,6 +412,14 @@ export function normalizarBarraPago(valor: unknown): BarraPagoMovil {
   return typeof valor === 'string' && (BARRAS_PAGO_MOVIL as readonly string[]).includes(valor) ? (valor as BarraPagoMovil) : BARRA_PAGO_POR_DEFECTO;
 }
 
+/**
+ * Formulario del checkout (Figma «16 Sitio web» › Checkout v2, Parte F 3141-93709): qué campos pide
+ * la tienda, en qué orden, cuáles obligatorios y sus textos. No es una columna: se guarda en
+ * `organization_settings` (key `checkout_formulario`) con la regla compartida con la tienda
+ * (src/lib/website/formularioCheckout.ts). `null` = el formulario de siempre (borra la fila).
+ */
+export type CambioFormularioCheckout = FormularioCheckout | null;
+
 export interface CambiosCheckout {
   modo?: 'steps' | 'one_page';
   tiposEntrega?: TipoEntrega[];
@@ -423,6 +433,7 @@ export interface CambiosCheckout {
   tarifaPlana?: number | null;
   envioGratisDesde?: number | null;
   barraPago?: BarraPagoMovil;
+  formulario?: CambioFormularioCheckout;
 }
 
 export const MAX_IMPORTE = 999_999_999_999;
@@ -483,6 +494,12 @@ export function validarCambiosCheckout(raw: unknown): { ok: true; cambios: Cambi
       c.listaSellos = (v as SelloConfianza[]).map((s) => ({ icono: s.icono, texto: s.texto.trim() }));
     } else campos.push('listaSellos');
   }
+  if ('formulario' in b) {
+    const v = validarFormularioCheckout(b.formulario);
+    // El recomendado se guarda como «sin configuración» (borra la fila): la tienda queda como siempre.
+    if (v.ok) c.formulario = v.formulario && esFormularioRecomendado(resolverFormulario(v.formulario.campos)) ? null : v.formulario;
+    else campos.push('formulario');
+  }
   booleano('invitado');
   booleano('sellos');
   booleano('logosPago');
@@ -491,13 +508,13 @@ export function validarCambiosCheckout(raw: unknown): { ok: true; cambios: Cambi
   importe('pedidoMinimo');
   importe('tarifaPlana');
   importe('envioGratisDesde');
-  const conocidas = new Set(['modo', 'tiposEntrega', 'invitado', 'pedidoMinimo', 'sellos', 'listaSellos', 'logosPago', 'ventaEnLinea', 'envioActivo', 'tarifaPlana', 'envioGratisDesde', 'barraPago']);
+  const conocidas = new Set(['modo', 'tiposEntrega', 'invitado', 'pedidoMinimo', 'sellos', 'listaSellos', 'logosPago', 'ventaEnLinea', 'envioActivo', 'tarifaPlana', 'envioGratisDesde', 'barraPago', 'formulario']);
   for (const k of Object.keys(b)) if (!conocidas.has(k)) campos.push(k);
   return campos.length > 0 ? { ok: false, campos } : { ok: true, cambios: c };
 }
 
 /** Columnas de `website_settings` de cada cambio (lista blanca; las dos últimas, migración pendiente). */
-export const COLUMNAS_CHECKOUT: Readonly<Record<keyof CambiosCheckout, string>> = {
+export const COLUMNAS_CHECKOUT: Readonly<Record<Exclude<keyof CambiosCheckout, 'formulario'>, string>> = {
   modo: 'checkout_mode',
   tiposEntrega: 'available_delivery_types',
   invitado: 'checkout_guest_enabled',
@@ -518,8 +535,9 @@ export const COLUMNAS_PENDIENTES_CHECKOUT = new Set(['checkout_guest_enabled', '
 export function filaDeCambios(c: CambiosCheckout): Record<string, unknown> {
   const fila: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(c)) {
-    if (v === undefined) continue;
-    const col = COLUMNAS_CHECKOUT[k as keyof CambiosCheckout];
+    // El formulario no es una columna de website_settings (organization_settings; ver guardarCheckout).
+    if (v === undefined || k === 'formulario') continue;
+    const col = COLUMNAS_CHECKOUT[k as Exclude<keyof CambiosCheckout, 'formulario'>];
     fila[col] = k === 'listaSellos' ? (v as SelloConfianza[]).map((s) => ({ icon: s.icono, text: s.texto })) : v;
   }
   return fila;

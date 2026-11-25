@@ -72812,6 +72812,121 @@
       }
     }
   },
+  "formularioCheckout": {
+    "titulo": "Formulário do checkout",
+    "nuevo": "Novo",
+    "descripcion": "Quais dados sua loja pede, em que ordem e quais são obrigatórios. Arraste para ordenar dentro de cada bloco.",
+    "descripcionMovil": "Quais dados sua loja pede, em que ordem e quais são obrigatórios. Mantenha a alça pressionada para ordenar.",
+    "restablecer": "Restaurar recomendado",
+    "secciones": {
+      "contacto": "Contato",
+      "entrega": "Entrega"
+    },
+    "conteo": "{campos} campos · {visibles} visíveis",
+    "notaSeccion": {
+      "contacto": "O e-mail é sempre pedido",
+      "entrega": "Só com entrega em domicílio ou transportadora: não é pedido na retirada"
+    },
+    "campos": {
+      "email": {
+        "nombre": "E-mail",
+        "detalle": "A confirmação do pedido chega aqui"
+      },
+      "celular": {
+        "nombre": "Celular com código do país",
+        "detalle": "Bandeira e +57 · para combinar a entrega"
+      },
+      "nombre": {
+        "nombre": "Nome e sobrenome",
+        "detalle": "Um só campo: separado em nome e sobrenome"
+      },
+      "factura": {
+        "nombre": "Nota fiscal em nome de empresa (NIT)",
+        "detalle": "Caixa: NIT com dígito, razão social e e-mail da nota"
+      },
+      "direccion": {
+        "nombre": "Endereço",
+        "detalle": "Rua, avenida e número"
+      },
+      "complemento": {
+        "nombre": "Apto, casa ou escritório",
+        "detalle": "Complemento do endereço"
+      },
+      "ciudad": {
+        "nombre": "Cidade ou município",
+        "detalle": "Lista de municípios com busca · calcula o frete"
+      },
+      "barrio": {
+        "nombre": "Bairro",
+        "detalle": "Localiza a zona de entrega"
+      },
+      "notas": {
+        "nombre": "Instruções para o entregador",
+        "detalle": "Abre com «Adicionar instruções»"
+      }
+    },
+    "motivos": {
+      "correo": "Sempre obrigatório: confirmação, ficha do cliente e gateways",
+      "nombre": "Exigido pela entrega e pela nota fiscal",
+      "direccion": "Obrigatório com entrega · não se aplica à retirada",
+      "ciudad": "Calcula o frete · obrigatório com entrega",
+      "barrio": "Sempre aparece quando as zonas de entrega precisam",
+      "factura": "Caixa sempre opcional; marcada, pede o documento",
+      "notas": "Sempre vai no final"
+    },
+    "oculto": "Oculto na loja",
+    "obligatorio": "Obrigatório",
+    "opcional": "Opcional",
+    "requisito": "Requisito",
+    "requisitoDe": "Requisito de «{nombre}»",
+    "mostrar": "Mostrar «{nombre}» na loja",
+    "mostrarEnTienda": "Mostrar na loja",
+    "editar": "Editar «{nombre}»",
+    "asa": "Mover «{nombre}», posição {n} de {total}. Espaço para pegar e setas para mover.",
+    "fijoOrden": "«{nombre}» sempre vai no final",
+    "bloqueado": "Não pode ser alterado: {motivo}",
+    "errorContactoTitulo": "Mostre o e-mail ou o celular",
+    "errorContacto": "Sem nenhum dos dois não podemos confirmar o pedido ao cliente nem avisá-lo do envio. Ative pelo menos um.",
+    "errorFila": "Deixe o e-mail ou o celular visível",
+    "verVistaPrevia": "Ver prévia",
+    "volverLista": "Voltar à lista",
+    "pie": {
+      "sinCambios": "Sem alterações",
+      "cambios": "{n, plural, one {# alteração não salva} other {# alterações não salvas}}",
+      "error": "Não é possível salvar: revise o bloco {seccion}",
+      "descartar": "Descartar"
+    },
+    "vistaPrevia": {
+      "titulo": "Prévia",
+      "subtitulo": "Como seu cliente vê · ao vivo",
+      "dispositivo": "Dispositivo da prévia",
+      "computador": "Computador",
+      "celular": "Celular",
+      "nota": "O que está oculto não aparece; «(opcional)» é adicionado sozinho. Um bloco sem campos visíveis não é mostrado."
+    },
+    "dialogo": {
+      "titulo": "Editar «{nombre}»",
+      "descripcion": "Mude como ele se chama na sua loja. O dado salvo não muda.",
+      "etiqueta": "Rótulo",
+      "etiquetaAyuda": "É assim que o cliente vê na loja.",
+      "ayuda": "Texto de ajuda",
+      "ayudaAyuda": "Deixe vazio para não mostrar ajuda.",
+      "ejemplo": "Texto de exemplo",
+      "ejemploAyuda": "Aparece em cinza dentro do campo vazio.",
+      "ejemploTienda": "O exemplo da loja",
+      "volver": "Voltar ao texto recomendado",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar",
+      "listo": "Pronto"
+    },
+    "restablecerDialogo": {
+      "titulo": "Voltar ao formulário recomendado?",
+      "descripcion": "A ordem, o que aparece e o que é obrigatório são restaurados, e os rótulos originais voltam.",
+      "contacto": "Contato: e-mail, celular, nome e nota fiscal com NIT (opcional).",
+      "entrega": "Entrega: endereço, apto, cidade ou município, bairro e instruções.",
+      "confirmar": "Restaurar"
+    }
+  },
   "pagosIntentos": {
     "insignias": {
       "A": "Aguardando pagamento",

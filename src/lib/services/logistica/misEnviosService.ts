@@ -36,7 +36,7 @@ const COLUMNAS =
   'delivery_contact_name, delivery_contact_phone, delivery_instructions, delivery_latitude, delivery_longitude, ' +
   'expected_delivery_date, assigned_at, picked_at, dispatched_at, delivered_at, created_at, updated_at, cod_amount, cod_status, ' +
   'cod_collected_amount, cod_collected_method, cod_collected_at, delivery_code_required, failed_attempts, exception_reason, ' +
-  'shipping_fee, payment_status, vehicle_id, metadata, customer:customers(full_name, phone), shipment_items(id, description, qty, total_value)';
+  'shipping_fee, payment_status, vehicle_id, metadata, fulfillment_mode, customer:customers(full_name, phone), shipment_items(id, description, qty, total_value)';
 
 /** Barrio de cada envío: la misma lectura que la bandeja de Por despachar. */
 function conBarrio(envios: EnvioApp[]): EnvioApp[] {

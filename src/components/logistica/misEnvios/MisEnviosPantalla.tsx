@@ -16,7 +16,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, CircleCheck, Eye, MapPin, Navigation, PackageCheck, RefreshCw, Route, Wallet } from 'lucide-react';
 import { ChipsOpcion, EmptyState, PageHeader, Skeleton, StatusBadge, clasesBoton, useEsEscritorio } from '@/components/kit';
@@ -40,11 +40,12 @@ import { useAvanzarParada } from './useAvanzarParada';
 import { useMiVehiculo } from './useMiVehiculo';
 import { TarjetaParada } from './TarjetaParada';
 import { SinPerfil } from './SinPerfil';
+import { SupervisorRuta } from './SupervisorRuta';
 import { HojaNovedad } from './HojaNovedad';
 import { FilaVehiculoHoy } from './PiezasVehiculo';
 import { VistaRutaEscritorio } from './VistaRutaEscritorio';
 import { AvisoPausaSinConexion, BarraInferior, FranjaSinConexion } from './piezas';
-import { RUTA_FIN_JORNADA, RUTA_MAPA_RUTA, RUTA_MI_VEHICULO, rutaEntregar, rutaParada } from './rutas';
+import { RUTA_FIN_JORNADA, RUTA_MAPA_RUTA, RUTA_MI_VEHICULO, RUTA_MIS_ENVIOS, rutaEntregar, rutaParada } from './rutas';
 
 export function MisEnviosPantalla() {
   const t = useTranslations('logistica.misEnvios');
@@ -52,6 +53,9 @@ export function MisEnviosPantalla() {
   const locale = useLocaleIntl();
   const moneda = useMonedaOrganizacion();
   const { branches, branchFilter } = useBranch();
+  const parametros = useSearchParams();
+  /** «Ver la ruta de» (supervisor): `?domiciliario=` en la URL, vacío = el primero de la lista. */
+  const verRutaDe = parametros?.has('domiciliario') ? parametros.get('domiciliario') || null : undefined;
   const { orgId, driver, envios, estado, recargar, hoy, timezone, zonaDe, actualizadoEn } = useMiRuta();
   const enLinea = useEnLinea();
   const escritorio = useEsEscritorio();
@@ -88,6 +92,10 @@ export function MisEnviosPantalla() {
   const subtitulo = [t('hoy', { fecha }), !enLinea && horaCarga ? t('actualizado', { hora: horaCarga }) : sede, enLinea ? nombre : null]
     .filter(Boolean)
     .join(' · ');
+
+  if (verRutaDe !== undefined) {
+    return <SupervisorRuta domiciliarioId={verRutaDe} onElegir={(id) => router.replace(`${RUTA_MIS_ENVIOS}?domiciliario=${encodeURIComponent(id)}`)} />;
+  }
 
   if (estado === 'sin_domiciliario') {
     const sedeCabecera = branchFilter != null ? branches.find((b) => b.id === branchFilter)?.name ?? null : null;

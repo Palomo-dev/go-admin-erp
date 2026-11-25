@@ -8,6 +8,8 @@ import { estadoPedidoDelAviso, type EnvioDomiciliario } from '@/lib/logistica/mi
 import type { AltaDomiciliario } from '@/lib/logistica/domiciliarios';
 import type { DatosServidorRotulo } from '@/lib/logistica/rotuloEnvio';
 import type { PerfilMisEnvios } from '@/lib/logistica/sinPerfil';
+import type { DomiciliarioParaSelector, OpcionRutaDe } from '@/lib/logistica/supervisorRuta';
+import type { EnvioApp } from '@/lib/services/logistica/misEnviosService';
 import type { CandidatosAlta, DomiciliarioFila } from '@/lib/services/logistica/domiciliariosService';
 
 function cabeceras(json: boolean): Record<string, string> {
@@ -91,3 +93,12 @@ export async function datosServidorRotulos(ids: readonly string[]): Promise<Reco
 
 /** Qué ve en «Mis envíos» quien no es domiciliario (permiso, correo, atajos y cifras de despacho). */
 export const leerPerfilMisEnvios = () => pedir<PerfilMisEnvios>('/api/logistica/mis-envios/perfil');
+
+/** «Ver la ruta de»: domiciliarios activos con su carga del día (solo quien despacha). */
+export const leerOpcionesRutaDe = () => pedir<{ hoy: string; opciones: OpcionRutaDe[] }>('/api/logistica/mis-envios/ruta');
+
+/** La ruta de hoy de un domiciliario, para el supervisor (la misma lectura de Mis envíos). */
+export const leerRutaDe = (domiciliarioId: string) =>
+  pedir<{ hoy: string; domiciliario: DomiciliarioRutaDe; envios: EnvioApp[] }>(`/api/logistica/mis-envios/ruta?domiciliario=${encodeURIComponent(domiciliarioId)}`);
+
+export type DomiciliarioRutaDe = DomiciliarioParaSelector & { organization_id: number };

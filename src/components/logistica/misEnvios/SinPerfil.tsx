@@ -12,7 +12,8 @@
  * - Sin permiso: lo que podrá hacer cuando la registren y su correo para que quien despacha la
  *   vincule.
  *
- * «Ver la ruta de un domiciliario» (supervisor) llega en la fase 3 de este encargo.
+ * «Ver la ruta de un domiciliario» abre la vista del supervisor en la misma página
+ * (`?domiciliario=`), con el mismo permiso resuelto en el servidor.
  */
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -183,6 +184,10 @@ export function SinPerfil({ sede, onRegistrado }: SinPerfilProps) {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {botonRegistrar}
+                    <Link href={`${RUTAS_LOGISTICA.misEnvios}?domiciliario=`} className={clasesBoton({ variante: 'secundario' })}>
+                      <Route aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                      {t('verRutaDe')}
+                    </Link>
                     <Link href={RUTAS_LOGISTICA.domiciliarios} className={clasesBoton({ variante: 'secundario' })}>
                       <Users aria-hidden="true" className="size-4" strokeWidth={1.5} />
                       {t('irADomiciliarios')}

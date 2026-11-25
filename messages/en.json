@@ -67711,7 +67711,8 @@
           "descripcion": "Each courier sees only their own shipments for the day, on the phone or on the computer.",
           "guia": "ENV-000{n}",
           "direccion": "Address · neighborhood"
-        }
+        },
+        "verRutaDe": "See a courier’s route"
       },
       "mapa": {
         "ver": "See route map",
@@ -67837,6 +67838,49 @@
             "con_diferencia": "Closed with difference"
           }
         }
+      },
+      "supervisor": {
+        "viendo": "Viewing {nombre}’s route",
+        "subtitulo": "Each courier’s route for the day",
+        "verRutaDe": "See the route of",
+        "elige": "Choose a courier",
+        "reasignar": "Reassign",
+        "noReasignable": "The courier already has the package: record an issue so it returns to the branch, then reassign it.",
+        "sinPermiso": {
+          "titulo": "Only dispatchers see another courier’s route",
+          "descripcion": "Seeing a courier’s route, reassigning and recording issues is done by whoever has permission to manage Logistics."
+        },
+        "sinDomiciliarios": {
+          "titulo": "There are no active couriers yet",
+          "descripcion": "Register them in Logistics › Couriers to see their route here."
+        },
+        "irDomiciliarios": "Go to Couriers",
+        "irPorDespachar": "Go to To dispatch",
+        "llamarA": "Call {nombre}",
+        "chip": {
+          "avance": "{n} of {total}",
+          "sinEnvios": "no shipments",
+          "envios": "{n, plural, one {# shipment} other {# shipments}}",
+          "vencido": "{documento} expired",
+          "porVencer": "{documento} expires {n, plural, =0 {today} one {in # day} other {in # days}}",
+          "estados": {
+            "en_ruta": "on route",
+            "libre": "free",
+            "fuera_de_turno": "off shift",
+            "inactivo": "inactive"
+          }
+        },
+        "nota": "As a supervisor you can reassign stops and record issues. Delivering with the code and collecting cash on delivery is only done by the courier, from their own session.",
+        "notaCelular": "You are viewing {nombre}’s route. Only the courier delivers and collects; you can reassign a stop or record an issue.",
+        "elDomiciliario": "a courier",
+        "vehiculoDe": "{nombre}’s vehicle today",
+        "dineroDe": "{nombre}’s money today",
+        "notaDinero": "When {nombre} ends the shift, you receive the cash in Logistics › Settlements. Whatever wasn’t collected today stays on tomorrow’s route.",
+        "notaTabla": "What the supervisor does is recorded on the shipment timeline with their name. “Reassign” opens the “Assign courier” sheet with the vehicle preselected and the Phase 1b document check.",
+        "verFicha": "See {nombre} in Couriers",
+        "verMapa": "See their route map",
+        "ocultarMapa": "Hide the map",
+        "verEnvio": "See the shipment"
       }
     },
     "domiciliario": {

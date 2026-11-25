@@ -67721,7 +67721,8 @@
           "descripcion": "Cada entregador vê só os próprios envios do dia, no celular ou no computador.",
           "guia": "ENV-000{n}",
           "direccion": "Endereço · bairro"
-        }
+        },
+        "verRutaDe": "Ver a rota de um entregador"
       },
       "mapa": {
         "ver": "Ver mapa da rota",
@@ -67847,6 +67848,49 @@
             "con_diferencia": "Fechado com diferença"
           }
         }
+      },
+      "supervisor": {
+        "viendo": "Vendo a rota de {nombre}",
+        "subtitulo": "A rota do dia de cada entregador",
+        "verRutaDe": "Ver a rota de",
+        "elige": "Escolha um entregador",
+        "reasignar": "Reatribuir",
+        "noReasignable": "O entregador já está com o pacote: registre uma ocorrência para que volte à filial e depois reatribua.",
+        "sinPermiso": {
+          "titulo": "Só quem despacha vê a rota de outro entregador",
+          "descripcion": "Ver a rota de um entregador, reatribuir e registrar ocorrências é feito por quem tem permissão para gerenciar a Logística."
+        },
+        "sinDomiciliarios": {
+          "titulo": "Ainda não há entregadores ativos",
+          "descripcion": "Registre-os em Logística › Entregadores para ver a rota deles aqui."
+        },
+        "irDomiciliarios": "Ir para Entregadores",
+        "irPorDespachar": "Ir para A despachar",
+        "llamarA": "Ligar para {nombre}",
+        "chip": {
+          "avance": "{n} de {total}",
+          "sinEnvios": "sem envios",
+          "envios": "{n, plural, one {# envio} other {# envios}}",
+          "vencido": "{documento} vencido",
+          "porVencer": "{documento} vence {n, plural, =0 {hoje} one {em # dia} other {em # dias}}",
+          "estados": {
+            "en_ruta": "em rota",
+            "libre": "livre",
+            "fuera_de_turno": "fora de turno",
+            "inactivo": "inativo"
+          }
+        },
+        "nota": "Como supervisor você pode reatribuir paradas e registrar ocorrências. Entregar com o código e cobrar o pagamento na entrega só o entregador faz, na própria sessão.",
+        "notaCelular": "Você está vendo a rota de {nombre}. Só o entregador entrega e cobra; você pode reatribuir uma parada ou registrar uma ocorrência.",
+        "elDomiciliario": "um entregador",
+        "vehiculoDe": "Veículo de {nombre} hoje",
+        "dineroDe": "Dinheiro de {nombre} hoje",
+        "notaDinero": "Quando {nombre} encerrar o dia, você recebe o dinheiro em Logística › Acertos. O que não foi cobrado hoje continua na rota de amanhã.",
+        "notaTabla": "O que o supervisor faz fica na linha do tempo do envio com o nome dele. «Reatribuir» abre a folha «Atribuir entregador» com o veículo pré-selecionado e a revisão de documentos da Fase 1b.",
+        "verFicha": "Ver {nombre} em Entregadores",
+        "verMapa": "Ver mapa da rota dele",
+        "ocultarMapa": "Ocultar o mapa",
+        "verEnvio": "Ver o envio"
       }
     },
     "domiciliario": {

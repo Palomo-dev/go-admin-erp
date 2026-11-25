@@ -67709,7 +67709,8 @@
           "descripcion": "Cada domiciliario ve solo sus envíos del día, en el celular o en el computador.",
           "guia": "ENV-000{n}",
           "direccion": "Dirección · barrio"
-        }
+        },
+        "verRutaDe": "Ver la ruta de un domiciliario"
       },
       "mapa": {
         "ver": "Ver mapa de la ruta",
@@ -67835,6 +67836,49 @@
             "con_diferencia": "Cerrado con diferencia"
           }
         }
+      },
+      "supervisor": {
+        "viendo": "Viendo la ruta de {nombre}",
+        "subtitulo": "La ruta del día de cada domiciliario",
+        "verRutaDe": "Ver la ruta de",
+        "elige": "Elige un domiciliario",
+        "reasignar": "Reasignar",
+        "noReasignable": "El domiciliario ya lleva el paquete: registra una novedad para que vuelva a la sede y luego reasígnalo.",
+        "sinPermiso": {
+          "titulo": "Solo quien despacha ve la ruta de otro domiciliario",
+          "descripcion": "Ver la ruta de un domiciliario, reasignar y registrar novedades lo hace quien tiene el permiso de gestionar Logística."
+        },
+        "sinDomiciliarios": {
+          "titulo": "Aún no hay domiciliarios activos",
+          "descripcion": "Regístralos en Logística › Domiciliarios para ver su ruta aquí."
+        },
+        "irDomiciliarios": "Ir a Domiciliarios",
+        "irPorDespachar": "Ir a Por despachar",
+        "llamarA": "Llamar a {nombre}",
+        "chip": {
+          "avance": "{n} de {total}",
+          "sinEnvios": "sin envíos",
+          "envios": "{n, plural, one {# envío} other {# envíos}}",
+          "vencido": "{documento} vencido",
+          "porVencer": "{documento} vence {n, plural, =0 {hoy} one {en # día} other {en # días}}",
+          "estados": {
+            "en_ruta": "en ruta",
+            "libre": "libre",
+            "fuera_de_turno": "fuera de turno",
+            "inactivo": "inactivo"
+          }
+        },
+        "nota": "Como supervisor puedes reasignar paradas y registrar novedades. Entregar con código y cobrar la contraentrega solo lo hace el domiciliario, desde su sesión.",
+        "notaCelular": "Estás viendo la ruta de {nombre}. Solo el domiciliario entrega y cobra; tú puedes reasignar una parada o registrar una novedad.",
+        "elDomiciliario": "un domiciliario",
+        "vehiculoDe": "Vehículo de {nombre} hoy",
+        "dineroDe": "Dinero de {nombre} hoy",
+        "notaDinero": "Cuando {nombre} termine su jornada, recibes el efectivo en Logística › Cuadres. Lo que no se cobró hoy sigue en su ruta de mañana.",
+        "notaTabla": "Lo que hace el supervisor queda en la línea de tiempo del envío con su nombre. «Reasignar» abre la hoja «Asignar domiciliario» con el vehículo preseleccionado y la revisión de documentos de la Fase 1b.",
+        "verFicha": "Ver a {nombre} en Domiciliarios",
+        "verMapa": "Ver mapa de su ruta",
+        "ocultarMapa": "Ocultar el mapa",
+        "verEnvio": "Ver el envío"
       }
     },
     "domiciliario": {

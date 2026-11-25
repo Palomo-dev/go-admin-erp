@@ -67711,7 +67711,8 @@
           "descripcion": "Chaque livreur ne voit que ses envois du jour, sur le téléphone ou l’ordinateur.",
           "guia": "ENV-000{n}",
           "direccion": "Adresse · quartier"
-        }
+        },
+        "verRutaDe": "Voir la tournée d’un livreur"
       },
       "mapa": {
         "ver": "Voir la carte de la tournée",
@@ -67837,6 +67838,49 @@
             "con_diferencia": "Clôturé avec écart"
           }
         }
+      },
+      "supervisor": {
+        "viendo": "Tournée de {nombre}",
+        "subtitulo": "La tournée du jour de chaque livreur",
+        "verRutaDe": "Voir la tournée de",
+        "elige": "Choisis un livreur",
+        "reasignar": "Réassigner",
+        "noReasignable": "Le livreur a déjà le colis : enregistre un incident pour qu’il revienne à l’agence, puis réassigne-le.",
+        "sinPermiso": {
+          "titulo": "Seul celui qui expédie voit la tournée d’un autre livreur",
+          "descripcion": "Voir la tournée d’un livreur, réassigner et enregistrer des incidents est réservé à qui a le droit de gérer la Logistique."
+        },
+        "sinDomiciliarios": {
+          "titulo": "Aucun livreur actif pour l’instant",
+          "descripcion": "Inscris-les dans Logistique › Livreurs pour voir leur tournée ici."
+        },
+        "irDomiciliarios": "Aller aux Livreurs",
+        "irPorDespachar": "Aller à À expédier",
+        "llamarA": "Appeler {nombre}",
+        "chip": {
+          "avance": "{n} sur {total}",
+          "sinEnvios": "aucun envoi",
+          "envios": "{n, plural, one {# envoi} other {# envois}}",
+          "vencido": "{documento} expiré",
+          "porVencer": "{documento} expire {n, plural, =0 {aujourd’hui} one {dans # jour} other {dans # jours}}",
+          "estados": {
+            "en_ruta": "en tournée",
+            "libre": "libre",
+            "fuera_de_turno": "hors service",
+            "inactivo": "inactif"
+          }
+        },
+        "nota": "En tant que superviseur, tu peux réassigner des arrêts et enregistrer des incidents. Livrer avec le code et encaisser le paiement à la livraison, seul le livreur le fait, depuis sa session.",
+        "notaCelular": "Tu vois la tournée de {nombre}. Seul le livreur livre et encaisse ; toi, tu peux réassigner un arrêt ou enregistrer un incident.",
+        "elDomiciliario": "un livreur",
+        "vehiculoDe": "Véhicule de {nombre} aujourd’hui",
+        "dineroDe": "Argent de {nombre} aujourd’hui",
+        "notaDinero": "Quand {nombre} termine sa journée, tu reçois les espèces dans Logistique › Rapprochements. Ce qui n’a pas été encaissé aujourd’hui reste dans sa tournée de demain.",
+        "notaTabla": "Ce que fait le superviseur est consigné dans l’historique de l’envoi avec son nom. « Réassigner » ouvre la fenêtre « Assigner un livreur » avec le véhicule présélectionné et la vérification des documents de la Phase 1b.",
+        "verFicha": "Voir {nombre} dans Livreurs",
+        "verMapa": "Voir la carte de sa tournée",
+        "ocultarMapa": "Masquer la carte",
+        "verEnvio": "Voir l’envoi"
       }
     },
     "domiciliario": {

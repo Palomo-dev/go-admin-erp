@@ -1080,6 +1080,13 @@ export function textoPlantillaClara(secundario: string, fondo: string = FONDO_CL
  * cambia lo que arma la plantilla al usarla: las tiendas que ya la usan no cambian hasta volver a
  * aplicarla. Las que aún no se renuevan siguen saliendo de `plantillaDesdeBase`.
  */
+// Ficha de producto: ninguna plantilla arma «Envío y devoluciones» (`product_shipping`) junto a
+// «Beneficios» (`product_benefits`). Recién aplicada la plantilla, los dos pintan sus textos de
+// fábrica y repiten los mismos datos (entrega en 24-48 horas y 30 días, dos veces cada uno): el
+// comercio veía la ficha «con todo doble» (2026-11-25; Moderna, Clásica y Vibrante los traían).
+// Se queda «Beneficios», cuyos textos se editan. «Envío y devoluciones» sigue en «Añadir sección».
+// Lo vigila `src/__tests__/sitioWeb/fichaSinBloquesRepetidos.test.ts`; las tiendas que ya tenían
+// los dos las cubre la tienda (`sinEnvioRepetidoDeFabrica` en goadmin-websites).
 const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
   // «Moderna» (Figma `323:28835`, aprobada el 2026-11-19): tienda general, azul, redondeada.
   retail_modern: {
@@ -1157,7 +1164,6 @@ const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
         ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
         ['product_info', 'default'],
         ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
-        ['product_shipping', 'default'],
         ['product_benefits', 'default'],
         ['product_anchor_nav', 'tabs'],
         ['product_description', 'default'],
@@ -1258,7 +1264,6 @@ const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
         ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
         ['product_info', 'default'],
         ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
-        ['product_shipping', 'default'],
         ['product_benefits', 'default'],
         ['product_description', 'default'],
         ['product_specs', 'panel', { title: 'Ficha de la pieza' }],
@@ -1348,7 +1353,6 @@ const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
         ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
         ['product_info', 'default'],
         ['product_actions', 'default', { buttons_layout: 'stacked', show_price_in_button: true, button_hint: 'auto', sticky_mobile: true }],
-        ['product_shipping', 'default'],
         ['product_benefits', 'default'],
         ['product_description', 'default'],
         ['product_specs', 'default'],

@@ -132,6 +132,17 @@ export const IDIOMAS_SHELL = ['es-CO', 'en', 'fr', 'pt'] as const;
 /** De dónde sale el menú principal: el menú del sitio o las categorías de la carta (Carta QR). */
 export const FUENTES_MENU = ['menu', 'categorias_carta'] as const;
 /**
+ * Cómo se ve cada categoría en los menús del celular (Figma «16 Sitio web» 3290:101848, aprobado el
+ * 2026-11-25): `icono` = lo de hoy; `redonda` = círculo con la imagen, el ícono sobre su color o la
+ * inicial; `tarjetas` = cuadrícula en la hoja de categorías y la pantalla completa.
+ */
+export const ESTILOS_CATEGORIAS_MOVIL = ['icono', 'redonda', 'tarjetas'] as const;
+/**
+ * Qué lista el botón «Todas las categorías»: `auto` = la regla de siempre (el menú armado solo con
+ * la composición Mega); `inventory` = el árbol de categorías; `menu` = el menú armado en todas.
+ */
+export const FUENTES_BOTON_CATEGORIAS = ['auto', 'inventory', 'menu'] as const;
+/**
  * Barra fija del celular:
  * - `auto`: lo de hoy (solo restaurantes: Reservar · Llamar · Cómo llegar · Pedir, las que apliquen);
  * - `ninguna`: sin barra;
@@ -259,6 +270,13 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   header_categories_button: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
   /** Texto del botón. Sin valor, «Todas las categorías». */
   header_categories_button_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
+  /**
+   * «Contenido del botón» (Figma 3298:97349, opción B): `auto` por defecto = lo de hoy. El menú que
+   * lista `menu` es el de `shell.header.menuMegaId` (Páginas › Menús › «Megamenú»).
+   */
+  header_categories_source: { zona: 'header', porDefecto: 'auto', regla: { tipo: 'opcion', valores: FUENTES_BOTON_CATEGORIAS }, nueva: true },
+  /** «Categorías en el menú» del celular (Figma 3294:102190). `icono` por defecto = lo de hoy. */
+  mobile_categories_look: { zona: 'header', porDefecto: 'icono', regla: { tipo: 'opcion', valores: ESTILOS_CATEGORIAS_MOVIL }, nueva: true },
   mega_menu_columns: { zona: 'header', porDefecto: 4 },
   mobile_menu_style: { zona: 'header', porDefecto: 'drawer' },
   mobile_search_style: { zona: 'header', porDefecto: 'icon' },

@@ -37723,6 +37723,59 @@
             "showLabel": "Afficher le texte"
           }
         },
+        "categoriasCabecera": {
+          "editarInventario": "Modifier l’image, la couleur et l’icône dans Inventaire › Catégories",
+          "estilo": {
+            "titulo": "Catégories dans le menu",
+            "ayuda": "L’apparence de chaque catégorie dans le tiroir, le plein écran, le panneau et la feuille des catégories.",
+            "porDefecto": "Par défaut",
+            "opcion": {
+              "icono": {
+                "titulo": "Liste avec icône",
+                "ayuda": "Comme aujourd’hui : l’icône de la catégorie, sans couleur ni image."
+              },
+              "redonda": {
+                "titulo": "Liste avec image ronde",
+                "ayuda": "L’image de la catégorie ; sinon, son icône sur sa couleur ; sinon, son initiale."
+              },
+              "tarjetas": {
+                "titulo": "Cartes avec image",
+                "ayuda": "Grille de 2 colonnes dans la feuille des catégories et le plein écran. Dans le tiroir et le panneau : liste ronde."
+              }
+            },
+            "avisoTarjetas": "Votre menu mobile est « {menu} » : il s’y affiche en liste ronde. Les cartes apparaissent dans la feuille « Catégories » (onglets et menu du bas) et en plein écran."
+          },
+          "contenido": {
+            "titulo": "Contenu du bouton",
+            "ayuda": "Ce que liste le bouton sur ordinateur et « Toutes les catégories » sur mobile. Valable pour toutes les compositions.",
+            "comoHoy": "Comme aujourd’hui",
+            "opcion": {
+              "auto": {
+                "titulo": "Automatique",
+                "ahora": {
+                  "menu": "Avec la composition Mega : le menu créé dans l’éditeur (s’il a des liens).",
+                  "inventory": "Avec cette composition : les catégories de l’inventaire."
+                }
+              },
+              "inventory": {
+                "titulo": "Catégories de l’inventaire",
+                "ayuda": "L’arbre Inventaire › Catégories, avec sous-catégories, image, couleur et icône."
+              },
+              "menu": {
+                "titulo": "Menu créé dans l’éditeur",
+                "ayuda": "Un menu de Pages › Menus : vous pouvez mélanger catégories, pages et liens."
+              }
+            },
+            "menu": "Menu du bouton",
+            "elegirMenu": "Choisissez un menu",
+            "sinMenu": "Aucun menu",
+            "sinMenuAyuda": "Sans menu, le bouton liste les catégories de l’inventaire.",
+            "editarMenus": "Créer ou modifier dans Pages › Menus",
+            "celularTambien": "Le mobile change aussi : le tiroir, le plein écran et la feuille des catégories listent ce menu.",
+            "aviso": "Le menu « {menu} » est enregistré pour le bouton, mais avec la composition {composicion} il n’apparaît nulle part aujourd’hui.",
+            "usarlo": "L’utiliser dans le bouton"
+          }
+        },
         "movilEncabezado": {
           "mi": {
             "accion": {

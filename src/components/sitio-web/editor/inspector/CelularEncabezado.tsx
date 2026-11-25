@@ -9,6 +9,7 @@ import { useId } from 'react';
 import { CampoNumero, ChipsOpcion, clasesBoton } from '@/components/kit';
 import { useTextosEditor } from '../textos';
 import { MenuInferiorPanel } from './MenuInferiorPanel';
+import { CategoriasEnMenuCelular } from './CategoriasCabeceraEditor';
 import { ColorTema, EtiquetaGrupo, FilaInterruptor, TarjetaComposicion, TituloBloque } from './PartesZonaGlobal';
 import {
   ANIMACIONES,
@@ -103,6 +104,8 @@ export function CelularEncabezado({ ajustes: a, cambiar, coloresTema, giro }: { 
           <CampoNumero aria-labelledby={idAncho} valor={Number(panel.width)} decimales={0} minimo={70} maximo={100} sufijo="%" alinear="izquierda" onValorChange={(v) => ponerPanel('width', v == null ? null : Math.min(100, Math.max(70, Math.round(v))))} />
         </div>
       )}
+      {/* Debajo de «Menú del celular» (Figma 3294:102190): por defecto «Lista con ícono» = hoy. */}
+      <CategoriasEnMenuCelular ajustes={a} cambiar={cambiar} />
       <fieldset disabled={!conPanel} aria-disabled={!conPanel} className={`flex flex-col gap-3 ${conPanel ? '' : 'opacity-50'}`} data-atenuado={!conPanel || undefined}>
         {!conPanel && <p className="text-[11px] leading-[14px] text-fg-muted">{tm('sinMenuAyuda')}</p>}
         <>

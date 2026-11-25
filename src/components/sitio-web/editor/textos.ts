@@ -964,6 +964,45 @@ export const TEXTOS_EDITOR = {
       abrirAyuda: 'Abre las opciones del segundo botón',
       nota: 'Sin forma ni tamaño elegidos, el segundo botón usa el redondeo y el relleno del principal. No tiene ancho, alto, sombra ni colores propios: toma el color del texto del encabezado.',
     },
+    // Menú del celular — categorías con color e imagen y «Contenido del botón» (Figma 3290:101848).
+    categoriasCabecera: {
+      editarInventario: 'Editar imagen, color e ícono en Inventario › Categorías',
+      estilo: {
+        titulo: 'Categorías en el menú',
+        ayuda: 'Cómo se ve cada categoría en el cajón, la pantalla completa, el panel y la hoja de categorías.',
+        porDefecto: 'Por defecto',
+        opcion: {
+          icono: { titulo: 'Lista con ícono', ayuda: 'Como hoy: el ícono de la categoría, sin color ni imagen.' },
+          redonda: { titulo: 'Lista con imagen redonda', ayuda: 'Imagen de la categoría; si no tiene, su ícono sobre su color; si no, la inicial.' },
+          tarjetas: { titulo: 'Tarjetas con imagen', ayuda: 'Cuadrícula de 2 columnas en la hoja de categorías y en la pantalla completa. En el cajón y el panel: lista redonda.' },
+        },
+        avisoTarjetas: 'Tu menú del celular es «{menu}»: ahí se verá como lista redonda. Las tarjetas salen en la hoja de «Categorías» (pestañas y menú inferior) y en la pantalla completa.',
+      },
+      contenido: {
+        titulo: 'Contenido del botón',
+        ayuda: 'Qué lista el botón en computador y «Todas las categorías» en el celular. Vale en todas las composiciones.',
+        comoHoy: 'Como hoy',
+        opcion: {
+          auto: {
+            titulo: 'Automático',
+            ahora: {
+              menu: 'Con la composición Mega: el menú armado en el editor (si tiene enlaces).',
+              inventory: 'Con esta composición: las categorías del inventario.',
+            },
+          },
+          inventory: { titulo: 'Categorías del inventario', ayuda: 'El árbol de Inventario › Categorías, con subcategorías, imagen, color e ícono.' },
+          menu: { titulo: 'Menú armado en el editor', ayuda: 'Un menú de Páginas › Menús: puedes mezclar categorías, páginas y enlaces.' },
+        },
+        menu: 'Menú del botón',
+        elegirMenu: 'Elige un menú',
+        sinMenu: 'Sin menú',
+        sinMenuAyuda: 'Sin menú, el botón lista las categorías del inventario.',
+        editarMenus: 'Armar o editar en Páginas › Menús',
+        celularTambien: 'También cambia el celular: cajón, pantalla completa y hoja de categorías listan este menú.',
+        aviso: 'Tienes el menú «{menu}» guardado para el botón, pero con la composición {composicion} hoy no se ve en ninguna parte.',
+        usarlo: 'Usarlo en el botón',
+      },
+    },
     movilEncabezado: {
       titulo: 'Celular',
       menu: 'Menú en el celular',

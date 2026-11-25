@@ -37723,6 +37723,59 @@
             "showLabel": "Show label"
           }
         },
+        "categoriasCabecera": {
+          "editarInventario": "Edit image, color and icon in Inventory › Categories",
+          "estilo": {
+            "titulo": "Categories in the menu",
+            "ayuda": "How each category looks in the drawer, the full screen, the panel and the categories sheet.",
+            "porDefecto": "Default",
+            "opcion": {
+              "icono": {
+                "titulo": "List with icon",
+                "ayuda": "As today: the category icon, no color or image."
+              },
+              "redonda": {
+                "titulo": "List with round image",
+                "ayuda": "The category image; if it has none, its icon on its color; otherwise, its initial."
+              },
+              "tarjetas": {
+                "titulo": "Cards with image",
+                "ayuda": "2-column grid in the categories sheet and the full screen. In the drawer and the panel: round list."
+              }
+            },
+            "avisoTarjetas": "Your mobile menu is “{menu}”: there it shows as a round list. Cards appear in the “Categories” sheet (tabs and bottom menu) and in the full screen."
+          },
+          "contenido": {
+            "titulo": "Button content",
+            "ayuda": "What the button lists on desktop and “All categories” lists on mobile. Applies to every layout.",
+            "comoHoy": "As today",
+            "opcion": {
+              "auto": {
+                "titulo": "Automatic",
+                "ahora": {
+                  "menu": "With the Mega layout: the menu built in the editor (if it has links).",
+                  "inventory": "With this layout: the inventory categories."
+                }
+              },
+              "inventory": {
+                "titulo": "Inventory categories",
+                "ayuda": "The Inventory › Categories tree, with subcategories, image, color and icon."
+              },
+              "menu": {
+                "titulo": "Menu built in the editor",
+                "ayuda": "A menu from Pages › Menus: you can mix categories, pages and links."
+              }
+            },
+            "menu": "Button menu",
+            "elegirMenu": "Choose a menu",
+            "sinMenu": "No menu",
+            "sinMenuAyuda": "Without a menu, the button lists the inventory categories.",
+            "editarMenus": "Build or edit in Pages › Menus",
+            "celularTambien": "Mobile changes too: the drawer, full screen and categories sheet list this menu.",
+            "aviso": "The menu “{menu}” is saved for the button, but with the {composicion} layout it isn't shown anywhere today.",
+            "usarlo": "Use it in the button"
+          }
+        },
         "movilEncabezado": {
           "mi": {
             "accion": {

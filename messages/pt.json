@@ -37733,6 +37733,59 @@
             "showLabel": "Mostrar texto"
           }
         },
+        "categoriasCabecera": {
+          "editarInventario": "Editar imagem, cor e ícone em Estoque › Categorias",
+          "estilo": {
+            "titulo": "Categorias no menu",
+            "ayuda": "Como cada categoria aparece na gaveta, na tela cheia, no painel e na folha de categorias.",
+            "porDefecto": "Padrão",
+            "opcion": {
+              "icono": {
+                "titulo": "Lista com ícone",
+                "ayuda": "Como hoje: o ícone da categoria, sem cor nem imagem."
+              },
+              "redonda": {
+                "titulo": "Lista com imagem redonda",
+                "ayuda": "A imagem da categoria; se não tiver, seu ícone sobre sua cor; senão, a inicial."
+              },
+              "tarjetas": {
+                "titulo": "Cartões com imagem",
+                "ayuda": "Grade de 2 colunas na folha de categorias e na tela cheia. Na gaveta e no painel: lista redonda."
+              }
+            },
+            "avisoTarjetas": "Seu menu do celular é «{menu}»: ali aparece como lista redonda. Os cartões aparecem na folha «Categorias» (abas e menu inferior) e na tela cheia."
+          },
+          "contenido": {
+            "titulo": "Conteúdo do botão",
+            "ayuda": "O que o botão lista no computador e «Todas as categorias» no celular. Vale para todas as composições.",
+            "comoHoy": "Como hoje",
+            "opcion": {
+              "auto": {
+                "titulo": "Automático",
+                "ahora": {
+                  "menu": "Com a composição Mega: o menu montado no editor (se tiver links).",
+                  "inventory": "Com esta composição: as categorias do estoque."
+                }
+              },
+              "inventory": {
+                "titulo": "Categorias do estoque",
+                "ayuda": "A árvore de Estoque › Categorias, com subcategorias, imagem, cor e ícone."
+              },
+              "menu": {
+                "titulo": "Menu montado no editor",
+                "ayuda": "Um menu de Páginas › Menus: você pode misturar categorias, páginas e links."
+              }
+            },
+            "menu": "Menu do botão",
+            "elegirMenu": "Escolha um menu",
+            "sinMenu": "Sem menu",
+            "sinMenuAyuda": "Sem menu, o botão lista as categorias do estoque.",
+            "editarMenus": "Montar ou editar em Páginas › Menus",
+            "celularTambien": "O celular também muda: a gaveta, a tela cheia e a folha de categorias listam este menu.",
+            "aviso": "O menu «{menu}» está salvo para o botão, mas com a composição {composicion} hoje não aparece em lugar nenhum.",
+            "usarlo": "Usar no botão"
+          }
+        },
         "movilEncabezado": {
           "mi": {
             "accion": {

@@ -43,6 +43,7 @@ import {
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
+import { ContenidoBotonCategorias } from './CategoriasCabeceraEditor';
 import { AccesosCabeceraTienda, AyudaAccionesCabecera, CabeceraVistaTienda, FilaIconosEnEstilo, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
 import { CabeceraBoton, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonEncabezado } from './PildoraYBoton';
 import type { BotonEncabezado } from './pildoraLogica';
@@ -481,6 +482,8 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           onCambiar={(v) => cambiar({ header_categories_button: v })}
         />
         {opcionBooleana(a, 'header_categories_button') && <TextoBotonCategorias ajustes={a} cambiar={cambiar} />}
+        {/* Qué lista el botón (Figma 3298:97349): en todas las composiciones; Automático = hoy. */}
+        <ContenidoBotonCategorias ajustes={a} cambiar={cambiar} menus={p.menus} onEditarMenus={p.onEditarMenu} />
       </section>
     </>
   );

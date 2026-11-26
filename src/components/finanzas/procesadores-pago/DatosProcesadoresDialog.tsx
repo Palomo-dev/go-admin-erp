@@ -9,6 +9,9 @@
  *   formulario del abono.
  * - Retiene saldo: sin alerta de 5 días hábiles; alerta a los 30 días sin retiro.
  * Guarda solo los procesadores que cambiaron (`fn_procesador_pago_configurar`).
+ *
+ * «Tarifa», discreta bajo cada procesador, abre su diálogo de tarifa (comisión, IVA y
+ * retenciones que estima el reporte «Recaudo por medio de pago»).
  */
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -26,6 +29,7 @@ import {
   type OrigenProcesador,
   type TipoDocumentoProcesador,
 } from '@/lib/finanzas/procesadoresPago/procesadoresLogica';
+import { TarifaProcesadorDialog } from './TarifaProcesadorDialog';
 
 const NS = 'finanzasProcesadores';
 export const RUTA_API_DATOS = '/api/finanzas/procesadores-pago/datos';
@@ -72,6 +76,8 @@ export interface DatosProcesadoresDialogProps {
 
 export function DatosProcesadoresDialog({ abierto, onAbiertoChange, procesadores, puedeEditar, onGuardado }: DatosProcesadoresDialogProps) {
   const t = useTranslations(NS);
+  const tRec = useTranslations('recaudoMedio.cobros');
+  const [tarifaDe, setTarifaDe] = useState<DatosProcesador | null>(null);
   const [filas, setFilas] = useState<Record<string, Fila>>({});
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -164,6 +170,14 @@ export function DatosProcesadoresDialog({ abierto, onAbiertoChange, procesadores
                 <div role="cell" className="flex flex-col">
                   <span className="text-sm font-medium text-fg">{p.etiqueta}</span>
                   <span className="text-xs text-fg-muted">{p.cuenta}</span>
+                  <button
+                    type="button"
+                    className="self-start text-xs font-medium text-brand-deep underline-offset-2 hover:underline"
+                    onClick={() => setTarifaDe(p)}
+                    aria-label={`${tRec('configurarTarifa')} · ${p.etiqueta}`}
+                  >
+                    {tRec('configurarTarifa')}
+                  </button>
                 </div>
                 <div role="cell" className="flex flex-col gap-1">
                   <Select
@@ -255,6 +269,18 @@ export function DatosProcesadoresDialog({ abierto, onAbiertoChange, procesadores
 
         {error && <AvisoTonal tono="peligro" rol="alert" titulo={error} />}
       </div>
+
+      {tarifaDe && (
+        <TarifaProcesadorDialog
+          abierto={!!tarifaDe}
+          onAbiertoChange={(v) => !v && setTarifaDe(null)}
+          procesador={tarifaDe.codigo}
+          nombre={tarifaDe.etiqueta}
+          tarifa={tarifaDe.tarifa ?? null}
+          puedeEditar={puedeEditar}
+          onGuardada={onGuardado}
+        />
+      )}
     </Dialogo>
   );
 }

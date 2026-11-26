@@ -63,6 +63,7 @@ export function RepetidorSeccion({
   campo,
   valor,
   onCambiar,
+  pieElementoRepetidor,
   ...resto
 }: Omit<CampoSeccionProps, 'contenido' | 'onCambiarContenido'>) {
   const t = useTextosEditor();
@@ -127,6 +128,7 @@ export function RepetidorSeccion({
                   ))}
                 </div>
               </SeccionPlegable>
+              {pieElementoRepetidor?.(e)}
             </div>
           );
         })

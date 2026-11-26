@@ -39598,7 +39598,15 @@
           "tamanoTexto": "Tamaño del texto",
           "normal": "Normal"
         },
-        "ocultasPorEstilo": "Con «{estilo}» no se usan: {opciones}. Cambia de estilo para verlas."
+        "ocultasPorEstilo": "Con «{estilo}» no se usan: {opciones}. Cambia de estilo para verlas.",
+        "enPestanas": {
+          "aviso": "Se muestra dentro de «Pestañas de la ficha». Aquí cambias cómo se ve el texto; las pestañas se ordenan allá.",
+          "noAplican": "«Pestañas», «Acordeón» y «Partes que se muestran» no aplican aquí: las partes las da el bloque de pestañas.",
+          "irPestanas": "Ir a «Pestañas de la ficha»",
+          "editarContenido": "Editar contenido",
+          "editarContenidoDe": "Editar contenido en «{bloque}»",
+          "textoEnInventario": "Texto en Inventario"
+        }
       },
       "etiquetasFicha": {
         "titulo": "Etiquetas",

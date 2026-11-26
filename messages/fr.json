@@ -39600,7 +39600,15 @@
           "tamanoTexto": "Taille du texte",
           "normal": "Normal"
         },
-        "ocultasPorEstilo": "Non utilisées avec « {estilo} » : {opciones}. Changez de style pour les voir."
+        "ocultasPorEstilo": "Non utilisées avec « {estilo} » : {opciones}. Changez de style pour les voir.",
+        "enPestanas": {
+          "aviso": "Affiché dans « Onglets de la fiche ». Ici vous changez l’aspect du texte ; les onglets se classent là-bas.",
+          "noAplican": "« Onglets », « Accordéon » et « Parties affichées » ne s’appliquent pas ici : le bloc d’onglets fournit les parties.",
+          "irPestanas": "Aller à « Onglets de la fiche »",
+          "editarContenido": "Modifier le contenu",
+          "editarContenidoDe": "Modifier le contenu dans « {bloque} »",
+          "textoEnInventario": "Texte dans Inventaire"
+        }
       },
       "etiquetasFicha": {
         "titulo": "Étiquettes",

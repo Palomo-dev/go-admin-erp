@@ -19,6 +19,15 @@
  * `CajasService.closeSession` usa esta ruta también para la caja propia cuando
  * hay red; sin red (Desktop) el cierre va al outbox y se reproduce con la misma
  * RPC (`cashSync.replayClose`).
+ *
+ * «Caja — lo que sale entre turnos» (migración 20261126070000): si el body trae
+ * `destinos` (a dónde va el efectivo CONTADO; tienen que sumar lo contado), el
+ * cierre va por `pos_caja_cerrar_turno`, que además aplica la tolerancia de la
+ * caja: por encima de ella pide UN reconteo (respuesta 200 con
+ * `reconteo: true`, sin cerrar) y, si persiste, cierra con el descuadre «por
+ * revisar». Con cierre ciego la respuesta no trae esperado, diferencia ni
+ * estado del descuadre (`leerCierreTurno`). Sin `destinos` (clientes
+ * anteriores y Desktop) sigue el cierre de siempre (`pos_caja_cerrar`).
  */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -27,6 +36,7 @@ import { ORG_BODY_KEYS, readOrgBody } from '@/lib/security/organizationBody';
 import { resolverPermisosCaja } from '@/lib/pos/cajas/permisosCaja';
 import { MOTIVO_NO_PUEDE_CERRAR, puedeCerrarCaja } from '@/lib/pos/cajas/reglasCierre';
 import { parametrosCierre } from '@/lib/pos/cajas/arqueo';
+import { codigoErrorTurno, leerCierreTurno, parametrosCierreTurno, validarDestinos } from '@/lib/pos/cajas/entreTurnos';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,6 +78,28 @@ const bodySchema = z
       .strict()
       .nullable()
       .optional(),
+    /** A dónde va el efectivo contado (paso 2 del cierre). Con destinos, cierre por `pos_caja_cerrar_turno`. */
+    destinos: z
+      .array(
+        z
+          .object({
+            tipo: z.enum(['base', 'consignar', 'trasladar', 'dueno', 'gasto', 'sin_soporte']),
+            monto: importe,
+            cuenta_banco_id: z.number().int().positive().optional(),
+            soporte_path: z.string().max(300).optional(),
+            referencia: z.string().max(120).optional(),
+            sesion_destino_id: z.number().int().positive().optional(),
+            cuenta_gasto: z.string().regex(/^5[12][0-9]{0,10}$/).optional(),
+            tercero_nit: z.string().max(30).optional(),
+            tercero_nombre: z.string().max(200).optional(),
+            nota: z.string().max(2000).optional(),
+          })
+          .strict(),
+      )
+      .max(20)
+      .optional(),
+    /** El cajero acepta que el faltante se le cobre (solo si la organización lo activó y sin cierre ciego). */
+    faltante_cajero: z.boolean().optional(),
   })
   .strict();
 
@@ -136,6 +168,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: MOTIVO_NO_PUEDE_CERRAR, code: 'CLOSE_FORBIDDEN', codigo: 'sin_permiso' }, { status: 403 });
     }
 
+    if (parsed.data.destinos) {
+      return cerrarTurno(ctx, sessionId, parsed.data, parsed.data.destinos);
+    }
+
     const { data, error } = await ctx.supabase.rpc(
       'pos_caja_cerrar',
       parametrosCierre(sessionId, {
@@ -190,4 +226,83 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
     throw err;
   }
+}
+
+type Ctx = Awaited<ReturnType<typeof getServerOrgContext>>;
+type Body = z.infer<typeof bodySchema>;
+
+/** Cierre en dos pasos con destinos (`pos_caja_cerrar_turno`). */
+async function cerrarTurno(ctx: Ctx, sessionId: number, body: Body, destinos: NonNullable<Body['destinos']>) {
+  const invalido = validarDestinos(body.final_amount, destinos);
+  if (invalido) {
+    return NextResponse.json({ error: 'Los destinos del efectivo no son válidos', code: 'INVALID_BODY', codigo: invalido }, { status: 400 });
+  }
+  const { data, error } = await ctx.supabase.rpc(
+    'pos_caja_cerrar_turno',
+    parametrosCierreTurno(sessionId, {
+      counted_amount: body.final_amount,
+      destinos,
+      counted_by_method: body.counted_by_method,
+      denominations: body.denominations ?? null,
+      notes: body.notes ?? null,
+      faltante_cajero: body.faltante_cajero,
+    }),
+  );
+  if (error) {
+    const turno = codigoErrorTurno(error.message);
+    if (turno) {
+      return NextResponse.json({ error: 'No se pudo cerrar la caja', code: 'INVALID_BODY', codigo: turno }, { status: 400 });
+    }
+    const conocido = errorRpc(error);
+    if (conocido) {
+      if (conocido.status === 403) {
+        console.warn('[pos/cajas/cerrar] la base negó el cierre', { sessionId, organizationId: ctx.organizationId, userId: ctx.userId });
+      }
+      return conocido;
+    }
+    console.error('[pos/cajas/cerrar] cierre con destinos', { sessionId, organizationId: ctx.organizationId, message: error.message });
+    return NextResponse.json({ error: 'No se pudo cerrar la caja', codigo: 'cierre_fallido' }, { status: 500 });
+  }
+  const resultado = leerCierreTurno(data);
+  if (resultado.estado === 'ya_cerrada') {
+    return NextResponse.json({ error: 'La caja ya está cerrada', code: 'ALREADY_CLOSED', codigo: 'caja_ya_cerrada' }, { status: 409 });
+  }
+  if (resultado.estado === 'reconteo') {
+    // No cierra: el conteo no coincide con el sistema. En ciego no dice cuánto ni hacia dónde.
+    return NextResponse.json(
+      {
+        reconteo: true,
+        sessionId: resultado.sessionId,
+        oculto: resultado.oculto,
+        ...(resultado.oculto ? {} : { diferencia: resultado.diferencia, esperado: resultado.esperado, tolerancia: resultado.tolerancia }),
+      },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
+  }
+  const r = (data ?? {}) as Record<string, unknown>;
+  const session = {
+    id: resultado.sessionId,
+    uuid: r.uuid,
+    organization_id: ctx.organizationId,
+    branch_id: r.branch_id ?? null,
+    opened_by: r.opened_by,
+    opened_at: r.opened_at,
+    closed_at: r.closed_at,
+    closed_by: r.closed_by,
+    initial_amount: Number(r.initial_amount),
+    final_amount: resultado.contado,
+    base_dejada: resultado.baseDejada,
+    difference: resultado.diferencia,
+    status: 'closed' as const,
+  };
+  return NextResponse.json(
+    {
+      session,
+      arqueoId: r.arqueo_id ?? null,
+      esperado: resultado.esperado,
+      oculto: resultado.oculto,
+      ...(resultado.oculto ? {} : { descuadre: resultado.descuadre, faltanteACargo: resultado.faltanteACargo }),
+    },
+    { headers: { 'Cache-Control': 'private, no-store' } },
+  );
 }

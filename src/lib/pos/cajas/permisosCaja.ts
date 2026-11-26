@@ -17,12 +17,16 @@ import { hasOrgAdminOrPermission, type ServerOrgContext } from '@/lib/utils/orgC
 
 export const PERMISO_CERRAR_AJENAS = 'pos.cajas.cerrar_ajenas';
 export const PERMISO_VER_ESPERADO = 'pos.cajas.ver_esperado';
+/** Aprobar descuadres y explicar diferencias entre turnos (migración 20261126070000). */
+export const PERMISO_EXPLICAR_DIFERENCIAS = 'pos.cajas.explicar_diferencias';
 
 export interface PermisosCaja {
   /** Cerrar la caja que abrió otra persona. */
   cerrarCajasAjenas: boolean;
   /** Ver el esperado y la diferencia aunque la organización use cierre ciego. */
   verEsperadoEnCierreCiego: boolean;
+  /** Aprobar un descuadre y explicar diferencias de caja (genera asientos; queda en bitácora). */
+  explicarDiferencias: boolean;
 }
 
 type SujetoPermiso = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'roleId' | 'isSuperAdmin' | 'supabase'>;
@@ -34,11 +38,12 @@ async function tiene(ctx: SujetoPermiso, codigo: string): Promise<boolean> {
 }
 
 export async function resolverPermisosCaja(ctx: SujetoPermiso): Promise<PermisosCaja> {
-  const [cerrarCajasAjenas, verEsperadoEnCierreCiego] = await Promise.all([
+  const [cerrarCajasAjenas, verEsperadoEnCierreCiego, explicarDiferencias] = await Promise.all([
     tiene(ctx, PERMISO_CERRAR_AJENAS),
     tiene(ctx, PERMISO_VER_ESPERADO),
+    tiene(ctx, PERMISO_EXPLICAR_DIFERENCIAS),
   ]);
-  return { cerrarCajasAjenas, verEsperadoEnCierreCiego };
+  return { cerrarCajasAjenas, verEsperadoEnCierreCiego, explicarDiferencias };
 }
 
 /** ¿La organización usa cierre ciego? (`organization_settings.pos_blind_cash_count`). Falla → sí (fail-closed). */

@@ -64,6 +64,8 @@ import {
   type FiltroResenas,
   type ParteDescripcion,
 } from '@/lib/website/v2/seccionesFicha';
+import { esDestinoPestanaFicha, normalizarPestanasAncla } from '@/lib/website/contrato/seccionesTienda';
+import { nombreDeSeccion } from '../iconosSeccion';
 import { EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion, TituloBloque } from './PartesZonaGlobal';
 import { AvisoOrigenEjemplos, OrigenResenas, useOrigenTienda } from './OrigenResenasEditor';
 
@@ -106,6 +108,59 @@ export const ICONOS_LUCIDE_BENEFICIO: Record<string, LucideIcon> = {
 /** Textos: `sitioWeb.editor.seccionesFicha.*` (es/en/fr/pt). */
 function useT() {
   return useTranslations('sitioWeb.editor.seccionesFicha');
+}
+
+// ─── Pestañas de la ficha: de dónde sale cada pestaña ──────────────────────────────────────
+
+/** Lo mínimo de una sección de la página para saber qué bloque va en qué pestaña. */
+export interface SeccionDePagina {
+  id: string;
+  section_type: string;
+  is_visible?: boolean | null;
+  content?: unknown;
+}
+
+/**
+ * Id del bloque «Pestañas de la ficha» que muestra `tipo` dentro de una pestaña, o `null`. La misma
+ * regla de la tienda (`planPestanasFicha`): ambos visibles y `tipo` en las pestañas del bloque.
+ */
+export function bloquePestanasQueMuestra(secciones: readonly SeccionDePagina[] | null | undefined, tipo: string): string | null {
+  const visibles = (secciones ?? []).filter((s) => s.is_visible !== false);
+  const nav = visibles.find((s) => s.section_type === 'product_anchor_nav');
+  if (!nav || !esDestinoPestanaFicha(tipo) || !visibles.some((s) => s.section_type === tipo)) return null;
+  const { items } = normalizarPestanasAncla((nav.content ?? {}) as Record<string, unknown>);
+  return items.some((i) => i.target === tipo) ? nav.id : null;
+}
+
+/**
+ * Junto a cada pestaña de «Pestañas de la ficha»: «Editar contenido» selecciona el bloque de donde
+ * sale (Descripción → «Descripción de Producto», Características → «Especificaciones»…). La
+ * descripción añade el enlace al producto en Inventario, donde se escribe el texto.
+ */
+export function EnlaceContenidoPestana({ target, secciones, onSeleccionar }: { target: unknown; secciones: readonly SeccionDePagina[]; onSeleccionar: (id: string) => void }) {
+  const t = useT();
+  const bloque = typeof target === 'string' ? secciones.find((s) => s.section_type === target) : undefined;
+  const conInventario = target === 'product_description';
+  if (!bloque && !conInventario) return null;
+  return (
+    <p className="mt-1 flex flex-wrap justify-end gap-x-3 px-1 text-xs leading-4" data-editar-contenido-pestana={String(target)}>
+      {bloque && (
+        <button
+          type="button"
+          className="font-medium text-accent hover:underline"
+          aria-label={t('enPestanas.editarContenidoDe', { bloque: nombreDeSeccion(bloque.section_type) })}
+          onClick={() => onSeleccionar(bloque.id)}
+        >
+          {t('enPestanas.editarContenido')}
+        </button>
+      )}
+      {conInventario && (
+        <a href={RUTA_INVENTARIO_PRODUCTOS} target="_blank" rel="noopener noreferrer" className="text-fg-secondary hover:underline">
+          {t('enPestanas.textoEnInventario')}
+        </a>
+      )}
+    </p>
+  );
 }
 
 type Cambiar = (contenido: Record<string, unknown>) => void;
@@ -805,28 +860,50 @@ function PanelRelacionados({ pestana, contenido, onCambiar }: { pestana: Pestana
 
 // ─── Descripción ────────────────────────────────────────────────────────────────────────────
 
-function PanelDescripcion({ pestana, contenido, onCambiar }: { pestana: PestanaPanelFicha; contenido: Record<string, unknown>; onCambiar: Cambiar }) {
+/** La descripción va dentro de «Pestañas de la ficha»: `ir` selecciona ese bloque. */
+export interface DescripcionEnPestanas {
+  ir?: () => void;
+}
+
+function PanelDescripcion({ pestana, contenido, onCambiar, enPestanas }: { pestana: PestanaPanelFicha; contenido: Record<string, unknown>; onCambiar: Cambiar; enPestanas?: DescripcionEnPestanas | null }) {
   const t = useT();
   const o = useMemo(() => leerOpcionesDescripcion(contenido), [contenido]);
   const k = CLAVES_DESCRIPCION;
   const poner = (clave: string, v: unknown) => onCambiar(conClave(contenido, clave, v));
   const ponerNueva = (clave: string, v: unknown) => onCambiar(conClave({ ...contenido, [k.estilo]: contenido[k.estilo] ?? o.estilo }, clave, v));
   const nombreParte = (p: ParteDescripcion) => t(`descripcion.partes.${p}`);
-  const { usa, ocultas } = soloEnEstilo(SOLO_EN_ESTILOS_DESCRIPCION, o.estilo);
-  const nombreEstilo = t(`descripcion.estilos.${o.estilo}`);
+  // Dentro de «Pestañas de la ficha» solo valen «Texto con Ver más» y «Ficha en tabla» (la tienda
+  // pinta «Pestañas» y «Acordeón» como texto con «Ver más»: no hay pestañas dentro de pestañas) y
+  // las partes las da el bloque de pestañas.
+  const estilo = enPestanas && o.estilo !== 'tabla' ? 'ver_mas' : o.estilo;
+  const { usa, ocultas } = soloEnEstilo(SOLO_EN_ESTILOS_DESCRIPCION, estilo);
+  const nombreEstilo = t(`descripcion.estilos.${estilo}`);
+  const aviso = enPestanas ? (
+    <AvisoTonal
+      tono="informacion"
+      compacto
+      icono={Info}
+      titulo={t('enPestanas.aviso')}
+      descripcion={pestana === 'diseno' ? t('enPestanas.noAplican') : undefined}
+      accion={enPestanas.ir ? { etiqueta: t('enPestanas.irPestanas'), onClick: enPestanas.ir } : undefined}
+    />
+  ) : null;
 
   if (pestana === 'diseno') {
     return (
       <>
-        <EstilosTarjetas estilos={['ver_mas', 'pestanas', 'acordeon', 'tabla'] as const} valor={o.estilo} onElegir={(v) => poner(k.estilo, v)} etiqueta={(v) => t(`descripcion.estilos.${v}`)} />
-        <ChipsMultiples<ParteDescripcion>
-          etiqueta={t('descripcion.partesTitulo')}
-          nuevo
-          opciones={PARTES_DESCRIPCION.map((p) => ({ valor: p, etiqueta: nombreParte(p) }))}
-          valores={o.partes}
-          onCambiar={(v) => ponerNueva(k.partes, v.length ? v : ['descripcion'])}
-          ayuda={t('descripcion.ayudaPartes')}
-        />
+        {aviso}
+        <EstilosTarjetas estilos={enPestanas ? (['ver_mas', 'tabla'] as const) : (['ver_mas', 'pestanas', 'acordeon', 'tabla'] as const)} valor={estilo} onElegir={(v) => poner(k.estilo, v)} etiqueta={(v) => t(`descripcion.estilos.${v}`)} />
+        {!enPestanas && (
+          <ChipsMultiples<ParteDescripcion>
+            etiqueta={t('descripcion.partesTitulo')}
+            nuevo
+            opciones={PARTES_DESCRIPCION.map((p) => ({ valor: p, etiqueta: nombreParte(p) }))}
+            valores={o.partes}
+            onCambiar={(v) => ponerNueva(k.partes, v.length ? v : ['descripcion'])}
+            ayuda={t('descripcion.ayudaPartes')}
+          />
+        )}
         {usa('abierta', t('descripcion.abierta')) && (
           <Segmento etiqueta={t('descripcion.abierta')} nuevo opciones={o.partes.map((p) => ({ valor: p, etiqueta: nombreParte(p) }))} valor={o.abierta} onCambiar={(v) => ponerNueva(k.abierta, v)} />
         )}
@@ -843,7 +920,7 @@ function PanelDescripcion({ pestana, contenido, onCambiar }: { pestana: PestanaP
           <Segmento etiqueta={t('descripcion.celular')} nuevo opciones={[{ valor: 'igual', etiqueta: t('descripcion.igual') }, { valor: 'acordeon', etiqueta: t('descripcion.estilos.acordeon') }]} valor={o.celular} onCambiar={(v) => ponerNueva(k.celular, v)} />
         )}
         {/* «Varias abiertas»: en «Acordeón» y en «Pestañas» que en el celular pasan a acordeón. */}
-        {(o.estilo === 'pestanas' && o.celular === 'acordeon') || usa('variasAbiertas', t('descripcion.variasAbiertas')) ? (
+        {(estilo === 'pestanas' && o.celular === 'acordeon') || usa('variasAbiertas', t('descripcion.variasAbiertas')) ? (
           <FilaInterruptor titulo={t('descripcion.variasAbiertas')} ayuda={t('descripcion.soloAcordeon')} valor={o.variasAbiertas} onCambiar={(v) => ponerNueva(k.variasAbiertas, v)} />
         ) : null}
         <NoSeUsan estilo={nombreEstilo} etiquetas={ocultas} />
@@ -857,12 +934,18 @@ function PanelDescripcion({ pestana, contenido, onCambiar }: { pestana: PestanaP
     );
     return (
       <>
+        {aviso}
         <AvisoTonal tono="informacion" compacto icono={Info} titulo={t('descripcion.textoTitulo')} descripcion={t('descripcion.textoDescripcion')} accion={{ etiqueta: t('descripcion.editarInventario'), href: RUTA_INVENTARIO_PRODUCTOS, externo: true }} />
-        <TituloBloque>{t('descripcion.titulos')}</TituloBloque>
-        {campoTitulo('descripcion', k.tituloDescripcion)}
-        {campoTitulo('especificaciones', k.tituloEspecificaciones)}
-        {campoTitulo('envio', k.tituloEnvio)}
-        {campoTitulo('preguntas', k.tituloPreguntas)}
+        {/* Títulos de las partes: dentro de las pestañas, el nombre lo pone «Pestañas de la ficha». */}
+        {!enPestanas && (
+          <>
+            <TituloBloque>{t('descripcion.titulos')}</TituloBloque>
+            {campoTitulo('descripcion', k.tituloDescripcion)}
+            {campoTitulo('especificaciones', k.tituloEspecificaciones)}
+            {campoTitulo('envio', k.tituloEnvio)}
+            {campoTitulo('preguntas', k.tituloPreguntas)}
+          </>
+        )}
         <div className="flex flex-col gap-3 border-t border-line pt-3">
           <ChipsMultiples
             etiqueta={t('descripcion.filas')}
@@ -900,6 +983,8 @@ export interface PanelSeccionFichaProps {
   pestana: PestanaPanelFicha;
   contenido: Record<string, unknown>;
   onCambiar: Cambiar;
+  /** Descripción: va dentro de «Pestañas de la ficha» (aviso, estilos y partes que no aplican). */
+  enPestanas?: DescripcionEnPestanas | null;
   /**
    * Reseñas: `website_settings.reviews_default_source` si los ajustes del sitio ya lo traen (puede
    * ser `null`); `undefined` = no se sabe y el panel lo pide a la ruta de ajustes de reseñas.
@@ -908,12 +993,12 @@ export interface PanelSeccionFichaProps {
 }
 
 /** Panel de la pestaña dada para una de las cuatro secciones de la ficha. */
-export function PanelSeccionFicha({ tipo, pestana, contenido, onCambiar, origenTiendaResenas }: PanelSeccionFichaProps) {
+export function PanelSeccionFicha({ tipo, pestana, contenido, onCambiar, origenTiendaResenas, enPestanas }: PanelSeccionFichaProps) {
   const cuerpo =
     tipo === 'product_benefits' ? <PanelBeneficios pestana={pestana} contenido={contenido} onCambiar={onCambiar} />
       : tipo === 'product_reviews' ? <PanelResenas pestana={pestana} contenido={contenido} onCambiar={onCambiar} origenTiendaInicial={origenTiendaResenas} />
         : tipo === 'related_products' ? <PanelRelacionados pestana={pestana} contenido={contenido} onCambiar={onCambiar} />
-          : <PanelDescripcion pestana={pestana} contenido={contenido} onCambiar={onCambiar} />;
+          : <PanelDescripcion pestana={pestana} contenido={contenido} onCambiar={onCambiar} enPestanas={enPestanas} />;
   return (
     <div className="flex flex-col gap-4" data-panel-seccion-ficha={`${tipo}:${pestana}`}>
       {cuerpo}

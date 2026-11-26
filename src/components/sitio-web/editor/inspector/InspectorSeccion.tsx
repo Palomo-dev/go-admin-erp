@@ -39,7 +39,7 @@ import { EditorPlanesMembresia } from './EditorPlanesMembresia';
 import { EditorAccionesFicha } from './EditorAccionesFicha';
 import { InterruptorAvisoFicha } from './AvisoContraentregaEditor';
 import { EditorEtiquetasFicha } from './EditorEtiquetasFicha';
-import { CAMPOS_CUBIERTOS_FICHA, PanelSeccionFicha, esSeccionFichaConPanel } from './EditorSeccionesFicha';
+import { CAMPOS_CUBIERTOS_FICHA, EnlaceContenidoPestana, PanelSeccionFicha, bloquePestanasQueMuestra, esSeccionFichaConPanel } from './EditorSeccionesFicha';
 import { CLAVES_BARRA_FIJA_EDITOR, EditorBarraFija } from './EditorBarraFija';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
@@ -103,6 +103,12 @@ export interface InspectorSeccionProps {
    * dato de Encabezado › Carrito). Sin él, el interruptor no sale.
    */
   onCambiarAjustes?: (cambio: Record<string, unknown>) => void;
+  /**
+   * Secciones de la página y selección de otra: enlaces entre «Pestañas de la ficha» y los bloques
+   * que muestra (Descripción, Especificaciones, Envío y devoluciones, Reseñas).
+   */
+  seccionesPagina?: readonly WebsitePageSection[];
+  onSeleccionarSeccion?: (id: string) => void;
 }
 
 export function InspectorSeccion(p: InspectorSeccionProps) {
@@ -126,6 +132,16 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
   // Origen de reseñas de la tienda si los ajustes del editor traen la columna (puede ser null);
   // si no la traen, el panel de Reseñas lo pide (OrigenResenasEditor).
   const origenTiendaResenas = ajustesSitio && 'reviews_default_source' in ajustesSitio ? ajustesSitio.reviews_default_source : undefined;
+  // Descripción dentro de «Pestañas de la ficha»: aviso con enlace a ese bloque.
+  const seleccionar = p.onSeleccionarSeccion;
+  const idPestanas = s.section_type === 'product_description' ? bloquePestanasQueMuestra(p.seccionesPagina, s.section_type) : null;
+  const enPestanas = idPestanas ? { ir: seleccionar ? () => seleccionar(idPestanas) : undefined } : null;
+  // «Pestañas de la ficha»: «Editar contenido» junto a cada pestaña.
+  const secciones = p.seccionesPagina;
+  const pieItemPestana =
+    s.section_type === 'product_anchor_nav' && secciones && seleccionar
+      ? (e: Record<string, unknown>) => <EnlaceContenidoPestana target={e.target} secciones={secciones} onSeleccionar={seleccionar} />
+      : undefined;
   const espacio = useMemo(
     () => espacioSeccion(s.content ?? {}, { tipo: s.section_type, variante: s.section_variant, primera, ajustesSitio, espaciado: estilo.espaciado ?? null }),
     [s.content, s.section_type, s.section_variant, primera, ajustesSitio, estilo.espaciado],
@@ -269,6 +285,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         fuentes={p.tema.fuentes}
         categorias={p.categorias}
         espacio={espacio}
+        pieElementoRepetidor={c.key === 'items' ? pieItemPestana : undefined}
       />
     );
   };
@@ -403,7 +420,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
             )}
             {/* Beneficios, reseñas, relacionados y descripción de la ficha (Figma 2983:72501). */}
             {esSeccionFichaConPanel(s.section_type) && (
-              <PanelSeccionFicha tipo={s.section_type} pestana="diseno" contenido={contenido} onCambiar={onCambiarContenido} origenTiendaResenas={origenTiendaResenas} />
+              <PanelSeccionFicha tipo={s.section_type} pestana="diseno" contenido={contenido} onCambiar={onCambiarContenido} origenTiendaResenas={origenTiendaResenas} enPestanas={enPestanas} />
             )}
             {pintarConBloques(campos('diseno'))}
             {/* Aviso de contraentrega debajo del precio, junto a «Mostrar countdown» (Figma 3099:83909). */}
@@ -456,7 +473,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           <EditorAccionesFicha contenido={contenido} onCambiar={onCambiarContenido} numeroWhatsapp={ajustesSitio?.whatsapp_number} />
         )}
         {pestana === 'contenido' && esSeccionFichaConPanel(s.section_type) && (
-          <PanelSeccionFicha tipo={s.section_type} pestana="contenido" contenido={contenido} onCambiar={onCambiarContenido} origenTiendaResenas={origenTiendaResenas} />
+          <PanelSeccionFicha tipo={s.section_type} pestana="contenido" contenido={contenido} onCambiar={onCambiarContenido} origenTiendaResenas={origenTiendaResenas} enPestanas={enPestanas} />
         )}
         {pestana === 'contenido' &&
           (campos('contenido').length === 0 ? (
@@ -481,7 +498,7 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
         )}
 
         {pestana === 'estilo' && esSeccionFichaConPanel(s.section_type) && (
-          <PanelSeccionFicha tipo={s.section_type} pestana="estilo" contenido={contenido} onCambiar={onCambiarContenido} origenTiendaResenas={origenTiendaResenas} />
+          <PanelSeccionFicha tipo={s.section_type} pestana="estilo" contenido={contenido} onCambiar={onCambiarContenido} origenTiendaResenas={origenTiendaResenas} enPestanas={enPestanas} />
         )}
         {pestana === 'estilo' && (
           <InspectorEstilo

@@ -8,7 +8,7 @@
  * categorías) se delegan a `FieldRenderer`, el renderizador único de campos del editor, para no
  * tener una segunda implementación.
  */
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { ColorTema } from './PartesZonaGlobal';
@@ -104,6 +104,8 @@ export interface CampoSeccionProps {
   fuentes?: FuentesTema;
   /** Relleno y margen que la tienda aplica hoy (placeholders de «Fondo y espaciado»). */
   espacio?: EspacioSeccion;
+  /** Repetidor: algo pequeño debajo de cada elemento (p. ej. «Editar contenido» de una pestaña). */
+  pieElementoRepetidor?: (elemento: Record<string, unknown>) => ReactNode;
 }
 
 export function CampoSeccion({
@@ -119,6 +121,7 @@ export function CampoSeccion({
   deshabilitado,
   fuentes,
   espacio,
+  pieElementoRepetidor,
 }: CampoSeccionProps) {
   const t = useTextosEditor();
   const ayuda = campo.helpText;
@@ -150,6 +153,7 @@ export function CampoSeccion({
           categorias={categorias}
           deshabilitado={deshabilitado}
           fuentes={fuentes}
+          pieElementoRepetidor={pieElementoRepetidor}
         />
       );
     case 'text':

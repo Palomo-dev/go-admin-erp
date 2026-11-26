@@ -39600,7 +39600,15 @@
           "tamanoTexto": "Text size",
           "normal": "Normal"
         },
-        "ocultasPorEstilo": "Not used with «{estilo}»: {opciones}. Change the style to see them."
+        "ocultasPorEstilo": "Not used with «{estilo}»: {opciones}. Change the style to see them.",
+        "enPestanas": {
+          "aviso": "Shown inside “Product page tabs”. Here you change how the text looks; the tabs are ordered there.",
+          "noAplican": "“Tabs”, “Accordion” and “Parts shown” don’t apply here: the tabs block provides the parts.",
+          "irPestanas": "Go to “Product page tabs”",
+          "editarContenido": "Edit content",
+          "editarContenidoDe": "Edit content in “{bloque}”",
+          "textoEnInventario": "Text in Inventory"
+        }
       },
       "etiquetasFicha": {
         "titulo": "Labels",

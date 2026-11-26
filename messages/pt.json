@@ -39610,7 +39610,15 @@
           "tamanoTexto": "Tamanho do texto",
           "normal": "Normal"
         },
-        "ocultasPorEstilo": "Com «{estilo}» não são usadas: {opciones}. Mude o estilo para vê-las."
+        "ocultasPorEstilo": "Com «{estilo}» não são usadas: {opciones}. Mude o estilo para vê-las.",
+        "enPestanas": {
+          "aviso": "Aparece dentro de «Abas da ficha». Aqui você muda como o texto aparece; as abas são ordenadas lá.",
+          "noAplican": "«Abas», «Acordeão» e «Partes exibidas» não se aplicam aqui: as partes vêm do bloco de abas.",
+          "irPestanas": "Ir para «Abas da ficha»",
+          "editarContenido": "Editar conteúdo",
+          "editarContenidoDe": "Editar conteúdo em «{bloque}»",
+          "textoEnInventario": "Texto no Inventário"
+        }
       },
       "etiquetasFicha": {
         "titulo": "Etiquetas",

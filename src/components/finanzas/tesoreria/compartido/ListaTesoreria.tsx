@@ -20,12 +20,11 @@
  * anular con motivo, exportar CSV, buscar, actualizar, nuevo. Las que no
  * hacían nada («Importar» y «Editar» sin `onClick`) no se dibujan.
  *
- * Recaudo por medio de pago (Figma «05 POS y ventas» 3300-420896, 2026-11-25): barra a la
- * vista con Fecha («Hoy» por defecto, recordada por persona solo durante el día) y Medio de
- * pago; tarjetas del periodo filtrado con «Recaudado» (pagos aprobados, con los anticipos de
- * contraentrega en una línea aparte); lo cobrado por pasarela o datáfono se ve el día del cobro
- * («Por abonar», desde `payments`) y los abonos del procesador al banco son traslados que no
- * suman. Sin tablero nuevo: las gráficas siguen en Reportes.
+ * Fecha y Medio de pago (2026-11-25): SOLO dentro del panel «Filtros», con sus chips bajo el
+ * buscador (recordados por persona solo durante el día; sin fecha por defecto, como antes). Las
+ * tarjetas son las de siempre; «Hoy» filtra la lista. Lo cobrado por pasarela o datáfono se ve el
+ * día del cobro («Por abonar», desde `payments`) y los abonos del procesador al banco son
+ * traslados que no suman. Cifras por medio: Reportes › «Recaudo por medio de pago».
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -54,6 +53,10 @@ import {
   RowActionsMenu,
   SearchInput,
   StatCard,
+  FilterPanel,
+  FormField,
+  ListToolbar,
+  DateRangeButton,
   StatusBadge,
   TabBar,
   clasesBoton,
@@ -85,14 +88,14 @@ import { ConsignarCajaDialogo } from './ConsignarCajaDialogo';
 import { NuevaTransferenciaDialogo } from './NuevaTransferenciaDialogo';
 import { MovimientoTipoBadge, descargarCsv } from './TesoreriaComun';
 import { cn } from '@/utils/Utils';
-import { BarraFecha, FilterChips, presetsRango, etiquetaRango, type ChipFiltro, type IdPresetRango, type RangoFechas } from '@/components/kit';
+import { FilterChips, presetDe, presetsRango, etiquetaRango, type ChipFiltro, type IdPresetRango, type RangoFechas } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
-import { FiltroConteo } from '@/components/finanzas/recaudo/FiltroConteo';
 import { useFiltroDelDia } from '@/components/finanzas/recaudo/useFiltroDelDia';
 import { useMediosRecaudo } from '@/components/finanzas/recaudo/useMediosRecaudo';
 import { leerPagosRecaudo } from '@/lib/services/recaudoService';
-import { filtrarPorMedio, resumenRecaudo, totalesPorMedio, type ClaveMedio, type PagoRecaudo } from '@/lib/finanzas/recaudo/recaudoPorMedio';
-import { esCobroPorAbonar, filaDeAbono, filaDeCobroPasarela, filtrarFilasRecaudo, tarjetasMovimientos, type AbonoOrigen } from '@/lib/finanzas/recaudo/movimientosRecaudo';
+import type { ClaveMedio, PagoRecaudo } from '@/lib/finanzas/recaudo/recaudoPorMedio';
+import { esCobroPorAbonar, filaDeAbono, filaDeCobroPasarela, filtrarFilasRecaudo, type AbonoOrigen } from '@/lib/finanzas/recaudo/movimientosRecaudo';
 import { getDateRange } from '@/lib/utils/dateRanges';
 import { plainDateToInstant } from '@/lib/utils/dateCore';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
@@ -110,8 +113,7 @@ interface FiltroRecaudoTesoreria {
   hasta: string;
   medios: string[];
 }
-const FILTRO_TESORERIA_POR_DEFECTO: FiltroRecaudoTesoreria = { periodo: 'hoy', desde: '', hasta: '', medios: [] };
-const RUTA_PROCESADORES = '/app/finanzas/tesoreria/procesadores-pago';
+const FILTRO_TESORERIA_POR_DEFECTO: FiltroRecaudoTesoreria = { periodo: 'todo', desde: '', hasta: '', medios: [] };
 
 /** El tipo fijado de cada vista (Ingresos y Egresos son Movimientos con el tipo fijado). */
 const TIPO_FIJO: Record<VistaTesoreria, FiltroTipo | null> = { movimientos: null, ingresos: 'entradas', egresos: 'salidas' };
@@ -136,7 +138,6 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
   const { setValor: setRecordado } = recordado;
   const [pagos, setPagos] = useState<PagoRecaudo[] | null>(null);
   const [abonos, setAbonos] = useState<AbonoOrigen[]>([]);
-  const [errorRecaudo, setErrorRecaudo] = useState(false);
 
   const [filas, setFilas] = useState<FilaMovimiento[]>([]);
   const [estado, setEstado] = useState<EstadoTabla>('cargando');
@@ -229,11 +230,9 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
       ]);
       setPagos(leidos);
       setAbonos(payouts);
-      setErrorRecaudo(false);
     } catch {
       setPagos(null);
       setAbonos([]);
-      setErrorRecaudo(true);
     }
     // `rango` se sigue por `claveRango`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,9 +274,6 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
   );
   const filasDelPeriodo = useMemo(() => filtrarFilasRecaudo(todasLasFilas, rango, diaDe, medios, mediosCobro), [todasLasFilas, rango, diaDe, medios, mediosCobro]);
   const filasSinFecha = useMemo(() => filtrarFilasRecaudo(todasLasFilas, null, diaDe, medios, mediosCobro), [todasLasFilas, diaDe, medios, mediosCobro]);
-  const pagosFiltrados = useMemo(() => (pagos ? filtrarPorMedio(pagos, medios) : null), [pagos, medios]);
-  const recaudo = useMemo(() => (pagosFiltrados ? resumenRecaudo(pagosFiltrados) : null), [pagosFiltrados]);
-  const totalesMedio = useMemo(() => totalesPorMedio(pagos ?? []), [pagos]);
 
   const visibles = useMemo(() => filtrarMovimientos(filasDelPeriodo, filtro, termino), [filasDelPeriodo, filtro, termino]);
   const resumen = useMemo(() => resumirMovimientos(visibles, hoy, diaDe), [visibles, hoy, diaDe]);
@@ -287,12 +283,10 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
   const conteos = useMemo(() => contarPorTipo(todasBuscadas), [todasBuscadas]);
   // «Por conciliar» mira todos los bancos y todas las fechas, no solo la pestaña abierta.
   const resumenTodo = useMemo(() => resumirMovimientos(filtrarMovimientos(filas, 'todos', termino), hoy, diaDe), [filas, termino, hoy, diaDe]);
-  const tarjetas = useMemo(() => tarjetasMovimientos(filasDelPeriodo, pagosFiltrados ?? []), [filasDelPeriodo, pagosFiltrados]);
 
   const elegirFecha = (id: IdPresetRango | 'rango', r: RangoFechas) =>
     setRecordado((v) => ({ ...v, periodo: id, desde: id === 'rango' ? r.desde : v.desde, hasta: id === 'rango' ? r.hasta : v.hasta }));
   const esHoy = periodoFecha === 'hoy';
-  const etiquetaPeriodo = (claveHoy: string, clavePeriodo: string) => tRec(esHoy ? claveHoy : clavePeriodo);
   const nombreMedios = medios.map(mediosRecaudo.nombre).join(', ');
   const chipsRecaudo: ChipFiltro[] = [
     rango ? { clave: 'fecha', etiqueta: tRec('chips.fecha', { valor: etiquetaRango(rango, locale) }) } : null,
@@ -300,8 +294,6 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
   ].filter((c): c is ChipFiltro => c !== null);
   const quitarChipRecaudo = (clave: string) =>
     setRecordado((v) => (clave === 'fecha' ? { ...v, periodo: 'todo' } : clave === 'medios' ? { ...v, medios: [] } : v));
-  const textoRecaudo = (n: number) => (errorRecaudo ? '—' : formatear(n));
-  const cargandoRecaudo = !pagos && !errorRecaudo;
   const pag = visibles.slice((pagina - 1) * TAMANO_PAGINA, pagina * TAMANO_PAGINA);
 
   const nombreCuenta = useCallback(
@@ -445,49 +437,14 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
     { id: 'consignar', etiqueta: t('nuevo.consignar'), descripcion: t('nuevo.consignarAyuda'), icono: Wallet, onSelect: () => setAlta('consignar') },
   ];
 
-  const tarjetaRecaudado = (
-    <StatCard
-      etiqueta={medios.length === 1 ? tRec(esHoy ? 'movimientos.recaudadoHoyPor' : 'movimientos.recaudadoPeriodoPor', { medio: nombreMedios }) : etiquetaPeriodo('movimientos.recaudadoHoy', 'movimientos.recaudadoPeriodo')}
-      valor={textoRecaudo(recaudo?.total.monto ?? 0)}
-      tono={errorRecaudo ? 'advertencia' : 'exito'}
-      detalle={
-        errorRecaudo
-          ? tRec('errorLectura')
-          : recaudo && recaudo.porTipo.anticipo.monto > 0
-            ? tRec('incluyeAnticipos', { monto: formatear(recaudo.porTipo.anticipo.monto) })
-            : tRec('movimientos.pagosAprobados', { n: recaudo?.total.pagos ?? 0 })
-      }
-      cargando={estado === 'cargando' || cargandoRecaudo}
-    />
-  );
-
+  // Tarjetas de siempre. «… del mes» y «Hoy» no dependen de la fecha elegida (sí del medio y la
+  // búsqueda); «Hoy» de Ingresos y Egresos filtra la lista.
   const kpis =
     vista === 'movimientos' ? (
-      <KpiStrip etiqueta={t('kpi.etiqueta')} columnas={5}>
-        {tarjetaRecaudado}
-        <StatCard
-          etiqueta={etiquetaPeriodo('movimientos.salidasHoy', 'movimientos.salidasPeriodo')}
-          valor={formatear(tarjetas.salidas)}
-          detalle={t('kpi.movimientos', { n: tarjetas.conteoSalidas })}
-          tono="peligro"
-          cargando={estado === 'cargando'}
-          onClick={() => setPestana('salidas')}
-        />
-        <StatCard
-          etiqueta={etiquetaPeriodo('movimientos.netoHoy', 'movimientos.netoPeriodo')}
-          valor={textoRecaudo((recaudo?.total.monto ?? 0) - tarjetas.salidas)}
-          detalle={tRec('movimientos.netoDetalle')}
-          tono={(recaudo?.total.monto ?? 0) - tarjetas.salidas < 0 ? 'peligro' : 'neutro'}
-          cargando={estado === 'cargando' || cargandoRecaudo}
-        />
-        <StatCard
-          etiqueta={tRec('movimientos.porAbonarTitulo')}
-          valor={textoRecaudo(tarjetas.porAbonar)}
-          detalle={tarjetas.mediosPorAbonar.length > 0 ? tarjetas.mediosPorAbonar.map(mediosRecaudo.nombre).join(', ') : tRec('movimientos.porAbonarNada')}
-          tono={tarjetas.porAbonar > 0 ? 'advertencia' : 'neutro'}
-          href={RUTA_PROCESADORES}
-          cargando={cargandoRecaudo}
-        />
+      <KpiStrip etiqueta={t('kpi.etiqueta')}>
+        <StatCard etiqueta={t('kpi.entradasMes')} valor={formatear(resumenSinFecha.entradasMes)} detalle={t('kpi.movimientos', { n: resumenSinFecha.conteoEntradasMes })} tono="exito" cargando={estado === 'cargando'} onClick={() => setPestana('entradas')} />
+        <StatCard etiqueta={t('kpi.salidasMes')} valor={formatear(resumenSinFecha.salidasMes)} detalle={t('kpi.movimientos', { n: resumenSinFecha.conteoSalidasMes })} tono="peligro" cargando={estado === 'cargando'} onClick={() => setPestana('salidas')} />
+        <StatCard etiqueta={t('kpi.netoMes')} valor={formatear(resumenSinFecha.netoMes)} tono={resumenSinFecha.netoMes < 0 ? 'peligro' : 'neutro'} cargando={estado === 'cargando'} />
         <StatCard
           etiqueta={t('kpi.porConciliar')}
           valor={resumenTodo.porConciliar}
@@ -502,67 +459,68 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
         />
       </KpiStrip>
     ) : (
-      <KpiStrip etiqueta={t('kpi.etiqueta')} columnas={vista === 'ingresos' ? 5 : 4}>
-        {vista === 'ingresos' && tarjetaRecaudado}
-        <StatCard etiqueta={rango ? tRec('movimientos.totalPeriodo') : t('kpi.total')} valor={formatear(resumen.total)} tamano="sm" cargando={estado === 'cargando'} />
+      <KpiStrip etiqueta={t('kpi.etiqueta')}>
+        <StatCard etiqueta={t('kpi.total')} valor={formatear(resumen.total)} tamano="sm" cargando={estado === 'cargando'} />
         <StatCard etiqueta={t('kpi.mes')} valor={formatear(resumenSinFecha.mes)} tamano="sm" cargando={estado === 'cargando'} />
-        {/* «Hoy» ahora filtra la lista (antes solo mostraba la cifra). */}
         <StatCard
           etiqueta={t('kpi.hoy')}
           valor={formatear(resumenSinFecha.hoy)}
           tamano="sm"
           cargando={estado === 'cargando'}
           resaltada={esHoy}
-          onClick={() => elegirFecha('hoy', { desde: hoy, hasta: hoy })}
+          onClick={() => (esHoy ? quitarChipRecaudo('fecha') : elegirFecha('hoy', { desde: hoy, hasta: hoy }))}
         />
         <StatCard etiqueta={t('kpi.registros')} valor={resumen.registros} tamano="sm" cargando={estado === 'cargando'} />
       </KpiStrip>
     );
 
-  // Barra a la vista (Figma 3300-420896): fecha y medio de pago, con lo que entró por cada medio.
-  const barraRecaudo = (
-    <div className="space-y-2">
-      <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
-        <BarraFecha activo={periodoFecha === 'todo' ? null : periodoFecha} rango={rango ?? { desde: hoy, hasta: hoy }} hoy={hoy} onElegir={elegirFecha} />
-        <FiltroConteo
-          titulo={tRec('filtro.medio')}
-          resumen={tRec('filtro.medioResumen', { valor: medios.length > 0 ? nombreMedios : tRec('filtro.todos') })}
-          opciones={mediosRecaudo.opcionesMedio(totalesMedio, formatear, medios)}
-          grupos={[
-            { id: 'pasarelas', titulo: tRec('filtro.grupoPasarelas') },
-            { id: 'otros', titulo: tRec('filtro.grupoOtros') },
-          ]}
-          valores={medios}
-          onAplicar={(v) => setRecordado((x) => ({ ...x, medios: v }))}
-          buscador
-          nota={tRec('movimientos.notaMedio')}
-        />
-      </div>
-      {vista !== 'egresos' && totalesMedio.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 text-sm">
-          <span className="text-fg-secondary">{tRec('movimientos.porMedio')}</span>
-          {totalesMedio.map((m) => {
-            const activo = medios.includes(String(m.medio));
-            return (
-              <button
-                key={String(m.medio)}
-                type="button"
-                aria-pressed={activo}
-                onClick={() => setRecordado((x) => ({ ...x, medios: activo ? x.medios.filter((y) => y !== m.medio) : [...x.medios, String(m.medio)] }))}
-                className={cn(
-                  'inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                  activo ? 'border-brand bg-brand-tint text-brand-deep' : 'border-line-strong bg-surface text-fg-secondary hover:bg-hover',
-                )}
-              >
-                {mediosRecaudo.nombre(m.medio)} {formatear(m.monto)}
-              </button>
-            );
-          })}
-          <span className="ml-auto text-xs text-fg-muted">{tRec('movimientos.noSumanNota')}</span>
-        </div>
-      )}
-      <FilterChips chips={chipsRecaudo} onQuitar={quitarChipRecaudo} onLimpiarTodo={() => setRecordado(FILTRO_TESORERIA_POR_DEFECTO)} />
-    </div>
+  // Buscador con el botón «Filtros» (Fecha y Medio de pago dentro) y los chips de lo activo.
+  const opcionesMedio = mediosRecaudo.opcionesMedio([], formatear, medios).filter((o) => !o.deshabilitada);
+  const barraBusqueda = (
+    <ListToolbar
+      busqueda={
+        vista === 'movimientos' ? (
+          <SearchInput value={termino} onChange={setTermino} placeholder={t('buscar')} etiqueta={t('buscar')} />
+        ) : (
+          <SearchInput value={termino} onChange={setTermino} placeholder={t('buscarConcepto')} etiqueta={t('buscarConcepto')} />
+        )
+      }
+      filtros={
+        <FilterPanel conteo={chipsRecaudo.length} onLimpiar={() => setRecordado(FILTRO_TESORERIA_POR_DEFECTO)}>
+          <FormField etiqueta={t('columnas.fecha')}>
+            {() => (
+              <DateRangeButton
+                valor={rango ?? { desde: hoy, hasta: hoy }}
+                hoy={hoy}
+                max={hoy}
+                etiqueta={t('columnas.fecha')}
+                onValorChange={(r) => elegirFecha(presetDe(r, hoy) ?? 'rango', r)}
+                onLimpiar={rango ? () => quitarChipRecaudo('fecha') : undefined}
+                className="w-full"
+              />
+            )}
+          </FormField>
+          <FormField etiqueta={tRec('filtro.medio')}>
+            {(c) => (
+              <Select value={medios[0] ?? 'todos'} onValueChange={(v) => setRecordado((x) => ({ ...x, medios: v === 'todos' ? [] : [v] }))}>
+                <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">{tRec('filtro.todos')}</SelectItem>
+                  {opcionesMedio.map((o) => (
+                    <SelectItem key={o.valor} value={o.valor}>
+                      {o.etiqueta}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+        </FilterPanel>
+      }
+      chips={chipsRecaudo.length > 0 ? <FilterChips chips={chipsRecaudo} onQuitar={quitarChipRecaudo} onLimpiarTodo={() => setRecordado(FILTRO_TESORERIA_POR_DEFECTO)} /> : undefined}
+    />
   );
 
   const estadoTabla: EstadoTabla = estado === 'listo' && todasLasFilas.length > 0 && visibles.length === 0 ? 'sinResultados' : estado;
@@ -617,14 +575,9 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
         }
       />
 
-      {barraRecaudo}
-      {vista !== 'movimientos' && (
-        <SearchInput value={termino} onChange={setTermino} placeholder={t('buscarConcepto')} etiqueta={t('buscarConcepto')} />
-      )}
+      {vista !== 'movimientos' && barraBusqueda}
       {kpis}
-      {vista === 'movimientos' && (
-        <SearchInput value={termino} onChange={setTermino} placeholder={t('buscar')} etiqueta={t('buscar')} />
-      )}
+      {vista === 'movimientos' && barraBusqueda}
 
       <DataTable<FilaMovimiento>
         etiqueta={titulo}
@@ -633,7 +586,10 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
         obtenerId={(f) => f.clave}
         estado={estadoTabla}
         termino={termino}
-        onLimpiarFiltros={() => setTermino('')}
+        onLimpiarFiltros={() => {
+          setTermino('');
+          setRecordado(FILTRO_TESORERIA_POR_DEFECTO);
+        }}
         onReintentar={() => void cargar()}
         onFilaClick={(f) => router.push(f.href)}
         etiquetaFila={(f) => f.concepto || titulo}

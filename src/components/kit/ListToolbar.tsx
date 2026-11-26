@@ -16,21 +16,15 @@ import { cn } from '@/utils/Utils';
  */
 export interface ListToolbarProps {
   busqueda: ReactNode;
-  /**
-   * Filtros a la vista ANTES del buscador (Figma «05 POS y ventas» 3300-420726: «Fecha» y
-   * «Medio de pago» fuera del panel). Opcional: sin él la fila es la de siempre.
-   */
-  antes?: ReactNode;
   filtros?: ReactNode;
   chips?: ReactNode;
   className?: string;
 }
 
-export function ListToolbar({ busqueda, antes, filtros, chips, className }: ListToolbarProps) {
+export function ListToolbar({ busqueda, filtros, chips, className }: ListToolbarProps) {
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <div className="flex items-center gap-2 sm:gap-3">
-        {antes}
         <div className="min-w-0 flex-1 [&>*]:w-full">{busqueda}</div>
         {filtros}
       </div>

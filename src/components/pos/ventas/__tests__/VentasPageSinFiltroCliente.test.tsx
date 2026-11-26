@@ -58,15 +58,6 @@ jest.mock('@/lib/services/clientesListadoService', () => ({ listarClientes: jest
 jest.mock('@/components/ui/use-toast', () => ({ toastError: jest.fn(), toastSuccess: jest.fn(), toastWarning: jest.fn() }));
 jest.mock('@/components/finanzas/pagos/RegistrarPagoConectado', () => ({ RegistrarPagoConectado: () => null }));
 jest.mock('../AnularVentaDialog', () => ({ AnularVentaDialog: () => null }));
-// Recaudo por medio (2026-11-25): sin red en la prueba; el filtro del día con su defecto.
-jest.mock('@/lib/services/recaudoService', () => ({ leerPagosRecaudo: jest.fn(async () => []) }));
-jest.mock('@/components/finanzas/recaudo/useMediosRecaudo', () => ({
-  useMediosRecaudo: () => ({ catalogo: [], nombre: (m: string) => m, opcionesMedio: () => [] }),
-}));
-const mockGuardarFiltro = jest.fn();
-jest.mock('@/components/finanzas/recaudo/useFiltroDelDia', () => ({
-  useFiltroDelDia: (_pantalla: string, defecto: unknown) => ({ valor: defecto, setValor: mockGuardarFiltro, listo: true, restablecer: jest.fn() }),
-}));
 
 import { VentasPage } from '../VentasPage';
 

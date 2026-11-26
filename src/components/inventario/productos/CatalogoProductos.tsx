@@ -298,8 +298,22 @@ const CatalogoProductos: React.FC = () => {
     };
   }, [organization?.id, categoriaRpc, estadoRpc, busquedaServidor, refreshKey, relacion, fetchProductos]);
 
-  // Tiempo real: cambios en products, stock_levels, product_prices y
-  // product_costs. Antes cualquier cambio (p. ej. cada venta del POS) recargaba
+  // Sucursales de la organización para filtrar el stock en tiempo real (texto
+  // estable para no resuscribir en cada render).
+  const sucursalesEnVivo = useMemo(
+    () => [...new Set(branches.map((b) => Number(b.id)).filter((id) => Number.isInteger(id) && id > 0))].sort((a, b) => a - b).join(','),
+    [branches]
+  );
+
+  // Tiempo real: cambios en products (filtrado por organización) y stock_levels
+  // (filtrado por las sucursales de la organización). product_prices y
+  // product_costs ya no están en la publicación (migración
+  // 20261126160659_realtime_sin_tablas_masivas): sin filtro posible (no tienen
+  // organization_id), cada cambio de precio de CUALQUIER organización llegaba a
+  // este canal y un cambio masivo agotaba el límite de eventos de Realtime del
+  // proyecto. Los cambios en lote (precio masivo, importación) marcan
+  // products.updated_at y llegan por `products`.
+  // Antes cualquier cambio (p. ej. cada venta del POS) recargaba
   // el catálogo entero; ahora se juntan los productos tocados durante 1,5 s y
   // se piden solo sus padres para reemplazar esas filas. Si el cambio no trae
   // el producto (un borrado sin datos) o son demasiados, se recarga en silencio.
@@ -372,23 +386,30 @@ const CatalogoProductos: React.FC = () => {
     type Cambio = RealtimePostgresChangesPayload<FilaCambio>;
     const porProducto = (payload: Cambio) => anotar(filaDe(payload.new).product_id ?? filaDe(payload.old).product_id);
 
-    const channel = supabase
+    let channel = supabase
       .channel('productos_catalogo_changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products', filter: `organization_id=eq.${orgId}` },
         (payload: Cambio) => anotar(filaDe(payload.new).id ?? filaDe(payload.old).id)
-      )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_levels' }, porProducto)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_prices' }, porProducto)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_costs' }, porProducto)
-      .subscribe();
+      );
+    // Realtime admite hasta 100 valores en un filtro `in`; sin sucursales
+    // cargadas (o con más de 100) no se escucha el stock sin filtro.
+    const sucursales = sucursalesEnVivo ? sucursalesEnVivo.split(',') : [];
+    if (sucursales.length > 0 && sucursales.length <= 100) {
+      channel = channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'stock_levels', filter: `branch_id=in.(${sucursales.join(',')})` },
+        porProducto
+      );
+    }
+    channel.subscribe();
 
     return () => {
       if (reloadTimer) clearTimeout(reloadTimer);
       supabase.removeChannel(channel);
     };
-  }, [organization?.id]);
+  }, [organization?.id, sucursalesEnVivo]);
 
   // ─── Lo que se ve: filtros del navegador, orden y página ──────────────────
   const terminoRapido = busquedaRapida.trim() !== busquedaServidor ? busquedaRapida : '';

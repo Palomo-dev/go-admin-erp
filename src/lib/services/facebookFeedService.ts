@@ -91,7 +91,11 @@ export async function cargarProductosMeta(organizationId: number, sb: SupabaseCl
       LOTE_FEED,
     ),
     leerPorLotes<{ product_id: number; storage_path: string; is_primary: boolean | null; display_order: number | null }>(ids, (lote, desde, hasta) =>
-      sb.from('product_images').select('product_id, storage_path, is_primary, display_order').in('product_id', [...lote]).order('id', { ascending: true }).range(desde, hasta),
+      // Solo fotos cuyo archivo existe en el bucket (`archivo_disponible`, igual que la tienda).
+      // Las perdidas en el cambio de proyecto (2026-11-03) daban 404 y el robot de Meta las
+      // reintentaba en ráfaga (2026-11-25: ~28.000 peticiones en 10 min, el pool de Storage
+      // se agotó y respondió 500/544 también a las imágenes que sí existen).
+      sb.from('product_images').select('product_id, storage_path, is_primary, display_order').in('product_id', [...lote]).eq('archivo_disponible', true).order('id', { ascending: true }).range(desde, hasta),
       LOTE_FEED,
     ),
     leerPorLotes<{ product_id: number; qty_on_hand: number | null; qty_reserved: number | null }>(ids, (lote, desde, hasta) =>

@@ -18,7 +18,10 @@ function cliente(tablas: Record<string, Fila[]>) {
     let conRango = false;
     const b = {
       select: () => b,
-      eq: () => b,
+      eq(col: string, valor: unknown) {
+        filas = filas.filter((f) => !(col in f) || f[col] === valor);
+        return b;
+      },
       neq: () => b,
       in(col: string, valores: readonly number[]) {
         const ids = new Set(valores);
@@ -74,6 +77,7 @@ function mundo() {
       storage_path: `products/${p.id}-${n}.jpg`,
       is_primary: n === 0,
       display_order: n,
+      archivo_disponible: true,
     })),
   );
   const product_prices = products.map((p) => ({
@@ -110,5 +114,23 @@ describe('cargarProductosMeta', () => {
     const extra = feed.filas[0].additional_image_link.split(',');
     expect(extra).toHaveLength(FOTOS - 1);
     expect([feed.filas[0].image_link, ...extra]).toEqual(primera[0].imagenes);
+  });
+
+  it('no manda a Meta las fotos cuyo archivo ya no existe en el bucket (archivo_disponible = false)', async () => {
+    // Producto 1: la principal perdida; producto 2: todas perdidas.
+    const sbRotas = cliente({
+      products: [{ id: 1, uuid: 'u-1', sku: 'SKU-1', name: 'P1', description: null, brand: null, barcode: null, status: 'active', product_type: 'product', track_stock: true, is_parent: false, parent_product_id: null, variant_data: {}, categories: null }, { id: 2, uuid: 'u-2', sku: 'SKU-2', name: 'P2', description: null, brand: null, barcode: null, status: 'active', product_type: 'product', track_stock: true, is_parent: false, parent_product_id: null, variant_data: {}, categories: null }],
+      product_images: [
+        { id: 1, product_id: 1, storage_path: 'products/1-0.jpg', is_primary: true, display_order: 0, archivo_disponible: false },
+        { id: 2, product_id: 1, storage_path: 'products/1-1.jpg', is_primary: false, display_order: 1, archivo_disponible: true },
+        { id: 3, product_id: 2, storage_path: 'products/2-0.jpg', is_primary: true, display_order: 0, archivo_disponible: false },
+      ],
+      product_prices: [1, 2].map((id) => ({ id, product_id: id, price: 10000, compare_price: null, effective_from: '2026-01-01T00:00:00.000Z', effective_to: null })),
+      stock_levels: [1, 2].map((id) => ({ id, product_id: id, qty_on_hand: 3, qty_reserved: 0 })),
+      product_tag_relations: [],
+    });
+    const productos = await cargarProductosMeta(120, sbRotas as never);
+    expect(productos.find((p) => p.id === 1)?.imagenes).toEqual(['https://cdn/products/1-1.jpg']);
+    expect(productos.find((p) => p.id === 2)?.imagenes).toEqual([]);
   });
 });

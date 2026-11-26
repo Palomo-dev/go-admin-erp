@@ -163,7 +163,8 @@ describe('migración', () => {
     const claves = (idioma: string) =>
       Object.keys((JSON.parse(leer(`messages/${idioma}.json`)) as Record<string, Record<string, string>>).metodosPagoSeguridad ?? {}).sort();
     const es = claves('es');
-    expect(es).toEqual(['codigoExiste', 'codigoInvalido', 'nombreInvalido', 'sinPermiso']);
+    // usoSinAnticipo: trigger fn_opm_validar_uso_tienda (20261126120000, «Usar en la tienda para»).
+    expect(es).toEqual(['codigoExiste', 'codigoInvalido', 'nombreInvalido', 'sinPermiso', 'usoSinAnticipo']);
     for (const idioma of ['en', 'fr', 'pt']) expect(claves(idioma)).toEqual(es);
   });
 });

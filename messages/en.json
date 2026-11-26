@@ -9,7 +9,8 @@
     "sinPermiso": "You don't have permission to change the organization's payment methods (billing permission).",
     "codigoInvalido": "The code may only contain letters, numbers, hyphens and underscores, 2 to 40 characters.",
     "codigoExiste": "A payment method with that code already exists. Choose another one.",
-    "nombreInvalido": "The name must be between 2 and 80 characters."
+    "nombreInvalido": "The name must be between 2 and 80 characters.",
+    "usoSinAnticipo": "Cash on delivery with a deposit is on: keep at least one gateway that can collect the deposit."
   },
   "monedasSeguridad": {
     "sinPermiso": "You don't have permission to change the organization's currencies. Ask an administrator (billing or organization settings permission).",
@@ -47317,7 +47318,8 @@
         "visibleTienda": "Visible in the store",
         "icono": "Icon in the store",
         "orden": "Order in the store",
-        "instrucciones": "Instructions for the customer"
+        "instrucciones": "Instructions for the customer",
+        "usoTienda": "Use in the store for"
       },
       "ayudas": {
         "codigo": "Cannot be changed: recorded payments use it.",
@@ -47380,6 +47382,12 @@
           "pasarelas": "Gateways",
           "qr": "QR"
         }
+      },
+      "usoTienda": {
+        "ambos": "Full payment and deposit",
+        "solo_anticipo": "Cash-on-delivery deposit only",
+        "solo_pago_completo": "Full payment only",
+        "avisoSinPagoCompleto": "No gateway is left for full payment: the checkout will not offer online payment."
       }
     },
     "qr": {

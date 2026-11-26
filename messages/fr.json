@@ -9,7 +9,8 @@
     "sinPermiso": "Vous n'avez pas l'autorisation de modifier les moyens de paiement de l'organisation (autorisation de facturation).",
     "codigoInvalido": "Le code ne peut contenir que des lettres, des chiffres, des tirets et des tirets bas, de 2 à 40 caractères.",
     "codigoExiste": "Un moyen de paiement avec ce code existe déjà. Choisissez-en un autre.",
-    "nombreInvalido": "Le nom doit comporter entre 2 et 80 caractères."
+    "nombreInvalido": "Le nom doit comporter entre 2 et 80 caractères.",
+    "usoSinAnticipo": "Le paiement à la livraison avec acompte est actif : gardez au moins une passerelle qui encaisse l’acompte."
   },
   "monedasSeguridad": {
     "sinPermiso": "Vous n'avez pas l'autorisation de modifier les devises de l'organisation. Demandez-la à un administrateur (autorisation de facturation ou de configuration de l'organisation).",
@@ -47317,7 +47318,8 @@
         "visibleTienda": "Visible dans la boutique",
         "icono": "Icône dans la boutique",
         "orden": "Ordre dans la boutique",
-        "instrucciones": "Instructions pour le client"
+        "instrucciones": "Instructions pour le client",
+        "usoTienda": "Utiliser dans la boutique pour"
       },
       "ayudas": {
         "codigo": "Non modifiable : les paiements enregistrés l'utilisent.",
@@ -47380,6 +47382,12 @@
           "pasarelas": "Passerelles",
           "qr": "QR"
         }
+      },
+      "usoTienda": {
+        "ambos": "Paiement complet et acompte",
+        "solo_anticipo": "Acompte du paiement à la livraison uniquement",
+        "solo_pago_completo": "Paiement complet uniquement",
+        "avisoSinPagoCompleto": "Aucune passerelle ne reste pour le paiement complet : le checkout ne proposera pas de paiement en ligne."
       }
     },
     "qr": {

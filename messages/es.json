@@ -9,7 +9,8 @@
     "sinPermiso": "No tienes permiso para cambiar los métodos de pago de la organización (permiso de facturación).",
     "codigoInvalido": "El código solo admite letras, números, guion y guion bajo, de 2 a 40 caracteres.",
     "codigoExiste": "Ya existe un método de pago con ese código. Elige otro.",
-    "nombreInvalido": "El nombre debe tener entre 2 y 80 caracteres."
+    "nombreInvalido": "El nombre debe tener entre 2 y 80 caracteres.",
+    "usoSinAnticipo": "La contraentrega con anticipo está activa: deja al menos una pasarela que sirva para el anticipo."
   },
   "monedasSeguridad": {
     "sinPermiso": "No tienes permiso para cambiar las monedas de la organización. Pídeselo a un administrador (permiso de facturación o de configuración de la organización).",
@@ -47315,7 +47316,8 @@
         "visibleTienda": "Visible en la tienda",
         "icono": "Icono en la tienda",
         "orden": "Orden en la tienda",
-        "instrucciones": "Instrucciones para el cliente"
+        "instrucciones": "Instrucciones para el cliente",
+        "usoTienda": "Usar en la tienda para"
       },
       "ayudas": {
         "codigo": "No se cambia: lo usan los pagos ya registrados.",
@@ -47378,6 +47380,12 @@
           "pasarelas": "Pasarelas",
           "qr": "QR"
         }
+      },
+      "usoTienda": {
+        "ambos": "Pago completo y anticipo",
+        "solo_anticipo": "Solo anticipo de contraentrega",
+        "solo_pago_completo": "Solo pago completo",
+        "avisoSinPagoCompleto": "Ninguna pasarela queda para el pago completo: el checkout no ofrecerá pago en línea."
       }
     },
     "qr": {

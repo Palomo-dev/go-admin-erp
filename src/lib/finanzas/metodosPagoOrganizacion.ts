@@ -46,13 +46,27 @@ export function ordenarMetodosDeLaOrganizacion<T extends { website_display_order
   });
 }
 
-export type ClaveErrorMetodoPago = 'sinPermiso' | 'codigoInvalido' | 'codigoExiste' | 'nombreInvalido';
+export type ClaveErrorMetodoPago = 'sinPermiso' | 'codigoInvalido' | 'codigoExiste' | 'nombreInvalido' | 'usoSinAnticipo';
+
+/**
+ * «Usar en la tienda para» de una pasarela (`organization_payment_methods.website_usage`,
+ * 20261126120000). `ambos` es el valor por defecto y el comportamiento de siempre.
+ */
+export const USOS_TIENDA = ['ambos', 'solo_anticipo', 'solo_pago_completo'] as const;
+export type UsoTienda = (typeof USOS_TIENDA)[number];
+
+/** Uso guardado, o `ambos` si falta o no se reconoce. */
+export function usoTienda(valor: unknown): UsoTienda {
+  return (USOS_TIENDA as readonly string[]).includes(String(valor)) ? (valor as UsoTienda) : 'ambos';
+}
 
 /** Traduce los errores de fn_metodo_pago_personalizado_crear / de RLS a una clave de `metodosPagoSeguridad`. */
 export function claveErrorMetodoPago(error: unknown): ClaveErrorMetodoPago | null {
-  const e = (error ?? {}) as { message?: unknown; code?: unknown };
+  const e = (error ?? {}) as { message?: unknown; code?: unknown; hint?: unknown };
   const mensaje = typeof e.message === 'string' ? e.message : '';
   if (mensaje.includes('sin_permiso') || e.code === '42501') return 'sinPermiso';
+  // Trigger fn_opm_validar_uso_tienda: contraentrega con anticipo sin pasarela para cobrarlo.
+  if (e.hint === 'uso_tienda_sin_anticipo') return 'usoSinAnticipo';
   if (mensaje.includes('codigo_invalido')) return 'codigoInvalido';
   if (mensaje.includes('codigo_existe')) return 'codigoExiste';
   if (mensaje.includes('nombre_invalido')) return 'nombreInvalido';

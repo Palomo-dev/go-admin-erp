@@ -23,6 +23,12 @@
  * `pg_publication_tables` la devuelve). El diálogo "Llamar desde mi celular"
  * depende de ella para seguir el bridge en vivo.
  */
+/**
+ * 2026-11-26: `widget_sessions` salió de la publicación (nadie la escuchaba y
+ * recibía miles de UPDATE); igual product_prices, product_costs y
+ * member_notices, que esta lista no tenía. Migración
+ * `20261126160659_realtime_sin_tablas_masivas`.
+ */
 export const REALTIME_PUBLISHED_TABLES = new Set<string>([
   'activities',
   'ai_jobs',
@@ -45,7 +51,6 @@ export const REALTIME_PUBLISHED_TABLES = new Set<string>([
   'tasks',
   'web_orders',
   'website_visits',
-  'widget_sessions',
 ]);
 
 /** ¿Esta tabla emite eventos de postgres_changes hoy? */

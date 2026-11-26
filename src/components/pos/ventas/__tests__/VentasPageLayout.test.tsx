@@ -56,15 +56,6 @@ jest.mock('@/lib/services/clientesListadoService', () => ({ listarClientes: jest
 jest.mock('@/components/ui/use-toast', () => ({ toastError: jest.fn(), toastSuccess: jest.fn(), toastWarning: jest.fn() }));
 jest.mock('@/components/finanzas/pagos/RegistrarPagoConectado', () => ({ RegistrarPagoConectado: () => null }));
 jest.mock('../AnularVentaDialog', () => ({ AnularVentaDialog: () => null }));
-// Recaudo por medio (2026-11-25): sin red en la prueba; el filtro del día con su defecto.
-jest.mock('@/lib/services/recaudoService', () => ({ leerPagosRecaudo: jest.fn(async () => []) }));
-jest.mock('@/components/finanzas/recaudo/useMediosRecaudo', () => ({
-  useMediosRecaudo: () => ({ catalogo: [], nombre: (m: string) => m, opcionesMedio: () => [] }),
-}));
-const mockGuardarFiltro = jest.fn();
-jest.mock('@/components/finanzas/recaudo/useFiltroDelDia', () => ({
-  useFiltroDelDia: (_pantalla: string, defecto: unknown) => ({ valor: defecto, setValor: mockGuardarFiltro, listo: true, restablecer: jest.fn() }),
-}));
 
 import { VentasPage } from '../VentasPage';
 
@@ -173,10 +164,8 @@ describe('VentasPage · cierre del Figma (2026-11-20)', () => {
   it('KPI (Figma 24): ventas de hoy frente al mismo día de la semana pasada, del periodo, por canal y ticket', async () => {
     params = new URLSearchParams();
     renderConIdioma(<VentasPage />);
-    // «Ventas netas» (Figma 3300-420726): la cifra ya era neta (fn_ventas_netas_cifras).
-    expect(await screen.findByText('Ventas netas de hoy')).toBeTruthy();
-    expect(screen.getByText('Ventas netas del periodo')).toBeTruthy();
-    expect(screen.getByText('Recaudado')).toBeTruthy();
+    expect(await screen.findByText('Ventas de hoy')).toBeTruthy();
+    expect(screen.getByText('Ventas del periodo')).toBeTruthy();
     expect(screen.getByText('Por canal')).toBeTruthy();
     await waitFor(() => expect(screen.getByText('POS 62 %')).toBeTruthy());
     expect(screen.getByText('Tienda web 31 % · Menú QR 5 % · Manual 3 %')).toBeTruthy();

@@ -102,12 +102,6 @@ import { DialogoPedidoManual } from '@/components/pos/pedidos-online/manual/Dial
 import { usePaginasModulo } from '@/lib/navigation/NavegacionVisible';
 import { rutaGrupo } from '@/components/reportes/rutasReportes';
 import { useMigaVentas } from '@/components/pos/useMigaVentas';
-import { FiltroConteo } from '@/components/finanzas/recaudo/FiltroConteo';
-import { useFiltroDelDia } from '@/components/finanzas/recaudo/useFiltroDelDia';
-import { useMediosRecaudo } from '@/components/finanzas/recaudo/useMediosRecaudo';
-import { leerPagosRecaudo } from '@/lib/services/recaudoService';
-import { filtrarPorMedio, mediosDeCodigos, resumenRecaudo, type PagoRecaudo } from '@/lib/finanzas/recaudo/recaudoPorMedio';
-import { getDateRange } from '@/lib/utils/dateRanges';
 
 const RUTA = '/app/pos/ventas';
 const FILTROS = ['canal', 'origen', 'estado', 'pago', 'metodo', 'cliente', 'cajero', 'desde', 'hasta', 'min', 'max', 'saldo', 'devolucion', 'sync'] as const;
@@ -116,21 +110,9 @@ const CASILLAS = ['saldo', 'devolucion', 'sync'] as const;
 /** «Todas las sucursales» del selector del header (`ALL_BRANCHES`). */
 const TODAS = 'all' as const;
 
-/**
- * Fecha y medio de pago recordados por persona SOLO durante el día (decisión 2, Figma
- * 3300-420477 › 07). Se aplican al entrar si la URL no trae los suyos.
- */
-interface FiltroRecordadoVentas {
-  desde: string;
-  hasta: string;
-  metodo: string;
-}
-const RECORDADO_POR_DEFECTO: FiltroRecordadoVentas = { desde: '', hasta: '', metodo: '' };
-
 export function VentasPage() {
   const t = useTranslations('posVentas');
   const tv = useTranslations('ventas.todas');
-  const tRec = useTranslations('recaudoMedio');
   const nombreCanal = useNombreCanal();
   const paginasVentas = usePaginasModulo('pos');
   const paginasReportes = usePaginasModulo('reports');
@@ -170,31 +152,6 @@ export function VentasPage() {
   const [cajeros, setCajeros] = useState<CajeroVentas[]>([]);
   const [manualAbierto, setManualAbierto] = useState(false);
   const canalFiltro: CanalVenta | null = esCanalVenta(l.filtros.canal) ? l.filtros.canal : null;
-  const mediosRecaudo = useMediosRecaudo();
-  const [pagosRecaudo, setPagosRecaudo] = useState<PagoRecaudo[] | null>(null);
-  const [errorRecaudo, setErrorRecaudo] = useState(false);
-
-  // Recordar fecha y medio durante el día: al entrar sin ellos en la URL, se aplican los de hoy.
-  const recordado = useFiltroDelDia<FiltroRecordadoVentas>('pos-ventas', RECORDADO_POR_DEFECTO);
-  const [recordadoAplicado, setRecordadoAplicado] = useState(false);
-  useEffect(() => {
-    if (!recordado.listo || recordadoAplicado) return;
-    setRecordadoAplicado(true);
-    const v = recordado.valor;
-    if (l.filtros.desde || l.filtros.hasta || l.filtros.metodo) return;
-    const extra: Record<string, string> = {};
-    if (v.desde && v.hasta) {
-      extra.desde = v.desde;
-      extra.hasta = v.hasta;
-    }
-    if (v.metodo) extra.metodo = v.metodo;
-    if (Object.keys(extra).length > 0) l.actualizar({ filtros: { ...l.filtros, ...extra } });
-  }, [recordado.listo, recordado.valor, recordadoAplicado, l]);
-  const { setValor: guardarRecordado } = recordado;
-  useEffect(() => {
-    if (!recordadoAplicado) return;
-    guardarRecordado({ desde: l.filtros.desde ?? '', hasta: l.filtros.hasta ?? '', metodo: l.filtros.metodo ?? '' });
-  }, [recordadoAplicado, l.filtros.desde, l.filtros.hasta, l.filtros.metodo, guardarRecordado]);
 
   // Periodo por defecto: el mes en curso de la organización (el mismo de las cifras).
   const desde = l.filtros.desde ?? inicioDeMes(hoy);
@@ -266,34 +223,6 @@ export function VentasPage() {
       vigente = false;
     };
   }, [consultaFiltros, recarga]);
-
-  // Recaudado del periodo (Figma 3300-420726): pagos aprobados por su fecha de pago, con el
-  // medio elegido. No es venta: incluye anticipos de contraentrega (2805) en una línea aparte.
-  useEffect(() => {
-    let vigente = true;
-    let organizacion: number | null = null;
-    try {
-      organizacion = getOrganizationId();
-    } catch {
-      organizacion = null;
-    }
-    if (!organizacion) return;
-    const r = getDateRange(desde, hasta, timezone);
-    leerPagosRecaudo(organizacion, { desde: r.start, hasta: r.end }, branchFilter ?? null)
-      .then((p) => {
-        if (!vigente) return;
-        setPagosRecaudo(p);
-        setErrorRecaudo(false);
-      })
-      .catch(() => {
-        if (!vigente) return;
-        setPagosRecaudo(null);
-        setErrorRecaudo(true);
-      });
-    return () => {
-      vigente = false;
-    };
-  }, [desde, hasta, timezone, branchFilter, recarga]);
 
   // Enlace con sede (Inicio › «Ventas por sede»): elige esa sede en el header
   // una sola vez y se quita `sucursal` de la URL; los demás filtros se quedan.
@@ -460,15 +389,6 @@ export function VentasPage() {
   const nombreSucursal = sucursalActiva?.name ?? (branchFilter ? null : t('listado.todasSucursales'));
   const nombreCajeroFiltro = l.filtros.cajero ? cajeros.find((c) => c.id === l.filtros.cajero)?.nombre ?? null : null;
   const metodosFiltro = l.filtros.metodo ? l.filtros.metodo.split(',').filter(Boolean) : [];
-  // El medio de los métodos elegidos (Bold = bold_link + bold_qr + Nequi/PSE cobrados por Bold).
-  const mediosFiltro = mediosDeCodigos(metodosFiltro);
-  const recaudo = pagosRecaudo ? resumenRecaudo(filtrarPorMedio(pagosRecaudo, mediosFiltro)) : null;
-  const nombreMediosFiltro = mediosFiltro.map(mediosRecaudo.nombre).join(', ');
-  const opcionesMetodo = [...new Set(['cash', ...metodosActivos, ...metodosFiltro])].map((m) => {
-    const delCodigo = (pagosRecaudo ?? []).filter((p) => p.metodo === m);
-    const monto = delCodigo.reduce((a, p) => a + p.monto, 0);
-    return { valor: m, etiqueta: etiquetaMetodo(m), detalle: pagosRecaudo ? `${delCodigo.length} · ${formatear(monto)}` : undefined };
-  });
 
   const chips: ChipFiltro[] = [
     periodoElegido ? { clave: 'desde', etiqueta: t('listado.filtros.periodoChip', { rango: etiquetaRango({ desde, hasta }, locale) }) } : null,
@@ -734,7 +654,7 @@ export function VentasPage() {
       <div className="hidden md:block">
         <KpiStrip etiqueta={t('kpis.etiqueta')}>
           <StatCard
-            etiqueta={tRec('ventas.netasHoy')}
+            etiqueta={tv('kpis.hoy')}
             icono={CircleDollarSign}
             cargando={cargandoCifras}
             valor={cifrasHoy ? formatear(cifrasHoy.ventas) : '—'}
@@ -742,28 +662,12 @@ export function VentasPage() {
             detalle={detalleHoy}
           />
           <StatCard
-            etiqueta={tRec('ventas.netasPeriodo')}
+            etiqueta={tv('kpis.periodo')}
             icono={CircleDollarSign}
             cargando={cargandoCifras}
             valor={actual ? formatear(actual.ventas) : '—'}
             tendencia={cambioPeriodo === null ? undefined : cambioPeriodo >= 0 ? 'sube' : 'baja'}
             detalle={detallePeriodo}
-          />
-          <StatCard
-            etiqueta={mediosFiltro.length === 1 ? tRec('ventas.recaudadoPor', { medio: nombreMediosFiltro }) : tRec('ventas.recaudado')}
-            icono={CircleDollarSign}
-            cargando={!recaudo && !errorRecaudo}
-            valor={recaudo ? formatear(recaudo.total.monto) : '—'}
-            tono={errorRecaudo ? 'advertencia' : 'neutro'}
-            detalle={
-              errorRecaudo
-                ? tRec('errorLectura')
-                : recaudo && recaudo.porTipo.anticipo.monto > 0
-                  ? tRec('ventas.incluyeAnticipos', { monto: formatear(recaudo.porTipo.anticipo.monto) })
-                  : recaudo
-                    ? tRec('ventas.recaudadoDetalle', { n: entero(recaudo.total.pagos), count: recaudo.total.pagos })
-                    : undefined
-            }
           />
           <StatCard etiqueta={tv('kpis.porCanal')} icono={ShoppingCart} cargando={cargandoCifras} valor={valorPorCanal} detalle={detallePorCanal} />
           <StatCard
@@ -802,26 +706,6 @@ export function VentasPage() {
       </div>
 
       <ListToolbar
-        antes={
-          <div className="hidden shrink-0 items-center gap-2 sm:flex">
-            <DateRangeButton
-              valor={{ desde, hasta }}
-              hoy={hoy}
-              max={hoy}
-              etiqueta={t('listado.filtros.periodo')}
-              onValorChange={(r) => l.actualizar({ filtros: { ...l.filtros, desde: r.desde, hasta: r.hasta } })}
-            />
-            <FiltroConteo
-              titulo={t('listado.filtros.metodo')}
-              resumen={tRec('filtro.medioResumen', { valor: metodosFiltro.length > 0 ? metodosFiltro.map(etiquetaMetodo).join(', ') : tRec('filtro.todos') })}
-              opciones={opcionesMetodo}
-              valores={metodosFiltro}
-              onAplicar={(v) => l.setFiltro('metodo', v.length ? v.join(',') : null)}
-              buscador
-              nota={tRec('ventas.notaMedio')}
-            />
-          </div>
-        }
         busqueda={
           <SearchInput
             value={l.busqueda}
@@ -932,7 +816,7 @@ export function VentasPage() {
                   </Select>
                 )}
               </FormField>
-              <FormField etiqueta={t('listado.filtros.metodo')} className="sm:hidden">
+              <FormField etiqueta={t('listado.filtros.metodo')}>
                 {(c) => (
                   <MultiSelect
                     id={c.id}
@@ -944,7 +828,7 @@ export function VentasPage() {
                   />
                 )}
               </FormField>
-              <FormField etiqueta={t('listado.filtros.desdeHasta')} className="sm:hidden">
+              <FormField etiqueta={t('listado.filtros.desdeHasta')}>
                 {() => (
                   <DateRangeButton
                     valor={{ desde, hasta }}

@@ -18,6 +18,8 @@ import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneServ
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 import { htmlAviso, textoPlanoAviso, unirSeguimientoYCierre, urlAbsoluta } from './correo';
 import { correoPermitido, enNoMolestar, minutosEnZona } from './reglas';
+import { correoPagoPedido, correoResumenPagos, modoEnvioPago, ventanaHora, type CorreoArmado } from './correoPagoPedido';
+import { datosCorreoPago } from './datosPagoPedido';
 
 const LIMITE_CORREO = 40;
 
@@ -176,6 +178,8 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
     .from('member_notices')
     .select('id, organization_id, recipient_user_id, event, entity_id, title, body, href, idempotency_key')
     .eq('email_status', 'pendiente')
+    // Los pagos de pedidos online van en su propia pasada (agrupación por hora, al final).
+    .not('event', 'like', 'pedido.pago.%')
     .order('created_at', { ascending: true })
     .limit(LIMITE_CORREO);
   if (organizationId) consulta = consulta.eq('organization_id', organizationId);
@@ -357,5 +361,196 @@ export async function despacharAvisosPendientes(organizationId?: number, db: Sup
     }
   }
 
+  await despacharPagosPedido(db, organizationId, resumen, {
+    zonaDe: (org) => zonaDe(db, zonas, org),
+    decisionDe,
+    correoDe,
+    preferenciaDe: (userId) => preferenciaDe(db, preferencias, userId),
+    nombreDe: (org) => nombreOrganizacion(db, nombres, org),
+  });
+
   return resumen;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pagos de pedidos online (migración 20261126091500): correo al equipo con la marca GO Admin.
+// Uno por pedido, evento y persona; desde el pago 11 de la misma hora, un solo resumen al cerrar
+// la hora. Los rechazos nunca llegan aquí (el disparador no deja aviso).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LIMITE_PAGOS = 200;
+
+interface AvisoPagoPendiente extends AvisoPendiente {
+  created_at: string;
+}
+
+interface AyudasPago {
+  zonaDe: (org: number) => Promise<string>;
+  decisionDe: (org: number) => Promise<DecisionCorreoOperativo>;
+  correoDe: (userId: string) => Promise<string | null>;
+  preferenciaDe: (userId: string) => Promise<PreferenciaCorreo | null>;
+  nombreDe: (org: number) => Promise<string | undefined>;
+}
+
+async function despacharPagosPedido(
+  db: SupabaseClient,
+  organizationId: number | undefined,
+  resumen: ResumenAvisos,
+  ayudas: AyudasPago,
+): Promise<void> {
+  let consulta = db
+    .from('member_notices')
+    .select('id, organization_id, recipient_user_id, event, entity_id, title, body, href, idempotency_key, created_at')
+    .eq('email_status', 'pendiente')
+    .like('event', 'pedido.pago.%')
+    .order('created_at', { ascending: true })
+    .limit(LIMITE_PAGOS);
+  if (organizationId) consulta = consulta.eq('organization_id', organizationId);
+  const { data, error } = await consulta;
+  if (error) {
+    console.error('[avisos] pagos pendientes', error.message);
+    return;
+  }
+  const filas = (data ?? []) as AvisoPagoPendiente[];
+  if (!filas.length) return;
+
+  // Por persona y hora (en la zona de la organización).
+  const grupos = new Map<string, { org: number; userId: string; zona: string; inicio: Date; fin: Date; filas: AvisoPagoPendiente[] }>();
+  for (const fila of filas) {
+    const org = Number(fila.organization_id);
+    const zona = await ayudas.zonaDe(org);
+    const instante = new Date(fila.created_at);
+    const ventana = ventanaHora(instante, minutosEnZona(instante, zona), toPlainDate(instante, zona));
+    const clave = `${org}:${fila.recipient_user_id}:${ventana.clave}`;
+    const grupo = grupos.get(clave) ?? { org, userId: fila.recipient_user_id, zona, inicio: ventana.inicio, fin: ventana.fin, filas: [] };
+    grupo.filas.push(fila);
+    grupos.set(clave, grupo);
+  }
+
+  const ahora = new Date();
+  for (const [clave, grupo] of grupos) {
+    const { data: enLaHora, error: errorHora } = await db
+      .from('member_notices')
+      .select('id')
+      .eq('organization_id', grupo.org)
+      .eq('recipient_user_id', grupo.userId)
+      .like('event', 'pedido.pago.%')
+      .gte('created_at', grupo.inicio.toISOString())
+      .lt('created_at', grupo.fin.toISOString())
+      .order('created_at', { ascending: true })
+      .limit(1000);
+    if (errorHora) {
+      console.error('[avisos] pagos de la hora', errorHora.message);
+      continue;
+    }
+    const orden = ((enLaHora ?? []) as { id: string }[]).map((fila) => fila.id);
+    const individuales: AvisoPagoPendiente[] = [];
+    const agrupadas: AvisoPagoPendiente[] = [];
+    for (const fila of grupo.filas) {
+      const posicion = orden.indexOf(fila.id);
+      const modo = modoEnvioPago(posicion < 0 ? orden.length : posicion, ahora, grupo.fin);
+      if (modo === 'individual') individuales.push(fila);
+      else if (modo === 'resumen') agrupadas.push(fila);
+      // 'esperar': sigue pendiente hasta que cierre la hora.
+    }
+
+    for (const fila of individuales) {
+      if (!(await reclamar(db, fila.id))) continue;
+      const destino = await destinoPago(db, fila, grupo.zona, ayudas, resumen);
+      if (!destino) continue;
+      const nombre = (await ayudas.nombreDe(grupo.org)) ?? '';
+      const datos = await datosCorreoPago(db, fila, { zona: grupo.zona, tienda: nombre });
+      if (!datos) {
+        await marcar(db, fila.id, 'omitido');
+        resumen.omitidos += 1;
+        continue;
+      }
+      const estado = await enviarPago(db, fila, destino, correoPagoPedido(datos), fila.idempotency_key, nombre);
+      await marcar(db, fila.id, estado);
+      resumen[estado === 'enviado' ? 'enviados' : 'fallidos'] += 1;
+    }
+
+    const reclamadas: AvisoPagoPendiente[] = [];
+    for (const fila of agrupadas) {
+      if (await reclamar(db, fila.id)) reclamadas.push(fila);
+    }
+    if (!reclamadas.length) continue;
+    const primera = reclamadas[0];
+    const destino = await destinoPago(db, primera, grupo.zona, ayudas, resumen, reclamadas.slice(1));
+    if (!destino) continue;
+    const nombre = (await ayudas.nombreDe(grupo.org)) ?? '';
+    const hora = (fecha: Date) => new Intl.DateTimeFormat('es-CO', { timeZone: grupo.zona, hour: 'numeric', minute: '2-digit', hour12: true }).format(fecha);
+    const correo = correoResumenPagos({
+      tienda: nombre,
+      hora: `${toPlainDate(grupo.inicio, grupo.zona)} ${hora(grupo.inicio)} – ${hora(grupo.fin)}`,
+      lineas: reclamadas.map((fila) => fila.title),
+      enlace: urlAbsoluta('/app/pos/pedidos-online'),
+    });
+    const estado = await enviarPago(db, primera, destino, correo, `pagos-hora:${clave}`, nombre);
+    for (const fila of reclamadas) await marcar(db, fila.id, estado);
+    resumen[estado === 'enviado' ? 'enviados' : 'fallidos'] += 1;
+  }
+}
+
+/**
+ * Las mismas reglas del resto de avisos: cuenta operativa, miembro activo, correo, preferencia
+ * («Pagos de pedidos online») y no molestar. Devuelve el correo o deja el aviso marcado.
+ */
+async function destinoPago(
+  db: SupabaseClient,
+  fila: AvisoPagoPendiente,
+  zona: string,
+  ayudas: AyudasPago,
+  resumen: ResumenAvisos,
+  acompanantes: AvisoPagoPendiente[] = [],
+): Promise<string | null> {
+  const org = Number(fila.organization_id);
+  const todas = [fila, ...acompanantes];
+  const cerrar = async (estado: 'pendiente' | 'omitido' | 'fallido'): Promise<null> => {
+    for (const una of todas) await marcar(db, una.id, estado);
+    if (estado === 'omitido') resumen.omitidos += todas.length;
+    if (estado === 'fallido') resumen.fallidos += todas.length;
+    if (estado === 'pendiente') resumen.enPausa += todas.length;
+    return null;
+  };
+  const decision = await ayudas.decisionDe(org);
+  if (decision !== 'enviar') return cerrar(decision === 'omitir' ? 'omitido' : 'pendiente');
+  if (!(await miembroActivo(db, org, fila.recipient_user_id))) return cerrar('omitido');
+  const correo = await ayudas.correoDe(fila.recipient_user_id);
+  if (correo == null) return cerrar('fallido');
+  if (!correo) return cerrar('omitido');
+  const pref = await ayudas.preferenciaDe(fila.recipient_user_id);
+  if (!correoPermitido(pref?.allowed_types, fila.event, pref?.mute === true)) return cerrar('omitido');
+  if (enNoMolestar(pref?.dnd_start, pref?.dnd_end, minutosEnZona(new Date(), zona))) return cerrar('pendiente');
+  return correo;
+}
+
+async function enviarPago(
+  db: SupabaseClient,
+  fila: AvisoPagoPendiente,
+  correo: string,
+  contenido: CorreoArmado,
+  llave: string,
+  nombre: string,
+): Promise<'enviado' | 'fallido'> {
+  const org = Number(fila.organization_id);
+  try {
+    const resultado = await sendEmail(org, { userId: null, orgName: nombre || undefined }, {
+      to: [correo],
+      subject: contenido.asunto,
+      content: { html: contenido.html, text: contenido.texto },
+      related_type: 'member_notice',
+      related_id: fila.id,
+      kind: 'transactional',
+      client_request_id: llave,
+      strict_variables: false,
+      avisoMiembro: true,
+    }, db);
+    const duplicado = resultado.warnings.includes('duplicate_client_request');
+    if (duplicado && ESTADOS_FALLIDOS.has(resultado.message.status)) return 'fallido';
+    return 'enviado';
+  } catch (err) {
+    console.error('[avisos] correo pago', err instanceof EmailError ? err.code : 'error');
+    return 'fallido';
+  }
 }

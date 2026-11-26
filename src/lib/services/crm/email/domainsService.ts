@@ -16,7 +16,7 @@ import { getMasterResend, getMasterResendKey, getResendClient } from './resendCl
 import { mapProviderStatus } from './domainRules';
 import { getDomainApiKey, getDomainExtras, getEmailOrgSettings, removeDomainExtras, setDomainExtras, storeDomainApiKey, getOrgResendKey } from './domainStore';
 import { DOMAIN_RE, REGIONS, globalDomain, normalizeRecords, withExtras, type CreateDomainInput, type UpdateDomainInput } from './domainsSupport';
-import { correoRespaldoTiendas, remitenteComprador } from '@/lib/services/remitenteCompradores';
+import { correoRespaldoTiendas, direccionDe, remitenteComprador } from '@/lib/services/remitenteCompradores';
 
 // Contratos, normalización de DNS, extras y remitente global: `domainsSupport.ts`
 // (tope de 300 líneas por módulo). Se reexportan los tipos para no romper imports.
@@ -231,6 +231,23 @@ async function nombreOrganizacion(orgId: number, supabase: SupabaseClient): Prom
   } catch {
     return '';
   }
+}
+
+/**
+ * Remitente de los avisos al EQUIPO (usuarios del ERP: pagos de pedidos online, tareas, caja,
+ * cartera, inventario…): marca GO Admin desde la dirección de notificaciones de la plataforma
+ * (`EMAIL_FROM_ADDRESS`), nunca el nombre ni el dominio de la tienda. La regla de compradores
+ * (`remitenteCompradores`) no aplica: quien lo recibe es dueño o empleado, no un cliente.
+ * Sin dirección o sin key maestra devuelve null y se usa `resolveSender` como antes.
+ */
+export function remitenteAvisoEquipo(): ResolvedSender | null {
+  const correo = direccionDe(process.env.EMAIL_FROM_ADDRESS);
+  const apiKey = getMasterResendKey();
+  if (!correo || !apiKey) return null;
+  return {
+    mode: 'global', domain: null, fromEmail: correo, from: `GO Admin <${correo}>`,
+    replyTo: null, apiKey, notice: null, receivingDomain: null, tracking: false,
+  };
 }
 
 export async function resolveSender(orgId: number, opts: { domainId?: string | null; userId?: string | null; kind: EmailKind; orgName?: string; userEmail?: string | null }, supabase: SupabaseClient): Promise<ResolvedSender> {

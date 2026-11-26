@@ -74124,5 +74124,9 @@
     "errorCarga": "Impossible de charger les données du client.",
     "cambiarFacturarA": "Une vente avec solde ne peut pas être facturée au consommateur final. Dans « Facturer à », choisissez la personne ou une entreprise.",
     "elegirCliente": "Une vente avec solde nécessite un client identifié. Choisissez le client de la vente."
+  },
+  "avisosPagoPedido": {
+    "titulo": "Paiements des commandes en ligne",
+    "detalle": "Quand un client paie une commande de la boutique en ligne ou son acompte, et quand elle est remboursée"
   }
 }

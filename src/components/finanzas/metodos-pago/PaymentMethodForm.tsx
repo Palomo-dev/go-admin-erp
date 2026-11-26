@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
-import { claveErrorMetodoPago, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
+import { USOS_TIENDA, claveErrorMetodoPago, requiereReferenciaMetodo, usoTienda, type UsoTienda } from "@/lib/finanzas/metodosPagoOrganizacion";
 import { SelectorSucursalesMetodoPago } from "./SucursalesMetodoPago";
 import { normalizarSucursales, esColumnaAusente } from "@/lib/finanzas/metodosPagoAlcance";
 import { rutaConectar } from '@/lib/services/integrations/conexiones/rutaAsistente';
@@ -75,6 +75,7 @@ interface Valores {
   website_display_name: string;
   website_description: string;
   website_icon: string;
+  website_usage: UsoTienda;
 }
 
 const CLASE_CONTROL = "h-10 border-line-strong bg-surface";
@@ -93,6 +94,7 @@ function valoresDe(m: OrganizationPaymentMethod | null): Valores {
     website_display_name: m?.website_display_name || "",
     website_description: m?.website_description || "",
     website_icon: m?.website_icon || "",
+    website_usage: usoTienda(m?.website_usage),
   };
 }
 
@@ -133,6 +135,24 @@ export default function PaymentMethodForm({
   const [conectoresConectados, setConectoresConectados] = useState<string[]>([]);
 
   const currentMethod = globalMethods.find((m) => m.code === valores.payment_method_code);
+  // Pasarela = vínculo con una conexión de Integraciones (lo mismo que mira la tienda).
+  const esPasarela = Boolean(selectedMethod?.integration_connection_id);
+
+  /** ¿Otra pasarela visible en la tienda sigue sirviendo para el pago completo? Si no se puede leer, no se avisa. */
+  const hayOtraParaPagoCompleto = async (): Promise<boolean> => {
+    if (!organizationId || !selectedMethod?.id) return true;
+    const { data, error } = await supabase
+      .from("organization_payment_methods")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .neq("id", selectedMethod.id)
+      .not("integration_connection_id", "is", null)
+      .eq("is_active", true)
+      .eq("show_on_website", true)
+      .neq("website_usage", "solo_anticipo")
+      .limit(1);
+    return error ? true : (data ?? []).length > 0;
+  };
   const editando = selectedMethod !== null;
   const hasMethodSelected = Boolean(valores.payment_method_code) || isNewMethod || editando;
 
@@ -342,6 +362,8 @@ export default function PaymentMethodForm({
         website_display_name: values.website_display_name || null,
         website_description: values.website_description || null,
         website_icon: values.website_icon || null,
+        // «Usar en la tienda para»: solo las pasarelas lo eligen; el resto conserva lo guardado.
+        ...(esPasarela ? { website_usage: values.website_usage } : {}),
       };
 
       if (!selectedMethod?.id) {
@@ -380,9 +402,13 @@ export default function PaymentMethodForm({
         if (!filas || filas.length === 0) throw { message: "sin_permiso" };
       }
 
+      // Ninguna pasarela queda para pago completo: solo se avisa (no bloquea).
+      const sinPagoCompleto = esPasarela && values.website_usage === "solo_anticipo" && !(await hayOtraParaPagoCompleto());
       toast(avisoSucursales
         ? { title: t("metodo.guardado"), description: t("metodo.avisoSucursales") }
-        : { title: t("metodo.guardado") });
+        : sinPagoCompleto
+          ? { title: t("metodo.guardado"), description: t("metodo.usoTienda.avisoSinPagoCompleto") }
+          : { title: t("metodo.guardado") });
       onAbiertoChange(false);
       onSaveComplete();
     } catch (error: unknown) {
@@ -621,6 +647,24 @@ export default function PaymentMethodForm({
                     </Select>
                   )}
                 </FormField>
+                {esPasarela && (
+                  <FormField etiqueta={t("metodo.campos.usoTienda")}>
+                    {(c) => (
+                      <Select value={valores.website_usage} onValueChange={(v) => poner("website_usage", usoTienda(v))}>
+                        <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={CLASE_CONTROL}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {USOS_TIENDA.map((u) => (
+                            <SelectItem key={u} value={u}>
+                              {t(`metodo.usoTienda.${u}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </FormField>
+                )}
                 <FormField etiqueta={t("metodo.campos.icono")}>
                   {(c) => (
                     <Select value={valores.website_icon || NINGUNA} onValueChange={(v) => poner("website_icon", v === NINGUNA ? "" : v)}>

@@ -55,6 +55,8 @@ export interface OrganizationPaymentMethod {
   website_display_name?: string;
   website_description?: string;
   website_icon?: string;
+  /** «Usar en la tienda para» de una pasarela (20261126120000). Ausente = `ambos`. */
+  website_usage?: string | null;
 }
 
 export type PestanaMetodosPago = "metodos" | "qr";
@@ -183,6 +185,7 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
           website_display_name,
           website_description,
           website_icon,
+          website_usage,
           payment_method:payment_method_code(*)${extraSucursales}
         `)
         .eq("organization_id", organizationId));

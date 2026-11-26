@@ -9,7 +9,8 @@
     "sinPermiso": "Você não tem permissão para alterar os métodos de pagamento da organização (permissão de faturamento).",
     "codigoInvalido": "O código só aceita letras, números, hífen e sublinhado, de 2 a 40 caracteres.",
     "codigoExiste": "Já existe um método de pagamento com esse código. Escolha outro.",
-    "nombreInvalido": "O nome deve ter entre 2 e 80 caracteres."
+    "nombreInvalido": "O nome deve ter entre 2 e 80 caracteres.",
+    "usoSinAnticipo": "O pagamento na entrega com sinal está ativo: deixe pelo menos um gateway que cobre o sinal."
   },
   "monedasSeguridad": {
     "sinPermiso": "Você não tem permissão para alterar as moedas da organização. Peça a um administrador (permissão de faturamento ou de configuração da organização).",
@@ -47327,7 +47328,8 @@
         "visibleTienda": "Visível na loja",
         "icono": "Ícone na loja",
         "orden": "Ordem na loja",
-        "instrucciones": "Instruções para o cliente"
+        "instrucciones": "Instruções para o cliente",
+        "usoTienda": "Usar na loja para"
       },
       "ayudas": {
         "codigo": "Não pode ser alterado: os pagamentos registrados o usam.",
@@ -47390,6 +47392,12 @@
           "pasarelas": "Gateways",
           "qr": "QR"
         }
+      },
+      "usoTienda": {
+        "ambos": "Pagamento completo e sinal",
+        "solo_anticipo": "Somente sinal do pagamento na entrega",
+        "solo_pago_completo": "Somente pagamento completo",
+        "avisoSinPagoCompleto": "Nenhum gateway fica para o pagamento completo: o checkout não oferecerá pagamento online."
       }
     },
     "qr": {

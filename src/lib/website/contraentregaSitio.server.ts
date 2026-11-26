@@ -290,6 +290,30 @@ export async function guardarContraentrega(ctx: Ctx, branchId: number, condicion
     // algunos» sin productos) se rechaza, en vez de guardar una contraentrega que nunca se ofrece.
     const errores = erroresCondiciones(limpias);
     if (errores.length > 0) throw new ErrorVentas('peticion_invalida', 400, 'Revisa las condiciones de la contraentrega.', errores);
+    // Con anticipo, alguna pasarela de la tienda tiene que servir para cobrarlo (`website_usage`,
+    // 20261126120000). Sin pasarelas en la tienda se guarda como hoy (la tienda no ofrece la
+    // contraentrega con anticipo hasta que haya una); solo se rechaza si todas son «solo pago completo».
+    if (limpias.ofrecer && limpias.anticipo.tipo !== 'ninguno') {
+      const { data: pasarelas, error: errPasarelas } = await db
+        .from('organization_payment_methods')
+        .select('website_usage')
+        .eq('organization_id', ctx.organizationId)
+        .not('integration_connection_id', 'is', null)
+        .eq('is_active', true)
+        .eq('show_on_website', true);
+      if (errPasarelas) throw errPasarelas;
+      const filas = (pasarelas ?? []) as { website_usage: string | null }[];
+      if (filas.length > 0 && filas.every((f) => f.website_usage === 'solo_pago_completo')) {
+        throw new ErrorVentas(
+          'peticion_invalida',
+          400,
+          'Ninguna pasarela sirve para el anticipo: en Finanzas › Métodos de pago elige «Pago completo y anticipo» o «Solo anticipo de contraentrega» en al menos una.',
+          ['anticipo'],
+        );
+      } else {
+        // Hay con qué cobrar el anticipo (o no hay pasarelas): como hoy.
+      }
+    }
   } else {
     // Quitar las condiciones de la sede: la contraentrega vuelve a funcionar como hoy.
   }

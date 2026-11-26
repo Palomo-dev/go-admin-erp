@@ -74134,5 +74134,9 @@
     "errorCarga": "Não foi possível carregar os dados do cliente.",
     "cambiarFacturarA": "Uma venda com saldo não pode ir para consumidor final. Em «Faturar para», escolha a pessoa ou uma empresa.",
     "elegirCliente": "Uma venda com saldo precisa de um cliente com documento. Escolha o cliente da venda."
+  },
+  "avisosPagoPedido": {
+    "titulo": "Pagamentos de pedidos online",
+    "detalle": "Quando um cliente paga um pedido da loja online ou o sinal, e quando é reembolsado"
   }
 }

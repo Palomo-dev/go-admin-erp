@@ -12,7 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { enqueueJob } from '@/lib/jobs/enqueue';
 import { EmailError, MAX_RECIPIENTS, MAX_SCHEDULE_DAYS, RESEND_SCHEDULE_WINDOW_MS, type EmailKind, type EmailMessage, type EmailMessageMeta } from './types';
-import { resolveSender, type ResolvedSender } from './domainsService';
+import { remitenteAvisoEquipo, resolveSender, type ResolvedSender } from './domainsService';
 import { getResendClient, getResendRateLimiter } from './resendClient';
 import { renderEmail, type RenderOutput } from './render';
 import { buildContext, type RenderContext } from './variables';
@@ -195,7 +195,9 @@ export async function sendEmail(orgId: number, actor: SendEmailActor, req: SendE
     throw new EmailError('CONTACT_OPTED_OUT', 'El contacto pidió no recibir correos', 403);
   }
 
-  const sender = await resolveSender(orgId, { domainId: req.from_domain_id ?? null, userId, kind, orgName: actor.orgName, userEmail: actor.userEmail ?? null }, supabase);
+  // Aviso al equipo: «GO Admin <EMAIL_FROM_ADDRESS>», nunca el remitente de la tienda.
+  const sender = (req.avisoMiembro ? remitenteAvisoEquipo() : null)
+    ?? (await resolveSender(orgId, { domainId: req.from_domain_id ?? null, userId, kind, orgName: actor.orgName, userEmail: actor.userEmail ?? null }, supabase));
   if (sender.notice) warnings.push(sender.notice);
 
   const id = messageId();

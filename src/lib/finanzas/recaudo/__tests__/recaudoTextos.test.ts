@@ -38,10 +38,8 @@ describe('textos del recaudo por medio en 4 idiomas', () => {
       ['src/components/finanzas/tesoreria/compartido/ListaTesoreria.tsx', 'tRec', ''],
       ['src/components/finanzas/recaudo/FiltroConteo.tsx', 't', 'filtro.'],
       ['src/components/finanzas/recaudo/useMediosRecaudo.ts', 't', 'medios.'],
-      ['src/components/finanzas/procesadores-pago/CobrosProcesadores.tsx', 'tx', 'cobros.'],
-      ['src/components/finanzas/procesadores-pago/CobrosProcesadores.tsx', 'tm', ''],
       ['src/components/finanzas/procesadores-pago/TarifaProcesadorDialog.tsx', 'tx', 'tarifa.'],
-      ['src/components/finanzas/procesadores-pago/ProcesadoresPagoPage.tsx', 'tRec', 'cobros.'],
+      ['src/components/finanzas/procesadores-pago/DatosProcesadoresDialog.tsx', 'tRec', 'cobros.'],
     ];
     const faltan: string[] = [];
     for (const [archivo, fn, prefijo] of pantallas) {

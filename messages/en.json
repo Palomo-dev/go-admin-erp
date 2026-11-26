@@ -74124,5 +74124,9 @@
     "errorCarga": "The customer’s details could not be loaded.",
     "cambiarFacturarA": "A sale with a balance due cannot be billed to the final consumer. Under “Bill to”, choose the person or a company.",
     "elegirCliente": "A sale with a balance due needs a customer with an ID. Choose the customer for this sale."
+  },
+  "avisosPagoPedido": {
+    "titulo": "Online order payments",
+    "detalle": "When a customer pays an online store order or its deposit, and when it is refunded"
   }
 }

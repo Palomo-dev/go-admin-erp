@@ -1067,6 +1067,7 @@ export class CajasService {
       permisos: {
         cerrarCajasAjenas: false,
         verEsperadoEnCierreCiego: false,
+        explicarDiferencias: false,
         esPropia: session.opened_by === userId,
         puedeCerrar: session.status === 'open' && session.opened_by === userId,
       },

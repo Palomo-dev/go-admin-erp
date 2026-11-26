@@ -139,8 +139,6 @@ export const recaudoReports: DefinicionModulo[] = [
         lectura.push({
           tono: 'aviso',
           texto: 'Lo cobrado por pasarelas y datáfono queda en la cuenta del procesador (138020xx) hasta que abona al banco.',
-          href: '/app/finanzas/tesoreria/procesadores-pago?pestana=cobros',
-          etiquetaAccion: 'Ver cobros',
         });
       }
 

@@ -3,13 +3,13 @@
  * isotipo Azul GO, firma GO Admin sobre superficie, boton Azul accion.
  */
 
-const AZUL_GO = '#4361EE';
-const AZUL_ACCION = '#3651D4';
-const TINTA = '#0F172A';
-const PIZARRA = '#475569';
-const FONDO = '#F8FAFF';
-const SUPERFICIE = '#FFFFFF';
-const LINEA = '#E2E8F0';
+export const AZUL_GO = '#4361EE';
+export const AZUL_ACCION = '#3651D4';
+export const TINTA = '#0F172A';
+export const PIZARRA = '#475569';
+export const FONDO = '#F8FAFF';
+export const SUPERFICIE = '#FFFFFF';
+export const LINEA = '#E2E8F0';
 
 export interface ContenidoCorreoAviso {
   titulo: string;
@@ -23,7 +23,7 @@ export function urlAbsoluta(href: string): string {
   return `${base}${href.startsWith('/') ? href : `/${href}`}`;
 }
 
-function escapar(valor: string): string {
+export function escapar(valor: string): string {
   return valor
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

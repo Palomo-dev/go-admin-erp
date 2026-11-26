@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Bell, Moon, Clock, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { PreferenciasService } from '@/components/notificaciones/preferencias/PreferenciasService';
 import { fusionarTiposAviso, gruposActivos, type GrupoAviso } from '@/lib/services/avisos/reglas';
 
@@ -28,6 +29,7 @@ interface NotificacionesSectionProps {
 export default function NotificacionesSection({ 
   user, 
 }: NotificacionesSectionProps) {
+  const tPagos = useTranslations('avisosPagoPedido');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -230,7 +232,7 @@ export default function NotificacionesSection({
             Avisos por correo
           </h3>
           <div className="space-y-4">
-            {GRUPOS_CORREO.map((grupo) => (
+            {[...GRUPOS_CORREO, { clave: 'pedido.pago' as GrupoAviso, titulo: tPagos('titulo'), detalle: tPagos('detalle') }].map((grupo) => (
               <div key={grupo.clave} className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-gray-700 dark:text-gray-300">{grupo.titulo}</p>

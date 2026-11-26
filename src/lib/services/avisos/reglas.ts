@@ -4,6 +4,27 @@
  * El centinela `ninguno` apaga el correo sin tocar la campana.
  */
 
+const EVENTOS_PAGO_PEDIDO_LISTA = [
+  'pedido.pago.linea',
+  'pedido.pago.contraentrega',
+  'pedido.pago.anticipo',
+  'pedido.pago.anticipo_tarde',
+  'pedido.pago.devolucion',
+] as const;
+
+export const EVENTOS_PAGO_PEDIDO: readonly string[] = EVENTOS_PAGO_PEDIDO_LISTA;
+
+export function esEventoPagoPedido(evento: string): boolean {
+  return EVENTOS_PAGO_PEDIDO.includes(evento);
+}
+
+/**
+ * Los pagos de pedidos online se apagan aparte: están prendidos salvo que la persona lo apague
+ * («Pagos de pedidos online» en Mis avisos) o silencie todo. Así una lista guardada antes de que
+ * existieran no los deja apagados.
+ */
+const SIN_PAGOS_PEDIDO = 'sin.pedido.pago';
+
 export const EVENTOS_AVISO = [
   'tarea.asignada',
   'oportunidad.asignada',
@@ -23,6 +44,9 @@ export const EVENTOS_AVISO = [
   // Transporte (2026-11-23): documentos de la flota a 30, 15 y 7 días de vencer
   // (fn_transporte_avisar_vencimientos, migración 20261123234500).
   'transporte.documento.vence',
+  // Pagos de pedidos online (2026-11-25): correo al equipo (dueños y administradores, por permiso)
+  // que deja fn_avisos_pago_pedido_web (migración 20261126090000). Prendidos de fábrica.
+  ...EVENTOS_PAGO_PEDIDO_LISTA,
 ] as const;
 
 export type EventoAviso = (typeof EVENTOS_AVISO)[number];
@@ -53,6 +77,7 @@ export const GRUPOS_AVISO = {
   'cartera.resumen': ['cartera.resumen'],
   inventario: ['inventario.cero', 'inventario.bajo'],
   transporte: ['transporte.documento.vence'],
+  'pedido.pago': EVENTOS_PAGO_PEDIDO_LISTA,
 } as const;
 
 export type GrupoAviso = keyof typeof GRUPOS_AVISO;
@@ -71,6 +96,9 @@ export function correoPermitido(
 ): boolean {
   if (EVENTOS_TAREA_SIN_CORREO.has(evento)) return false;
   if (mute) return false;
+  if (esEventoPagoPedido(evento)) {
+    return !(allowed ?? []).includes(CENTINELA_NINGUNO) && !(allowed ?? []).includes(SIN_PAGOS_PEDIDO);
+  }
   if (!allowed || allowed.length === 0) return true;
   if (allowed.includes(CENTINELA_NINGUNO)) return false;
   return allowed.includes(evento);
@@ -88,7 +116,9 @@ export function gruposActivos(allowed: string[] | null | undefined): Record<Grup
   const anteriorCompleta = !apagado && !nuevosYaElegidos && EVENTOS_ANTERIORES.every((evento) => lista.includes(evento));
   for (const clave of claves) {
     const eventos = GRUPOS_AVISO[clave];
-    if (todos) {
+    if (clave === 'pedido.pago') {
+      activos[clave] = !apagado && !lista.includes(SIN_PAGOS_PEDIDO);
+    } else if (todos) {
       activos[clave] = true;
     } else if (apagado) {
       activos[clave] = false;
@@ -106,15 +136,22 @@ export function gruposActivos(allowed: string[] | null | undefined): Record<Grup
 }
 
 export function tiposDesdeGrupos(activos: Record<GrupoAviso, boolean>): string[] {
-  const claves = Object.keys(GRUPOS_AVISO) as GrupoAviso[];
-  if (claves.every((clave) => activos[clave])) return [];
-  if (claves.every((clave) => !activos[clave])) return [CENTINELA_NINGUNO];
-  return claves.filter((clave) => activos[clave]).flatMap((clave) => [...GRUPOS_AVISO[clave]]);
+  const claves = (Object.keys(GRUPOS_AVISO) as GrupoAviso[]).filter((clave) => clave !== 'pedido.pago');
+  // Sin la clave (estado guardado antes de existir el grupo) cuenta como prendido: es de fábrica.
+  const pagos = activos['pedido.pago'] !== false;
+  const todas = claves.every((clave) => activos[clave]);
+  const ninguna = claves.every((clave) => !activos[clave]);
+  if (todas && pagos) return [];
+  if (ninguna && !pagos) return [CENTINELA_NINGUNO];
+  // Solo los pagos prendidos: la lista no puede quedar vacía (vacía es «todos»).
+  if (ninguna) return [...EVENTOS_PAGO_PEDIDO];
+  const lista = claves.filter((clave) => activos[clave]).flatMap((clave) => [...GRUPOS_AVISO[clave]]);
+  return pagos ? lista : [...lista, SIN_PAGOS_PEDIDO];
 }
 
 /** Conserva otros tipos del canal y escribe solo la parte de estos avisos. */
 export function fusionarTiposAviso(existentes: string[] | null | undefined, activos: Record<GrupoAviso, boolean>): string[] {
-  const deAvisos = new Set<string>([...EVENTOS_AVISO, CENTINELA_NINGUNO]);
+  const deAvisos = new Set<string>([...EVENTOS_AVISO, CENTINELA_NINGUNO, SIN_PAGOS_PEDIDO]);
   const resto = (existentes ?? []).filter((tipo) => !deAvisos.has(tipo));
   const avisos = tiposDesdeGrupos(activos);
   if (avisos.length === 0) return resto.length ? [...resto, ...EVENTOS_AVISO] : [];

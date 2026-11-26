@@ -1,3 +1,13 @@
+-- ═══ SUPERADA (2026-11-25) — NO EJECUTAR ═══════════════════════════════════════════════════════
+-- El Contador aprobó estos asientos con el caso PERSONA NATURAL (la org 377 lo es: razón social =
+-- nombre del dueño, NIT de persona natural). Se aplicaron con cuentas distintas a las de abajo:
+-- 3130 en vez de 133015/1325 y 2380, y la nota «Retiro del propietario · por legalizar».
+--   Aplicado:  supabase/migrations/20261126041000_cierre_caja_org377_persona_natural.sql (NA-641 a NA-649)
+--   Reversión: supabase/rollbacks/20261126041000_cierre_caja_org377_persona_natural_rollback.sql
+--   Cierre automático (sobrantes 42958102 / faltantes 53959502):
+--              supabase/migrations/20261126040000_cierre_caja_sobrantes_faltantes.sql
+-- Este archivo queda solo como antecedente de la revisión.
+-- ═════════════════════════════════════════════════════════════════════════════════════════════════
 -- Reversión de PROPUESTA_NO_APLICAR_20261126_cierre_caja_org377_v2.sql (solo si se aplicó).
 --
 -- Borra EXACTAMENTE los asientos de esa propuesta (org 377, fact_key cierre_caja_v2:%) con el
